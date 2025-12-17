@@ -1,0 +1,88 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Header from '@/components/layout/Header.astro';
+import Footer from '@/components/layout/Footer.astro';
+
+interface QuickLink {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  heroTitle: string;
+  heroDescription: string;
+  heroGradient?: 'bitcoin' | 'lightning' | 'nostr' | 'default';
+  quickLinks?: QuickLink[];
+}
+
+const {
+  title,
+  description,
+  ogImage,
+  heroTitle,
+  heroDescription,
+  heroGradient = 'default',
+  quickLinks = [],
+} = Astro.props;
+
+const gradients = {
+  bitcoin: 'from-bitcoin-500/10 to-bitcoin-600/5',
+  lightning: 'from-yellow-500/10 to-yellow-600/5',
+  nostr: 'from-purple-500/10 to-purple-600/5',
+  default: 'from-[var(--bg-secondary)] to-[var(--bg-primary)]',
+};
+---
+
+<BaseLayout title={title} description={description} ogImage={ogImage}>
+  <Header />
+  <main>
+    <!-- Hero section -->
+    <section class:list={['py-16 md:py-24 bg-gradient-to-b', gradients[heroGradient]]}>
+      <div class="container-wide">
+        <div class="max-w-3xl">
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            {heroTitle}
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            {heroDescription}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick links -->
+    {quickLinks.length > 0 && (
+      <div class="sticky top-16 z-30 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-b border-[var(--border-default)]">
+        <div class="container-wide">
+          <nav class="flex items-center gap-6 py-3 overflow-x-auto scrollbar-hide">
+            {quickLinks.map((link) => (
+              <a
+                href={link.href}
+                class="text-sm font-medium text-[var(--text-secondary)] hover:text-bitcoin-500 whitespace-nowrap transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    )}
+
+    <!-- Main content -->
+    <slot />
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+</style>

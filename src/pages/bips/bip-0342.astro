@@ -1,0 +1,202 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-342: Tapscript 驗證規則"
+  description="定義 Tapscript 的驗證規則，為 Taproot 腳本路徑提供升級版的腳本語言。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-342' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Pieter Wuille, Jonas Nick, Anthony Towns"
+  date={new Date('2020-01-19')}
+  prevPage={{ title: 'BIP-341: Taproot', href: '/bips/bip-0341' }}
+  nextPage={{ title: 'BIP-44: 多帳戶 HD 錢包', href: '/bips/bip-0044' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">342</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">激活區塊</span>
+        <p class="font-semibold text-[var(--text-primary)]">709,632</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-342 定義了 Tapscript，這是用於 Taproot 腳本路徑花費的腳本驗證規則。
+    Tapscript 是比特幣原始 Script 語言的升級版本，利用 Schnorr 簽名的優勢，
+    並為未來的腳本升級提供了更好的擴展機制。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    隨著 Taproot（BIP-341）和 Schnorr 簽名（BIP-340）的引入，比特幣需要一個
+    升級版的腳本系統來充分利用這些新功能。Tapscript 的設計目標是：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>利用 Schnorr 簽名的批量驗證能力</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>提供更乾淨的升級路徑，使用 OP_SUCCESS 操作碼</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>修復 OP_CHECKMULTISIG 的已知問題</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>移除不必要的資源限制</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">主要變更</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">OP_CHECKSIGADD</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    新的 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">OP_CHECKSIGADD</code>
+    操作碼取代了 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">OP_CHECKMULTISIG</code>：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`# 舊的多簽方式 (OP_CHECKMULTISIG)
+OP_0 <sig1> <sig2> OP_2 <pk1> <pk2> <pk3> OP_3 OP_CHECKMULTISIG
+
+# 新的多簽方式 (OP_CHECKSIGADD)
+<sig3> <pk3> OP_CHECKSIG
+<sig2> <pk2> OP_CHECKSIGADD
+<sig1> <pk1> OP_CHECKSIGADD
+OP_2 OP_EQUAL`}
+    </pre>
+  </div>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    這種方式避免了舊 OP_CHECKMULTISIG 的 "off-by-one" bug，並且支持批量驗證。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">OP_SUCCESS 操作碼</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Tapscript 將 80 到 254 範圍內未使用的操作碼重新定義為 OP_SUCCESS。
+    這些操作碼會讓腳本立即成功，為未來的軟分叉升級提供了乾淨的路徑。
+  </p>
+  <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-6">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong> OP_SUCCESS 操作碼只在 Tapscript 中有效。
+      如果腳本中包含任何 OP_SUCCESS，整個腳本會立即返回成功，
+      這意味著包含未知操作碼的腳本在升級前「任何人都可以花費」。
+    </p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">簽名驗證變更</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Tapscript 中的所有簽名操作碼使用 Schnorr 簽名（BIP-340）：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>簽名大小固定為 64 或 65 字節</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>空簽名表示簽名驗證失敗（而非跳過）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>公鑰必須是 32 字節的 x-only 格式</span>
+    </li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">移除的限制</h3>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">限制</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">傳統 Script</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Tapscript</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">操作碼數量</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">201 個</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">無限制</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">堆疊元素大小</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">520 字節</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">無限制*</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">腳本大小</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">10,000 字節</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">無限制*</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="text-xs text-[var(--text-tertiary)] mt-2">
+      * 仍受區塊權重限制約束
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">簽名哈希 (Signature Hash)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Tapscript 使用與 BIP-341 相同的簽名哈希算法，但包含額外的腳本執行數據：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong>tapleaf_hash</strong>：正在執行的腳本的 tapleaf 哈希</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong>key_version</strong>：公鑰版本（目前為 0）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong>codesep_pos</strong>：最後執行的 OP_CODESEPARATOR 位置</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr 簽名標準</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot 規範</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/learn/advanced/taproot" class="text-bitcoin-500 hover:underline">Taproot 升級詳解</a>：完整的技術教學</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-342 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

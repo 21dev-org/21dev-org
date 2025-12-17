@@ -1,0 +1,37 @@
+---
+interface Props {
+  href?: string;
+  class?: string;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  hover?: boolean;
+}
+
+const {
+  href,
+  class: className = '',
+  padding = 'md',
+  hover = true,
+} = Astro.props;
+
+const paddingStyles = {
+  none: '',
+  sm: 'p-4',
+  md: 'p-6',
+  lg: 'p-8',
+};
+
+const Tag = href ? 'a' : 'div';
+---
+
+<Tag
+  href={href}
+  class:list={[
+    'block rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)]',
+    paddingStyles[padding],
+    hover && 'transition-all duration-200 hover:border-bitcoin-500/50 hover:shadow-lg hover:shadow-bitcoin-500/5',
+    href && 'cursor-pointer',
+    className,
+  ]}
+>
+  <slot />
+</Tag>

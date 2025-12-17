@@ -1,0 +1,247 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Nostr 協議詳解"
+  description="深入了解 Nostr 協議的技術細節，包括事件結構、簽名機制和中繼器通訊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: '協議詳解' },
+  ]}
+  difficulty="intermediate"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Nostr 介紹', href: '/tech/nostr/' }}
+  nextPage={{ title: 'Nostr 客戶端', href: '/tech/nostr/clients' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協議基礎</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Nostr（Notes and Other Stuff Transmitted by Relays）是一個極簡的、開放的協議，
+    用於創建抗審查的全球社交網路。它的設計哲學是保持簡單，將複雜性留給客戶端。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">核心概念</h2>
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">事件 (Events)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Nostr 中的所有數據都是「事件」。每個事件都包含內容、時間戳和創建者的簽名。
+        事件一旦創建就不可修改，只能被新事件替代。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">中繼器 (Relays)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中繼器是存儲和轉發事件的服務器。用戶可以選擇連接多個中繼器，
+        實現數據冗餘和抗審查。中繼器之間不直接通訊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">密鑰對 (Keys)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        用戶身份由 secp256k1 密鑰對定義。公鑰是用戶的身份標識（npub），
+        私鑰用於簽署事件（nsec）。沒有用戶名/密碼，只有密鑰。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個 Nostr 事件都是一個 JSON 對象：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`{
+  "id": "<32字節 SHA256 哈希>",
+  "pubkey": "<32字節公鑰>",
+  "created_at": <Unix時間戳>,
+  "kind": <事件類型整數>,
+  "tags": [
+    ["e", "<事件ID>", "<中繼器URL>"],
+    ["p", "<公鑰>"],
+    ...
+  ],
+  "content": "<任意字串>",
+  "sig": "<64字節 Schnorr 簽名>"
+}`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">事件 ID 計算</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    事件 ID 是對序列化事件數據的 SHA256 哈希：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`id = sha256(
+  JSON.stringify([
+    0,                    // 預留欄位
+    pubkey,              // 十六進制公鑰
+    created_at,          // 時間戳
+    kind,                // 事件類型
+    tags,                // 標籤數組
+    content              // 內容
+  ])
+)`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件類型 (Kinds)</h2>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Kind</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">名稱</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">描述</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">0</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Metadata</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">用戶資料（名稱、頭像等）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">1</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Short Text Note</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">短文本貼文（類似推文）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">2</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Recommend Relay</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">推薦中繼器（已棄用）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">3</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Contacts</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">關注列表</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">4</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Encrypted DM</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">加密私訊</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">5</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Event Deletion</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">刪除請求</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">7</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Reaction</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">反應（點讚等）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">9735</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Zap</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">閃電網路打賞</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">客戶端-中繼器通訊</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    客戶端通過 WebSocket 與中繼器通訊，使用簡單的 JSON 訊息：
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">客戶端發送</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`// 發布事件
+["EVENT", <event JSON>]
+
+// 訂閱事件
+["REQ", <訂閱ID>, <過濾器1>, <過濾器2>, ...]
+
+// 關閉訂閱
+["CLOSE", <訂閱ID>]`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">中繼器回應</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`// 發送事件給訂閱者
+["EVENT", <訂閱ID>, <event JSON>]
+
+// 訂閱結束（所有歷史事件已發送）
+["EOSE", <訂閱ID>]
+
+// 事件發布結果
+["OK", <事件ID>, <成功?>, <訊息>]
+
+// 通知訊息
+["NOTICE", <訊息>]`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    訂閱使用過濾器來指定想要接收的事件：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`{
+  "ids": [<事件ID列表>],
+  "authors": [<公鑰列表>],
+  "kinds": [<事件類型列表>],
+  "#e": [<引用的事件ID>],
+  "#p": [<提及的公鑰>],
+  "since": <Unix時間戳>,
+  "until": <Unix時間戳>,
+  "limit": <數量限制>
+}`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP 標準</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP（Nostr Implementation Possibilities）定義了協議的各種擴展：
+  </p>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">NIP-01</span>
+      <span>基本協議描述</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">NIP-05</span>
+      <span>將 Nostr 公鑰映射到 DNS 域名</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">NIP-19</span>
+      <span>bech32 編碼的實體（npub, nsec, note 等）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">NIP-57</span>
+      <span>閃電網路 Zaps</span>
+    </li>
+  </ul>
+
+  <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30 mb-8">
+    <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">與比特幣的關係</h4>
+    <p class="text-sm text-bitcoin-700/80 dark:text-bitcoin-400/80">
+      Nostr 使用與比特幣相同的 secp256k1 橢圓曲線和 Schnorr 簽名。
+      這意味著你可以使用比特幣密鑰作為 Nostr 身份，
+      並且通過 NIP-57 可以無縫整合閃電網路支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">延伸閱讀</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="https://github.com/nostr-protocol/nips" class="text-bitcoin-500 hover:underline" target="_blank" rel="noopener">NIPs 官方倉庫</a>：所有 NIP 標準文檔</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/tech/nostr/clients" class="text-bitcoin-500 hover:underline">Nostr 客戶端</a>：開始使用 Nostr</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/tech/lightning/" class="text-bitcoin-500 hover:underline">閃電網路</a>：了解 Zaps 背後的技術</span>
+    </li>
+  </ul>
+</ArticleLayout>

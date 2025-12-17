@@ -1,0 +1,233 @@
+---
+import BookLayout from '@/layouts/BookLayout.astro';
+import { getBookById } from '@/data/books';
+
+const book = getBookById('mastering-bitcoin')!;
+---
+
+<BookLayout book={book}>
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">本書特色</h2>
+    <ul class="space-y-3 text-[var(--text-secondary)]">
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>深入淺出地解釋比特幣的技術原理，適合有一定技術背景的讀者</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>涵蓋密鑰、地址、錢包、交易、網路、挖礦等核心概念</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>包含大量程式碼範例和技術圖解</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>被譽為比特幣技術領域的「聖經」</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">章節概覽</h2>
+    <div class="grid sm:grid-cols-2 gap-3">
+      {[
+        { title: '比特幣簡介', desc: '歷史、特性與應用場景' },
+        { title: '比特幣的運作原理', desc: '從用戶角度理解交易' },
+        { title: 'Bitcoin Core', desc: '參考實現與節點架構' },
+        { title: '密鑰和地址', desc: '橢圓曲線與公私鑰' },
+        { title: '錢包', desc: 'HD 錢包與密鑰管理' },
+        { title: '交易', desc: '輸入輸出與鎖定腳本' },
+        { title: '進階交易', desc: '多簽與時間鎖' },
+        { title: '比特幣網路', desc: 'P2P 協議與節點類型' },
+        { title: '區塊鏈', desc: '區塊結構與 Merkle Tree' },
+        { title: '挖礦與共識', desc: '工作量證明與難度調整' },
+        { title: '比特幣安全', desc: '威脅模型與最佳實踐' },
+        { title: '比特幣應用', desc: '支付通道與智能合約' },
+      ].map((chapter, i) => (
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <span class="flex-shrink-0 w-6 h-6 rounded bg-bitcoin-500/10 text-bitcoin-500 text-xs font-medium flex items-center justify-center">
+            {i + 1}
+          </span>
+          <div>
+            <span class="text-sm font-medium text-[var(--text-primary)]">{chapter.title}</span>
+            <p class="text-xs text-[var(--text-tertiary)]">{chapter.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">核心知識點</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-bitcoin-500"></span>
+          密碼學基礎
+        </h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 橢圓曲線密碼學 (secp256k1)</li>
+          <li>• SHA-256 與 RIPEMD-160 哈希</li>
+          <li>• ECDSA 數位簽名</li>
+          <li>• Base58Check 編碼</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span>
+          交易機制
+        </h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• UTXO 模型與交易結構</li>
+          <li>• 鎖定腳本 (scriptPubKey)</li>
+          <li>• 解鎖腳本 (scriptSig)</li>
+          <li>• 交易驗證流程</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          Script 腳本
+        </h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 堆疊式腳本語言</li>
+          <li>• P2PKH 與 P2SH 腳本類型</li>
+          <li>• 多重簽名 (OP_CHECKMULTISIG)</li>
+          <li>• 時間鎖 (CLTV/CSV)</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+          共識與挖礦
+        </h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 工作量證明 (PoW) 算法</li>
+          <li>• 難度調整機制</li>
+          <li>• Coinbase 交易與獎勵</li>
+          <li>• 孤塊與區塊鏈重組</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">學習路線建議</h2>
+    <div class="relative">
+      <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-bitcoin-500/30"></div>
+      <div class="space-y-6">
+        {[
+          { step: '1', title: '概念理解 (Ch 1-2)', desc: '了解比特幣是什麼，從用戶角度體驗交易流程' },
+          { step: '2', title: '密碼學基礎 (Ch 4)', desc: '學習公私鑰、地址生成，這是理解交易的基礎' },
+          { step: '3', title: '交易深入 (Ch 6-7)', desc: '理解 UTXO 模型和 Script 腳本系統' },
+          { step: '4', title: '網路與挖礦 (Ch 8-10)', desc: '了解 P2P 網路、區塊鏈結構和共識機制' },
+          { step: '5', title: '進階應用 (Ch 11-12)', desc: '安全實踐和應用場景，如支付通道' },
+        ].map((item) => (
+          <div class="flex items-start gap-4 relative">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold text-sm z-10">
+              {item.step}
+            </div>
+            <div class="flex-1 pt-1">
+              <h4 class="font-medium text-[var(--text-primary)]">{item.title}</h4>
+              <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">適合讀者</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+        <h3 class="font-semibold text-green-600 dark:text-green-400 mb-2">非常適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 軟體開發者入門比特幣</li>
+          <li>• 想開發比特幣應用</li>
+          <li>• 計算機科學背景的學生</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+        <h3 class="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">可能適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 有程式設計基礎的愛好者</li>
+          <li>• 區塊鏈產品經理</li>
+          <li>• 想深入理解技術的投資者</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/5">
+        <h3 class="font-semibold text-red-600 dark:text-red-400 mb-2">不太適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 完全沒有技術背景</li>
+          <li>• 只想了解投資操作</li>
+          <li>• 尋找非技術性介紹</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">為什麼選擇第二版</h2>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        第二版是學習比特幣基礎的最佳起點。它專注於比特幣的核心原理，
+        不涉及後來的升級（如 SegWit 和 Taproot），讓你能更專注於基礎概念。
+      </p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">經典穩定的內容</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">完善的中文翻譯</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">社群多年驗證</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">打好基礎再學新內容</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">相關資源</h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <a href="/books/mastering-bitcoin-3rd" class="block p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-bitcoin-500 transition-colors">
+        <h4 class="font-medium text-[var(--text-primary)] mb-1">精通比特幣 第三版</h4>
+        <p class="text-sm text-[var(--text-secondary)]">學習 SegWit、Taproot 等最新升級</p>
+      </a>
+      <a href="/books/programming-bitcoin" class="block p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-bitcoin-500 transition-colors">
+        <h4 class="font-medium text-[var(--text-primary)] mb-1">Bitcoin 程式設計</h4>
+        <p class="text-sm text-[var(--text-secondary)]">用 Python 從零實現比特幣功能</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">學習建議</h4>
+    <p class="text-sm text-bitcoin-700/80 dark:text-bitcoin-400/80 mb-3">
+      建議閱讀時搭配運行 Bitcoin Core 節點，親手體驗命令行操作。
+      完成後可以閱讀第三版了解最新發展，或通過《Bitcoin 程式設計》動手實作。
+    </p>
+    <div class="flex flex-wrap gap-2">
+      <a href="/tech/bitcoin-core/" class="inline-flex items-center gap-1 text-sm text-bitcoin-600 dark:text-bitcoin-400 hover:underline">
+        了解 Bitcoin Core →
+      </a>
+      <span class="text-bitcoin-500/50">|</span>
+      <a href="/learn/basics/" class="inline-flex items-center gap-1 text-sm text-bitcoin-600 dark:text-bitcoin-400 hover:underline">
+        入門學習路線 →
+      </a>
+      <span class="text-bitcoin-500/50">|</span>
+      <a href="/bips/" class="inline-flex items-center gap-1 text-sm text-bitcoin-600 dark:text-bitcoin-400 hover:underline">
+        探索 BIPs →
+      </a>
+    </div>
+  </div>
+</BookLayout>

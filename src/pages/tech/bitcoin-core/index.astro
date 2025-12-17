@@ -1,0 +1,179 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import BitcoinLogo from '@/components/svg/BitcoinLogo.astro';
+---
+
+<PageLayout
+  title="Bitcoin Core"
+  description="比特幣核心協議的參考實現，了解共識機制、網路協議與區塊鏈技術。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)] relative overflow-hidden">
+    <div class="absolute inset-0 opacity-5">
+      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-bitcoin-500 rounded-full blur-3xl"></div>
+    </div>
+    <div class="container-wide relative">
+      <nav class="mb-8" aria-label="麵包屑">
+        <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+          <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+          <li>/</li>
+          <li><a href="/tech/" class="hover:text-[var(--text-primary)]">技術</a></li>
+          <li>/</li>
+          <li class="text-[var(--text-primary)]">Bitcoin Core</li>
+        </ol>
+      </nav>
+      <div class="flex flex-col md:flex-row md:items-center gap-8">
+        <div class="flex-1">
+          <div class="flex items-center gap-4 mb-6">
+            <BitcoinLogo size={48} />
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-bitcoin-500/10 text-bitcoin-500">
+              Layer 1
+            </span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            Bitcoin Core
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)] mb-8">
+            Bitcoin Core 是比特幣網路的參考實現，定義了比特幣協議的標準。
+            了解它的架構和運作方式，是深入學習比特幣技術的必經之路。
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <Button href="https://bitcoin.org/en/bitcoin-core/" variant="primary" external>
+              官方網站
+            </Button>
+            <Button href="https://github.com/bitcoin/bitcoin" variant="secondary" external>
+              GitHub
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core concepts -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-12 text-center">
+        核心概念
+      </h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[
+          {
+            title: '共識機制',
+            description: '工作量證明（PoW）確保網路中所有節點對區塊鏈狀態達成一致，防止雙重支付。',
+            icon: '🔗',
+          },
+          {
+            title: 'P2P 網路',
+            description: '去中心化的點對點網路架構，節點之間直接通訊，沒有中心伺服器。',
+            icon: '🌐',
+          },
+          {
+            title: 'UTXO 模型',
+            description: '未花費交易輸出模型，追蹤比特幣的所有權和交易歷史。',
+            icon: '💰',
+          },
+          {
+            title: '區塊驗證',
+            description: '每個節點獨立驗證區塊的有效性，包括交易、工作量證明和區塊結構。',
+            icon: '✅',
+          },
+          {
+            title: 'Mempool',
+            description: '交易記憶池存儲待確認的交易，礦工從中選擇交易打包進區塊。',
+            icon: '📦',
+          },
+          {
+            title: 'Script',
+            description: '比特幣的腳本語言，定義了交易的花費條件和智能合約邏輯。',
+            icon: '📜',
+          },
+        ].map((concept) => (
+          <Card padding="lg">
+            <div class="text-3xl mb-4">{concept.icon}</div>
+            <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2">
+              {concept.title}
+            </h3>
+            <p class="text-[var(--text-secondary)]">
+              {concept.description}
+            </p>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+    <div class="container-wide">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-8 text-center">
+          架構概覽
+        </h2>
+        <div class="space-y-6">
+          {[
+            {
+              name: '網路層 (Net)',
+              desc: '處理 P2P 連接、訊息傳遞和節點發現',
+            },
+            {
+              name: '驗證層 (Validation)',
+              desc: '驗證交易和區塊的有效性',
+            },
+            {
+              name: '共識層 (Consensus)',
+              desc: '實現共識規則和區塊鏈狀態管理',
+            },
+            {
+              name: '錢包 (Wallet)',
+              desc: '密鑰管理、交易建立和簽名',
+            },
+            {
+              name: 'RPC 介面',
+              desc: '提供 JSON-RPC API 供外部程式調用',
+            },
+          ].map((layer, i) => (
+            <div class="flex items-start gap-4 p-6 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+              <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-bitcoin-500 text-white flex items-center justify-center font-bold">
+                {i + 1}
+              </div>
+              <div>
+                <h3 class="font-semibold text-[var(--text-primary)] mb-1">{layer.name}</h3>
+                <p class="text-[var(--text-secondary)]">{layer.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Resources -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-12 text-center">
+        學習資源
+      </h2>
+      <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <Card href="/books/mastering-bitcoin" padding="lg">
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2">精通比特幣</h3>
+          <p class="text-[var(--text-secondary)]">深入了解比特幣技術的經典書籍</p>
+        </Card>
+        <Card href="/bips/" padding="lg">
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2">BIP 討論</h3>
+          <p class="text-[var(--text-secondary)]">了解比特幣協議的改進提案</p>
+        </Card>
+        <Card href="https://bitcoin.org/en/developer-documentation" padding="lg">
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2">開發者文檔</h3>
+          <p class="text-[var(--text-secondary)]">官方開發者文檔和 API 參考</p>
+        </Card>
+        <Card href="/tech/bitcoin-core/contribute" padding="lg">
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2">參與開發</h3>
+          <p class="text-[var(--text-secondary)]">學習如何為 Bitcoin Core 貢獻代碼</p>
+        </Card>
+      </div>
+    </div>
+  </section>
+</PageLayout>

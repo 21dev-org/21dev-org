@@ -1,0 +1,169 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="交易結構"
+  description="詳細解析比特幣交易的完整結構，包括輸入、輸出、見證數據和交易 ID。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '進階知識', href: '/learn/intermediate/' },
+    { label: '交易結構' },
+  ]}
+  difficulty="intermediate"
+  readingTime="25 分鐘"
+  prevPage={{ title: 'UTXO 模型', href: '/learn/intermediate/utxo-model' }}
+  nextPage={{ title: '深入技術', href: '/learn/advanced/' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣交易是一個數據結構，描述了比特幣價值的轉移。每筆交易消費一個或多個 UTXO 作為輸入，
+    並創建新的 UTXO 作為輸出。交易被包含在區塊中，並通過工作量證明永久記錄在區塊鏈上。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    一筆比特幣交易包含以下主要部分：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`Transaction {
+  version:      4 bytes
+  marker:       1 byte  (0x00, SegWit only)
+  flag:         1 byte  (0x01, SegWit only)
+  input_count:  VarInt
+  inputs:       TxIn[]
+  output_count: VarInt
+  outputs:      TxOut[]
+  witness:      Witness[] (SegWit only)
+  locktime:     4 bytes
+}`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">版本號 (Version)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    4 個字節，表示交易版本。版本 1 是最初的交易格式，版本 2 添加了相對時間鎖定支持（BIP-68）。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">輸入 (Inputs)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個輸入引用一個之前的 UTXO：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`TxIn {
+  prev_txid:     32 bytes  // 引用的交易 ID
+  prev_vout:     4 bytes   // 輸出索引
+  script_sig:    VarBytes  // 解鎖腳本（傳統）
+  sequence:      4 bytes   // 序列號
+}`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">輸出 (Outputs)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個輸出定義了新的 UTXO：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`TxOut {
+  value:         8 bytes   // 金額（satoshis）
+  script_pubkey: VarBytes  // 鎖定腳本
+}`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">見證數據 (Witness)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    SegWit 交易將簽名和公鑰移到見證區域。這解決了交易延展性問題，
+    並且見證數據在計算區塊權重時有折扣。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">鎖定時間 (Locktime)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    4 個字節，定義交易可以被包含在區塊中的最早時間。如果值小於 5 億，
+    表示區塊高度；否則表示 Unix 時間戳。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易 ID</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    比特幣有兩種交易 ID：
+  </p>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">TXID</span>
+      <span>傳統交易 ID，對整個交易（不含見證）進行雙重 SHA256 哈希</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">WTXID</span>
+      <span>見證交易 ID，包含見證數據的哈希（SegWit 交易）</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見交易類型</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2PKH (Pay to Public Key Hash)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        傳統地址格式（以 1 開頭）。腳本要求提供公鑰和簽名，公鑰的哈希必須匹配。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2SH (Pay to Script Hash)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        腳本哈希地址（以 3 開頭）。允許複雜的花費條件，如多重簽名。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2WPKH (Pay to Witness Public Key Hash)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        原生 SegWit 地址（以 bc1q 開頭）。簽名在見證區域，費用更低。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2TR (Pay to Taproot)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Taproot 地址（以 bc1p 開頭）。支持 Schnorr 簽名和 MAST，隱私性更好。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易費用</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    交易費用 = 輸入總額 - 輸出總額。費用由礦工收取，用於激勵他們將交易包含在區塊中。
+    費用通常以 sat/vB（每虛擬字節多少聰）表示。
+  </p>
+  <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-8">
+    <div class="flex items-start gap-3">
+      <svg class="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <div>
+        <h4 class="font-semibold text-yellow-700 dark:text-yellow-400">重要提醒</h4>
+        <p class="text-sm text-yellow-700/80 dark:text-yellow-400/80">
+          如果你沒有創建找零輸出，差額全部會變成交易費用！這是一個常見的錯誤，
+          可能導致損失大量比特幣。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">延伸閱讀</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/books/mastering-bitcoin" class="text-bitcoin-500 hover:underline">精通比特幣</a> 第 6 章：交易</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：隔離見證</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot</span>
+    </li>
+  </ul>
+</ArticleLayout>

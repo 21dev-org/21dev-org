@@ -1,0 +1,272 @@
+---
+import type { Book } from '@/data/books';
+
+interface Props {
+  book: Book;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+const { book, size = 'lg' } = Astro.props;
+
+// 根据难度选择主色调
+const colorSchemes = {
+  beginner: {
+    primary: '#22C55E',
+    secondary: '#16A34A',
+    bg: '#052e16',
+    accent: '#4ADE80',
+  },
+  intermediate: {
+    primary: '#F7931A',
+    secondary: '#EA580C',
+    bg: '#431407',
+    accent: '#FDBA74',
+  },
+  advanced: {
+    primary: '#8B5CF6',
+    secondary: '#7C3AED',
+    bg: '#2e1065',
+    accent: '#A78BFA',
+  },
+};
+
+// 根据书籍类型选择图案
+const getPattern = (id: string) => {
+  if (id.includes('lightning')) return 'lightning';
+  if (id.includes('whitepaper')) return 'document';
+  if (id.includes('blocksize') || id.includes('war')) return 'blocks';
+  if (id.includes('programming')) return 'code';
+  return 'bitcoin';
+};
+
+const colors = colorSchemes[book.difficulty];
+const pattern = getPattern(book.id);
+
+// 尺寸配置
+const sizes = {
+  sm: { width: 160, height: 213 },
+  md: { width: 240, height: 320 },
+  lg: { width: 320, height: 427 },
+};
+
+const { width, height } = sizes[size];
+const titleFontSize = size === 'sm' ? 14 : size === 'md' ? 18 : 22;
+const subtitleFontSize = size === 'sm' ? 8 : size === 'md' ? 10 : 12;
+const authorFontSize = size === 'sm' ? 8 : size === 'md' ? 10 : 11;
+---
+
+<svg
+  viewBox={`0 0 ${width} ${height}`}
+  width={width}
+  height={height}
+  class="book-cover"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <!-- 背景渐变 -->
+    <linearGradient id={`bg-${book.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style={`stop-color:${colors.bg}`} />
+      <stop offset="100%" style="stop-color:#0a0a0a" />
+    </linearGradient>
+
+    <!-- 高光渐变 -->
+    <linearGradient id={`highlight-${book.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style={`stop-color:${colors.primary};stop-opacity:0.3`} />
+      <stop offset="100%" style={`stop-color:${colors.primary};stop-opacity:0`} />
+    </linearGradient>
+
+    <!-- 书脊阴影 -->
+    <linearGradient id={`spine-${book.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0" />
+    </linearGradient>
+
+    <!-- 图案定义 -->
+    {pattern === 'bitcoin' && (
+      <pattern id={`pattern-${book.id}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+        <circle cx="20" cy="20" r="12" fill="none" stroke={colors.primary} stroke-opacity="0.1" stroke-width="1"/>
+        <text x="20" y="25" text-anchor="middle" fill={colors.primary} fill-opacity="0.08" font-size="16" font-weight="bold">₿</text>
+      </pattern>
+    )}
+    {pattern === 'lightning' && (
+      <pattern id={`pattern-${book.id}`} x="0" y="0" width="30" height="40" patternUnits="userSpaceOnUse">
+        <path d="M15 5 L8 20 L14 20 L12 35 L22 15 L16 15 Z" fill={colors.primary} fill-opacity="0.08"/>
+      </pattern>
+    )}
+    {pattern === 'code' && (
+      <pattern id={`pattern-${book.id}`} x="0" y="0" width="50" height="20" patternUnits="userSpaceOnUse">
+        <text x="5" y="14" fill={colors.primary} fill-opacity="0.06" font-size="10" font-family="monospace">&lt;/&gt;</text>
+      </pattern>
+    )}
+    {pattern === 'blocks' && (
+      <pattern id={`pattern-${book.id}`} x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+        <rect x="5" y="5" width="10" height="10" fill={colors.primary} fill-opacity="0.06"/>
+        <rect x="15" y="15" width="10" height="10" fill={colors.primary} fill-opacity="0.06"/>
+      </pattern>
+    )}
+    {pattern === 'document' && (
+      <pattern id={`pattern-${book.id}`} x="0" y="0" width="40" height="50" patternUnits="userSpaceOnUse">
+        <rect x="10" y="5" width="20" height="25" rx="2" fill="none" stroke={colors.primary} stroke-opacity="0.08" stroke-width="1"/>
+        <line x1="14" y1="12" x2="26" y2="12" stroke={colors.primary} stroke-opacity="0.06"/>
+        <line x1="14" y1="17" x2="26" y2="17" stroke={colors.primary} stroke-opacity="0.06"/>
+        <line x1="14" y1="22" x2="22" y2="22" stroke={colors.primary} stroke-opacity="0.06"/>
+      </pattern>
+    )}
+  </defs>
+
+  <!-- 主背景 -->
+  <rect width={width} height={height} rx="8" fill={`url(#bg-${book.id})`} />
+
+  <!-- 图案层 -->
+  <rect width={width} height={height} rx="8" fill={`url(#pattern-${book.id})`} />
+
+  <!-- 顶部高光 -->
+  <rect width={width} height={height * 0.4} rx="8" fill={`url(#highlight-${book.id})`} />
+
+  <!-- 书脊效果 -->
+  <rect x="0" y="0" width="12" height={height} fill={`url(#spine-${book.id})`} />
+
+  <!-- 顶部装饰线 -->
+  <rect x="24" y="20" width={width - 48} height="3" rx="1.5" fill={colors.primary} />
+
+  <!-- 难度标签 -->
+  <g transform={`translate(24, 35)`}>
+    <rect width="48" height="16" rx="8" fill={colors.primary} fill-opacity="0.2" />
+    <text x="24" y="12" text-anchor="middle" fill={colors.accent} font-size="8" font-weight="500">
+      {book.difficulty === 'beginner' ? '入門' : book.difficulty === 'intermediate' ? '進階' : '高級'}
+    </text>
+  </g>
+
+  <!-- 中央图标 -->
+  <g transform={`translate(${width/2}, ${height * 0.35})`}>
+    {pattern === 'bitcoin' && (
+      <g>
+        <circle cx="0" cy="0" r="35" fill={colors.primary} fill-opacity="0.15" />
+        <circle cx="0" cy="0" r="28" fill={colors.primary} fill-opacity="0.1" />
+        <text x="0" y="12" text-anchor="middle" fill={colors.primary} font-size="36" font-weight="bold">₿</text>
+      </g>
+    )}
+    {pattern === 'lightning' && (
+      <g>
+        <circle cx="0" cy="0" r="35" fill={colors.primary} fill-opacity="0.15" />
+        <path d="M0 -20 L-12 5 L-2 5 L-5 25 L12 -5 L2 -5 Z" fill={colors.primary} />
+      </g>
+    )}
+    {pattern === 'code' && (
+      <g>
+        <circle cx="0" cy="0" r="35" fill={colors.primary} fill-opacity="0.15" />
+        <text x="0" y="8" text-anchor="middle" fill={colors.primary} font-size="24" font-family="monospace" font-weight="bold">&lt;/&gt;</text>
+      </g>
+    )}
+    {pattern === 'blocks' && (
+      <g>
+        <circle cx="0" cy="0" r="35" fill={colors.primary} fill-opacity="0.15" />
+        <rect x="-18" y="-18" width="14" height="14" rx="2" fill={colors.primary} />
+        <rect x="4" y="-18" width="14" height="14" rx="2" fill={colors.primary} fill-opacity="0.7" />
+        <rect x="-18" y="4" width="14" height="14" rx="2" fill={colors.primary} fill-opacity="0.7" />
+        <rect x="4" y="4" width="14" height="14" rx="2" fill={colors.primary} fill-opacity="0.4" />
+      </g>
+    )}
+    {pattern === 'document' && (
+      <g>
+        <circle cx="0" cy="0" r="35" fill={colors.primary} fill-opacity="0.15" />
+        <rect x="-14" y="-18" width="28" height="36" rx="3" fill="none" stroke={colors.primary} stroke-width="2" />
+        <line x1="-8" y1="-8" x2="8" y2="-8" stroke={colors.primary} stroke-width="2" />
+        <line x1="-8" y1="0" x2="8" y2="0" stroke={colors.primary} stroke-width="2" />
+        <line x1="-8" y1="8" x2="4" y2="8" stroke={colors.primary} stroke-width="2" />
+      </g>
+    )}
+  </g>
+
+  <!-- 书名 -->
+  <g transform={`translate(${width/2}, ${height * 0.58})`}>
+    <text
+      x="0"
+      y="0"
+      text-anchor="middle"
+      fill="white"
+      font-size={titleFontSize}
+      font-weight="bold"
+      class="book-title"
+    >
+      {book.title.length > 12 ? (
+        <>
+          <tspan x="0" dy="0">{book.title.slice(0, 12)}</tspan>
+          <tspan x="0" dy={titleFontSize * 1.3}>{book.title.slice(12)}</tspan>
+        </>
+      ) : (
+        book.title
+      )}
+    </text>
+  </g>
+
+  <!-- 副标题 -->
+  <text
+    x={width/2}
+    y={height * 0.72}
+    text-anchor="middle"
+    fill={colors.accent}
+    fill-opacity="0.8"
+    font-size={subtitleFontSize}
+  >
+    {book.subtitle.length > 30 ? book.subtitle.slice(0, 30) + '...' : book.subtitle}
+  </text>
+
+  <!-- 底部分隔线 -->
+  <line
+    x1="24"
+    y1={height - 55}
+    x2={width - 24}
+    y2={height - 55}
+    stroke={colors.primary}
+    stroke-opacity="0.3"
+    stroke-width="1"
+  />
+
+  <!-- 作者 -->
+  <text
+    x={width/2}
+    y={height - 35}
+    text-anchor="middle"
+    fill="white"
+    fill-opacity="0.7"
+    font-size={authorFontSize}
+  >
+    {book.author.length > 35 ? book.author.slice(0, 35) + '...' : book.author}
+  </text>
+
+  <!-- 年份 -->
+  <text
+    x={width/2}
+    y={height - 18}
+    text-anchor="middle"
+    fill={colors.accent}
+    fill-opacity="0.6"
+    font-size={authorFontSize}
+  >
+    {book.year}
+  </text>
+
+  <!-- 边框 -->
+  <rect
+    width={width}
+    height={height}
+    rx="8"
+    fill="none"
+    stroke={colors.primary}
+    stroke-opacity="0.2"
+    stroke-width="1"
+  />
+</svg>
+
+<style>
+  .book-cover {
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s ease, filter 0.3s ease;
+  }
+
+  .book-cover:hover {
+    transform: translateY(-4px) scale(1.02);
+    filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.4));
+  }
+</style>

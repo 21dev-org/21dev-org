@@ -1,0 +1,59 @@
+---
+import BookCard from '@/components/ui/BookCard.astro';
+import Button from '@/components/ui/Button.astro';
+import { books } from '@/data/books';
+
+// Show featured books (first 4)
+const featuredBooks = books.slice(0, 4);
+---
+
+<section class="py-20 md:py-28 bg-[var(--bg-secondary)]">
+  <div class="container-wide">
+    <!-- Section header -->
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+      <div>
+        <h2 class="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
+          精選書籍資源
+        </h2>
+        <p class="text-lg text-[var(--text-secondary)] max-w-2xl">
+          社群翻譯的經典比特幣技術書籍，從入門到精通，系統性地學習比特幣技術。
+        </p>
+      </div>
+      <Button href="/books/" variant="secondary">
+        查看全部書籍
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      </Button>
+    </div>
+
+    <!-- Books grid -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {featuredBooks.map((book) => (
+        <BookCard book={book} />
+      ))}
+    </div>
+
+    <!-- Additional info -->
+    <div class="mt-12 p-6 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <div class="flex-shrink-0">
+          <div class="h-12 w-12 rounded-lg bg-bitcoin-500 flex items-center justify-center">
+            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+        </div>
+        <div class="flex-1">
+          <h3 class="font-semibold text-[var(--text-primary)]">想要貢獻翻譯？</h3>
+          <p class="text-sm text-[var(--text-secondary)] mt-1">
+            我們歡迎社群成員參與翻譯工作，一起讓更多中文讀者能夠學習比特幣技術。
+          </p>
+        </div>
+        <Button href="/contribute" variant="outline" size="sm">
+          了解如何貢獻
+        </Button>
+      </div>
+    </div>
+  </div>
+</section>

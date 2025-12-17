@@ -1,0 +1,151 @@
+---
+import Tag from './Tag.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  duration: string;
+  platform: 'youtube' | 'bilibili' | 'vimeo' | 'other';
+  embedId: string;
+  thumbnailUrl?: string;
+  speaker?: string;
+  topics: string[];
+  description: string;
+  language?: 'zh' | 'en' | 'zh-sub';
+  class?: string;
+}
+
+const {
+  title,
+  date,
+  duration,
+  platform,
+  embedId,
+  thumbnailUrl,
+  speaker,
+  topics,
+  description,
+  language = 'zh',
+  class: className = '',
+} = Astro.props;
+
+const platformLabels: Record<string, string> = {
+  youtube: 'YouTube',
+  bilibili: 'Bilibili',
+  vimeo: 'Vimeo',
+  other: '其他',
+};
+
+const languageLabels: Record<string, string> = {
+  zh: '中文',
+  en: '英文',
+  'zh-sub': '中文字幕',
+};
+
+const getVideoUrl = () => {
+  switch (platform) {
+    case 'youtube':
+      return `https://www.youtube.com/watch?v=${embedId}`;
+    case 'bilibili':
+      return `https://www.bilibili.com/video/${embedId}`;
+    case 'vimeo':
+      return `https://vimeo.com/${embedId}`;
+    default:
+      return '#';
+  }
+};
+
+const getThumbnail = () => {
+  if (thumbnailUrl) return thumbnailUrl;
+  if (platform === 'youtube') {
+    return `https://img.youtube.com/vi/${embedId}/maxresdefault.jpg`;
+  }
+  return null;
+};
+
+const thumbnail = getThumbnail();
+---
+
+<a
+  href={getVideoUrl()}
+  target="_blank"
+  rel="noopener noreferrer"
+  class:list={[
+    'group block rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] overflow-hidden',
+    'transition-all duration-300 hover:border-bitcoin-500/50 hover:shadow-xl hover:shadow-bitcoin-500/10 hover:-translate-y-1',
+    className,
+  ]}
+>
+  <!-- Thumbnail -->
+  <div class="aspect-video bg-neutral-900 relative overflow-hidden">
+    {thumbnail ? (
+      <img
+        src={thumbnail}
+        alt={title}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        loading="lazy"
+      />
+    ) : (
+      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-bitcoin-500/20 to-bitcoin-600/10">
+        <svg class="h-16 w-16 text-bitcoin-500/50" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+    )}
+
+    <!-- Play button overlay -->
+    <div class="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div class="w-16 h-16 rounded-full bg-bitcoin-500 flex items-center justify-center shadow-lg">
+        <svg class="h-8 w-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Duration badge -->
+    <div class="absolute bottom-2 right-2 px-2 py-1 bg-black/70 rounded text-xs text-white font-medium">
+      {duration}
+    </div>
+
+    <!-- Platform badge -->
+    <div class="absolute top-2 left-2 px-2 py-1 bg-black/70 rounded text-xs text-white font-medium">
+      {platformLabels[platform]}
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="p-4">
+    <div class="flex items-center gap-2 mb-2">
+      <Tag variant="bitcoin" size="sm">{languageLabels[language]}</Tag>
+      {speaker && (
+        <span class="text-xs text-[var(--text-tertiary)]">{speaker}</span>
+      )}
+    </div>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] line-clamp-2 group-hover:text-bitcoin-500 transition-colors mb-2">
+      {title}
+    </h3>
+
+    <p class="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">
+      {description}
+    </p>
+
+    <div class="flex flex-wrap gap-1 mb-3">
+      {topics.slice(0, 3).map((topic) => (
+        <Tag size="sm">{topic}</Tag>
+      ))}
+    </div>
+
+    <div class="flex items-center justify-between text-sm">
+      <span class="text-[var(--text-tertiary)]">
+        {date.toLocaleDateString('zh-TW', { year: 'numeric', month: 'short', day: 'numeric' })}
+      </span>
+      <span class="inline-flex items-center text-bitcoin-500 font-medium">
+        觀看
+        <svg class="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </span>
+    </div>
+  </div>
+</a>

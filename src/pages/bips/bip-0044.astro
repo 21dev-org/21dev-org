@@ -1,0 +1,223 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-44: 多帳戶階層確定性錢包"
+  description="定義 HD 錢包的多帳戶結構和標準派生路徑，實現跨錢包相容性。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-44' },
+  ]}
+  tags={['Standards Track', 'Proposed']}
+  author="Marek Palatinus, Pavol Rusnak"
+  date={new Date('2014-04-24')}
+  prevPage={{ title: 'BIP-342: Tapscript', href: '/bips/bip-0342' }}
+  nextPage={{ title: 'BIP-84: 原生 SegWit', href: '/bips/bip-0084' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">44</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="default" size="sm">Proposed</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">創建日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">2014-04-24</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-44 定義了階層式確定性錢包的邏輯層次結構，基於 BIP-32 的算法。
+    它為不同的加密貨幣和帳戶創建了標準化的派生路徑，
+    使得同一個種子可以在不同錢包軟體中產生相同的地址。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">派生路徑結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-44 定義了以下五層派生路徑：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    m / purpose' / coin_type' / account' / change / address_index
+  </div>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Purpose（目的）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        固定為 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">44'</code>，
+        表示遵循 BIP-44 規範。硬化派生（'）確保無法從子公鑰推導父私鑰。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Coin Type（幣種）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        標識不同的加密貨幣。比特幣主網使用 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">0'</code>，
+        測試網使用 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">1'</code>。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Account（帳戶）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        允許用戶在邏輯上分離資金。從 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">0'</code> 開始遞增。
+        每個帳戶都是完全獨立的，可用於不同目的（個人、商業等）。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Change（找零）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">0</code> 表示外部鏈（接收地址），
+        <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">1</code> 表示內部鏈（找零地址）。
+        非硬化派生允許使用擴展公鑰生成地址。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Address Index（地址索引）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        從 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">0</code> 開始的遞增索引，
+        用於生成同一帳戶下的多個地址。建議按順序使用。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見派生路徑範例</h2>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">路徑</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">描述</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">m/44'/0'/0'/0/0</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">比特幣主網，第一個帳戶，第一個接收地址</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">m/44'/0'/0'/1/0</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">比特幣主網，第一個帳戶，第一個找零地址</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">m/44'/0'/1'/0/0</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">比特幣主網，第二個帳戶，第一個接收地址</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">m/44'/1'/0'/0/0</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">比特幣測試網，第一個帳戶，第一個接收地址</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">帳戶發現</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當從種子恢復錢包時，軟體需要發現所有已使用的帳戶。推薦的方法是：
+  </p>
+  <ol class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">1.</span>
+      <span>從第一個帳戶（index 0）開始</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">2.</span>
+      <span>派生外部鏈的前 20 個地址</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">3.</span>
+      <span>如果所有地址都沒有交易記錄，停止發現</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">4.</span>
+      <span>否則，增加帳戶索引並重複步驟 2</span>
+    </li>
+  </ol>
+
+  <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-8">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>Gap Limit：</strong> 大多數錢包使用 20 作為「gap limit」。
+      這意味著如果連續 20 個地址都沒有被使用過，錢包會假設後面的地址也未使用。
+      不按順序使用地址可能導致恢復時無法發現某些資金。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址類型演進</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-44 最初設計用於 P2PKH 地址（以 1 開頭）。隨著比特幣的發展，
+    出現了使用不同 purpose 值的相關標準：
+  </p>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">BIP</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Purpose</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">地址類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">前綴</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">BIP-44</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">44'</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2PKH（傳統）</td>
+          <td class="px-4 py-3 font-mono">1...</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">BIP-49</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">49'</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2SH-P2WPKH（兼容 SegWit）</td>
+          <td class="px-4 py-3 font-mono">3...</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">BIP-84</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">84'</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2WPKH（原生 SegWit）</td>
+          <td class="px-4 py-3 font-mono">bc1q...</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">BIP-86</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">86'</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2TR（Taproot）</td>
+          <td class="px-4 py-3 font-mono">bc1p...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a>：階層式確定性錢包</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0039" class="text-bitcoin-500 hover:underline">BIP-39</a>：助記詞標準</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0084" class="text-bitcoin-500 hover:underline">BIP-84</a>：原生 SegWit 派生路徑</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-44 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

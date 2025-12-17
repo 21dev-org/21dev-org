@@ -1,0 +1,177 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-340: Schnorr 簽章"
+  description="Taproot 升級的基礎，引入更高效的 Schnorr 簽章方案。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-340' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Pieter Wuille, Jonas Nick, Tim Ruffing"
+  date={new Date('2020-01-19')}
+  prevPage={{ title: 'BIP-141: SegWit', href: '/bips/bip-0141' }}
+  nextPage={{ title: 'BIP-341: Taproot', href: '/bips/bip-0341' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">340</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">2021-11-14</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    本文件提出了一種基於 secp256k1 橢圓曲線的 Schnorr 數位簽章標準。
+    Schnorr 簽章相比比特幣原有的 ECDSA 簽章具有多項優勢，
+    包括更好的效率、更簡單的多重簽名實現和改進的隱私性。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼使用 Schnorr？</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 線性性</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Schnorr 簽章的數學特性使其具有「線性性」，這意味著多個簽章可以聚合為一個簽章。
+    這對於多重簽名和閾值簽名方案特別有用。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 可證明安全性</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Schnorr 簽章在隨機預言機模型下具有可證明的安全性，
+    而 ECDSA 的安全證明較為複雜。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 效率</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Schnorr 簽章驗證比 ECDSA 更快，特別是在批量驗證多個簽章時。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術規範</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">公鑰格式</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-340 使用僅 x 坐標的公鑰格式：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>公鑰長度：32 字節（僅 x 坐標）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>假設 y 坐標總是偶數</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>相比 ECDSA 的 33 字節壓縮公鑰節省 1 字節</span>
+    </li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">簽章格式</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Schnorr 簽章由兩部分組成：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-secondary)]">簽章 = (r, s)</p>
+    <p class="text-[var(--text-secondary)]">r: 32 字節（臨時公鑰的 x 坐標）</p>
+    <p class="text-[var(--text-secondary)]">s: 32 字節（簽章證明）</p>
+    <p class="text-[var(--text-secondary)]">總計: 64 字節</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">關鍵優勢</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">簽章聚合 (MuSig)</strong>
+        <p class="text-sm mt-1">多個參與者可以產生一個與單一簽章無法區分的聚合簽章</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">批量驗證</strong>
+        <p class="text-sm mt-1">一次驗證多個簽章比逐個驗證更快</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">適配器簽章</strong>
+        <p class="text-sm mt-1">支持更複雜的智能合約和原子交換</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">更小的鏈上足跡</strong>
+        <p class="text-sm mt-1">多重簽名交易看起來與普通交易相同</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MuSig 多重簽名</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Schnorr 的線性特性使得 MuSig 協議成為可能。在 MuSig 中，
+    n 個參與者可以一起產生一個看起來像單一簽章的聚合簽章：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>所有參與者的公鑰聚合為一個公鑰</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>所有參與者的簽章聚合為一個簽章</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>外部觀察者無法判斷這是單簽還是多簽</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Taproot 的關係</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-340 是 Taproot 升級的三個 BIP 之一：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-340</strong>：Schnorr 簽章標準（本 BIP）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-341</strong>：Taproot 花費規則</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-342</strong>：Tapscript 驗證</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-340 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

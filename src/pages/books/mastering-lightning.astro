@@ -1,0 +1,266 @@
+---
+import BookLayout from '@/layouts/BookLayout.astro';
+import { getBookById } from '@/data/books';
+
+const book = getBookById('mastering-lightning')!;
+---
+
+<BookLayout book={book}>
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">本書特色</h2>
+    <ul class="space-y-3 text-[var(--text-secondary)]">
+      <li class="flex items-start gap-3">
+        <span class="text-yellow-500 mt-1">•</span>
+        <span>由閃電網路主要開發者共同撰寫，內容權威且深入</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-yellow-500 mt-1">•</span>
+        <span>完整解析支付通道的建立、運作和關閉機制</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-yellow-500 mt-1">•</span>
+        <span>深入理解 HTLC（哈希時間鎖定合約）的技術原理</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-yellow-500 mt-1">•</span>
+        <span>學習閃電網路的路由機制和流動性管理</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-yellow-500 mt-1">•</span>
+        <span>涵蓋 BOLT 規範的完整解說</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">章節概覽</h2>
+    <div class="grid sm:grid-cols-2 gap-3">
+      {[
+        { title: '閃電網路簡介', desc: '歷史與設計目標' },
+        { title: '開始使用閃電網路', desc: '錢包設置與首次支付' },
+        { title: '閃電網路節點', desc: '節點軟體選擇與安裝' },
+        { title: '錢包', desc: '託管與非託管方案' },
+        { title: '運營閃電節點', desc: '監控與維護' },
+        { title: '閃電網路架構', desc: '網路拓撲與組件' },
+        { title: '支付通道', desc: '通道生命週期' },
+        { title: '路由', desc: '尋路算法與費率' },
+        { title: '通道操作', desc: '承諾交易與狀態更新' },
+        { title: '洋蔥路由', desc: 'Sphinx 協議與隱私' },
+        { title: '發票', desc: 'BOLT 11 格式與解析' },
+        { title: '閃電圖協議', desc: 'Gossip 與網路發現' },
+        { title: '安全與隱私', desc: '攻擊向量與防禦' },
+      ].map((chapter, i) => (
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <span class="flex-shrink-0 w-6 h-6 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-xs font-medium flex items-center justify-center">
+            {i + 1}
+          </span>
+          <div>
+            <span class="text-sm font-medium text-[var(--text-primary)]">{chapter.title}</span>
+            <p class="text-xs text-[var(--text-tertiary)]">{chapter.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">核心技術概念</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-yellow-500">⚡</span>
+          HTLC 機制
+        </h3>
+        <p class="text-sm text-[var(--text-secondary)] mb-2">
+          哈希時間鎖定合約是閃電網路的核心創新，實現跨通道原子支付。
+        </p>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 哈希鎖：使用 preimage 揭示來解鎖</li>
+          <li>• 時間鎖：超時後可回收資金</li>
+          <li>• 原子性：全有或全無的支付</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-yellow-500">🧅</span>
+          洋蔥路由
+        </h3>
+        <p class="text-sm text-[var(--text-secondary)] mb-2">
+          多層加密確保支付路徑隱私，中間節點只知道前後節點。
+        </p>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• Sphinx 加密協議</li>
+          <li>• 固定大小封包防止分析</li>
+          <li>• 每跳解密一層</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-yellow-500">📊</span>
+          承諾交易
+        </h3>
+        <p class="text-sm text-[var(--text-secondary)] mb-2">
+          通道雙方持有的非對稱承諾交易，實現鏈下狀態更新。
+        </p>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 非對稱延遲輸出</li>
+          <li>• 撤銷機制防止作弊</li>
+          <li>• 懲罰交易保障安全</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-yellow-500">🌐</span>
+          Gossip 協議
+        </h3>
+        <p class="text-sm text-[var(--text-secondary)] mb-2">
+          節點間傳播網路拓撲信息，建立支付路由圖。
+        </p>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 通道公告與更新</li>
+          <li>• 節點能力發現</li>
+          <li>• 費率和政策廣播</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">BOLT 規範速覽</h2>
+    <p class="text-[var(--text-secondary)] mb-4 text-sm">
+      BOLT（Basis of Lightning Technology）是閃電網路的技術標準：
+    </p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {[
+        { bolt: 'BOLT 1', title: '基礎協議', desc: '訊息格式與傳輸' },
+        { bolt: 'BOLT 2', title: '通道管理', desc: '開啟、更新、關閉' },
+        { bolt: 'BOLT 3', title: '交易格式', desc: '承諾與 HTLC 交易' },
+        { bolt: 'BOLT 4', title: '洋蔥路由', desc: '支付路徑加密' },
+        { bolt: 'BOLT 7', title: 'Gossip', desc: '網路發現協議' },
+        { bolt: 'BOLT 11', title: '發票', desc: '支付請求格式' },
+      ].map((item) => (
+        <div class="p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <span class="text-xs font-mono text-yellow-600 dark:text-yellow-400">{item.bolt}</span>
+          <h4 class="font-medium text-[var(--text-primary)] text-sm">{item.title}</h4>
+          <p class="text-xs text-[var(--text-tertiary)]">{item.desc}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">主要實現對比</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+        <thead class="bg-[var(--bg-secondary)]">
+          <tr>
+            <th class="px-4 py-3 text-left text-[var(--text-primary)]">實現</th>
+            <th class="px-4 py-3 text-left text-[var(--text-primary)]">開發者</th>
+            <th class="px-4 py-3 text-left text-[var(--text-primary)]">語言</th>
+            <th class="px-4 py-3 text-left text-[var(--text-primary)]">特點</th>
+          </tr>
+        </thead>
+        <tbody class="text-[var(--text-secondary)]">
+          <tr class="border-t border-[var(--border-default)]">
+            <td class="px-4 py-3 font-medium">LND</td>
+            <td class="px-4 py-3">Lightning Labs</td>
+            <td class="px-4 py-3">Go</td>
+            <td class="px-4 py-3">最廣泛使用，完善的 API</td>
+          </tr>
+          <tr class="border-t border-[var(--border-default)]">
+            <td class="px-4 py-3 font-medium">Core Lightning</td>
+            <td class="px-4 py-3">Blockstream</td>
+            <td class="px-4 py-3">C</td>
+            <td class="px-4 py-3">模組化設計，插件系統</td>
+          </tr>
+          <tr class="border-t border-[var(--border-default)]">
+            <td class="px-4 py-3 font-medium">Eclair</td>
+            <td class="px-4 py-3">ACINQ</td>
+            <td class="px-4 py-3">Scala</td>
+            <td class="px-4 py-3">高效能，企業級</td>
+          </tr>
+          <tr class="border-t border-[var(--border-default)]">
+            <td class="px-4 py-3 font-medium">LDK</td>
+            <td class="px-4 py-3">Spiral (前 Square Crypto)</td>
+            <td class="px-4 py-3">Rust</td>
+            <td class="px-4 py-3">嵌入式庫，靈活整合</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">適合讀者</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+        <h3 class="font-semibold text-green-600 dark:text-green-400 mb-2">非常適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 想開發閃電網路應用</li>
+          <li>• 計劃運營閃電節點</li>
+          <li>• 研究 Layer 2 解決方案</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+        <h3 class="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">可能適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 對支付系統感興趣</li>
+          <li>• 了解比特幣基礎想進階</li>
+          <li>• 密碼學愛好者</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/5">
+        <h3 class="font-semibold text-red-600 dark:text-red-400 mb-2">不太適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 不了解比特幣基礎</li>
+          <li>• 只想使用閃電錢包</li>
+          <li>• 沒有程式設計背景</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">前置知識</h2>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-3">
+        閱讀本書前，建議先掌握以下比特幣基礎知識：
+      </p>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">UTXO 模型與交易結構</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">比特幣腳本基礎</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">多重簽名概念</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-green-500">✓</span>
+          <span class="text-[var(--text-secondary)]">時間鎖（OP_CLTV、OP_CSV）</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">學習建議</h4>
+    <p class="text-sm text-yellow-700/80 dark:text-yellow-400/80 mb-3">
+      建議先閱讀《精通比特幣》了解比特幣基礎，特別是交易和腳本章節。
+      可以邊閱讀邊在測試網上運行閃電節點實驗。
+    </p>
+    <div class="flex flex-wrap gap-2">
+      <a href="/books/mastering-bitcoin" class="inline-flex items-center gap-1 text-sm text-yellow-600 dark:text-yellow-400 hover:underline">
+        閱讀精通比特幣 →
+      </a>
+      <span class="text-yellow-500/50">|</span>
+      <a href="/tech/lightning/" class="inline-flex items-center gap-1 text-sm text-yellow-600 dark:text-yellow-400 hover:underline">
+        探索閃電網路技術 →
+      </a>
+    </div>
+  </div>
+</BookLayout>

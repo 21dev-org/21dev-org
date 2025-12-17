@@ -1,0 +1,146 @@
+---
+import { getCollection } from 'astro:content';
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import Tag from '@/components/ui/Tag.astro';
+import Button from '@/components/ui/Button.astro';
+
+export async function getStaticPaths() {
+  const events = await getCollection('events');
+  return events.map((event) => ({
+    params: { slug: event.slug },
+    props: { event },
+  }));
+}
+
+const { event } = Astro.props;
+const { Content } = await event.render();
+
+const typeLabels: Record<string, string> = {
+  meetup: '聚會',
+  conference: '會議',
+  workshop: '工作坊',
+  online: '線上',
+  hackathon: '黑客松',
+};
+
+const typeVariants: Record<string, 'bitcoin' | 'lightning' | 'nostr' | 'success' | 'default'> = {
+  meetup: 'bitcoin',
+  conference: 'lightning',
+  workshop: 'success',
+  online: 'nostr',
+  hackathon: 'default',
+};
+
+const formatDate = (d: Date) => {
+  return d.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
+};
+
+const isUpcoming = event.data.date > new Date();
+---
+
+<PageLayout
+  title={event.data.title}
+  description={event.data.description}
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <Breadcrumb
+          items={[
+            { label: '活動', href: '/events/' },
+            { label: event.data.title },
+          ]}
+        />
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <Tag variant={typeVariants[event.data.type]} size="md">
+              {typeLabels[event.data.type]}
+            </Tag>
+            {isUpcoming && (
+              <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-500/10 text-green-600 dark:text-green-400">
+                即將舉行
+              </span>
+            )}
+            {event.data.tags?.map((tag) => (
+              <Tag size="sm">{tag}</Tag>
+            ))}
+          </div>
+
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-4">
+            {event.data.title}
+          </h1>
+
+          <p class="text-xl text-[var(--text-secondary)] mb-6">
+            {event.data.description}
+          </p>
+
+          <!-- Event meta -->
+          <div class="grid sm:grid-cols-2 gap-4 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 rounded-lg bg-bitcoin-500/10 flex items-center justify-center">
+                <svg class="h-5 w-5 text-bitcoin-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-[var(--text-tertiary)]">日期</p>
+                <p class="font-medium text-[var(--text-primary)]">{formatDate(event.data.date)}</p>
+                {event.data.endDate && (
+                  <p class="text-sm text-[var(--text-secondary)]">至 {formatDate(event.data.endDate)}</p>
+                )}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 rounded-lg bg-bitcoin-500/10 flex items-center justify-center">
+                <svg class="h-5 w-5 text-bitcoin-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-[var(--text-tertiary)]">地點</p>
+                <p class="font-medium text-[var(--text-primary)]">{event.data.location}</p>
+              </div>
+            </div>
+          </div>
+
+          {event.data.url && (
+            <div class="mt-6">
+              <Button href={event.data.url} variant="primary" size="lg" external>
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                前往活動頁面
+              </Button>
+            </div>
+          )}
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg dark:prose-invert max-w-none">
+          <Content />
+        </div>
+
+        <!-- Back -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)]">
+          <Button href="/events/" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            返回活動列表
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

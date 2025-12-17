@@ -1,0 +1,87 @@
+---
+import type { MegaMenuItem } from '@/data/navigation';
+
+interface Props {
+  item: MegaMenuItem;
+}
+
+const { item } = Astro.props;
+---
+
+<div
+  class="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200"
+>
+  <div
+    class="w-[600px] rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-6 shadow-xl"
+  >
+    <div class="grid grid-cols-12 gap-6">
+      <!-- Featured section (if exists) -->
+      {item.featured && (
+        <div class="col-span-4 rounded-lg bg-gradient-to-br from-bitcoin-500/10 to-bitcoin-600/5 p-4">
+          <a href={item.featured.href} class="block group/featured">
+            <div class="mb-3">
+              <div class="h-10 w-10 rounded-lg bg-bitcoin-500 flex items-center justify-center">
+                <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+            </div>
+            <h3 class="font-semibold text-[var(--text-primary)] group-hover/featured:text-bitcoin-500 transition-colors">
+              {item.featured.title}
+            </h3>
+            <p class="mt-1 text-sm text-[var(--text-secondary)]">
+              {item.featured.description}
+            </p>
+            <span class="mt-3 inline-flex items-center text-sm font-medium text-bitcoin-500">
+              開始學習
+              <svg class="ml-1 h-4 w-4 transition-transform group-hover/featured:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
+          </a>
+        </div>
+      )}
+
+      <!-- Navigation sections -->
+      <div class={item.featured ? 'col-span-8' : 'col-span-12'}>
+        <div class={`grid ${item.sections.length > 2 ? 'grid-cols-3' : 'grid-cols-2'} gap-6`}>
+          {item.sections.map((section) => (
+            <div>
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">
+                {section.title}
+              </h4>
+              {section.description && (
+                <p class="text-xs text-[var(--text-tertiary)] mb-2">{section.description}</p>
+              )}
+              <ul class="space-y-1">
+                {section.links.map((link) => (
+                  <li>
+                    <a
+                      href={link.href}
+                      class="block px-2 py-1.5 -mx-2 rounded-md text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- View all link -->
+    <div class="mt-6 pt-4 border-t border-[var(--border-default)]">
+      <a
+        href={item.href}
+        class="inline-flex items-center text-sm font-medium text-bitcoin-500 hover:text-bitcoin-600 transition-colors"
+      >
+        查看全部{item.label}
+        <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

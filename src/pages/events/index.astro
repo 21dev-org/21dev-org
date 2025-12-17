@@ -1,0 +1,130 @@
+---
+import { getCollection } from 'astro:content';
+import PageLayout from '@/layouts/PageLayout.astro';
+import EventCard from '@/components/ui/EventCard.astro';
+import Button from '@/components/ui/Button.astro';
+
+const allEvents = await getCollection('events');
+
+// Sort events by date
+const sortedEvents = allEvents.sort((a, b) =>
+  new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+const now = new Date();
+const upcomingEvents = sortedEvents.filter(e => new Date(e.data.date) >= now);
+const pastEvents = sortedEvents.filter(e => new Date(e.data.date) < now);
+---
+
+<PageLayout
+  title="活動"
+  description="比特幣相關的社群活動和會議資訊。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]">
+    <div class="container-wide">
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          活動
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          參與比特幣社群的各種活動，與志同道合的人交流，學習最新的技術發展。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Upcoming events -->
+  {upcomingEvents.length > 0 && (
+    <section class="py-16 md:py-24">
+      <div class="container-wide">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-8 flex items-center gap-3">
+          <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          </span>
+          即將舉行
+        </h2>
+        <div class="grid md:grid-cols-2 gap-6">
+          {upcomingEvents.map((event) => (
+            <a href={`/events/${event.slug}`} class="block">
+              <EventCard
+                title={event.data.title}
+                date={event.data.date}
+                endDate={event.data.endDate}
+                location={event.data.location}
+                type={event.data.type}
+                url={event.data.url}
+                description={event.data.description}
+                tags={event.data.tags}
+              />
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Past events -->
+  {pastEvents.length > 0 && (
+    <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+      <div class="container-wide">
+        <h2 class="text-2xl font-bold text-[var(--text-tertiary)] mb-8">
+          過往活動
+        </h2>
+        <div class="grid md:grid-cols-2 gap-6 opacity-75">
+          {pastEvents.map((event) => (
+            <a href={`/events/${event.slug}`} class="block">
+              <EventCard
+                title={event.data.title}
+                date={event.data.date}
+                endDate={event.data.endDate}
+                location={event.data.location}
+                type={event.data.type}
+                description={event.data.description}
+                tags={event.data.tags}
+              />
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- No events -->
+  {sortedEvents.length === 0 && (
+    <section class="py-16 md:py-24">
+      <div class="container-wide">
+        <div class="text-center py-12 border border-dashed border-[var(--border-default)] rounded-xl">
+          <svg class="h-12 w-12 mx-auto text-[var(--text-tertiary)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p class="text-lg text-[var(--text-secondary)]">目前沒有活動資訊。</p>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Submit event -->
+  <section class="py-16 md:py-24 bg-[var(--bg-primary)]">
+    <div class="container-wide text-center">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">
+        舉辦活動？
+      </h2>
+      <p class="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
+        如果你正在舉辦比特幣相關的活動，歡迎提交到我們的活動列表。
+      </p>
+      <Button
+        href="https://github.com/21dev-org/21dev-org/issues/new?template=event_request.md"
+        variant="primary"
+        size="lg"
+        external
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        提交活動
+      </Button>
+    </div>
+  </section>
+</PageLayout>

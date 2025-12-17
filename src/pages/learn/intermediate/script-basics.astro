@@ -1,0 +1,205 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="腳本系統基礎"
+  description="了解比特幣的腳本語言，這是實現各種支付條件的基礎。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '進階知識', href: '/learn/intermediate/' },
+    { label: '腳本系統基礎' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: '交易結構', href: '/learn/intermediate/transaction-structure' }}
+  nextPage={{ title: '深入技術', href: '/learn/advanced/' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Bitcoin Script？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Bitcoin Script 是一種基於堆疊的、圖靈不完備的腳本語言。它用於定義 UTXO 的花費條件，
+    是比特幣「可程式化貨幣」特性的基礎。每筆交易都包含腳本，決定了誰可以花費這些比特幣。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼使用腳本？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    腳本系統為比特幣提供了靈活性：
+  </p>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">靈活的支付條件</span>
+      <span>可以創建多重簽名、時間鎖定等複雜條件</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">安全性</span>
+      <span>圖靈不完備確保腳本必定終止，避免無限迴圈</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">可驗證性</span>
+      <span>任何人都可以驗證腳本的執行結果</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">堆疊式執行</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Script 使用後進先出（LIFO）的堆疊來處理數據。操作碼從堆疊中取出數據，處理後將結果推回堆疊。
+  </p>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`執行流程範例：
+Stack: []
+
+PUSH 2       → Stack: [2]
+PUSH 3       → Stack: [2, 3]
+OP_ADD       → Stack: [5]
+PUSH 5       → Stack: [5, 5]
+OP_EQUAL     → Stack: [true]`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">腳本結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    比特幣交易包含兩種腳本：
+  </p>
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">scriptPubKey（鎖定腳本）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        定義在輸出中，指定花費這個 UTXO 需要滿足的條件。類似於一把「鎖」。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">scriptSig（解鎖腳本）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        定義在輸入中，提供滿足鎖定腳本條件的數據。類似於一把「鑰匙」。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見操作碼</h2>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">操作碼</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">功能</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_DUP</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">複製堆疊頂部的元素</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_HASH160</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">對頂部元素執行 SHA256 + RIPEMD160</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_EQUALVERIFY</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">比較兩個元素是否相等，失敗則終止</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKSIG</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">驗證簽名是否有效</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKMULTISIG</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">驗證多重簽名</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_IF / OP_ELSE</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">條件分支</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKLOCKTIMEVERIFY</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">絕對時間鎖定</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKSEQUENCEVERIFY</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">相對時間鎖定</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">P2PKH 腳本詳解</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Pay to Public Key Hash 是最常見的腳本類型：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`scriptPubKey (鎖定):
+OP_DUP OP_HASH160 <公鑰哈希> OP_EQUALVERIFY OP_CHECKSIG
+
+scriptSig (解鎖):
+<簽名> <公鑰>
+
+執行過程:
+1. 推入 <簽名> 和 <公鑰>
+2. OP_DUP: 複製公鑰
+3. OP_HASH160: 計算公鑰哈希
+4. OP_EQUALVERIFY: 驗證哈希匹配
+5. OP_CHECKSIG: 驗證簽名`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多重簽名範例</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    2-of-3 多重簽名腳本需要三個公鑰中的任意兩個簽名：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`scriptPubKey:
+OP_2 <公鑰A> <公鑰B> <公鑰C> OP_3 OP_CHECKMULTISIG
+
+scriptSig:
+OP_0 <簽名1> <簽名2>
+
+注意: OP_0 是因為 OP_CHECKMULTISIG 的一個著名 bug`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖定</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣支持兩種時間鎖定機制，是閃電網絡和其他二層方案的基礎：
+  </p>
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">CLTV（絕對時間鎖）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        OP_CHECKLOCKTIMEVERIFY - 指定一個絕對的區塊高度或時間戳，
+        在此之前 UTXO 無法被花費。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">CSV（相對時間鎖）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        OP_CHECKSEQUENCEVERIFY - 指定從 UTXO 創建開始需要等待的區塊數，
+        用於閃電網絡的承諾交易。
+      </p>
+    </div>
+  </div>
+
+  <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30 mb-8">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸學習：</strong> 想要深入了解更多操作碼和高級腳本技巧，
+      請查看 <a href="/learn/advanced/script-language" class="underline">Script 語言進階</a> 章節。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">延伸閱讀</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/books/mastering-bitcoin" class="text-bitcoin-500 hover:underline">精通比特幣</a> 第 7 章：高級交易和腳本</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">BIP-16</a>：Pay to Script Hash</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0065" class="text-bitcoin-500 hover:underline">BIP-65</a>：OP_CHECKLOCKTIMEVERIFY</span>
+    </li>
+  </ul>
+</ArticleLayout>

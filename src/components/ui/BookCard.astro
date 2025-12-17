@@ -1,0 +1,68 @@
+---
+import Tag from './Tag.astro';
+import BookCover from './BookCover.astro';
+import type { Book } from '@/data/books';
+
+interface Props {
+  book: Book;
+  class?: string;
+}
+
+const { book, class: className = '' } = Astro.props;
+
+const difficultyLabels = {
+  beginner: '入門',
+  intermediate: '進階',
+  advanced: '高級',
+};
+
+const difficultyVariants = {
+  beginner: 'success' as const,
+  intermediate: 'bitcoin' as const,
+  advanced: 'warning' as const,
+};
+---
+
+<a
+  href={`/books/${book.id === 'bitcoin-whitepaper' || book.id === 'lightning-whitepaper' ? 'whitepapers' : book.id}`}
+  class:list={[
+    'group block rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] overflow-hidden',
+    'transition-all duration-300 hover:border-bitcoin-500/50 hover:shadow-xl hover:shadow-bitcoin-500/10 hover:-translate-y-1',
+    className,
+  ]}
+>
+  <!-- Book cover -->
+  <div class="flex justify-center py-4 px-4 bg-[var(--bg-secondary)]">
+    <BookCover book={book} size="sm" />
+  </div>
+
+  <!-- Book info -->
+  <div class="p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <Tag variant={difficultyVariants[book.difficulty]}>
+        {difficultyLabels[book.difficulty]}
+      </Tag>
+      <span class="text-xs text-[var(--text-tertiary)]">{book.year}</span>
+    </div>
+
+    <p class="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">
+      {book.description}
+    </p>
+
+    <div class="flex flex-wrap gap-1.5 mb-4">
+      {book.topics.slice(0, 3).map((topic) => (
+        <Tag size="sm">{topic}</Tag>
+      ))}
+    </div>
+
+    <div class="flex items-center justify-between text-sm">
+      <span class="text-[var(--text-tertiary)]">{book.author.split(',')[0]}</span>
+      <span class="inline-flex items-center text-bitcoin-500 font-medium group-hover:translate-x-1 transition-transform">
+        詳情
+        <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </span>
+    </div>
+  </div>
+</a>

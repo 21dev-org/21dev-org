@@ -1,0 +1,143 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import Tag from '@/components/ui/Tag.astro';
+import { getBookById } from '@/data/books';
+
+const bitcoinWp = getBookById('bitcoin-whitepaper')!;
+const lightningWp = getBookById('lightning-whitepaper')!;
+---
+
+<PageLayout
+  title="白皮書"
+  description="比特幣和閃電網路的原始白皮書中文翻譯。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]">
+    <div class="container-wide">
+      <nav class="mb-8" aria-label="麵包屑">
+        <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+          <li>
+            <a href="/" class="hover:text-[var(--text-primary)] transition-colors">首頁</a>
+          </li>
+          <li>/</li>
+          <li>
+            <a href="/books/" class="hover:text-[var(--text-primary)] transition-colors">書籍</a>
+          </li>
+          <li>/</li>
+          <li class="text-[var(--text-primary)]">白皮書</li>
+        </ol>
+      </nav>
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          白皮書
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          比特幣和閃電網路的原始白皮書，定義了這兩項革命性技術的核心概念。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Whitepapers -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- Bitcoin Whitepaper -->
+        <Card padding="lg" class="flex flex-col">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="h-12 w-12 rounded-lg bg-bitcoin-500 flex items-center justify-center">
+              <span class="text-2xl font-bold text-white">₿</span>
+            </div>
+            <div>
+              <Tag variant="bitcoin">2008</Tag>
+            </div>
+          </div>
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">
+            {bitcoinWp.title}
+          </h2>
+          <p class="text-sm text-[var(--text-secondary)] mb-4">
+            {bitcoinWp.subtitle}
+          </p>
+          <p class="text-[var(--text-secondary)] mb-6 flex-1">
+            {bitcoinWp.description}
+          </p>
+          <div class="mb-6">
+            <p class="text-sm text-[var(--text-tertiary)] mb-1">作者</p>
+            <p class="font-medium text-[var(--text-primary)]">{bitcoinWp.author}</p>
+          </div>
+          <div class="mb-6">
+            <h3 class="text-sm font-medium text-[var(--text-primary)] mb-2">主要貢獻</h3>
+            <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+              <li>• 解決數位貨幣的雙重支付問題</li>
+              <li>• 提出工作量證明共識機制</li>
+              <li>• 設計去中心化的點對點網路</li>
+              <li>• 定義區塊鏈數據結構</li>
+            </ul>
+          </div>
+          <Button href={bitcoinWp.externalUrl} variant="primary" class="w-full justify-center" external>
+            閱讀白皮書
+          </Button>
+        </Card>
+
+        <!-- Lightning Whitepaper -->
+        <Card padding="lg" class="flex flex-col">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="h-12 w-12 rounded-lg bg-yellow-500 flex items-center justify-center">
+              <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <Tag variant="lightning">2016</Tag>
+            </div>
+          </div>
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">
+            {lightningWp.title}
+          </h2>
+          <p class="text-sm text-[var(--text-secondary)] mb-4">
+            {lightningWp.subtitle}
+          </p>
+          <p class="text-[var(--text-secondary)] mb-6 flex-1">
+            {lightningWp.description}
+          </p>
+          <div class="mb-6">
+            <p class="text-sm text-[var(--text-tertiary)] mb-1">作者</p>
+            <p class="font-medium text-[var(--text-primary)]">{lightningWp.author}</p>
+          </div>
+          <div class="mb-6">
+            <h3 class="text-sm font-medium text-[var(--text-primary)] mb-2">主要貢獻</h3>
+            <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+              <li>• 提出支付通道的概念</li>
+              <li>• 設計 HTLC 跨通道支付機制</li>
+              <li>• 實現比特幣的擴展性解決方案</li>
+              <li>• 支持即時、低成本的微支付</li>
+            </ul>
+          </div>
+          <Button href={lightningWp.externalUrl} variant="primary" class="w-full justify-center" external>
+            閱讀白皮書
+          </Button>
+        </Card>
+      </div>
+    </div>
+  </section>
+
+  <!-- Historical context -->
+  <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto text-center">
+        <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">
+          歷史意義
+        </h2>
+        <p class="text-lg text-[var(--text-secondary)] mb-8">
+          這兩份白皮書定義了去中心化數位貨幣的基礎架構，開創了一個全新的技術領域。
+          它們不僅是技術文件，更是密碼學和分散式系統發展史上的里程碑。
+        </p>
+        <Button href="/learn/" variant="secondary">
+          開始學習比特幣技術
+        </Button>
+      </div>
+    </div>
+  </section>
+</PageLayout>

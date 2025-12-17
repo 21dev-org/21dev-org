@@ -1,0 +1,308 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot 升級"
+  description="全面解析 Taproot 升級，包括 Schnorr 簽章、MAST 和腳本路徑。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '深入技術', href: '/learn/advanced/' },
+    { label: 'Taproot 升級' },
+  ]}
+  difficulty="advanced"
+  readingTime="35 分鐘"
+  prevPage={{ title: 'Script 語言', href: '/learn/advanced/script-language' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Taproot 概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Taproot 是比特幣自 SegWit 以來最重要的升級，於 2021 年 11 月在區塊高度 709,632 激活。
+    它由三個相關的 BIP 組成：BIP-340（Schnorr 簽名）、BIP-341（Taproot）和 BIP-342（Tapscript）。
+    這次升級大幅提升了比特幣的隱私性、效率和智能合約能力。
+  </p>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="text-2xl mb-2">BIP-340</div>
+      <h3 class="font-semibold text-[var(--text-primary)] mb-1">Schnorr 簽名</h3>
+      <p class="text-sm text-[var(--text-secondary)]">更高效的數字簽名方案</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="text-2xl mb-2">BIP-341</div>
+      <h3 class="font-semibold text-[var(--text-primary)] mb-1">Taproot</h3>
+      <p class="text-sm text-[var(--text-secondary)]">新的輸出類型和花費規則</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="text-2xl mb-2">BIP-342</div>
+      <h3 class="font-semibold text-[var(--text-primary)] mb-1">Tapscript</h3>
+      <p class="text-sm text-[var(--text-secondary)]">升級版的腳本語言</p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Schnorr 簽名 (BIP-340)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Schnorr 簽名是一種比 ECDSA 更優雅的簽名算法，由 Claus Schnorr 發明。
+    由於專利已過期，比特幣終於可以採用這項技術。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Schnorr vs ECDSA</h3>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">特性</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">ECDSA</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Schnorr</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">簽名大小</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">70-72 字節</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">64 字節</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">密鑰聚合</td>
+          <td class="px-4 py-3 text-red-600 dark:text-red-400">不支持</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">原生支持</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">批量驗證</td>
+          <td class="px-4 py-3 text-red-600 dark:text-red-400">不支持</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">支持</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">延展性</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">需要額外處理</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">原生不可延展</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">安全證明</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">複雜</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">簡潔優雅</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">密鑰聚合</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Schnorr 簽名最強大的特性是線性密鑰聚合。多個公鑰可以組合成單一聚合公鑰：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`# MuSig2 密鑰聚合
+P_agg = P_1 + P_2 + P_3
+
+# 聚合簽名
+s_agg = s_1 + s_2 + s_3
+
+優勢：
+- n-of-n 多簽看起來像單一簽名
+- 鏈上無法區分單簽和多簽
+- 節省空間和費用`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Taproot 結構 (BIP-341)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Taproot 輸出（P2TR）結合了密鑰路徑和腳本路徑兩種花費方式：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`Taproot 輸出公鑰：
+Q = P + H(P || merkle_root) * G
+
+其中：
+P = 內部密鑰（可用於密鑰路徑花費）
+merkle_root = 腳本樹的 Merkle 根
+G = 橢圓曲線生成點
+H = tagged hash 函數`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">花費路徑</h3>
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">密鑰路徑 (Key Path)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        直接使用內部密鑰簽名花費。這是最高效的方式，看起來與普通單簽交易完全相同。
+        適用於合作花費場景。
+      </p>
+      <div class="font-mono text-xs text-[var(--text-tertiary)]">
+        見證數據: [schnorr_signature]
+      </div>
+    </div>
+    <div class="p-4 rounded-lg border border-bitcoin-500/30 bg-bitcoin-500/10">
+      <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">腳本路徑 (Script Path)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        揭示並執行腳本樹中的特定腳本。需要提供控制塊和 Merkle 證明。
+        適用於非合作場景或複雜條件。
+      </p>
+      <div class="font-mono text-xs text-[var(--text-tertiary)]">
+        見證數據: [script_args...] [script] [control_block]
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MAST（Merkle 化抽象語法樹）</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    MAST 允許將多個腳本組織成 Merkle 樹，花費時只需揭示使用的腳本：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`                    Merkle Root
+                   /            \\
+              Hash(AB)          Hash(CD)
+              /     \\          /      \\
+         Hash(A)  Hash(B)  Hash(C)  Hash(D)
+            |        |        |        |
+         Script A Script B Script C Script D
+
+花費 Script B 需要：
+- Script B 本身
+- Hash(A) 作為兄弟證明
+- Hash(CD) 作為叔節點證明
+
+優勢：
+- 只揭示使用的腳本
+- 其他腳本保持隱私
+- 證明大小為 O(log n)`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Tapscript (BIP-342)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Tapscript 是 Taproot 腳本路徑中使用的腳本版本，對傳統 Script 進行了改進：
+  </p>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">OP_CHECKSIGADD</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        替代 OP_CHECKMULTISIG，使用計數器累加方式實現多重簽名，
+        更高效且避免了原本的 off-by-one bug。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">OP_SUCCESS</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        預留的升級操作碼（OP_SUCCESS80-254），未來可以通過軟分叉添加新功能，
+        而不影響現有腳本。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">簽名驗證改進</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有簽名操作碼使用 Schnorr 簽名，64 字節固定大小，
+        支持批量驗證以提高性能。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">移除限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        移除了 201 操作碼限制和 520 字節元素限制（在腳本路徑中），
+        允許更複雜的腳本邏輯。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實際應用場景</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">閃電網絡通道</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用 MuSig2 聚合雙方公鑰，通道開啟和合作關閉看起來像普通交易：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`Key Path: Alice + Bob 聚合密鑰
+Script Path:
+  - Alice + timelock（單方面關閉）
+  - Bob + timelock（單方面關閉）
+  - 懲罰腳本`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">多簽錢包</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    3-of-5 多簽在合作情況下看起來像單簽：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`Key Path: 所有 5 人的 MuSig 聚合（需要 5/5）
+Script Path: 10 個 3-of-3 組合的 MAST
+  - A+B+C, A+B+D, A+B+E
+  - A+C+D, A+C+E, A+D+E
+  - B+C+D, B+C+E, B+D+E
+  - C+D+E`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">繼承規劃</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    結合時間鎖和多重簽名的遺產繼承方案：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <pre class="text-[var(--text-secondary)]">
+{`Key Path: 所有者密鑰（日常使用）
+Script Path:
+  - 所有者 + 配偶（緊急情況）
+  - 配偶 + 2年時間鎖（所有者失聯）
+  - 3-of-5 繼承人 + 5年時間鎖（最後手段）`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私提升</h2>
+  <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30 mb-8">
+    <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">Taproot 的隱私優勢</h4>
+    <ul class="space-y-2 text-sm text-bitcoin-700/80 dark:text-bitcoin-400/80">
+      <li>• 所有密鑰路徑花費看起來相同，無法區分單簽、多簽或複雜合約</li>
+      <li>• 腳本路徑只揭示使用的分支，其他條件保持隱私</li>
+      <li>• 合作關閉的閃電通道與普通交易無法區分</li>
+      <li>• Taproot 輸出統一使用 bc1p 地址前綴</li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來發展</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Taproot 為未來的比特幣改進奠定了基礎：
+  </p>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">OP_CAT</span>
+      <span>重新啟用字符串連接，啟用更強大的合約能力</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">SIGHASH_ANYPREVOUT</span>
+      <span>支持 Eltoo 等更優雅的閃電網絡協議</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">OP_VAULT</span>
+      <span>原生保險庫支持</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">跨輸入聚合</span>
+      <span>進一步提升多輸入交易的效率</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">延伸閱讀</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr 簽名規範</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot 規範</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0342" class="text-bitcoin-500 hover:underline">BIP-342</a>：Tapscript 規範</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/tech/lightning/" class="text-bitcoin-500 hover:underline">閃電網絡</a>：了解 Taproot 如何改進閃電網絡</span>
+    </li>
+  </ul>
+</ArticleLayout>

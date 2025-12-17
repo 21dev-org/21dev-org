@@ -1,0 +1,366 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-173: Bech32 地址編碼"
+  description="定義原生 SegWit 地址的 Bech32 編碼格式，提供更好的錯誤檢測能力。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-173' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Pieter Wuille, Greg Maxwell"
+  date={new Date('2017-03-20')}
+  prevPage={{ title: 'BIP-84: 原生 SegWit', href: '/bips/bip-0084' }}
+  nextPage={{ title: 'BIP-174: PSBT', href: '/bips/bip-0174' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">173</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">創建日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">2017-03-20</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-173 定義了 Bech32 編碼格式，用於原生隔離見證（SegWit）地址。
+    這種新的地址格式以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc1</code> 開頭，
+    提供比傳統 Base58Check 地址更好的錯誤檢測能力和更高的使用效率。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    傳統的 Base58Check 地址格式存在幾個問題：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">混合大小寫</strong>：容易混淆類似字符（如 O/0, l/1）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">雙擊選擇問題</strong>：大小寫混合導致複製不便</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">校驗和弱</strong>：只能檢測錯誤，無法定位錯誤位置</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">二維碼效率低</strong>：混合大小寫需要使用低效的二進制模式</span>
+    </li>
+  </ul>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bech32 解決了這些問題：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">全小寫</strong>：避免大小寫混淆，便於閱讀和輸入</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">強校驗和</strong>：能檢測並定位最多 4 個錯誤字符</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">二維碼友好</strong>：全大寫版本可使用高效的字母數字模式</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">清晰的字符集</strong>：排除了所有容易混淆的字符</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Bech32 字符集</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bech32 使用 32 個字符，特意排除了容易混淆的字符：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-center text-lg tracking-widest">
+    q p z r y 9 x 8 g f 2 t v d w 0 s 3 j n 5 4 k h c e 6 m u a 7 l
+  </div>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    排除的字符：<code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">1</code>、
+    <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">b</code>、
+    <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">i</code>、
+    <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">o</code>（與數字 1、8、1、0 容易混淆）
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bech32 地址由三部分組成：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq
+│  │                                    │
+│  │                                    └─ 校驗和（6 字符）
+│  └─ 數據（見證版本 + 見證程序）
+└─ 人類可讀部分（HRP）`}
+    </pre>
+  </div>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">人類可讀部分 (HRP)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        標識網路類型：<code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc</code> 用於主網，
+        <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">tb</code> 用於測試網。
+        HRP 與數據部分之間用 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">1</code> 分隔。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">見證版本</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        數據的第一個字符表示見證版本。<code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">q</code> = 0（SegWit v0），
+        <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">p</code> = 1（SegWit v1/Taproot）。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">見證程序</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對於 v0 地址，見證程序是公鑰哈希（20 字節，P2WPKH）或腳本哈希（32 字節，P2WSH）。
+        對於 v1 地址，見證程序是 32 字節的 Taproot 公鑰。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">校驗和</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        6 個字符的 BCH 校驗和，使用特殊的多項式設計。
+        能保證檢測最多 4 個字符的錯誤，並能定位錯誤位置。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址類型比較</h2>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">前綴</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">長度</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">範例</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">P2WPKH</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">bc1q</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">42 字符</td>
+          <td class="px-4 py-3 font-mono text-xs">bc1qar0srrr7xfkvy5...</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">P2WSH</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">bc1q</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">62 字符</td>
+          <td class="px-4 py-3 font-mono text-xs">bc1qrp33g0q5c5txsp...</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)] bg-green-500/5">
+          <td class="px-4 py-3 text-[var(--text-primary)] font-semibold">P2TR (Taproot)</td>
+          <td class="px-4 py-3 font-mono text-green-600 dark:text-green-400">bc1p</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">62 字符</td>
+          <td class="px-4 py-3 font-mono text-xs">bc1p0xlxvlhemja6c4...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">編碼過程</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    將見證程序編碼為 Bech32 地址的步驟：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`1. 確定 HRP（主網: "bc", 測試網: "tb"）
+
+2. 創建數據數組：
+   - 見證版本（0-16）
+   - 見證程序（轉換為 5-bit 組）
+
+3. 計算校驗和：
+   checksum = bech32_create_checksum(hrp, data)
+
+4. 組合地址：
+   address = hrp + "1" + encode(data) + encode(checksum)`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">JavaScript 範例</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`// 使用 bech32 庫
+import { bech32 } from 'bech32';
+
+// 編碼 P2WPKH 地址
+function encodeP2WPKH(publicKeyHash) {
+  const words = bech32.toWords(publicKeyHash);
+  words.unshift(0); // 見證版本 0
+  return bech32.encode('bc', words);
+}
+
+// 解碼 Bech32 地址
+function decodeBech32(address) {
+  const { prefix, words } = bech32.decode(address);
+  const version = words[0];
+  const program = bech32.fromWords(words.slice(1));
+  return { prefix, version, program };
+}`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤檢測能力</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bech32 的 BCH 校驗和具有以下保證：
+  </p>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">錯誤類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">檢測能力</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">單字符錯誤</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">100% 檢測</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">兩字符錯誤</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">100% 檢測</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">三字符錯誤</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">100% 檢測</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">四字符錯誤</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">100% 檢測 + 定位</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">五字符及以上</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">99.9999% 檢測</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-8">
+    <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">Bech32m 修正</h4>
+    <p class="text-sm text-yellow-700/80 dark:text-yellow-400/80">
+      BIP-350 引入了 Bech32m，修正了原始 Bech32 在某些情況下的弱點。
+      Taproot 地址（bc1p...）使用 Bech32m 編碼，而 SegWit v0 地址（bc1q...）
+      繼續使用原始 Bech32。錢包實現必須正確區分這兩種編碼。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">二維碼優化</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bech32 地址在二維碼中特別高效：
+  </p>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">地址類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">二維碼模式</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">每字符位數</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Base58 (混合大小寫)</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">二進制</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">8 位</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)] bg-green-500/5">
+          <td class="px-4 py-3 text-[var(--text-primary)] font-semibold">Bech32 (全大寫)</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">字母數字</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">5.5 位</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    這意味著 Bech32 地址的二維碼可以比 Base58 地址小約 30%，更容易掃描。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現注意事項</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">1.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">大小寫處理</strong>
+        <p class="text-sm mt-1">地址應以全小寫或全大寫形式呈現，混合大小寫是無效的。</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">2.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">長度驗證</strong>
+        <p class="text-sm mt-1">見證版本 0 只接受 20 或 32 字節的程序，其他長度無效。</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">3.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">版本識別</strong>
+        <p class="text-sm mt-1">確保正確識別見證版本，以使用正確的校驗和算法（Bech32 vs Bech32m）。</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">4.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">向前兼容</strong>
+        <p class="text-sm mt-1">錢包應該能夠發送到未知見證版本的地址，以支持未來的升級。</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：隔離見證定義</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0084" class="text-bitcoin-500 hover:underline">BIP-84</a>：原生 SegWit 派生路徑</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong>BIP-350</strong>：Bech32m（Taproot 地址編碼）</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-173 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

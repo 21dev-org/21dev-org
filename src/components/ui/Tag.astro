@@ -1,0 +1,38 @@
+---
+interface Props {
+  variant?: 'default' | 'bitcoin' | 'lightning' | 'nostr' | 'success' | 'warning';
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const {
+  variant = 'default',
+  size = 'sm',
+  class: className = '',
+} = Astro.props;
+
+const variants = {
+  default: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+  bitcoin: 'bg-bitcoin-100 text-bitcoin-700 dark:bg-bitcoin-900/30 dark:text-bitcoin-400',
+  lightning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  nostr: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+};
+
+const sizes = {
+  sm: 'px-2 py-0.5 text-xs',
+  md: 'px-3 py-1 text-sm',
+};
+---
+
+<span
+  class:list={[
+    'inline-flex items-center font-medium rounded-full',
+    variants[variant],
+    sizes[size],
+    className,
+  ]}
+>
+  <slot />
+</span>

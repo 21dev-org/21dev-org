@@ -1,0 +1,275 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Script 語言"
+  description="深入學習比特幣的腳本語言，了解如何使用操作碼創建複雜的支付條件。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '深入技術', href: '/learn/advanced/' },
+    { label: 'Script 語言' },
+  ]}
+  difficulty="advanced"
+  readingTime="30 分鐘"
+  prevPage={{ title: '深入技術', href: '/learn/advanced/' }}
+  nextPage={{ title: 'Taproot 升級', href: '/learn/advanced/taproot' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">深入 Bitcoin Script</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Bitcoin Script 是一種專門為比特幣設計的腳本語言。它故意被設計為圖靈不完備，
+    以確保腳本執行的可預測性和安全性。本章將深入探討 Script 的完整操作碼集和高級用法。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">操作碼分類</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">常量操作碼</h3>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">操作碼</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">十六進制</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">描述</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_0 / OP_FALSE</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">0x00</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">推入空字節數組</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_1 - OP_16</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">0x51-0x60</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">推入數字 1-16</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_1NEGATE</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">0x4f</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">推入 -1</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">PUSHDATA1/2/4</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">0x4c-0x4e</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">推入指定長度的數據</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">堆疊操作</h3>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">操作碼</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">描述</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">堆疊變化</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_DUP</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">複製頂部元素</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">[x] → [x, x]</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_DROP</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">移除頂部元素</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">[x] → []</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_SWAP</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">交換頂部兩個元素</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">[x, y] → [y, x]</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_ROT</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">旋轉頂部三個元素</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">[x, y, z] → [y, z, x]</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_2DUP</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">複製頂部兩個元素</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">[x, y] → [x, y, x, y]</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_PICK</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">複製第 n 個元素到頂部</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-tertiary)]">[..., x, n] → [..., x, x]</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">加密操作</h3>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">操作碼</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">描述</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_SHA256</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">SHA-256 哈希</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_RIPEMD160</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">RIPEMD-160 哈希</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_HASH160</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">SHA256 + RIPEMD160</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_HASH256</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">雙重 SHA256</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKSIG</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">驗證 ECDSA 簽名</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKSIGVERIFY</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">驗證簽名，失敗則終止</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">OP_CHECKMULTISIG</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">驗證 M-of-N 多重簽名</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">高級腳本模式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">哈希時間鎖定合約 (HTLC)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    HTLC 是閃電網絡的核心構建塊，允許原子交換和跨鏈交易：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`OP_IF
+    OP_SHA256 <secret_hash> OP_EQUALVERIFY
+    <接收方公鑰> OP_CHECKSIG
+OP_ELSE
+    <超時區塊> OP_CHECKLOCKTIMEVERIFY OP_DROP
+    <發送方公鑰> OP_CHECKSIG
+OP_ENDIF
+
+用途：
+- 接收方提供 secret 可立即花費
+- 超時後發送方可取回資金`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">閃電網絡承諾交易</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    這是閃電網絡通道中使用的腳本模式：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`# 可撤銷的輸出
+OP_IF
+    <revocation_pubkey>
+OP_ELSE
+    <to_self_delay> OP_CHECKSEQUENCEVERIFY OP_DROP
+    <local_delayed_pubkey>
+OP_ENDIF
+OP_CHECKSIG
+
+用途：
+- 對方使用撤銷密鑰可立即花費（懲罰機制）
+- 自己需要等待延遲後才能花費`}
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Vault 保險庫</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用時間鎖實現的冷存儲保護機制：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+{`OP_IF
+    # 緊急恢復路徑 - 需要所有密鑰
+    <恢復公鑰1> OP_CHECKSIGVERIFY
+    <恢復公鑰2> OP_CHECKSIGVERIFY
+    <恢復公鑰3> OP_CHECKSIG
+OP_ELSE
+    # 正常花費路徑 - 需要延遲
+    <144區塊> OP_CHECKSEQUENCEVERIFY OP_DROP
+    <熱錢包公鑰> OP_CHECKSIG
+OP_ENDIF`}
+    </pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">腳本限制</h2>
+  <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-8">
+    <div class="space-y-2 text-sm text-yellow-700 dark:text-yellow-400">
+      <p><strong>大小限制：</strong> 腳本最大 10,000 字節</p>
+      <p><strong>堆疊限制：</strong> 最多 1,000 個元素，每個元素最大 520 字節</p>
+      <p><strong>操作碼限制：</strong> 最多 201 個非推送操作碼</p>
+      <p><strong>多重簽名：</strong> 最多 20 個公鑰</p>
+      <p><strong>禁用操作碼：</strong> OP_CAT, OP_MUL, OP_DIV 等已被禁用</p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Script 演進</h2>
+  <div class="space-y-4 mb-8">
+    <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--bg-secondary)]">
+      <div class="w-16 text-sm font-bold text-bitcoin-500">2012</div>
+      <div>
+        <h3 class="font-semibold text-[var(--text-primary)]">P2SH (BIP-16)</h3>
+        <p class="text-sm text-[var(--text-secondary)]">允許將複雜腳本封裝在哈希中</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--bg-secondary)]">
+      <div class="w-16 text-sm font-bold text-bitcoin-500">2015</div>
+      <div>
+        <h3 class="font-semibold text-[var(--text-primary)]">CLTV (BIP-65)</h3>
+        <p class="text-sm text-[var(--text-secondary)]">添加絕對時間鎖</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--bg-secondary)]">
+      <div class="w-16 text-sm font-bold text-bitcoin-500">2016</div>
+      <div>
+        <h3 class="font-semibold text-[var(--text-primary)]">CSV (BIP-112)</h3>
+        <p class="text-sm text-[var(--text-secondary)]">添加相對時間鎖</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--bg-secondary)]">
+      <div class="w-16 text-sm font-bold text-bitcoin-500">2017</div>
+      <div>
+        <h3 class="font-semibold text-[var(--text-primary)]">SegWit (BIP-141)</h3>
+        <p class="text-sm text-[var(--text-secondary)]">新的腳本版本系統</p>
+      </div>
+    </div>
+    <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--bg-secondary)]">
+      <div class="w-16 text-sm font-bold text-bitcoin-500">2021</div>
+      <div>
+        <h3 class="font-semibold text-[var(--text-primary)]">Taproot (BIP-341/342)</h3>
+        <p class="text-sm text-[var(--text-secondary)]">Schnorr 簽名和 Tapscript</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">延伸閱讀</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/learn/advanced/taproot" class="text-bitcoin-500 hover:underline">Taproot 升級</a>：了解最新的腳本能力</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/books/programming-bitcoin" class="text-bitcoin-500 hover:underline">Bitcoin 程式設計</a>：從零實作腳本解釋器</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot 完整規範</span>
+    </li>
+  </ul>
+</ArticleLayout>

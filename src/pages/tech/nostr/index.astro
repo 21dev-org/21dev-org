@@ -1,0 +1,203 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import NostrIcon from '@/components/svg/NostrIcon.astro';
+---
+
+<PageLayout
+  title="Nostr"
+  description="去中心化社交協議，實現抗審查的通訊網路。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)] relative overflow-hidden">
+    <div class="absolute inset-0 opacity-5">
+      <div class="absolute bottom-1/4 left-1/4 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
+    </div>
+    <div class="container-wide relative">
+      <nav class="mb-8" aria-label="麵包屑">
+        <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+          <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+          <li>/</li>
+          <li><a href="/tech/" class="hover:text-[var(--text-primary)]">技術</a></li>
+          <li>/</li>
+          <li class="text-[var(--text-primary)]">Nostr</li>
+        </ol>
+      </nav>
+      <div class="flex flex-col md:flex-row md:items-center gap-8">
+        <div class="flex-1">
+          <div class="flex items-center gap-4 mb-6">
+            <NostrIcon size={48} />
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              Protocol
+            </span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            Nostr
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)] mb-8">
+            Nostr（Notes and Other Stuff Transmitted by Relays）是一個簡單、開放的去中心化社交協議。
+            它使用密碼學簽名確保訊息的真實性，並通過中繼器網路實現抗審查的通訊。
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <Button href="https://nostr.com/" variant="primary" external>
+              官方網站
+            </Button>
+            <Button href="https://github.com/nostr-protocol/nostr" variant="secondary" external>
+              GitHub
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Nostr -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-12 text-center">
+        為什麼選擇 Nostr
+      </h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          {
+            title: '簡單',
+            description: '協議極其簡單，核心只有幾百行代碼，易於理解和實現。',
+            icon: '✨',
+          },
+          {
+            title: '去中心化',
+            description: '沒有中央伺服器，任何人都可以運行中繼器，資料不被單一實體控制。',
+            icon: '🌐',
+          },
+          {
+            title: '抗審查',
+            description: '使用密碼學身份，無需依賴任何第三方，無法被封禁或刪除。',
+            icon: '🛡️',
+          },
+          {
+            title: '可互操作',
+            description: '所有客戶端使用相同協議，可以自由切換，資料隨身攜帶。',
+            icon: '🔗',
+          },
+        ].map((item) => (
+          <Card padding="lg">
+            <div class="text-3xl mb-4">{item.icon}</div>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">
+              {item.title}
+            </h3>
+            <p class="text-[var(--text-secondary)] text-sm">
+              {item.description}
+            </p>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+    <div class="container-wide">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-12 text-center">
+        運作原理
+      </h2>
+      <div class="max-w-4xl mx-auto">
+        <div class="space-y-6">
+          <div class="flex items-start gap-4 p-6 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-500 text-white flex items-center justify-center font-bold">
+              1
+            </div>
+            <div>
+              <h3 class="font-semibold text-[var(--text-primary)] mb-1">密鑰對身份</h3>
+              <p class="text-[var(--text-secondary)]">
+                每個用戶擁有一對密鑰：私鑰用於簽名，公鑰作為身份標識。
+                你的公鑰（npub）就是你的用戶名，私鑰（nsec）必須妥善保管。
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4 p-6 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-500 text-white flex items-center justify-center font-bold">
+              2
+            </div>
+            <div>
+              <h3 class="font-semibold text-[var(--text-primary)] mb-1">事件 (Events)</h3>
+              <p class="text-[var(--text-secondary)]">
+                所有內容都是「事件」—— JSON 對象，包含內容、時間戳和簽名。
+                不同類型的事件（kind）代表不同類型的內容：貼文、回覆、反應等。
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4 p-6 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-500 text-white flex items-center justify-center font-bold">
+              3
+            </div>
+            <div>
+              <h3 class="font-semibold text-[var(--text-primary)] mb-1">中繼器 (Relays)</h3>
+              <p class="text-[var(--text-secondary)]">
+                中繼器是儲存和轉發事件的伺服器。客戶端連接到多個中繼器，
+                發送和接收事件。任何人都可以運行自己的中繼器。
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4 p-6 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-500 text-white flex items-center justify-center font-bold">
+              4
+            </div>
+            <div>
+              <h3 class="font-semibold text-[var(--text-primary)] mb-1">NIPs</h3>
+              <p class="text-[var(--text-secondary)]">
+                Nostr Implementation Possibilities（NIPs）是協議的擴展標準。
+                社群通過 NIP 定義新功能，如 NIP-57（Zaps）實現閃電網路打賞。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key NIPs -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-12 text-center">
+        重要 NIPs
+      </h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {[
+          { nip: 'NIP-01', title: '基礎協議', desc: '定義事件格式和基本通訊' },
+          { nip: 'NIP-05', title: '域名驗證', desc: '通過域名驗證身份（如 user@domain.com）' },
+          { nip: 'NIP-19', title: 'bech32 編碼', desc: '定義 npub、nsec、note 等編碼格式' },
+          { nip: 'NIP-57', title: 'Zaps', desc: '閃電網路打賞功能' },
+          { nip: 'NIP-65', title: '中繼器列表', desc: '用戶偏好的中繼器設定' },
+          { nip: 'NIP-96', title: '檔案儲存', desc: '去中心化檔案上傳標準' },
+        ].map((nip) => (
+          <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <span class="text-sm font-mono text-purple-500">{nip.nip}</span>
+            <h3 class="font-semibold text-[var(--text-primary)] mt-1">{nip.title}</h3>
+            <p class="text-sm text-[var(--text-secondary)] mt-1">{nip.desc}</p>
+          </div>
+        ))}
+      </div>
+      <div class="mt-8 text-center">
+        <Button href="https://github.com/nostr-protocol/nips" variant="secondary" external>
+          查看所有 NIPs
+        </Button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Clients -->
+  <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+    <div class="container-wide text-center">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">
+        開始使用 Nostr
+      </h2>
+      <p class="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
+        選擇一個客戶端開始體驗 Nostr。所有客戶端都是互通的，你可以隨時切換。
+      </p>
+      <Button href="/tech/nostr/clients" variant="primary" size="lg">
+        瀏覽客戶端
+      </Button>
+    </div>
+  </section>
+</PageLayout>

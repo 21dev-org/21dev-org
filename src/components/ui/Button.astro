@@ -1,0 +1,45 @@
+---
+interface Props {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  href?: string;
+  class?: string;
+  external?: boolean;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  href,
+  class: className = '',
+  external = false,
+} = Astro.props;
+
+const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-bitcoin-500 focus-visible:ring-offset-2';
+
+const variants = {
+  primary: 'bg-bitcoin-500 text-white hover:bg-bitcoin-600 active:bg-bitcoin-700 shadow-sm hover:shadow-md',
+  secondary: 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700',
+  ghost: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-neutral-100 dark:hover:bg-neutral-800',
+  outline: 'border-2 border-bitcoin-500 text-bitcoin-500 hover:bg-bitcoin-500 hover:text-white',
+};
+
+const sizes = {
+  sm: 'px-3 py-1.5 text-sm gap-1.5',
+  md: 'px-4 py-2 text-sm gap-2',
+  lg: 'px-6 py-3 text-base gap-2',
+};
+
+const classes = [baseStyles, variants[variant], sizes[size], className].join(' ');
+
+const Tag = href ? 'a' : 'button';
+const externalProps = external ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+---
+
+<Tag
+  href={href}
+  class={classes}
+  {...externalProps}
+>
+  <slot />
+</Tag>

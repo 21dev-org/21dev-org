@@ -1,0 +1,198 @@
+---
+import BookLayout from '@/layouts/BookLayout.astro';
+import { getBookById } from '@/data/books';
+
+const book = getBookById('programming-bitcoin')!;
+---
+
+<BookLayout book={book}>
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">本書特色</h2>
+    <ul class="space-y-3 text-[var(--text-secondary)]">
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>從零開始用 Python 實現比特幣的核心功能，不依賴任何比特幣庫</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>深入理解橢圓曲線密碼學（ECC）和 Schnorr/ECDSA 數位簽名</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>手動建構、序列化和簽名比特幣交易</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>完整理解 Script 腳本語言的執行機制</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="text-bitcoin-500 mt-1">•</span>
+        <span>學習區塊驗證、Merkle Tree 和 SPV 輕節點實現</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">你將學到什麼</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2">密碼學基礎</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 有限域數學運算</li>
+          <li>• 橢圓曲線點加法與乘法</li>
+          <li>• secp256k1 曲線參數</li>
+          <li>• 私鑰與公鑰生成</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2">交易結構</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 輸入（TxIn）與輸出（TxOut）</li>
+          <li>• 交易序列化格式</li>
+          <li>• 簽名哈希（SIGHASH）類型</li>
+          <li>• ECDSA 簽名與驗證</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2">腳本系統</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 堆疊式虛擬機運作</li>
+          <li>• P2PKH 與 P2SH 腳本</li>
+          <li>• OP_CHECKMULTISIG</li>
+          <li>• 自訂贖回腳本</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-[var(--border-default)]">
+        <h3 class="font-semibold text-[var(--text-primary)] mb-2">網路與區塊</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 區塊頭與難度計算</li>
+          <li>• Merkle Tree 驗證</li>
+          <li>• P2P 網路協議</li>
+          <li>• Bloom Filter 隱私</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">程式碼範例</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      書中的每個概念都有對應的 Python 實現。以下是橢圓曲線點加法的簡化範例：
+    </p>
+    <div class="not-prose p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+      <pre class="text-[var(--text-secondary)]">{`class Point:
+    def __init__(self, x, y, a, b):
+        self.a = a
+        self.b = b
+        self.x = x
+        self.y = y
+        # 驗證點在曲線上: y² = x³ + ax + b
+        if self.x is not None and self.y is not None:
+            if self.y**2 != self.x**3 + a*x + b:
+                raise ValueError(f'({x}, {y}) is not on the curve')
+
+    def __add__(self, other):
+        # 點加法實現
+        if self.x is None:
+            return other
+        if other.x is None:
+            return self
+        # ... 完整實現見書中`}</pre>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">章節概覽</h2>
+    <div class="grid sm:grid-cols-2 gap-3">
+      {[
+        { num: 1, title: '有限域', desc: '模運算與域元素' },
+        { num: 2, title: '橢圓曲線', desc: '點加法與乘法' },
+        { num: 3, title: '橢圓曲線密碼學', desc: '公私鑰與簽名' },
+        { num: 4, title: '序列化', desc: 'SEC、DER、Base58' },
+        { num: 5, title: '交易', desc: '輸入輸出結構' },
+        { num: 6, title: 'Script', desc: '腳本語言執行' },
+        { num: 7, title: '交易建立與驗證', desc: '完整交易流程' },
+        { num: 8, title: 'P2SH', desc: '腳本哈希支付' },
+        { num: 9, title: '區塊', desc: '區塊頭與驗證' },
+        { num: 10, title: '網路', desc: 'P2P 協議訊息' },
+        { num: 11, title: 'SPV', desc: '簡易支付驗證' },
+        { num: 12, title: 'Bloom Filter', desc: '隱私保護' },
+        { num: 13, title: 'SegWit', desc: '隔離見證' },
+      ].map((chapter) => (
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <span class="flex-shrink-0 w-6 h-6 rounded bg-bitcoin-500/10 text-bitcoin-500 text-xs font-medium flex items-center justify-center">
+            {chapter.num}
+          </span>
+          <div>
+            <span class="text-sm font-medium text-[var(--text-primary)]">{chapter.title}</span>
+            <p class="text-xs text-[var(--text-tertiary)]">{chapter.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">前置要求</h2>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <ul class="space-y-2 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>基本的 Python 程式設計能力（類別、函數、列表操作）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>高中程度的代數知識</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">○</span>
+          <span>不需要事先具備密碼學背景，書中會詳細解釋</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">○</span>
+          <span>不需要了解比特幣運作原理，從零開始學習</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold text-[var(--text-primary)] mb-4">適合讀者</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+        <h3 class="font-semibold text-green-600 dark:text-green-400 mb-2">非常適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 想深入理解比特幣原理的開發者</li>
+          <li>• 對密碼學感興趣的程式設計師</li>
+          <li>• 計劃開發錢包應用的工程師</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+        <h3 class="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">可能適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 有其他語言經驗的開發者</li>
+          <li>• 區塊鏈安全研究人員</li>
+          <li>• 計算機科學學生</li>
+        </ul>
+      </div>
+      <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/5">
+        <h3 class="font-semibold text-red-600 dark:text-red-400 mb-2">不太適合</h3>
+        <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+          <li>• 完全沒有程式設計經驗</li>
+          <li>• 只想了解比特幣投資</li>
+          <li>• 尋找高階應用開發指南</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">學習建議</h4>
+    <p class="text-sm text-bitcoin-700/80 dark:text-bitcoin-400/80">
+      建議搭配實際編寫程式碼學習。作者 Jimmy Song 在 GitHub 上提供了
+      <a href="https://github.com/jimmysong/programmingbitcoin" target="_blank" rel="noopener" class="underline hover:no-underline">
+        練習題和測試案例
+      </a>，可以邊讀邊實作，加深理解。
+    </p>
+  </div>
+</BookLayout>

@@ -1,0 +1,159 @@
+---
+export interface Props {
+  class?: string;
+  title?: string;
+  maxDepth?: number;
+}
+
+const { class: className = '', title = '目錄', maxDepth = 3 } = Astro.props;
+---
+
+<nav
+  class:list={['toc', className]}
+  aria-label="目錄"
+  data-max-depth={maxDepth}
+>
+  <div class="toc-header">
+    <h2 class="text-sm font-semibold text-[var(--text-primary)] mb-3 uppercase tracking-wide">
+      {title}
+    </h2>
+  </div>
+  <ul class="toc-list space-y-2 text-sm" id="toc-list">
+    <!-- Items will be populated by JavaScript -->
+  </ul>
+</nav>
+
+<script>
+  function initTOC() {
+    const tocList = document.getElementById('toc-list');
+    const tocNav = document.querySelector('.toc') as HTMLElement | null;
+    if (!tocList || !tocNav) return;
+
+    const maxDepth = parseInt(tocNav.getAttribute('data-max-depth') || '3');
+    const headingSelector = Array.from({ length: maxDepth }, (_, i) => `h${i + 2}`).join(',');
+
+    // Find all headings in the main content
+    const article = document.querySelector('article') || document.querySelector('main');
+    if (!article) return;
+
+    const headings = article.querySelectorAll(headingSelector);
+    if (headings.length === 0) {
+      tocNav.style.display = 'none';
+      return;
+    }
+
+    // Generate IDs for headings that don't have them
+    headings.forEach((heading, index) => {
+      if (!heading.id) {
+        heading.id = `heading-${index}`;
+      }
+    });
+
+    // Build TOC
+    const items: HTMLLIElement[] = [];
+    headings.forEach((heading) => {
+      const level = parseInt(heading.tagName.charAt(1));
+      const li = document.createElement('li');
+      li.style.paddingLeft = `${(level - 2) * 12}px`;
+
+      const link = document.createElement('a');
+      link.href = `#${heading.id}`;
+      link.textContent = heading.textContent;
+      link.className = 'toc-link block py-1 text-[var(--text-secondary)] hover:text-bitcoin-500 transition-colors';
+      link.setAttribute('data-heading-id', heading.id);
+
+      li.appendChild(link);
+      items.push(li);
+      tocList.appendChild(li);
+    });
+
+    // Highlight active section on scroll
+    const observerOptions = {
+      rootMargin: '-80px 0px -80% 0px',
+      threshold: 0
+    };
+
+    let activeLink: HTMLAnchorElement | null = null;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          const link = tocList.querySelector(`a[data-heading-id="${id}"]`) as HTMLAnchorElement;
+
+          if (activeLink) {
+            activeLink.classList.remove('text-bitcoin-500', 'font-medium');
+            activeLink.classList.add('text-[var(--text-secondary)]');
+          }
+
+          if (link) {
+            link.classList.remove('text-[var(--text-secondary)]');
+            link.classList.add('text-bitcoin-500', 'font-medium');
+            activeLink = link;
+          }
+        }
+      });
+    }, observerOptions);
+
+    headings.forEach((heading) => observer.observe(heading));
+
+    // Smooth scroll on click
+    tocList.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A') {
+        e.preventDefault();
+        const href = target.getAttribute('href');
+        if (href) {
+          const element = document.querySelector(href);
+          if (element) {
+            const offsetTop = element.getBoundingClientRect().top + window.scrollY - 100;
+            window.scrollTo({
+              top: offsetTop,
+              behavior: 'smooth'
+            });
+            history.pushState(null, '', href);
+          }
+        }
+      }
+    });
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', initTOC);
+  // Re-initialize on Astro page transitions
+  document.addEventListener('astro:page-load', initTOC);
+</script>
+
+<style>
+  .toc {
+    position: sticky;
+    top: 100px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .toc-list {
+    border-left: 2px solid var(--border-default);
+    padding-left: 1rem;
+  }
+
+  .toc-link {
+    position: relative;
+  }
+
+  .toc-link::before {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 0;
+    background: var(--bitcoin-500);
+    transition: height 0.2s;
+  }
+
+  .toc-link.text-bitcoin-500::before {
+    height: 100%;
+  }
+</style>

@@ -1,0 +1,169 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-341: Taproot"
+  description="引入新的腳本類型，提供更強的隱私性和更高效的智能合約能力。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-341' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Pieter Wuille, Jonas Nick, Anthony Towns"
+  date={new Date('2020-01-19')}
+  prevPage={{ title: 'BIP-340: Schnorr', href: '/bips/bip-0340' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">341</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">2021-11-14</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Taproot 是比特幣 SegWit 版本 1 的輸出規則。它結合了 Schnorr 簽章和 MAST
+    （Merkelized Abstract Syntax Trees），提供了更強的隱私性、更好的效率和更靈活的腳本能力。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">核心概念</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">密鑰路徑花費</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    最簡單的花費方式：只需提供一個 Schnorr 簽章。這與普通的單簽名支付看起來完全相同，
+    即使背後可能是複雜的多重簽名或智能合約。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">腳本路徑花費</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    當無法使用密鑰路徑時（例如，部分參與者不合作），可以揭示並使用預先設定的腳本之一。
+    只有被使用的腳本會上鏈，其他腳本保持隱藏。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Taproot 地址</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Taproot 地址使用 Bech32m 編碼，以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc1p</code> 開頭：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm break-all">
+    <p class="text-[var(--text-secondary)]">bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MAST 結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    MAST（Merkelized Abstract Syntax Trees）允許將多個腳本組織成 Merkle 樹結構：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm text-[var(--text-secondary)] overflow-x-auto">
+        Taproot Output Key
+              |
+        ┌─────┴─────┐
+      Internal    Script Tree
+        Key           |
+                ┌─────┴─────┐
+              Hash        Hash
+              /  \        /  \
+           Script Script Script Script
+              A     B      C      D
+    </pre>
+  </div>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    使用任何一個腳本時，只需要揭示該腳本和相關的 Merkle 證明，
+    其他腳本的存在不會被披露。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優勢</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">隱私性提升</strong>
+        <p class="text-sm mt-1">所有 Taproot 花費在鏈上看起來都相同，無法區分單簽、多簽或複雜合約</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">效率提升</strong>
+        <p class="text-sm mt-1">密鑰路徑花費只需一個簽章，腳本路徑花費只揭示必要的腳本</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">靈活性提升</strong>
+        <p class="text-sm mt-1">支持更複雜的智能合約，同時保持簡單案例的效率</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">費用降低</strong>
+        <p class="text-sm mt-1">較少的鏈上數據意味著較低的交易費用</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">1.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">閃電網路</strong>
+        <p class="text-sm mt-1">通道開啟和關閉看起來像普通支付，提高隱私性</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">2.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">多重簽名錢包</strong>
+        <p class="text-sm mt-1">2-of-3 或更複雜的多簽看起來與單簽相同</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">3.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">DLC（離散對數合約）</strong>
+        <p class="text-sm mt-1">複雜的金融合約可以更高效地實現</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">4.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">保管庫</strong>
+        <p class="text-sm mt-1">帶有時間鎖和恢復機制的安全儲存方案</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">採用情況</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Taproot 於 2021 年 11 月 14 日在區塊高度 709,632 啟用。主要錢包和服務正在
+    逐步添加 Taproot 支持。使用 Taproot 地址（bc1p...）進行接收和發送
+    可以享受到這些優勢。
+  </p>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-341 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

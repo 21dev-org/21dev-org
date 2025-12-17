@@ -1,0 +1,106 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+
+const learningPaths = [
+  {
+    title: '入門基礎',
+    description: '從零開始了解比特幣的基本概念、運作原理和使用方式。',
+    icon: '📚',
+    href: '/learn/basics/',
+    articles: [
+      { title: '什麼是比特幣', href: '/learn/basics/what-is-bitcoin' },
+      { title: '比特幣如何運作', href: '/learn/basics/how-bitcoin-works' },
+      { title: '錢包使用指南', href: '/learn/basics/wallet-guide' },
+    ],
+  },
+  {
+    title: '進階知識',
+    description: '深入理解比特幣的技術細節，包括 UTXO 模型和交易結構。',
+    icon: '🔧',
+    href: '/learn/intermediate/',
+    articles: [
+      { title: 'UTXO 模型', href: '/learn/intermediate/utxo-model' },
+      { title: '交易結構', href: '/learn/intermediate/transaction-structure' },
+    ],
+  },
+  {
+    title: '深入技術',
+    description: '掌握比特幣的高級技術，包括 Script 語言和 Taproot 升級。',
+    icon: '⚡',
+    href: '/learn/advanced/',
+    articles: [
+      { title: 'Script 語言', href: '/learn/advanced/script-language' },
+      { title: 'Taproot 升級', href: '/learn/advanced/taproot' },
+    ],
+  },
+];
+---
+
+<PageLayout
+  title="學習中心"
+  description="從入門到精通，系統性地學習比特幣技術。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]">
+    <div class="container-wide">
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          學習中心
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          無論你是完全的新手還是有經驗的開發者，這裡都有適合你的學習資源。
+          從基礎概念開始，逐步深入到高級技術主題。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Learning paths -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="grid md:grid-cols-3 gap-8">
+        {learningPaths.map((path) => (
+          <Card class="flex flex-col" padding="lg">
+            <div class="text-4xl mb-4">{path.icon}</div>
+            <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-3">
+              {path.title}
+            </h2>
+            <p class="text-[var(--text-secondary)] mb-6 flex-1">
+              {path.description}
+            </p>
+            <div class="space-y-2 mb-6">
+              {path.articles.map((article) => (
+                <a
+                  href={article.href}
+                  class="block px-3 py-2 -mx-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  {article.title}
+                </a>
+              ))}
+            </div>
+            <Button href={path.href} variant="secondary" class="w-full">
+              查看全部
+            </Button>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+    <div class="container-wide text-center">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">
+        準備好開始學習了嗎？
+      </h2>
+      <p class="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
+        選擇一個適合你程度的學習路徑，開始你的比特幣技術之旅。
+      </p>
+      <Button href="/learn/basics/what-is-bitcoin" variant="primary" size="lg">
+        從頭開始學習
+      </Button>
+    </div>
+  </section>
+</PageLayout>

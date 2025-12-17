@@ -1,0 +1,153 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-32: 階層式確定性錢包"
+  description="定義從單一種子派生多個密鑰對的標準方法，成為現代錢包的基礎。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-32' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Pieter Wuille"
+  date={new Date('2012-02-11')}
+  prevPage={{ title: 'BIP-1: BIP 準則', href: '/bips/bip-0001' }}
+  nextPage={{ title: 'BIP-39: 助記詞', href: '/bips/bip-0039' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">32</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">創建日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">2012-02-11</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    本文件描述了階層式確定性錢包（或稱 "HD 錢包"）：一種可以與多個系統部分或全部共享的錢包，
+    每個系統可以獨立地支出或不支出比特幣。
+  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    該規範旨在為確定性錢包設定標準，使其可以在不同的客戶端之間互換使用。
+    這讓使用者可以使用任何 BIP-32 兼容的錢包軟體來管理他們的比特幣。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣參考客戶端使用隨機生成的密鑰。為了避免地址重用的不良做法，
+    使用者被建議為每筆交易生成新的接收地址。這意味著錢包需要定期備份，
+    以確保所有密鑰都被保存。
+  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    階層式確定性錢包通過從單一種子派生所有密鑰來解決這個問題。
+    使用者只需要備份一次種子，就可以恢復所有派生的密鑰。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰派生</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-32 定義了一個密鑰派生函數，可以從父密鑰派生子密鑰。這個過程是：
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">擴展密鑰</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    普通的比特幣密鑰對由一個私鑰和對應的公鑰組成。BIP-32 引入了「擴展密鑰」的概念，
+    它在普通密鑰的基礎上增加了一個 256 位的「鏈碼」：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">擴展私鑰</strong>：私鑰 + 鏈碼</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">擴展公鑰</strong>：公鑰 + 鏈碼</span>
+    </li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">派生路徑</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    派生路徑使用特定的符號表示，例如：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    m/44'/0'/0'/0/0
+  </div>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">m</code> 表示主私鑰</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">'</code> 表示硬化派生</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>數字表示子密鑰的索引</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">1.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">備份與恢復</strong>
+        <p class="text-sm mt-1">只需備份一個種子，即可恢復所有衍生地址和密鑰。</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">2.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">地址生成</strong>
+        <p class="text-sm mt-1">商家可以使用擴展公鑰生成新地址，而無需存取私鑰。</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">3.</span>
+      <div>
+        <strong class="text-[var(--text-primary)]">組織結構</strong>
+        <p class="text-sm mt-1">公司可以為不同部門派生不同的密鑰分支，實現審計功能。</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0039" class="text-bitcoin-500 hover:underline">BIP-39</a>：助記詞標準，用於生成 BIP-32 種子</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>BIP-44：多帳戶階層結構標準</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>BIP-84：原生 SegWit 派生路徑標準</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-32 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>
