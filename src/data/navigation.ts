@@ -146,10 +146,7 @@ export const navigation: MegaMenuItem[] = [
   },
 ];
 
-export const simpleNavItems = [
-  { label: '活動', href: '/events/' },
-  { label: '影片', href: '/videos/' },
-];
+export const simpleNavItems: NavLink[] = [];
 
 export const secondaryNav = [
   { label: '關於', href: '/about' },
@@ -176,8 +173,6 @@ export const footerNav = {
   community: {
     title: '社群',
     links: [
-      { label: '活動', href: '/events/' },
-      { label: '影片', href: '/videos/' },
       { label: '貢獻指南', href: '/contribute' },
     ],
   },

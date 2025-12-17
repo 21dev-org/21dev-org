@@ -22,8 +22,6 @@ export const siteConfig = {
     { label: '書籍', href: '/books/' },
     { label: '技術', href: '/tech/' },
     { label: 'BIPs', href: '/bips/' },
-    { label: '活動', href: '/events/' },
-    { label: '影片', href: '/videos/' },
   ],
 
   secondaryLinks: [
