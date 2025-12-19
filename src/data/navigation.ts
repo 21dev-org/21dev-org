@@ -174,6 +174,7 @@ export const footerNav = {
     title: '社群',
     links: [
       { label: '貢獻指南', href: '/contribute' },
+      { label: 'Signal 群組', href: 'https://signal.group/#CjQKIKEW5NtKmgLKX9JOei4GOaTCl1enEIOpFC1R6vjm5_RCEhD3TXZew1_1HSLkD9sh8r5K' },
     ],
   },
   about: {
