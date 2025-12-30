@@ -1,0 +1,179 @@
+---
+/**
+ * CodeCopy - Adds copy buttons to all code blocks on the page
+ * Include this component once in your layout to enable copy functionality.
+ */
+---
+
+<!-- Toast notification for copy success -->
+<div
+  id="copy-toast"
+  class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium shadow-lg opacity-0 pointer-events-none transition-opacity duration-200"
+  role="status"
+  aria-live="polite"
+>
+  已複製到剪貼簿
+</div>
+
+<script>
+  function initCodeCopy() {
+    // Find all pre elements that haven't been processed
+    const preElements = document.querySelectorAll('pre:not([data-code-copy])');
+
+    preElements.forEach((pre) => {
+      // Mark as processed
+      pre.setAttribute('data-code-copy', 'true');
+
+      // Make the pre position relative for button positioning
+      const computedStyle = window.getComputedStyle(pre);
+      if (computedStyle.position === 'static') {
+        (pre as HTMLElement).style.position = 'relative';
+      }
+
+      // Create copy button
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'code-copy-btn';
+      button.setAttribute('aria-label', '複製程式碼');
+      button.innerHTML = `
+        <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <svg class="check-icon hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      `;
+
+      // Add click handler
+      button.addEventListener('click', async () => {
+        const code = pre.querySelector('code')?.textContent || pre.textContent || '';
+
+        try {
+          await navigator.clipboard.writeText(code);
+
+          // Show success state
+          const copyIcon = button.querySelector('.copy-icon');
+          const checkIcon = button.querySelector('.check-icon');
+
+          if (copyIcon && checkIcon) {
+            copyIcon.classList.add('hidden');
+            checkIcon.classList.remove('hidden');
+            button.classList.add('copied');
+          }
+
+          // Show toast
+          showToast();
+
+          // Reset after 2 seconds
+          setTimeout(() => {
+            if (copyIcon && checkIcon) {
+              copyIcon.classList.remove('hidden');
+              checkIcon.classList.add('hidden');
+              button.classList.remove('copied');
+            }
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy:', err);
+        }
+      });
+
+      pre.appendChild(button);
+    });
+  }
+
+  function showToast() {
+    const toast = document.getElementById('copy-toast');
+    if (!toast) return;
+
+    toast.classList.remove('opacity-0');
+    toast.classList.add('opacity-100');
+
+    setTimeout(() => {
+      toast.classList.add('opacity-0');
+      toast.classList.remove('opacity-100');
+    }, 1500);
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', initCodeCopy);
+  // Re-initialize on Astro page transitions
+  document.addEventListener('astro:page-load', initCodeCopy);
+</script>
+
+<style is:global>
+  /* Code block container */
+  pre[data-code-copy] {
+    position: relative;
+  }
+
+  /* Copy button */
+  .code-copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background-color: var(--bg-secondary);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+  }
+
+  /* Show button on hover */
+  pre[data-code-copy]:hover .code-copy-btn,
+  .code-copy-btn:focus {
+    opacity: 1;
+  }
+
+  /* Button hover state */
+  .code-copy-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  /* Button focus state */
+  .code-copy-btn:focus {
+    outline: 2px solid var(--bitcoin-500);
+    outline-offset: 2px;
+  }
+
+  /* Success state */
+  .code-copy-btn.copied {
+    color: #22c55e;
+  }
+
+  /* Icon visibility */
+  .code-copy-btn .hidden {
+    display: none;
+  }
+
+  /* Always show button on touch devices */
+  @media (hover: none) {
+    .code-copy-btn {
+      opacity: 1;
+    }
+  }
+
+  /* Adjust button position for smaller code blocks */
+  @media (max-width: 640px) {
+    .code-copy-btn {
+      top: 0.25rem;
+      right: 0.25rem;
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    .code-copy-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+</style>
