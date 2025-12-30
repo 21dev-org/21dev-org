@@ -1,0 +1,136 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<svg
+  class={className}
+  viewBox="0 0 240 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-label="UTXO Model"
+>
+  <defs>
+    <linearGradient id="utxo-input" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#78716C" />
+      <stop offset="100%" style="stop-color:#57534E" />
+    </linearGradient>
+    <linearGradient id="utxo-tx" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7931A" />
+      <stop offset="100%" style="stop-color:#EA580C" />
+    </linearGradient>
+    <linearGradient id="utxo-output" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22C55E" />
+      <stop offset="100%" style="stop-color:#16A34A" />
+    </linearGradient>
+    <filter id="utxo-shadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <!-- Input UTXOs (spent) -->
+  <g class="inputs">
+    <!-- Input 1 -->
+    <g class="input input-1" filter="url(#utxo-shadow)">
+      <rect x="10" y="15" width="50" height="25" rx="3" fill="url(#utxo-input)" />
+      <text x="35" y="25" text-anchor="middle" fill="white" font-size="6" opacity="0.9">UTXO</text>
+      <text x="35" y="34" text-anchor="middle" fill="white" font-size="7" font-weight="bold">0.5 BTC</text>
+      <line x1="10" y1="15" x2="60" y2="40" stroke="#EF4444" stroke-width="2" opacity="0.6" />
+      <line x1="60" y1="15" x2="10" y2="40" stroke="#EF4444" stroke-width="2" opacity="0.6" />
+    </g>
+
+    <!-- Input 2 -->
+    <g class="input input-2" filter="url(#utxo-shadow)">
+      <rect x="10" y="55" width="50" height="25" rx="3" fill="url(#utxo-input)" />
+      <text x="35" y="65" text-anchor="middle" fill="white" font-size="6" opacity="0.9">UTXO</text>
+      <text x="35" y="74" text-anchor="middle" fill="white" font-size="7" font-weight="bold">0.3 BTC</text>
+      <line x1="10" y1="55" x2="60" y2="80" stroke="#EF4444" stroke-width="2" opacity="0.6" />
+      <line x1="60" y1="55" x2="10" y2="80" stroke="#EF4444" stroke-width="2" opacity="0.6" />
+    </g>
+  </g>
+
+  <!-- Arrows to TX -->
+  <g class="arrows-in" stroke="#78716C" stroke-width="1.5" opacity="0.6">
+    <line x1="60" y1="27" x2="90" y2="45" marker-end="url(#arrow)" class="arrow-line" />
+    <line x1="60" y1="67" x2="90" y2="50" marker-end="url(#arrow)" class="arrow-line" />
+  </g>
+
+  <!-- Transaction box -->
+  <g class="transaction" filter="url(#utxo-shadow)">
+    <rect x="90" y="30" width="60" height="35" rx="4" fill="url(#utxo-tx)" />
+    <text x="120" y="45" text-anchor="middle" fill="white" font-size="7" opacity="0.9">Transaction</text>
+    <text x="120" y="57" text-anchor="middle" fill="white" font-size="6" font-family="monospace">0.8 BTC</text>
+  </g>
+
+  <!-- Arrows from TX -->
+  <g class="arrows-out" stroke="#22C55E" stroke-width="1.5" opacity="0.8">
+    <line x1="150" y1="40" x2="175" y2="27" class="arrow-line" />
+    <line x1="150" y1="55" x2="175" y2="67" class="arrow-line" />
+  </g>
+
+  <!-- Output UTXOs (new) -->
+  <g class="outputs">
+    <!-- Output 1 (payment) -->
+    <g class="output output-1" filter="url(#utxo-shadow)">
+      <rect x="180" y="15" width="50" height="25" rx="3" fill="url(#utxo-output)" />
+      <text x="205" y="25" text-anchor="middle" fill="white" font-size="6" opacity="0.9">UTXO</text>
+      <text x="205" y="34" text-anchor="middle" fill="white" font-size="7" font-weight="bold">0.7 BTC</text>
+    </g>
+
+    <!-- Output 2 (change) -->
+    <g class="output output-2" filter="url(#utxo-shadow)">
+      <rect x="180" y="55" width="50" height="25" rx="3" fill="url(#utxo-output)" />
+      <text x="205" y="65" text-anchor="middle" fill="white" font-size="6" opacity="0.9">找零</text>
+      <text x="205" y="74" text-anchor="middle" fill="white" font-size="7" font-weight="bold">0.09 BTC</text>
+    </g>
+  </g>
+
+  <!-- Fee label -->
+  <text x="120" y="92" text-anchor="middle" fill="currentColor" font-size="6" opacity="0.5">
+    手續費: 0.01 BTC
+  </text>
+
+  <!-- Labels -->
+  <text x="35" y="8" text-anchor="middle" fill="currentColor" font-size="6" opacity="0.6">輸入 (已花費)</text>
+  <text x="205" y="8" text-anchor="middle" fill="currentColor" font-size="6" opacity="0.6">輸出 (新建)</text>
+</svg>
+
+<style>
+  .input, .output, .transaction {
+    animation: utxo-appear 0.4s ease-out backwards;
+  }
+
+  .input-1 { animation-delay: 0s; }
+  .input-2 { animation-delay: 0.1s; }
+  .transaction { animation-delay: 0.3s; }
+  .output-1 { animation-delay: 0.5s; }
+  .output-2 { animation-delay: 0.6s; }
+
+  .arrow-line {
+    animation: arrow-draw 0.3s ease-out backwards;
+    animation-delay: 0.2s;
+  }
+
+  @keyframes utxo-appear {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes arrow-draw {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+</style>

@@ -1,0 +1,98 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<svg
+  class={className}
+  viewBox="0 0 100 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden="true"
+>
+  <defs>
+    <linearGradient id="circuit-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7931A;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:0.1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Circuit traces -->
+  <g stroke="url(#circuit-gradient)" stroke-width="0.5" fill="none">
+    <!-- Horizontal lines -->
+    <path d="M0 20 H30 V35 H50" class="trace trace-1" />
+    <path d="M0 50 H20 V65 H45 V50 H70" class="trace trace-2" />
+    <path d="M0 80 H40 V70 H60" class="trace trace-3" />
+
+    <!-- Vertical connections -->
+    <path d="M80 0 V30 H100" class="trace trace-4" />
+    <path d="M60 0 V20 H75 V40" class="trace trace-5" />
+
+    <!-- Complex paths -->
+    <path d="M100 60 H85 V75 H70 V90 H100" class="trace trace-6" />
+    <path d="M50 100 V85 H65 V70" class="trace trace-7" />
+  </g>
+
+  <!-- Circuit nodes -->
+  <g fill="#F7931A" opacity="0.3">
+    <circle cx="30" cy="20" r="2" class="node" />
+    <circle cx="50" cy="35" r="2" class="node" />
+    <circle cx="20" cy="50" r="2" class="node" />
+    <circle cx="70" cy="50" r="2" class="node" />
+    <circle cx="40" cy="80" r="2" class="node" />
+    <circle cx="60" cy="70" r="2" class="node" />
+    <circle cx="80" cy="30" r="2" class="node" />
+    <circle cx="75" cy="40" r="2" class="node" />
+    <circle cx="85" cy="75" r="2" class="node" />
+    <circle cx="65" cy="85" r="2" class="node" />
+  </g>
+
+  <!-- Chip/IC representations -->
+  <g fill="#F7931A" opacity="0.15">
+    <rect x="15" y="45" width="10" height="10" rx="1" />
+    <rect x="55" y="65" width="10" height="10" rx="1" />
+    <rect x="75" y="25" width="8" height="8" rx="1" />
+  </g>
+</svg>
+
+<style>
+  .trace {
+    stroke-dasharray: 100;
+    animation: trace-draw 3s ease-in-out infinite;
+  }
+
+  .trace-1 { animation-delay: 0s; }
+  .trace-2 { animation-delay: 0.5s; }
+  .trace-3 { animation-delay: 1s; }
+  .trace-4 { animation-delay: 1.5s; }
+  .trace-5 { animation-delay: 2s; }
+  .trace-6 { animation-delay: 2.5s; }
+  .trace-7 { animation-delay: 3s; }
+
+  .node {
+    animation: node-blink 2s ease-in-out infinite;
+  }
+
+  @keyframes trace-draw {
+    0%, 100% {
+      stroke-dashoffset: 100;
+      opacity: 0.1;
+    }
+    50% {
+      stroke-dashoffset: 0;
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes node-blink {
+    0%, 100% {
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+</style>

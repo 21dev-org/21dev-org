@@ -1,0 +1,118 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<svg
+  class={className}
+  viewBox="0 0 200 80"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-label="Public and Private Keys"
+>
+  <defs>
+    <linearGradient id="private-key" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EF4444" />
+      <stop offset="100%" style="stop-color:#DC2626" />
+    </linearGradient>
+    <linearGradient id="public-key" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22C55E" />
+      <stop offset="100%" style="stop-color:#16A34A" />
+    </linearGradient>
+    <linearGradient id="address-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7931A" />
+      <stop offset="100%" style="stop-color:#EA580C" />
+    </linearGradient>
+    <filter id="key-shadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <!-- Private Key -->
+  <g class="private-key-group" filter="url(#key-shadow)">
+    <rect x="10" y="25" width="45" height="30" rx="4" fill="url(#private-key)" />
+    <!-- Lock icon -->
+    <rect x="26" y="33" width="12" height="10" rx="1" fill="white" opacity="0.9" />
+    <path d="M28 33 v-3 a4 4 0 0 1 8 0 v3" stroke="white" stroke-width="2" fill="none" opacity="0.9" />
+    <circle cx="32" cy="39" r="1.5" fill="#DC2626" />
+    <text x="32" y="65" text-anchor="middle" fill="currentColor" font-size="6" opacity="0.7">私鑰</text>
+    <text x="32" y="73" text-anchor="middle" fill="currentColor" font-size="5" opacity="0.5">保密</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <g class="arrow-1">
+    <line x1="58" y1="40" x2="72" y2="40" stroke="#78716C" stroke-width="1.5" stroke-dasharray="2 2" />
+    <polygon points="72,37 78,40 72,43" fill="#78716C" />
+    <text x="68" y="32" text-anchor="middle" fill="currentColor" font-size="5" opacity="0.5">ECDSA</text>
+  </g>
+
+  <!-- Public Key -->
+  <g class="public-key-group" filter="url(#key-shadow)">
+    <rect x="80" y="25" width="45" height="30" rx="4" fill="url(#public-key)" />
+    <!-- Key icon -->
+    <circle cx="95" cy="36" r="5" stroke="white" stroke-width="2" fill="none" opacity="0.9" />
+    <line x1="99" y1="40" x2="112" y2="40" stroke="white" stroke-width="2" opacity="0.9" />
+    <line x1="108" y1="40" x2="108" y2="44" stroke="white" stroke-width="2" opacity="0.9" />
+    <line x1="112" y1="40" x2="112" y2="44" stroke="white" stroke-width="2" opacity="0.9" />
+    <text x="102" y="65" text-anchor="middle" fill="currentColor" font-size="6" opacity="0.7">公鑰</text>
+    <text x="102" y="73" text-anchor="middle" fill="currentColor" font-size="5" opacity="0.5">可分享</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <g class="arrow-2">
+    <line x1="128" y1="40" x2="142" y2="40" stroke="#78716C" stroke-width="1.5" stroke-dasharray="2 2" />
+    <polygon points="142,37 148,40 142,43" fill="#78716C" />
+    <text x="138" y="32" text-anchor="middle" fill="currentColor" font-size="5" opacity="0.5">Hash</text>
+  </g>
+
+  <!-- Bitcoin Address -->
+  <g class="address-group" filter="url(#key-shadow)">
+    <rect x="150" y="25" width="45" height="30" rx="4" fill="url(#address-gradient)" />
+    <!-- Bitcoin symbol -->
+    <text x="172" y="44" text-anchor="middle" fill="white" font-size="14" font-weight="bold">₿</text>
+    <text x="172" y="65" text-anchor="middle" fill="currentColor" font-size="6" opacity="0.7">地址</text>
+    <text x="172" y="73" text-anchor="middle" fill="currentColor" font-size="5" opacity="0.5">接收</text>
+  </g>
+
+  <!-- Title -->
+  <text x="100" y="12" text-anchor="middle" fill="currentColor" font-size="7" font-weight="bold" opacity="0.8">
+    密鑰派生流程
+  </text>
+</svg>
+
+<style>
+  .private-key-group,
+  .public-key-group,
+  .address-group {
+    animation: key-appear 0.4s ease-out backwards;
+  }
+
+  .private-key-group { animation-delay: 0s; }
+  .arrow-1 { animation: arrow-appear 0.3s ease-out backwards; animation-delay: 0.2s; }
+  .public-key-group { animation-delay: 0.3s; }
+  .arrow-2 { animation: arrow-appear 0.3s ease-out backwards; animation-delay: 0.5s; }
+  .address-group { animation-delay: 0.6s; }
+
+  @keyframes key-appear {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes arrow-appear {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+</style>
