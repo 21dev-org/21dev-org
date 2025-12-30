@@ -1,6 +1,9 @@
 ---
 import '@/styles/global.css';
 import { siteConfig } from '@/data/site';
+import { ViewTransitions } from 'astro:transitions';
+import ReadingProgress from '@/components/ui/ReadingProgress.astro';
+import BackToTop from '@/components/ui/BackToTop.astro';
 
 interface JsonLdArticle {
   headline: string;
@@ -83,7 +86,33 @@ const articleSchema = article ? {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Performance: DNS Prefetch -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+    <!-- Google Analytics -->
+    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9RXM7EXV1Q"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-9RXM7EXV1Q');
+
+      // Track page views on View Transitions navigation
+      document.addEventListener('astro:after-swap', function() {
+        gtag('config', 'G-9RXM7EXV1Q', {
+          page_path: window.location.pathname,
+          page_title: document.title
+        });
+      });
+    </script>
+
+    <!-- Icons & PWA -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="canonical" href={canonicalURL} />
 
     <!-- Primary Meta Tags -->
@@ -91,6 +120,13 @@ const articleSchema = article ? {
     <meta name="title" content={fullTitle} />
     <meta name="description" content={description} />
     <meta name="author" content={siteConfig.author} />
+
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content={siteConfig.name} />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content={siteConfig.name} />
+    <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -112,15 +148,24 @@ const articleSchema = article ? {
     {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
     <!-- Theme Color -->
-    <meta name="theme-color" content="#F7931A" />
+    <meta name="theme-color" content="#F7931A" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1C1917" media="(prefers-color-scheme: dark)" />
 
-    <!-- Fonts -->
+    <!-- Fonts: Preconnect + Preload for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
 
     <!-- JSON-LD Structured Data -->
     <script is:inline type="application/ld+json" set:html={JSON.stringify(websiteSchema)} />
@@ -135,9 +180,26 @@ const articleSchema = article ? {
         document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
+
+    <!-- View Transitions -->
+    <ViewTransitions />
   </head>
   <body class="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
+    <!-- Accessibility: Skip to content link -->
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-bitcoin-500 focus:text-white focus:rounded-lg focus:outline-none"
+    >
+      跳至主要內容
+    </a>
+
+    <!-- UX: Reading progress bar -->
+    <ReadingProgress />
+
     <slot />
+
+    <!-- UX: Back to top button -->
+    <BackToTop />
 
     <!-- Theme toggle script -->
     <script>
@@ -158,6 +220,17 @@ const articleSchema = article ? {
 
       // Re-run on page navigation (for Astro view transitions)
       document.addEventListener('astro:after-swap', initTheme);
+    </script>
+
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Service worker registration failed silently
+          });
+        });
+      }
     </script>
   </body>
 </html>
