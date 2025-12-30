@@ -1,0 +1,360 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-329: 錢包標籤導出格式"
+  description="定義錢包標籤的標準導出格式，便於在不同錢包間遷移和備份。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-329' },
+  ]}
+  tags={['Applications', 'Draft']}
+  author="Craig Raw"
+  date={new Date('2022-08-23')}
+  prevPage={{ title: 'BIP-327: MuSig2', href: '/bips/bip-0327' }}
+  nextPage={{ title: 'BIP-340: Schnorr', href: '/bips/bip-0340' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">329</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Applications</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="default" size="sm">Draft</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">格式</span>
+        <p class="font-semibold text-[var(--text-primary)]">JSON Lines</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-329 定義了一個標準格式，用於導出和導入錢包中的標籤資料。
+    這些標籤包括地址標籤、交易標籤、輸出標籤等，是用戶組織和追蹤資金的重要元數據。
+    通過標準化格式，用戶可以輕鬆在不同錢包之間遷移這些資訊。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">標籤的重要性</h3>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    錢包標籤是用戶理解其比特幣交易歷史的關鍵：
+  </p>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">記錄來源</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        「這筆款項來自交易所提款」或「這是朋友的還款」
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">追蹤用途</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        「這個地址用於接收薪資」或「這是捐款地址」
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">稅務記錄</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        清楚標記交易性質，便於報稅計算
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私管理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        標記哪些 UTXO 來自已知來源，避免混合使用
+      </p>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">現有問題</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">缺乏標準的後果</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>• <strong>錢包鎖定</strong>：標籤資料被困在特定錢包中</li>
+      <li>• <strong>遷移困難</strong>：切換錢包時失去所有標籤</li>
+      <li>• <strong>備份不完整</strong>：助記詞備份不包含標籤</li>
+      <li>• <strong>格式不一致</strong>：每個錢包使用不同的內部格式</li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤類型</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">類型</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">識別符</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">tx</td>
+          <td class="p-3">交易 ID（txid）</td>
+          <td class="p-3">標記整筆交易的用途或來源</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">addr</td>
+          <td class="p-3">地址字串</td>
+          <td class="p-3">標記地址的擁有者或用途</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">pubkey</td>
+          <td class="p-3">公鑰（hex）</td>
+          <td class="p-3">標記特定公鑰</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">input</td>
+          <td class="p-3">txid:vout</td>
+          <td class="p-3">標記特定交易輸入</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono">output</td>
+          <td class="p-3">txid:vout</td>
+          <td class="p-3">標記特定交易輸出（UTXO）</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono">xpub</td>
+          <td class="p-3">擴展公鑰</td>
+          <td class="p-3">標記整個 HD 錢包帳戶</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">文件格式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">JSON Lines</h3>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-329 使用 JSON Lines 格式（每行一個 JSON 對象）：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+文件格式：.jsonl（JSON Lines）
+
+每行一個標籤記錄：
+&#123;"type":"tx","ref":"abc123...","label":"交易所提款"&#125;
+&#123;"type":"addr","ref":"bc1q...","label":"儲蓄地址"&#125;
+&#123;"type":"output","ref":"def456...:0","label":"冷錢包資金"&#125;
+
+優點：
+• 容易解析和生成
+• 支援串流處理
+• 人類可讀
+• 易於版本控制</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">記錄結構</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+必要欄位：
+&#123;
+  "type": "tx" | "addr" | "pubkey" | "input" | "output" | "xpub",
+  "ref": "&lt;識別符&gt;",
+  "label": "標籤文字"
+&#125;
+
+可選欄位：
+&#123;
+  "type": "output",
+  "ref": "txid:vout",
+  "label": "主要標籤",
+  "origin": "m/84'/0'/0'/0/5",  // BIP-32 派生路徑
+  "spendable": true              // 是否可花費
+&#125;</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">完整範例</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">labels.jsonl</h4>
+    <pre class="text-sm overflow-x-auto font-mono">
+&#123;"type":"tx","ref":"f91d0a8a78462bc59398f2c5d7a84fcff491c26ba54c4833478b202796c8aafd","label":"Kraken 提款"&#125;
+&#123;"type":"tx","ref":"6fb24bc9b7a0c0d9bef2c8a2aeb8c7a8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4","label":"支付房租 - 2024年1月"&#125;
+&#123;"type":"addr","ref":"bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4","label":"主要接收地址"&#125;
+&#123;"type":"addr","ref":"bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3","label":"冷儲存"&#125;
+&#123;"type":"output","ref":"f91d0a8a78462bc59398f2c5d7a84fcff491c26ba54c4833478b202796c8aafd:0","label":"KYC 資金","origin":"m/84'/0'/0'/0/15"&#125;
+&#123;"type":"output","ref":"f91d0a8a78462bc59398f2c5d7a84fcff491c26ba54c4833478b202796c8aafd:1","label":"找零","spendable":true&#125;
+&#123;"type":"xpub","ref":"xpub6CUGRUonZSQ4TWtTMmzXdrXDtypWZiD6...","label":"Ledger 硬體錢包"&#125;</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私標記</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    標籤可以幫助管理 UTXO 的隱私屬性：
+  </p>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">KYC 資金</h4>
+      <pre class="text-xs font-mono mt-2 bg-[var(--bg-primary)] p-2 rounded">
+&#123;
+  "type": "output",
+  "ref": "abc...:0",
+  "label": "Coinbase 提款 - KYC"
+&#125;</pre>
+      <p class="text-sm text-[var(--text-secondary)] mt-2">
+        標記已知來源的資金，避免與匿名資金混合。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">匿名資金</h4>
+      <pre class="text-xs font-mono mt-2 bg-[var(--bg-primary)] p-2 rounded">
+&#123;
+  "type": "output",
+  "ref": "def...:1",
+  "label": "CoinJoin 輸出"
+&#125;</pre>
+      <p class="text-sm text-[var(--text-secondary)] mt-2">
+        標記經過隱私增強的資金。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密和安全</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">安全建議</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>
+        <strong>加密存儲</strong>：標籤文件應該加密存儲，因為它包含敏感資訊
+        （交易描述、地址用途等）。
+      </li>
+      <li>
+        <strong>安全傳輸</strong>：在設備間傳輸時使用加密通道。
+      </li>
+      <li>
+        <strong>備份策略</strong>：與助記詞分開備份，但同樣重要。
+      </li>
+      <li>
+        <strong>刪除舊版本</strong>：更新標籤後安全刪除舊的導出文件。
+      </li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錢包支援</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    <div class="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+      <span class="font-medium text-[var(--text-primary)]">Sparrow Wallet</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 完整 BIP-329 支援，導入/導出</span>
+    </div>
+    <div class="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+      <span class="font-medium text-[var(--text-primary)]">Electrum</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 支援 BIP-329 格式</span>
+    </div>
+    <div class="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+      <span class="font-medium text-[var(--text-primary)]">BlueWallet</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 支援導入/導出</span>
+    </div>
+    <div class="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+      <span class="font-medium text-[var(--text-primary)]">Bitcoin Core</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 討論中</span>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">錢包遷移</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+從 Wallet A 遷移到 Wallet B：
+
+1. Wallet A: 導出標籤
+   File → Export → Labels (BIP-329)
+   → labels-2024-01-15.jsonl
+
+2. 轉移文件（安全方式）
+   • 加密 USB
+   • 端對端加密傳輸
+
+3. Wallet B: 導入助記詞
+   → 恢復所有地址和交易
+
+4. Wallet B: 導入標籤
+   File → Import → Labels (BIP-329)
+   → 所有標籤恢復！</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">多錢包同步</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+在多個設備上保持標籤同步：
+
+手機錢包                  桌面錢包
+    │                        │
+    ├── 導出標籤 ──────────→ │
+    │                        ├── 合併標籤
+    │ ←─────────── 導出標籤 ──┤
+    ├── 合併標籤              │
+    │                        │
+    ↓                        ↓
+同步的標籤資料          同步的標籤資料</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Output Descriptors 配合</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-329 可以與 Output Descriptors 配合使用，提供完整的錢包備份：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+完整錢包備份包含：
+
+1. 助記詞（BIP-39）
+   → 恢復私鑰
+
+2. Output Descriptors（BIP-380）
+   → 恢復地址派生規則
+
+3. 標籤文件（BIP-329）
+   → 恢復所有元數據
+
+三者結合 = 完整的錢包恢復</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-329 提供了一個簡單但強大的標準，用於在錢包之間交換標籤資料。
+    這對於用戶管理其比特幣資產、維護隱私以及進行稅務記錄都非常重要。
+    隨著更多錢包採用這個標準，用戶將能更自由地在不同錢包之間遷移，
+    而不會失去寶貴的交易歷史記錄。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0329.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-329 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/learn/advanced/output-descriptors" class="text-bitcoin-500 hover:underline">
+          Output Descriptors 介紹
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

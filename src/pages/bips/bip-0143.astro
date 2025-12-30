@@ -1,0 +1,194 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-143: SegWit 交易簽章驗證"
+  description="定義 SegWit 交易的簽章哈希演算法，解決二次哈希問題並修復簽章可塑性。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-143' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Johnson Lau, Pieter Wuille"
+  date={new Date('2016-01-03')}
+  prevPage={{ title: 'BIP-141: SegWit', href: '/bips/bip-0141' }}
+  nextPage={{ title: 'BIP-144: SegWit 序列化', href: '/bips/bip-0144' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">143</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用</span>
+        <p class="font-semibold text-[var(--text-primary)]">隨 SegWit</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-143 定義了一種新的交易摘要（digest）演算法，用於 SegWit 交易的簽章生成和驗證。
+    這個新演算法解決了傳統簽章方案中的幾個重要問題。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解決的問題</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 二次哈希問題（O(n²) Hashing）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    在傳統的簽章方案中，驗證一個包含 n 個輸入的交易需要進行 O(n²) 次哈希運算。
+    這是因為每個輸入的簽章都需要包含整個交易數據的哈希。
+    對於大型交易，這會導致驗證時間過長，甚至可以被攻擊者利用來進行 DoS 攻擊。
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong>攻擊場景：</strong> 惡意交易包含大量輸入，每個輸入都需要重新計算整個交易的哈希。
+      一個精心構造的交易可能需要數分鐘甚至更長時間來驗證。
+    </p>
+  </div>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-143 通過預計算可重用的中間值，將複雜度降低到 O(n)。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 簽章不包含輸入金額</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    傳統簽章方案不包含輸入的金額，這對離線簽章設備（如硬體錢包）造成問題。
+    設備無法驗證用戶支付的手續費是否正確，可能被惡意軟體欺騙支付過高手續費。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. SIGHASH 簽章可塑性</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    FindAndDelete 操作可能導致簽章可塑性問題。BIP-143 消除了這個問題。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">新的簽章哈希算法</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    簽章哈希的計算方式如下：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+Double SHA256 of:
+  1. nVersion (4 bytes)
+  2. hashPrevouts (32 bytes)
+  3. hashSequence (32 bytes)
+  4. outpoint (36 bytes)
+  5. scriptCode (var)
+  6. value (8 bytes)        ← 新增：輸入金額
+  7. nSequence (4 bytes)
+  8. hashOutputs (32 bytes)
+  9. nLocktime (4 bytes)
+  10. sighash type (4 bytes)</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">中間值說明</h3>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">欄位</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">hashPrevouts</td>
+          <td class="py-2">所有輸入 outpoint 的雙 SHA256（可重用）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">hashSequence</td>
+          <td class="py-2">所有輸入 nSequence 的雙 SHA256（可重用）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">hashOutputs</td>
+          <td class="py-2">所有輸出的雙 SHA256（可重用）</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono">value</td>
+          <td class="py-2">當前輸入的金額（聰）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SIGHASH 類型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-143 支援與傳統相同的 SIGHASH 類型：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_ALL (0x01)</code>：簽署所有輸入和輸出</li>
+    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_NONE (0x02)</code>：簽署所有輸入，不簽署輸出</li>
+    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_SINGLE (0x03)</code>：簽署所有輸入和對應索引的輸出</li>
+    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_ANYONECANPAY (0x80)</code>：只簽署當前輸入（可與上述組合）</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">對硬體錢包的改進</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    由於簽章現在包含輸入金額，硬體錢包可以：
+  </p>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">驗證手續費</strong>：計算 (總輸入 - 總輸出) = 手續費</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">防止金額欺騙</strong>：惡意軟體無法謊報輸入金額</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">簡化驗證</strong>：不需要下載完整的前序交易</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">效能改進</h2>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-2">傳統簽章</p>
+        <p class="text-[var(--text-secondary)]">n 個輸入 → O(n²) 哈希</p>
+        <p class="text-[var(--text-tertiary)]">100 輸入 ≈ 10,000 次</p>
+      </div>
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-2">BIP-143 簽章</p>
+        <p class="text-[var(--text-secondary)]">n 個輸入 → O(n) 哈希</p>
+        <p class="text-[var(--text-tertiary)]">100 輸入 ≈ 100 次</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：Segregated Witness</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>BIP-144：SegWit 對等網路序列化</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot（使用類似但改進的方案）</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-143 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

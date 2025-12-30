@@ -1,0 +1,315 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-370: PSBT 版本 2"
+  description="改進的 PSBT 格式，支援更靈活的交易構建和多方協議。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-370' },
+  ]}
+  tags={['Standards Track', 'Draft']}
+  author="Andrew Chow"
+  date={new Date('2021-01-14')}
+  prevPage={{ title: 'BIP-350: Bech32m', href: '/bips/bip-0350' }}
+  nextPage={{ title: 'BIP-380: Output Descriptors', href: '/bips/bip-0380' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">370</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="default" size="sm">Draft</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">取代</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-174 部分</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    PSBT v2 是對 BIP-174 (PSBT v0) 的重大改進。它重新設計了 PSBT 的結構，
+    使其更適合多方交易構建協議，如 CoinJoin 和交互式交易構建。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PSBT v0 的限制</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    原始 PSBT 格式存在一些限制：
+  </p>
+
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">不可修改</strong>：創建後無法添加/移除輸入輸出</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">完整交易必須存在</strong>：全域欄位包含完整的未簽章交易</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">角色混淆</strong>：Creator 和 Updater 角色難以分離</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span><strong class="text-[var(--text-primary)]">多方困難</strong>：不適合 CoinJoin 等需要動態構建的協議</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">v2 的關鍵改進</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 交易欄位分散存儲</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    v2 不再在全域區域存儲完整的未簽章交易。相反，交易的各個部分（版本、locktime、輸入、輸出）
+    分別存儲在各自的區域，允許獨立修改。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]" set:html={`
+PSBT v0 結構：
+├── Global
+│   ├── PSBT_GLOBAL_UNSIGNED_TX (完整交易)
+│   └── ...
+├── Inputs[...]
+└── Outputs[...]
+
+PSBT v2 結構：
+├── Global
+│   ├── PSBT_GLOBAL_TX_VERSION
+│   ├── PSBT_GLOBAL_FALLBACK_LOCKTIME
+│   ├── PSBT_GLOBAL_INPUT_COUNT
+│   ├── PSBT_GLOBAL_OUTPUT_COUNT
+│   └── ...
+├── Inputs[...]
+│   ├── PSBT_IN_PREVIOUS_TXID
+│   ├── PSBT_IN_OUTPUT_INDEX
+│   ├── PSBT_IN_SEQUENCE
+│   └── ...
+└── Outputs[...]
+    ├── PSBT_OUT_AMOUNT
+    ├── PSBT_OUT_SCRIPT
+    └── ...`}>
+    </pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 可修改狀態</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    新增 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">PSBT_GLOBAL_TX_MODIFIABLE</code> 欄位，
+    明確指示 PSBT 是否可以被修改。這允許 Constructor 角色動態添加輸入和輸出。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">可修改標誌</p>
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div>
+        <p class="font-mono text-bitcoin-500">Bit 0</p>
+        <p class="text-[var(--text-secondary)]">可添加輸入</p>
+      </div>
+      <div>
+        <p class="font-mono text-bitcoin-500">Bit 1</p>
+        <p class="text-[var(--text-secondary)]">可添加輸出</p>
+      </div>
+      <div>
+        <p class="font-mono text-bitcoin-500">Bit 2</p>
+        <p class="text-[var(--text-secondary)]">有 SIGHASH_SINGLE</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 新角色：Constructor</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    v2 引入 Constructor 角色，負責添加輸入和輸出。這與 Updater（添加簽章資訊）明確分離。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">v2 角色模型</h2>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">角色</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">v0</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">v2</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Creator</td>
+          <td class="py-2">創建完整交易框架</td>
+          <td class="py-2">創建空 PSBT（只有版本）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Constructor</td>
+          <td class="py-2 text-[var(--text-tertiary)]">不存在</td>
+          <td class="py-2 text-green-500">添加輸入和輸出</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Updater</td>
+          <td class="py-2">添加所有資訊</td>
+          <td class="py-2">只添加簽章所需資訊</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Signer</td>
+          <td class="py-2">簽章</td>
+          <td class="py-2">簽章（相同）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Combiner</td>
+          <td class="py-2">合併</td>
+          <td class="py-2">合併（相同）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Finalizer</td>
+          <td class="py-2">完成</td>
+          <td class="py-2">完成（相同）</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-semibold">Extractor</td>
+          <td class="py-2">提取</td>
+          <td class="py-2">提取（相同）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多方交易構建</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    PSBT v2 特別適合需要多方參與的協議：
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">CoinJoin 示例</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
+      <li>1. 協調者創建空 PSBT v2</li>
+      <li>2. 參與者 A 作為 Constructor 添加自己的輸入和輸出</li>
+      <li>3. 參與者 B 添加自己的輸入和輸出</li>
+      <li>4. 參與者 C 添加自己的輸入和輸出</li>
+      <li>5. 協調者鎖定 PSBT（設置不可修改）</li>
+      <li>6. 每個參與者作為 Signer 簽署自己的輸入</li>
+      <li>7. 合併、完成、廣播</li>
+    </ol>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">新增全域欄位</h2>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">欄位</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_GLOBAL_TX_VERSION</td>
+          <td class="py-2">交易版本號</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_GLOBAL_FALLBACK_LOCKTIME</td>
+          <td class="py-2">預設 locktime</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_GLOBAL_INPUT_COUNT</td>
+          <td class="py-2">輸入數量</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_GLOBAL_OUTPUT_COUNT</td>
+          <td class="py-2">輸出數量</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono text-xs">PSBT_GLOBAL_TX_MODIFIABLE</td>
+          <td class="py-2">可修改標誌</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">新增輸入/輸出欄位</h2>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">欄位</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_IN_PREVIOUS_TXID</td>
+          <td class="py-2">Input</td>
+          <td class="py-2">前序交易 ID</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_IN_OUTPUT_INDEX</td>
+          <td class="py-2">Input</td>
+          <td class="py-2">前序輸出索引</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_IN_SEQUENCE</td>
+          <td class="py-2">Input</td>
+          <td class="py-2">nSequence 值</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-xs">PSBT_OUT_AMOUNT</td>
+          <td class="py-2">Output</td>
+          <td class="py-2">輸出金額（聰）</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono text-xs">PSBT_OUT_SCRIPT</td>
+          <td class="py-2">Output</td>
+          <td class="py-2">輸出腳本</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">向後相容</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    PSBT v2 與 v0 不直接相容。轉換規則如下：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• v0 可以轉換為 v2（分解未簽章交易）</li>
+    <li>• v2 可以轉換為 v0（重建未簽章交易，僅當不可修改時）</li>
+    <li>• 版本號存儲在 PSBT_GLOBAL_VERSION 欄位</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT v0（原始格式）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>BIP-371：Taproot PSBT 欄位</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-370 文件
+      </a>
+      以及
+      <a href="/learn/intermediate/psbt" class="underline hover:no-underline">
+        PSBT 學習文章
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,239 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-9: Version Bits"
+  description="使用區塊版本號位元進行軟分叉部署的標準機制。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-9' },
+  ]}
+  tags={['Informational', 'Final']}
+  author="Pieter Wuille, Peter Todd, Greg Maxwell, Rusty Russell"
+  date={new Date('2016-01-04')}
+  prevPage={{ title: 'BIP-8: Version Bits 改進', href: '/bips/bip-0008' }}
+  nextPage={{ title: 'BIP-11: M-of-N 交易', href: '/bips/bip-0011' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">9</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Informational</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用</span>
+        <p class="font-semibold text-[var(--text-primary)]">Bitcoin Core 0.12.1</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-9 定義了一種使用區塊版本號的位元（bits）來協調軟分叉部署的機制。
+    它允許礦工通過設置特定位元來表示對新規則的支持，當達到閾值時自動啟用新規則。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">舊方法的問題</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    在 BIP-9 之前，軟分叉通過遞增區塊版本號來部署（如 v2、v3、v4 區塊）。這種方法有幾個問題：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>順序限制</strong>：多個軟分叉必須按順序部署，不能並行</li>
+    <li>• <strong>版本號耗盡</strong>：版本號是有限資源</li>
+    <li>• <strong>協調困難</strong>：難以同時追蹤多個提案的進度</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">BIP-9 的解決方案</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-9 使用版本號的單個位元而非整個版本號，允許最多 29 個軟分叉同時部署。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術規範</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">版本號結構</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+區塊版本號（32 bits）：
+┌────────────────────────────────────────────────────────┐
+│ 31 30 29 │ 28 27 26 25 24 23 22 21 20 ... 3 2 1 0      │
+│──────────│─────────────────────────────────────────────│
+│  0  0  1 │ bit28 bit27 bit26 ... bit3 bit2 bit1 bit0   │
+│──────────│─────────────────────────────────────────────│
+│  前綴    │ 可用於軟分叉信號的 29 個位元                │
+└────────────────────────────────────────────────────────┘
+
+版本號必須以 001 開頭（前 3 bits），其餘 29 bits 用於信號。
+這意味著 BIP-9 區塊版本號範圍：0x20000000 - 0x3FFFFFFF</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">部署參數</h3>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個軟分叉部署需要定義以下參數：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">參數</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">name</td>
+          <td class="p-3">部署的名稱（如 "csv", "segwit"）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">bit</td>
+          <td class="p-3">使用的位元位置（0-28）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">starttime</td>
+          <td class="p-3">開始時間（MTP，中位時間）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">timeout</td>
+          <td class="p-3">超時時間（MTP）</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono">threshold</td>
+          <td class="p-3">啟用閾值（通常 95%，即 1916/2016 區塊）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">狀態機</h3>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個軟分叉在每個難度調整週期（2016 區塊）會處於以下狀態之一：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+      DEFINED ─────────────────→ FAILED
+         │                          ↑
+         │ starttime 到達           │ timeout 到達
+         ↓                          │
+      STARTED ──────────────────────┤
+         │                          │
+         │ 達到 threshold           │
+         ↓                          │
+      LOCKED_IN ────────────────────┘
+         │
+         │ 下一個週期
+         ↓
+      ACTIVE（永久）</pre>
+  </div>
+
+  <div class="not-prose mb-8 space-y-3">
+    <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <span class="font-mono font-medium text-[var(--text-primary)]">DEFINED</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 初始狀態，尚未開始信號</span>
+    </div>
+    <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <span class="font-mono font-medium text-[var(--text-primary)]">STARTED</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— starttime 已過，礦工可以開始信號</span>
+    </div>
+    <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <span class="font-mono font-medium text-[var(--text-primary)]">LOCKED_IN</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 達到閾值，等待下一週期啟用</span>
+    </div>
+    <div class="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+      <span class="font-mono font-medium text-[var(--text-primary)]">ACTIVE</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 新規則已啟用並強制執行</span>
+    </div>
+    <div class="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+      <span class="font-mono font-medium text-[var(--text-primary)]">FAILED</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2">— 超時未達閾值，部署失敗</span>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用案例</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    以下軟分叉使用 BIP-9 部署：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">名稱</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">位元</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">BIP</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">啟用區塊</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">csv</td>
+          <td class="p-3">0</td>
+          <td class="p-3">BIP-68, 112, 113</td>
+          <td class="p-3">419,328</td>
+        </tr>
+        <tr>
+          <td class="p-3">segwit</td>
+          <td class="p-3">1</td>
+          <td class="p-3">BIP-141, 143, 147</td>
+          <td class="p-3">481,824</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制與改進</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">BIP-9 的局限性</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>• <strong>礦工否決權</strong>：礦工可以無限期阻止啟用</li>
+      <li>• <strong>超時後失敗</strong>：超時後唯一選項是失敗</li>
+      <li>• <strong>信號 ≠ 支持</strong>：礦工可能設置信號但實際不支持</li>
+    </ul>
+  </div>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    這些問題促使了 BIP-8 的提出，BIP-8 加入了「強制啟用」選項，
+    讓社群可以選擇在超時後強制啟用而非失敗。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-9 提供了一個優雅的機制來協調軟分叉部署，允許多個升級並行進行，
+    並讓礦工通過簡單的區塊頭信號來表達支持。雖然有其局限性，
+    但它成功部署了多個重要的比特幣升級。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-9 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0008" class="text-bitcoin-500 hover:underline">
+          BIP-8: 改進的 Version Bits
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,261 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-327: MuSig2 多簽聚合"
+  description="定義 MuSig2 協議，實現 Schnorr 多重簽章的密鑰和簽章聚合。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-327' },
+  ]}
+  tags={['Standards Track', 'Draft']}
+  author="Jonas Nick, Tim Ruffing, Elliott Jin"
+  date={new Date('2022-03-22')}
+  prevPage={{ title: 'BIP-324: v2 P2P', href: '/bips/bip-0324' }}
+  nextPage={{ title: 'BIP-329: 錢包標籤導出', href: '/bips/bip-0329' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">327</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="default" size="sm">Draft</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">依賴</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-340 Schnorr</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    MuSig2 是一個多重簽章方案，允許多個簽署者共同創建一個單一的 Schnorr 簽章。
+    最終的簽章和公鑰看起來與單一簽署者產生的完全相同，提供了極佳的隱私性和效率。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要 MuSig2？</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">傳統多簽的問題</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    傳統的 OP_CHECKMULTISIG 需要在區塊鏈上暴露所有公鑰和簽章。
+    這不僅佔用空間增加費用，還暴露了參與者結構。
+  </p>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">傳統多簽</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">MuSig2</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">鏈上公鑰數量</td>
+          <td class="py-2">N 個</td>
+          <td class="py-2 text-green-500">1 個（聚合）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">簽章數量</td>
+          <td class="py-2">M 個</td>
+          <td class="py-2 text-green-500">1 個（聚合）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">隱私</td>
+          <td class="py-2 text-red-500">暴露結構</td>
+          <td class="py-2 text-green-500">與單簽相同</td>
+        </tr>
+        <tr>
+          <td class="py-2">費用</td>
+          <td class="py-2 text-red-500">較高</td>
+          <td class="py-2 text-green-500">與單簽相同</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MuSig2 協議流程</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    MuSig2 是一個兩輪協議（相比 MuSig1 的三輪）：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-4">協議步驟</p>
+
+    <div class="space-y-6 text-sm">
+      <!-- Setup -->
+      <div class="flex gap-4">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">0</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">設置（一次性）</p>
+          <p class="text-[var(--text-secondary)]">每個參與者 i 有私鑰 x_i，公布公鑰 X_i</p>
+          <p class="text-[var(--text-secondary)]">計算聚合公鑰 X = KeyAgg(X_1, ..., X_n)</p>
+        </div>
+      </div>
+
+      <!-- Round 1 -->
+      <div class="flex gap-4">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-bold">1</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">第一輪：Nonce 生成與交換</p>
+          <p class="text-[var(--text-secondary)]">每個參與者生成隨機 nonce 並分享 nonce 公鑰</p>
+          <p class="text-xs text-[var(--text-tertiary)]">可以在知道消息之前預生成</p>
+        </div>
+      </div>
+
+      <!-- Round 2 -->
+      <div class="flex gap-4">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">2</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">第二輪：部分簽章</p>
+          <p class="text-[var(--text-secondary)]">每個參與者使用自己的私鑰和 nonce 生成部分簽章</p>
+          <p class="text-[var(--text-secondary)]">聚合所有部分簽章得到最終簽章</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰聚合</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    MuSig2 使用特殊的密鑰聚合函數，防止「惡意密鑰攻擊」：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># 密鑰聚合</p>
+    <p class="text-[var(--text-secondary)]">L = H(X_1 || X_2 || ... || X_n)</p>
+    <p class="text-[var(--text-secondary)]">a_i = H(L || X_i)</p>
+    <p class="text-[var(--text-secondary)]">X = a_1·X_1 + a_2·X_2 + ... + a_n·X_n</p>
+  </div>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    每個公鑰都乘以一個係數 a_i，這個係數取決於所有參與者的公鑰列表。
+    這確保沒有人可以選擇一個「抵消」其他人的惡意公鑰。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全性考量</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Nonce 安全</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Nonce 的安全使用至關重要。重用 nonce 或使用可預測的 nonce 會導致私鑰洩露。
+    MuSig2 設計允許 nonce 在不知道消息的情況下預生成，提高了實用性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>警告：</strong> 永遠不要重用 nonce！
+      在 Schnorr 簽章中，如果用相同的 nonce 簽署兩條不同的消息，
+      私鑰可以被直接計算出來。
+    </p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">並發會話攻擊</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    MuSig2 的兩輪設計可能受到並發會話攻擊。攻擊者可以同時發起多個簽名會話，
+    試圖提取受害者的私鑰。BIP-327 提供了緩解措施。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">多簽錢包</strong>：n-of-n 多簽看起來像單簽</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">閃電網路</strong>：通道開啟/關閉交易</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">Taproot 密鑰路徑</strong>：聚合密鑰作為內部密鑰</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">原子交換</strong>：跨鏈交易簽章</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">門限簽章</strong>：結合 FROST 實現 t-of-n</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與其他方案比較</h2>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">MuSig1</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">MuSig2</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">FROST</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">輪數</td>
+          <td class="py-2">3</td>
+          <td class="py-2 text-green-500">2</td>
+          <td class="py-2">2</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">門限</td>
+          <td class="py-2">n-of-n</td>
+          <td class="py-2">n-of-n</td>
+          <td class="py-2 text-green-500">t-of-n</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">Nonce 預生成</td>
+          <td class="py-2 text-red-500">否</td>
+          <td class="py-2 text-green-500">是</td>
+          <td class="py-2 text-green-500">是</td>
+        </tr>
+        <tr>
+          <td class="py-2">複雜度</td>
+          <td class="py-2">中等</td>
+          <td class="py-2">中等</td>
+          <td class="py-2">較高</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實作狀態</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>libsecp256k1-zkp</strong>：參考實作</li>
+    <li>• <strong>Bitcoin Core</strong>：開發中</li>
+    <li>• <strong>LND / CLN</strong>：實驗性支援</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr 簽章</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-327 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,194 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-350: Bech32m 地址格式"
+  description="修正 Bech32 編碼的弱點，用於 SegWit v1+ (Taproot) 地址。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-350' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Pieter Wuille"
+  date={new Date('2020-12-16')}
+  prevPage={{ title: 'BIP-342: Tapscript', href: '/bips/bip-0342' }}
+  nextPage={{ title: 'BIP-370: PSBT v2', href: '/bips/bip-0370' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">350</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用</span>
+        <p class="font-semibold text-[var(--text-primary)]">隨 Taproot</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Bech32m 是 Bech32（BIP-173）的修正版本，用於 SegWit 版本 1 及更高版本的地址。
+    它修復了原始 Bech32 在特定長度變化時的錯誤檢測弱點。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要 Bech32m？</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Bech32 的弱點</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    研究人員發現 Bech32 編碼存在一個特定弱點：當地址最後一個字符是 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">p</code> 時，
+    在其前面插入或刪除 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">q</code> 字符可能不會被校驗碼檢測到。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>範例：</strong><br />
+      <code>bc1q...p</code> 和 <code>bc1q...qp</code> 可能有相同的校驗碼！<br />
+      這意味著某些類型的輸入錯誤可能無法被檢測到。
+    </p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">為什麼對 SegWit v0 沒問題？</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    SegWit v0 地址（P2WPKH 和 P2WSH）有固定長度（分別是 42 和 62 字符），
+    所以長度變化會立即被檢測到。但未來的 SegWit 版本可能有可變長度，
+    因此需要更強的錯誤檢測能力。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Bech32 vs Bech32m</h2>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">Bech32</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">Bech32m</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">用途</td>
+          <td class="py-2">SegWit v0 (bc1q...)</td>
+          <td class="py-2">SegWit v1+ (bc1p...)</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">常數</td>
+          <td class="py-2 font-mono">1</td>
+          <td class="py-2 font-mono">0x2bc830a3</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">定義</td>
+          <td class="py-2">BIP-173</td>
+          <td class="py-2">BIP-350</td>
+        </tr>
+        <tr>
+          <td class="py-2">長度變化檢測</td>
+          <td class="py-2">有弱點</td>
+          <td class="py-2">已修復</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址區分</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    如何判斷地址使用哪種編碼：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="space-y-4 text-sm">
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-1">bc1q... (SegWit v0)</p>
+        <p class="text-[var(--text-secondary)]">使用 Bech32</p>
+        <p class="text-[var(--text-tertiary)] font-mono text-xs">bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq</p>
+      </div>
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-1">bc1p... (SegWit v1 / Taproot)</p>
+        <p class="text-[var(--text-secondary)]">使用 Bech32m</p>
+        <p class="text-[var(--text-tertiary)] font-mono text-xs">bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術變更</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    唯一的變更是校驗碼計算中的常數值：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># Bech32</p>
+    <p class="text-[var(--text-secondary)]">checksum = polymod(data) ^ 1</p>
+    <p class="text-[var(--text-tertiary)] mt-4 mb-2"># Bech32m</p>
+    <p class="text-[var(--text-secondary)]">checksum = polymod(data) ^ 0x2bc830a3</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錢包實作指南</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">生成地址</strong>：根據 witness version 選擇編碼</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">解碼地址</strong>：先嘗試 Bech32m，若失敗且是 v0 則嘗試 Bech32</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">驗證地址</strong>：檢查版本與編碼是否匹配</span>
+    </li>
+  </ul>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
+if witness_version == 0:
+    encoding = BECH32
+else:
+    encoding = BECH32M</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">向後相容性</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>現有的 bc1q 地址繼續使用 Bech32，無需改變</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>新的 bc1p 地址使用 Bech32m</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>錢包需要同時支援兩種編碼</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0173" class="text-bitcoin-500 hover:underline">BIP-173</a>：Bech32 地址格式</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-350 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

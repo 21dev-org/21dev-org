@@ -1,0 +1,281 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-152: Compact Block Relay"
+  description="透過壓縮區塊傳輸減少頻寬使用和傳播延遲，提升比特幣網路效能。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-152' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Matt Corallo"
+  date={new Date('2016-04-27')}
+  prevPage={{ title: 'BIP-144: SegWit 序列化', href: '/bips/bip-0144' }}
+  nextPage={{ title: 'BIP-157: 輕客戶端過濾器', href: '/bips/bip-0157' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">152</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用</span>
+        <p class="font-semibold text-[var(--text-primary)]">Bitcoin Core 0.13.0</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-152 定義了 Compact Block Relay 協議，一種優化區塊傳播的方式。
+    由於接收節點通常已經擁有區塊中的大部分交易（在 mempool 中），
+    這個協議只傳輸交易的短 ID，讓接收方可以從本地重建完整區塊。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">傳統區塊傳播的問題</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    在沒有 Compact Block 之前，當礦工挖出新區塊時，需要將完整區塊（通常 1-2 MB）
+    傳送給所有連接的節點。這造成了幾個問題：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>頻寬浪費</strong>：大多數交易節點已經有了，重複傳輸沒有意義</li>
+    <li>• <strong>傳播延遲</strong>：大區塊需要更長時間傳輸，增加孤塊風險</li>
+    <li>• <strong>中心化壓力</strong>：高頻寬需求可能導致網路中心化</li>
+  </ul>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">實際效果</h4>
+    <p class="text-sm text-[var(--text-secondary)]">
+      使用 Compact Block，區塊傳輸大小通常可以減少 90% 以上。
+      例如，一個 1 MB 的區塊可能只需傳輸約 10-20 KB 的資料。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作原理</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Compact Block 結構</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    一個 Compact Block 包含以下資訊：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+CompactBlock:
+├── header          // 80 bytes - 完整區塊頭
+├── nonce           // 8 bytes - 用於計算短 ID
+├── shortids_length // 可變 - 短 ID 數量
+├── shortids[]      // 每個 6 bytes - 交易短 ID
+├── prefilled_txn_length
+└── prefilled_txn[] // 預填充的交易（通常是 coinbase）</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">短 ID 計算</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個交易的短 ID（6 bytes）是這樣計算的：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+1. 計算金鑰：
+   key = SHA256(SHA256(block_header || nonce))[0:16]
+
+2. 計算 SipHash：
+   short_id = SipHash-2-4(key, txid)[0:6]</pre>
+    <p class="text-xs text-[var(--text-tertiary)] mt-2">
+      使用 SipHash 而非截斷的 SHA256，是為了防止碰撞攻擊，
+      同時保持計算效率。
+    </p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">區塊重建流程</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+接收 Compact Block 後：
+
+1. 解析區塊頭和 nonce
+   ↓
+2. 使用相同算法計算 mempool 中所有交易的短 ID
+   ↓
+3. 嘗試匹配 shortids[] 與本地交易
+   ↓
+4. 如果所有交易都找到 → 重建完整區塊並驗證
+   ↓
+5. 如果有缺失交易 → 發送 getblocktxn 請求缺失部分</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">兩種傳播模式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Low Bandwidth Mode（低頻寬模式）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    預設模式。節點先發送 inv 訊息，對方請求後才發送 Compact Block：
+  </p>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+傳送方                接收方
+   │                    │
+   │─── inv ──────────→│
+   │                    │
+   │←── getdata ────────│
+   │                    │
+   │─── cmpctblock ───→│
+   │                    │
+   │←── getblocktxn ────│  (如果有缺失交易)
+   │                    │
+   │─── blocktxn ─────→│</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">High Bandwidth Mode（高頻寬模式）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    更激進的模式。節點主動發送 Compact Block，不等待請求：
+  </p>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+傳送方                接收方
+   │                    │
+   │─── cmpctblock ───→│  (主動發送)
+   │                    │
+   │←── getblocktxn ────│  (如果有缺失交易)
+   │                    │
+   │─── blocktxn ─────→│</pre>
+    <p class="text-xs text-[var(--text-tertiary)] mt-2">
+      節點通常會向 3 個對等節點請求高頻寬模式，以最小化延遲。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息類型</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">訊息</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">方向</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">sendcmpct</td>
+          <td class="p-3">雙向</td>
+          <td class="p-3">宣告支援 Compact Block，設定高/低頻寬模式</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">cmpctblock</td>
+          <td class="p-3">發送方 → 接收方</td>
+          <td class="p-3">傳送 Compact Block</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">getblocktxn</td>
+          <td class="p-3">接收方 → 發送方</td>
+          <td class="p-3">請求缺失的交易</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono">blocktxn</td>
+          <td class="p-3">發送方 → 接收方</td>
+          <td class="p-3">回應缺失交易請求</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">碰撞處理</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    由於短 ID 只有 6 bytes（48 bits），理論上可能發生碰撞。協議有幾種處理方式：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>統計機率極低</strong>：對於 4000 筆交易的區塊，碰撞機率約為 2^-17</li>
+    <li>• <strong>nonce 隨機化</strong>：每次傳輸使用不同 nonce，攻擊者難以預測短 ID</li>
+    <li>• <strong>驗證失敗回退</strong>：如果重建的區塊驗證失敗，節點會請求完整區塊</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">版本歷史</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="space-y-3">
+      <div class="flex items-start gap-3">
+        <span class="text-sm font-mono text-[var(--text-tertiary)] w-20">版本 1</span>
+        <div>
+          <span class="font-medium text-[var(--text-primary)]">初始版本</span>
+          <p class="text-sm text-[var(--text-secondary)]">2016 年隨 Bitcoin Core 0.13.0 發布</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <span class="text-sm font-mono text-[var(--text-tertiary)] w-20">版本 2</span>
+        <div>
+          <span class="font-medium text-[var(--text-primary)]">SegWit 支援</span>
+          <p class="text-sm text-[var(--text-secondary)]">支援 witness 資料的傳輸，使用 wtxid 計算短 ID</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">效能影響</h2>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-green-600 dark:text-green-400 mb-2">頻寬節省</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        典型情況下減少 90%+ 的區塊傳輸頻寬，讓頻寬受限的節點也能參與網路。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-green-600 dark:text-green-400 mb-2">傳播加速</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        區塊傳播時間大幅縮短，降低孤塊率，增加網路安全性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關技術</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      <strong>FIBRE</strong>：Matt Corallo 開發的專用區塊傳播網路，使用 UDP 和前向糾錯
+    </li>
+    <li>
+      <strong>Erlay</strong>（BIP-330）：進一步優化交易傳播，減少 mempool 同步頻寬
+    </li>
+    <li>
+      <strong>Graphene</strong>：使用 IBLT（可逆布隆查找表）的實驗性方案
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-152 Compact Block Relay 是比特幣網路效能的重要改進。
+    透過利用節點間已有的交易資訊，大幅減少區塊傳輸的頻寬需求和延遲。
+    這項改進對於維護比特幣網路的去中心化特性至關重要。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-152 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="https://bitcoincore.org/en/2016/06/07/compact-blocks-faq/" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          Bitcoin Core: Compact Blocks FAQ
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

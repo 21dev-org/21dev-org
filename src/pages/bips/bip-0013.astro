@@ -1,0 +1,266 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-13: P2SH 地址格式"
+  description="定義 Pay to Script Hash 地址的編碼格式，以 3 開頭的比特幣地址。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-13' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Gavin Andresen"
+  date={new Date('2011-10-18')}
+  prevPage={{ title: 'BIP-11: M-of-N 交易', href: '/bips/bip-0011' }}
+  nextPage={{ title: 'BIP-16: P2SH', href: '/bips/bip-0016' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">13</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">依賴</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-16</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-13 定義了 Pay to Script Hash（P2SH）地址的 Base58Check 編碼格式。
+    這些地址在主網以 "3" 開頭，在測試網以 "2" 開頭，允許使用者向複雜腳本發送資金。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-16 定義了 P2SH 輸出類型，但沒有定義地址格式。BIP-13 填補了這個空白，
+    讓使用者可以像使用普通地址一樣使用 P2SH：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 可以分享給付款人</li>
+    <li>• 可以生成 QR Code</li>
+    <li>• 錢包可以識別並正確處理</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址格式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">編碼規則</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+P2SH 地址 = Base58Check( version || script_hash )
+
+其中：
+• version = 0x05（主網）或 0xC4（測試網）
+• script_hash = RIPEMD160(SHA256(redeemScript))
+• Base58Check 包含 4 byte 校驗碼</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">版本號</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">網路</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">版本</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">前綴</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">範例</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">主網</td>
+          <td class="p-3 font-mono">0x05</td>
+          <td class="p-3 font-mono">3</td>
+          <td class="p-3 font-mono text-xs">3J98t1WpEZ73CNmQvie...</td>
+        </tr>
+        <tr>
+          <td class="p-3">測試網</td>
+          <td class="p-3 font-mono">0xC4</td>
+          <td class="p-3 font-mono">2</td>
+          <td class="p-3 font-mono text-xs">2N7XypJMdRJL3Z3A4...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">編碼範例</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+// 假設 redeemScript 是 2-of-3 多簽：
+redeemScript = OP_2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; OP_3 OP_CHECKMULTISIG
+
+// 計算腳本哈希
+script_hash = RIPEMD160(SHA256(redeemScript))
+            = 0x89abcdef...（20 bytes）
+
+// 加上版本前綴
+data = 0x05 || 0x89abcdef...
+
+// Base58Check 編碼
+address = Base58Check(data)
+        = "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 P2PKH 地址的比較</h2>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2PKH（1 開頭）</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 版本: 0x00</li>
+        <li>• 哈希: pubkey_hash</li>
+        <li>• 用途: 單一公鑰</li>
+        <li>• 例: 1A1zP1eP5QGefi2DMPTf...</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2SH（3 開頭）</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 版本: 0x05</li>
+        <li>• 哈希: script_hash</li>
+        <li>• 用途: 任意腳本</li>
+        <li>• 例: 3J98t1WpEZ73CNmQvie...</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">P2SH 地址的用途</h2>
+
+  <div class="not-prose mb-8 space-y-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">多重簽名</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        最常見的用途。將 2-of-3 等多簽腳本哈希為簡短地址，
+        付款人無需知道內部結構。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">P2SH-P2WPKH</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        SegWit 相容地址，內部是 SegWit 輸出但以 P2SH 包裝，
+        允許舊錢包向 SegWit 地址發送。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">時間鎖</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        包含 OP_CHECKLOCKTIMEVERIFY 等時間鎖的複雜腳本。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">閃電網路通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道資金腳本通常使用 P2SH（或 P2WSH）包裝。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全注意事項</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">重要提醒</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>
+        <strong>保存 redeemScript</strong>：花費 P2SH 輸出需要原始的 redeemScript，
+        僅有私鑰是不夠的。
+      </li>
+      <li>
+        <strong>驗證地址生成</strong>：確保地址確實來自你控制的 redeemScript。
+      </li>
+      <li>
+        <strong>理解腳本含義</strong>：在向 P2SH 地址發送資金前，
+        了解 redeemScript 的條件。
+      </li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">演進</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    隨著 SegWit 的引入，出現了新的地址格式：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">類型</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">前綴</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">BIP</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">P2PKH</td>
+          <td class="p-3 font-mono">1</td>
+          <td class="p-3">-</td>
+          <td class="p-3">原始地址格式</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">P2SH</td>
+          <td class="p-3 font-mono">3</td>
+          <td class="p-3">BIP-13</td>
+          <td class="p-3">腳本哈希地址</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">P2WPKH</td>
+          <td class="p-3 font-mono">bc1q</td>
+          <td class="p-3">BIP-173</td>
+          <td class="p-3">原生 SegWit v0</td>
+        </tr>
+        <tr>
+          <td class="p-3">P2TR</td>
+          <td class="p-3 font-mono">bc1p</td>
+          <td class="p-3">BIP-350</td>
+          <td class="p-3">Taproot（SegWit v1）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-13 為 P2SH 輸出定義了人類可讀的地址格式，使複雜腳本的使用變得和普通地址一樣簡單。
+    雖然新的 Bech32 地址正在取代 Base58 格式，但 P2SH 地址仍然被廣泛使用，
+    特別是在需要向後相容的場景中。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0013.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-13 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">
+          BIP-16: P2SH
+        </a>
+      </li>
+      <li>
+        <a href="/learn/intermediate/address-types" class="text-bitcoin-500 hover:underline">
+          地址類型詳解
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

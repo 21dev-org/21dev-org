@@ -1,0 +1,288 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-158: 緊湊區塊過濾器"
+  description="定義緊湊區塊過濾器的格式和構建方式，使用 Golomb-Rice 編碼壓縮資料。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-158' },
+  ]}
+  tags={['Standards Track', 'Draft']}
+  author="Olaoluwa Osuntokun, Alex Akselrod"
+  date={new Date('2017-05-24')}
+  prevPage={{ title: 'BIP-157: 輕客戶端過濾器', href: '/bips/bip-0157' }}
+  nextPage={{ title: 'BIP-173: Bech32', href: '/bips/bip-0173' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">158</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="default" size="sm">Draft</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">搭配</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-157</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-158 定義了一種緊湊的區塊過濾器格式，使用 Golomb-Rice 編碼來壓縮區塊中的
+    腳本和輸出資料。輕客戶端可以下載這些過濾器，在本地檢查是否有與自己相關的交易。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器概念</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    過濾器是一種概率資料結構，可以快速判斷「某元素可能在集合中」或「某元素肯定不在集合中」：
+  </p>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">查詢結果：False</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        元素<strong>肯定不在</strong>集合中。可以跳過這個區塊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">查詢結果：True</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        元素<strong>可能在</strong>集合中（有假陽性機率）。需要下載完整區塊確認。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器類型</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-158 目前定義了一種過濾器類型：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">Basic Filter（類型 0x00）</h4>
+    <p class="text-sm text-[var(--text-secondary)] mb-3">包含：</p>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>• 區塊中所有交易輸出的 scriptPubKey</li>
+      <li>• 區塊中所有交易輸入花費的 scriptPubKey（不含 coinbase）</li>
+    </ul>
+    <p class="text-sm text-[var(--text-tertiary)] mt-3">
+      這足以讓錢包發現與自己地址相關的交易。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Golomb-Rice 編碼</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">基本原理</h3>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Golomb-Rice 編碼是一種變長編碼，對於某些數值分布可以達到接近最優的壓縮率：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+給定參數 P（2 的冪次），對數值 x 編碼：
+
+1. 計算商 q = x / P
+2. 計算餘數 r = x % P
+
+3. 編碼 q：使用一元碼（q 個 1 後跟一個 0）
+4. 編碼 r：使用 log2(P) 個位元
+
+範例（P = 4, x = 11）：
+• q = 11 / 4 = 2
+• r = 11 % 4 = 3
+• 編碼 = 110（一元碼）+ 11（2 位元）= 11011</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">過濾器構建</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+構建過濾器的步驟：
+
+1. 收集元素
+   elements = [scriptPubKey1, scriptPubKey2, ...]
+
+2. 計算哈希值（使用 SipHash）
+   hashes = [SipHash(key, e) for e in elements]
+
+   key = 前一個區塊哈希的前 16 bytes
+
+3. 縮放到目標範圍
+   F = N * M  // N = 元素數量，M = 假陽性參數
+   scaled = [(h * F) >> 64 for h in hashes]
+
+4. 排序並計算差值
+   sorted = sort(scaled)
+   deltas = [sorted[i] - sorted[i-1] for i in range(1, N)]
+
+5. Golomb-Rice 編碼差值
+   encoded = GolombRice_encode(deltas, P)</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">參數選擇</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">參數</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">值</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">M</td>
+          <td class="p-3">784931</td>
+          <td class="p-3">假陽性率 ≈ 1/784931</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono">P</td>
+          <td class="p-3">19</td>
+          <td class="p-3">Golomb-Rice 編碼參數</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono">每元素位元</td>
+          <td class="p-3">≈ 20</td>
+          <td class="p-3">平均每個腳本約 20 位元</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢過濾器</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+查詢過濾器的步驟：
+
+1. 計算查詢元素的哈希和縮放值
+   query_hash = SipHash(key, query_script)
+   query_scaled = (query_hash * N * M) >> 64
+
+2. 解碼過濾器，重建排序後的值集合
+   values = decode_filter(filter_data)
+
+3. 二分搜索
+   return binary_search(values, query_scaled)
+
+假陽性場景：
+• 查詢返回 True，但區塊實際不包含該腳本
+• 發生機率 ≈ 1/M ≈ 1/784931
+• 每約 1200 個區塊會有一次假陽性</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器大小</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    過濾器比完整區塊小得多：
+  </p>
+
+  <div class="not-prose mb-8 grid md:grid-cols-3 gap-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center">
+      <p class="text-2xl font-bold text-bitcoin-500">~15 KB</p>
+      <p class="text-sm text-[var(--text-secondary)]">典型區塊過濾器大小</p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center">
+      <p class="text-2xl font-bold text-[var(--text-primary)]">~1.5 MB</p>
+      <p class="text-sm text-[var(--text-secondary)]">典型區塊大小</p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center">
+      <p class="text-2xl font-bold text-green-500">~1%</p>
+      <p class="text-sm text-[var(--text-secondary)]">過濾器/區塊比例</p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Bloom Filter 比較</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">特性</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">BIP-37 Bloom</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">BIP-158 GCS</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">構建方</td>
+          <td class="p-3">客戶端</td>
+          <td class="p-3 text-green-500">伺服器</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">隱私</td>
+          <td class="p-3 text-red-500">差</td>
+          <td class="p-3 text-green-500">好</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">可驗證</td>
+          <td class="p-3 text-red-500">否</td>
+          <td class="p-3 text-green-500">是</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">每元素位元</td>
+          <td class="p-3">~10</td>
+          <td class="p-3">~20</td>
+        </tr>
+        <tr>
+          <td class="p-3">頻寬效率</td>
+          <td class="p-3 text-green-500">更低（按需）</td>
+          <td class="p-3">較高（下載所有）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全性</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">惡意伺服器</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>
+        <strong>假陰性攻擊</strong>：伺服器提供少了某些元素的過濾器，
+        客戶端會漏掉相關交易。解決方案：從多個獨立節點獲取並比較。
+      </li>
+      <li>
+        <strong>過濾器頭鏈</strong>：使用過濾器頭鏈可以檢測篡改，
+        但不能防止所有節點串通。
+      </li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-158 定義了一種高效的區塊過濾器格式，使用 Golomb-Rice 編碼達到接近最優的壓縮率。
+    結合 BIP-157 的 P2P 協議，為輕客戶端提供了隱私優先的同步方案。
+    雖然需要下載更多資料，但換來的是更好的隱私保護。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-158 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0157" class="text-bitcoin-500 hover:underline">
+          BIP-157: 輕客戶端區塊過濾器協議
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

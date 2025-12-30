@@ -1,0 +1,223 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-384: 組合輸出描述符"
+  description="定義 combo() 描述符函數，自動生成多種腳本類型以提高相容性。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-384' },
+  ]}
+  tags={['Informational', 'Final']}
+  author="Pieter Wuille, Andrew Chow"
+  date={new Date('2021-06-27')}
+  prevPage={{ title: 'BIP-383: 多簽描述符', href: '/bips/bip-0383' }}
+  nextPage={{ title: 'BIP-385: 原始描述符', href: '/bips/bip-0385' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">384</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Informational</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">依賴</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-380~382</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-384 定義了 <code class="px-1 py-0.5 rounded bg-[var(--bg-secondary)]">combo()</code> 描述符函數。
+    它是一個便利函數，自動為給定的密鑰生成所有可能的標準輸出類型，
+    主要用於導入可能使用任何類型輸出的舊密鑰。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">格式</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+語法：combo(KEY)
+
+等同於同時導入：
+• pk(KEY)           — P2PK（如果 KEY 是非壓縮公鑰則只有這個）
+• pkh(KEY)          — P2PKH
+• wpkh(KEY)         — P2WPKH（僅壓縮公鑰）
+• sh(wpkh(KEY))     — P2SH-P2WPKH（僅壓縮公鑰）</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">展開規則</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">壓縮公鑰</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+當 KEY 是壓縮公鑰（33 bytes，02 或 03 開頭）：
+
+combo(02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5)
+
+展開為：
+1. pk(02c6047f...)         // 裸公鑰
+2. pkh(02c6047f...)        // P2PKH（1... 地址）
+3. wpkh(02c6047f...)       // P2WPKH（bc1q... 地址）
+4. sh(wpkh(02c6047f...))   // P2SH-P2WPKH（3... 地址）
+
+共 4 種輸出類型</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">非壓縮公鑰</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+當 KEY 是非壓縮公鑰（65 bytes，04 開頭）：
+
+combo(04c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5...)
+
+展開為：
+1. pk(04c6047f...)         // 裸公鑰
+2. pkh(04c6047f...)        // P2PKH
+
+共 2 種輸出類型
+
+注意：SegWit 要求壓縮公鑰，所以 wpkh 和 sh(wpkh) 不包含</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="not-prose mb-8 space-y-4">
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">導入舊密鑰</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        當你有一個舊的私鑰（WIF 格式）但不確定它被用於哪種地址類型時，
+        使用 combo() 可以監控所有可能的地址。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">資金恢復</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        嘗試恢復不知道使用了哪種腳本類型的資金時，
+        combo() 確保不會遺漏任何可能的輸出。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">區塊鏈掃描</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        區塊瀏覽器或分析工具可能使用 combo() 來追蹤
+        與特定公鑰相關的所有可能輸出。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">範例</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+# 導入一個舊的 WIF 私鑰
+$ bitcoin-cli importdescriptors '[&#123;
+  "desc": "combo(L1a2b3c4...)#checksum",
+  "timestamp": 0,
+  "label": "舊錢包密鑰"
+&#125;]'
+
+# 這會監控該密鑰的所有可能地址類型
+
+# 導入 xpub 的組合描述符
+$ bitcoin-cli importdescriptors '[&#123;
+  "desc": "combo([d34db33f/44h/0h/0h]xpub.../0/*)#checksum",
+  "timestamp": "now",
+  "range": [0, 999]
+&#125;]'
+
+# 這會為每個派生的公鑰監控所有輸出類型</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制與注意事項</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">不建議用於新錢包</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>
+        <strong>效率問題</strong>：combo() 會創建多個輸出監控，增加資源使用。
+      </li>
+      <li>
+        <strong>不夠精確</strong>：新錢包應該使用明確的描述符（如 wpkh）。
+      </li>
+      <li>
+        <strong>隱私考量</strong>：將所有地址類型關聯到同一密鑰可能降低隱私。
+      </li>
+      <li>
+        <strong>不含 Taproot</strong>：combo() 不包含 tr()，Taproot 需要單獨處理。
+      </li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與其他描述符比較</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">場景</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">推薦描述符</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">新建 SegWit 錢包</td>
+          <td class="p-3 font-mono">wpkh()</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">新建 Taproot 錢包</td>
+          <td class="p-3 font-mono">tr()</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">導入已知類型的舊錢包</td>
+          <td class="p-3 font-mono">pkh() 或 wpkh()</td>
+        </tr>
+        <tr>
+          <td class="p-3">導入未知類型的舊密鑰</td>
+          <td class="p-3 font-mono">combo()</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-384 定義的 combo() 是一個便利工具，用於處理不確定腳本類型的舊密鑰。
+    它自動展開為所有可能的標準輸出類型，確保不會遺漏任何資金。
+    但對於新錢包，應該使用更精確的描述符如 wpkh() 或 tr()。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0384.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-384 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0381" class="text-bitcoin-500 hover:underline">
+          BIP-381: 非 SegWit 描述符
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0382" class="text-bitcoin-500 hover:underline">
+          BIP-382: SegWit 描述符
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,170 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-65: OP_CHECKLOCKTIMEVERIFY (CLTV)"
+  description="引入絕對時間鎖操作碼，允許資金在特定區塊高度或時間之前被鎖定。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-65' },
+  ]}
+  tags={['Standards Track', 'Final']}
+  author="Peter Todd"
+  date={new Date('2014-10-01')}
+  prevPage={{ title: 'BIP-44: 多帳戶 HD', href: '/bips/bip-0044' }}
+  nextPage={{ title: 'BIP-66: Strict DER', href: '/bips/bip-0066' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">65</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Standards Track</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">啟用日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">2015-12</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    OP_CHECKLOCKTIMEVERIFY (CLTV) 是一個新的操作碼，允許在腳本中驗證交易的 nLockTime 欄位。
+    這使得「絕對時間鎖」成為可能——資金在特定區塊高度或 UNIX 時間戳之前無法被花費。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    在 CLTV 之前，nLockTime 只能用於延遲整個交易的廣播時間。但這無法強制執行——
+    接收者可以簽署一個沒有 nLockTime 的新交易來提前花費資金。CLTV 將時間鎖嵌入到腳本中，
+    使其成為花費條件的一部分，從而不可繞過。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作方式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">語意</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    CLTV 重新定義了之前未使用的 OP_NOP2 操作碼。執行時：
+  </p>
+  <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+    <li>從堆疊頂部讀取一個值（不彈出）</li>
+    <li>將該值與交易的 nLockTime 比較</li>
+    <li>如果 nLockTime &lt; 堆疊值，腳本失敗</li>
+    <li>如果 nSequence = 0xFFFFFFFF，腳本失敗</li>
+  </ol>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">腳本範例</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)] mb-2"># 資金在區塊 500000 之後才能被 Alice 花費</p>
+    <p class="text-[var(--text-secondary)]">&lt;500000&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
+    <p class="text-[var(--text-secondary)]">&lt;Alice's pubkey&gt; OP_CHECKSIG</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間格式</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    CLTV 支援兩種時間格式：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-2">區塊高度</p>
+        <p class="text-[var(--text-secondary)]">值 &lt; 500,000,000</p>
+        <p class="text-[var(--text-tertiary)]">例：500000 = 區塊 #500000</p>
+      </div>
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-2">UNIX 時間戳</p>
+        <p class="text-[var(--text-secondary)]">值 ≥ 500,000,000</p>
+        <p class="text-[var(--text-tertiary)]">例：1700000000 = 2023-11-14</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">支付通道</strong>：閃電網路的退款機制</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">託管服務</strong>：在特定時間後資金自動返還</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">遺囑合約</strong>：如果一段時間內沒有活動，資金轉移給繼承人</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">原子交換</strong>：跨鏈交換的超時退款</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">HTLC</strong>：哈希時間鎖定合約</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">CLTV vs nLockTime</h2>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">nLockTime</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">CLTV</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">強制執行</td>
+          <td class="py-2">否（可繞過）</td>
+          <td class="py-2">是（腳本級別）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">位置</td>
+          <td class="py-2">交易欄位</td>
+          <td class="py-2">腳本內</td>
+        </tr>
+        <tr>
+          <td class="py-2">靈活性</td>
+          <td class="py-2">整個交易</td>
+          <td class="py-2">單個輸出</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0068" class="text-bitcoin-500 hover:underline">BIP-68</a>：相對時間鎖（nSequence）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><a href="/bips/bip-0112" class="text-bitcoin-500 hover:underline">BIP-112</a>：OP_CHECKSEQUENCEVERIFY</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span>BIP-113：Median Time Past 用於時間鎖</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        GitHub 上的完整 BIP-65 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>

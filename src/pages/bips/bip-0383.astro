@@ -1,0 +1,330 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-383: 多簽輸出描述符"
+  description="定義 multi() 和 sortedmulti() 描述符函數，用於多重簽章腳本。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-383' },
+  ]}
+  tags={['Informational', 'Final']}
+  author="Pieter Wuille, Andrew Chow"
+  date={new Date('2021-06-27')}
+  prevPage={{ title: 'BIP-382: SegWit 描述符', href: '/bips/bip-0382' }}
+  nextPage={{ title: 'BIP-384: 組合描述符', href: '/bips/bip-0384' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">383</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Informational</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">依賴</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-380</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-383 定義了兩個用於多重簽章（multisig）的描述符函數：
+    <code class="px-1 py-0.5 rounded bg-[var(--bg-secondary)]">multi()</code> 和
+    <code class="px-1 py-0.5 rounded bg-[var(--bg-secondary)]">sortedmulti()</code>。
+    這些函數用於構建需要多個密鑰中的 k 個進行簽章的腳本。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">multi() — 標準多簽</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">格式</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+語法：multi(k, KEY1, KEY2, ..., KEYn)
+
+參數：
+• k = 所需簽章數量（閾值）
+• KEY1...KEYn = 參與的公鑰（n 個）
+
+生成的腳本：
+OP_k &lt;pubkey1&gt; &lt;pubkey2&gt; ... &lt;pubkeyn&gt; OP_n OP_CHECKMULTISIG
+
+範例（2-of-3）：
+multi(2,
+  02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5,
+  0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798,
+  02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9
+)</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">腳本結構</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+2-of-3 多簽腳本（裸腳本）：
+
+52                              // OP_2（需要 2 個簽章）
+21 02c6047f...                  // 33 bytes 公鑰 1
+21 0279be66...                  // 33 bytes 公鑰 2
+21 02f9308a...                  // 33 bytes 公鑰 3
+53                              // OP_3（共 3 個公鑰）
+AE                              // OP_CHECKMULTISIG
+
+腳本大小：1 + (1+33)*3 + 1 + 1 = 105 bytes</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">密鑰順序</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">重要：密鑰順序影響腳本哈希</h4>
+    <p class="text-sm text-[var(--text-secondary)] mb-3">
+      在 multi() 中，公鑰按照描述符中指定的順序排列。
+      相同的公鑰以不同順序會產生不同的腳本和地址：
+    </p>
+    <pre class="text-xs font-mono bg-[var(--bg-primary)] p-2 rounded">
+multi(2, KEY_A, KEY_B, KEY_C)  → 地址 X
+multi(2, KEY_B, KEY_A, KEY_C)  → 地址 Y（不同！）</pre>
+    <p class="text-sm text-[var(--text-secondary)] mt-3">
+      這可能導致恢復問題——如果忘記了密鑰順序，就無法重建正確的地址。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">sortedmulti() — 排序多簽</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">格式</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+語法：sortedmulti(k, KEY1, KEY2, ..., KEYn)
+
+與 multi() 相同，但公鑰在構建腳本時會自動排序。
+
+排序規則：
+• 按公鑰的字節序（lexicographic）排序
+• 對於 xpub，派生後的公鑰進行排序
+
+範例：
+sortedmulti(2,
+  xpub1.../0/*,
+  xpub2.../0/*,
+  xpub3.../0/*
+)
+
+每個地址索引生成時：
+1. 從每個 xpub 派生對應索引的公鑰
+2. 對這些公鑰按字節序排序
+3. 用排序後的順序構建多簽腳本</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">為何使用 sortedmulti</h3>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">確定性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        無論描述符中密鑰的順序如何，只要是相同的密鑰集合，
+        就會產生相同的地址。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">易於恢復</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        恢復時不需要記住密鑰順序，只需要所有 xpub 和閾值。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">互操作性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        不同錢包使用相同的排序規則，確保相容性。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">業界標準</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        多數現代多簽錢包都使用排序多簽。
+      </p>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">排序範例</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+給定三個公鑰（hex 格式）：
+A = 0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798
+B = 02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5
+C = 02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9
+
+字節序排序後：
+1. A（02 79 be...）
+2. B（02 c6 04...）
+3. C（02 f9 30...）
+
+sortedmulti(2, C, A, B) 等同於 multi(2, A, B, C)
+sortedmulti(2, B, C, A) 等同於 multi(2, A, B, C)
+...
+所有排列都產生相同的腳本！</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">包裝使用</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    multi 和 sortedmulti 需要被包裝在腳本類型函數中：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">描述符</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">類型</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">地址格式</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">sh(multi(...))</td>
+          <td class="p-3">P2SH 多簽</td>
+          <td class="p-3">3...</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">sh(sortedmulti(...))</td>
+          <td class="p-3">P2SH 排序多簽</td>
+          <td class="p-3">3...</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">wsh(multi(...))</td>
+          <td class="p-3">P2WSH 多簽</td>
+          <td class="p-3">bc1q...（62字符）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">wsh(sortedmulti(...))</td>
+          <td class="p-3">P2WSH 排序多簽</td>
+          <td class="p-3">bc1q...（62字符）</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono text-xs">sh(wsh(sortedmulti(...)))</td>
+          <td class="p-3">P2SH-P2WSH 排序多簽</td>
+          <td class="p-3">3...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實際範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2-of-3 公司錢包</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+使用 P2WSH 的 2-of-3 多簽：
+
+wsh(sortedmulti(2,
+  [aabbccdd/48'/0'/0'/2']xpub6CEO.../0/*,
+  [11223344/48'/0'/0'/2']xpub6CFO.../0/*,
+  [55667788/48'/0'/0'/2']xpub6CTO.../0/*
+))#checksum
+
+說明：
+• 48'/0'/0'/2' = BIP-48 多簽派生路徑
+• 2' = 腳本類型（2 = P2WSH）
+• 三個硬體錢包各持有一個 xpub
+• 任意兩個可以簽署交易</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3-of-5 託管</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+wsh(sortedmulti(3,
+  [fp1/48'/0'/0'/2']xpub_user1.../0/*,
+  [fp2/48'/0'/0'/2']xpub_user2.../0/*,
+  [fp3/48'/0'/0'/2']xpub_backup.../0/*,
+  [fp4/48'/0'/0'/2']xpub_custodian1.../0/*,
+  [fp5/48'/0'/0'/2']xpub_custodian2.../0/*
+))#checksum
+
+配置：
+• 用戶持有 2 個密鑰
+• 備份密鑰 1 個
+• 託管商持有 2 個密鑰
+• 任意 3 個可以恢復資金</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">腳本大小限制</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>
+        <strong>P2SH</strong>：贖回腳本最大 520 bytes → 最多約 15 個公鑰
+      </li>
+      <li>
+        <strong>P2WSH</strong>：見證腳本最大 10,000 bytes → 理論上更多公鑰
+      </li>
+      <li>
+        <strong>標準化</strong>：標準交易規則可能進一步限制
+      </li>
+      <li>
+        <strong>Taproot</strong>：對於更大的多簽，考慮使用 MuSig2 或 FROST
+      </li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">簽章驗證</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+花費 2-of-3 多簽：
+
+witness（對於 P2WSH）:
+  OP_0              // CHECKMULTISIG bug（需要額外的空元素）
+  &lt;sig_A&gt;           // 對應公鑰 A 的簽章
+  &lt;sig_B&gt;           // 對應公鑰 B 的簽章
+  &lt;witnessScript&gt;   // 完整的多簽腳本
+
+重要：簽章順序必須與腳本中公鑰順序一致！
+
+正確：sig_A, sig_B（假設腳本中 A 在 B 前面）
+錯誤：sig_B, sig_A（會驗證失敗）</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-383 定義了多簽描述符函數。推薦使用 sortedmulti() 而非 multi()，
+    因為它提供確定性的密鑰排序，使錢包恢復更加可靠。
+    多簽描述符需要包裝在 sh() 或 wsh() 中才能生成有效地址。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-383 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/learn/intermediate/multisig" class="text-bitcoin-500 hover:underline">
+          多簽錢包入門
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0327" class="text-bitcoin-500 hover:underline">
+          BIP-327: MuSig2（更高效的多簽）
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>

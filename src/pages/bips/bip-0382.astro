@@ -1,0 +1,374 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+---
+
+<ArticleLayout
+  title="BIP-382: SegWit 輸出描述符"
+  description="定義 wpkh() 和 wsh() 描述符函數，用於原生隔離見證腳本類型。"
+  breadcrumbs={[
+    { label: 'BIPs', href: '/bips/' },
+    { label: 'BIP-382' },
+  ]}
+  tags={['Informational', 'Final']}
+  author="Pieter Wuille, Andrew Chow"
+  date={new Date('2021-06-27')}
+  prevPage={{ title: 'BIP-381: 非 SegWit 描述符', href: '/bips/bip-0381' }}
+  nextPage={{ title: 'BIP-383: 多簽描述符', href: '/bips/bip-0383' }}
+>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">382</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">Informational</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant="success" size="sm">Final</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">依賴</span>
+        <p class="font-semibold text-[var(--text-primary)]">BIP-141, 380</p>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BIP-382 定義了兩個描述符函數，用於表達原生隔離見證（Native SegWit）腳本：
+    <code class="px-1 py-0.5 rounded bg-[var(--bg-secondary)]">wpkh()</code>（Pay-to-Witness-PubKey-Hash）和
+    <code class="px-1 py-0.5 rounded bg-[var(--bg-secondary)]">wsh()</code>（Pay-to-Witness-Script-Hash）。
+    這些對應 SegWit v0 見證程序，使用 Bech32 地址格式。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">wpkh() — Pay-to-Witness-PubKey-Hash</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">格式</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+語法：wpkh(KEY)
+
+輸出腳本（見證程序 v0）：
+OP_0 &lt;20-byte-pubkey-hash&gt;
+
+範例：
+wpkh([d34db33f/84'/0'/0']xpub6ERApfZ.../0/*)
+
+生成的腳本：
+00 14 &lt;20-byte-hash&gt;
+│   │   └─ 公鑰的 HASH160
+│   └─ OP_PUSHBYTES_20
+└─ OP_0（見證版本 0）
+
+對應地址：bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">見證結構</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+花費 P2WPKH 輸出時：
+
+scriptSig: （空）
+
+witness:
+  &lt;signature&gt;     // DER 編碼簽章 + SIGHASH 標記
+  &lt;pubkey&gt;        // 33 bytes 壓縮公鑰
+
+驗證邏輯：
+1. 檢查見證程序長度 = 20 bytes
+2. 驗證 HASH160(pubkey) = 見證程序
+3. 驗證簽章對應公鑰</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">BIP-84 錢包</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">標準 Native SegWit 錢包</h4>
+    <pre class="text-xs font-mono overflow-x-auto">
+wpkh([d34db33f/84'/0'/0']xpub6CUGRUonZSQ4TWtTMmz.../0/*)#checksum
+
+派生路徑解析：
+m/84'/0'/0'/0/*
+  │    │   │   │  └─ 地址索引
+  │    │   │   └─ 接收鏈（0=接收，1=找零）
+  │    │   └─ 帳戶索引
+  │    └─ 幣種（0=BTC）
+  └─ BIP-84 用途（Native SegWit）</pre>
+    <p class="text-sm text-[var(--text-secondary)] mt-3">
+      BIP-84 是 Native SegWit 錢包的標準派生路徑。
+    </p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">地址格式</h3>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">主網</h4>
+      <p class="text-sm font-mono text-bitcoin-500 break-all">
+        bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+      </p>
+      <p class="text-xs text-[var(--text-tertiary)] mt-2">
+        前綴：bc1q（q 表示版本 0 + 長度 20）
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">測試網</h4>
+      <p class="text-sm font-mono text-[var(--text-secondary)] break-all">
+        tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx
+      </p>
+      <p class="text-xs text-[var(--text-tertiary)] mt-2">
+        前綴：tb1q
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">wsh() — Pay-to-Witness-Script-Hash</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">格式</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+語法：wsh(SCRIPT)
+
+輸出腳本（見證程序 v0）：
+OP_0 &lt;32-byte-script-hash&gt;
+
+範例：
+wsh(multi(2, KEY1, KEY2, KEY3))
+
+生成的腳本：
+00 20 &lt;32-byte-hash&gt;
+│   │   └─ 見證腳本的 SHA256
+│   └─ OP_PUSHBYTES_32
+└─ OP_0（見證版本 0）
+
+對應地址：bc1q...（42 字符，比 P2WPKH 長）</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">見證結構</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+花費 P2WSH 輸出時（以 2-of-3 多簽為例）：
+
+scriptSig: （空）
+
+witness:
+  OP_0              // 多簽 bug 的空佔位符
+  &lt;sig1&gt;            // 第一個簽章
+  &lt;sig2&gt;            // 第二個簽章
+  &lt;witnessScript&gt;   // 完整的多簽腳本
+
+witnessScript:
+  OP_2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; OP_3 OP_CHECKMULTISIG
+
+驗證邏輯：
+1. 檢查見證程序長度 = 32 bytes
+2. 驗證 SHA256(witnessScript) = 見證程序
+3. 執行 witnessScript 驗證簽章</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">可包裝的腳本</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">描述符</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">wsh(multi(k, K1, ..., Kn))</td>
+          <td class="p-3">k-of-n 多簽</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">wsh(sortedmulti(k, K1, ..., Kn))</td>
+          <td class="p-3">排序多簽（確定性）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3 font-mono text-xs">wsh(pk(KEY))</td>
+          <td class="p-3">單密鑰（少見）</td>
+        </tr>
+        <tr>
+          <td class="p-3 font-mono text-xs">wsh(pkh(KEY))</td>
+          <td class="p-3">公鑰哈希（少見）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SegWit 優勢</h2>
+
+  <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">費用節省</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        見證資料只計算 1/4 權重，降低交易費用約 30-40%。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">修復延展性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        簽章不再影響 txid，解決第三方延展性問題。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">錯誤檢測</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Bech32 地址有強大的錯誤檢測能力。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">腳本版本控制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        見證版本允許未來腳本升級（如 Taproot）。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">wpkh vs wsh 比較</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">特性</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">wpkh()</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">wsh()</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">見證程序長度</td>
+          <td class="p-3">20 bytes</td>
+          <td class="p-3">32 bytes</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">地址長度</td>
+          <td class="p-3">42 字符</td>
+          <td class="p-3">62 字符</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">哈希算法</td>
+          <td class="p-3">HASH160</td>
+          <td class="p-3">SHA256</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">用途</td>
+          <td class="p-3">單簽</td>
+          <td class="p-3">複雜腳本</td>
+        </tr>
+        <tr>
+          <td class="p-3">典型見證大小</td>
+          <td class="p-3">~107 bytes</td>
+          <td class="p-3">取決於腳本</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">包裝在 sh() 中</h2>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    為了與不支援原生 SegWit 的錢包相容，可以將 SegWit 描述符包裝在 sh() 中：
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+相容性包裝：
+
+sh(wpkh(KEY))  → P2SH-P2WPKH（BIP-49，地址以 "3" 開頭）
+sh(wsh(...))   → P2SH-P2WSH（複雜腳本的相容模式）
+
+範例：
+sh(wpkh([d34db33f/49'/0'/0']xpub.../0/*))
+
+結構：
+┌─────────────────────────────────────────┐
+│ P2SH 輸出                               │
+│   OP_HASH160 &lt;script-hash&gt; OP_EQUAL    │
+├─────────────────────────────────────────┤
+│ redeemScript（P2WPKH 見證程序）         │
+│   OP_0 &lt;20-byte-pubkey-hash&gt;           │
+├─────────────────────────────────────────┤
+│ witness                                 │
+│   [signature, pubkey]                   │
+└─────────────────────────────────────────┘</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰限制</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-3">壓縮公鑰要求</h4>
+    <p class="text-sm text-[var(--text-secondary)] mb-3">
+      SegWit 描述符要求使用壓縮公鑰（33 bytes）。非壓縮公鑰（65 bytes）不被接受：
+    </p>
+    <pre class="text-xs font-mono bg-[var(--bg-primary)] p-2 rounded">
+有效：wpkh(02c6047f9441ed7d6d...)  // 33 bytes 壓縮公鑰
+無效：wpkh(04c6047f9441ed7d6d...)  // 65 bytes 非壓縮公鑰</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Bitcoin Core 範例</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <pre class="text-sm overflow-x-auto font-mono">
+# 創建原生 SegWit 錢包
+$ bitcoin-cli createwallet "segwit_wallet" false false "" false true
+
+# 導入 wpkh 描述符
+$ bitcoin-cli -rpcwallet=segwit_wallet importdescriptors '[
+  &#123;
+    "desc": "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)#checksum",
+    "timestamp": "now",
+    "range": [0, 999],
+    "internal": false
+  &#125;,
+  &#123;
+    "desc": "wpkh([d34db33f/84h/0h/0h]xpub.../1/*)#checksum",
+    "timestamp": "now",
+    "range": [0, 999],
+    "internal": true
+  &#125;
+]'
+
+# 獲取新地址
+$ bitcoin-cli -rpcwallet=segwit_wallet getnewaddress "" "bech32"
+bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-382 定義了原生 SegWit 的描述符函數。wpkh() 適用於單簽錢包，
+    而 wsh() 支援多簽等複雜腳本。這些描述符生成 bc1q 開頭的 Bech32 地址，
+    提供更低的交易費用和更好的錯誤檢測。對於 Taproot，請參考 BIP-386 的 tr() 函數。
+  </p>
+
+  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+      <li>
+        <a href="https://github.com/bitcoin/bips/blob/master/bip-0382.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+          BIP-382 完整規格
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">
+          BIP-141: Segregated Witness
+        </a>
+      </li>
+      <li>
+        <a href="/bips/bip-0386" class="text-bitcoin-500 hover:underline">
+          BIP-386: Taproot 描述符
+        </a>
+      </li>
+    </ul>
+  </div>
+</ArticleLayout>
