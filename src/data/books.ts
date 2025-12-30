@@ -4,7 +4,6 @@ export interface Book {
   subtitle: string;
   author: string;
   translator: string;
-  coverImage: string;
   externalUrl: string;
   description: string;
   topics: string[];
@@ -20,7 +19,6 @@ export const books: Book[] = [
     subtitle: 'Mastering Bitcoin 第二版',
     author: 'Andreas M. Antonopoulos',
     translator: 'Cypherpunks Core',
-    coverImage: '/images/books/mastering-bitcoin.svg',
     externalUrl: 'https://mastering-bitcoin.doge.tg/',
     description: '比特幣技術的標準教材。交易、錢包、挖礦、網路協議都有講。',
     topics: ['交易', '錢包', '挖礦', '網路協議'],
@@ -34,7 +32,6 @@ export const books: Book[] = [
     subtitle: 'Mastering Bitcoin 3rd Edition',
     author: 'Andreas M. Antonopoulos, David A. Harding',
     translator: '社群翻譯',
-    coverImage: '/images/books/mastering-bitcoin-3rd.svg',
     externalUrl: 'https://bitcoinbook-3nd-zh.doge.tg/',
     description: '2023 年新版，加了 SegWit、Taproot、Schnorr 等內容。',
     topics: ['SegWit', 'Taproot', 'Schnorr', 'PSBT'],
@@ -48,7 +45,6 @@ export const books: Book[] = [
     subtitle: 'Programming Bitcoin',
     author: 'Jimmy Song',
     translator: '社群翻譯',
-    coverImage: '/images/books/programming-bitcoin.svg',
     externalUrl: 'https://programming-bitcoin-zh.doge.tg/#/',
     description: '用 Python 從頭寫一個比特幣。橢圓曲線、交易、Script 都自己實作。',
     topics: ['Python', '橢圓曲線', '交易建構', 'Script'],
@@ -62,7 +58,6 @@ export const books: Book[] = [
     subtitle: 'Mastering the Lightning Network',
     author: 'Andreas M. Antonopoulos, Olaoluwa Osuntokun, Rene Pickhardt',
     translator: '社群翻譯',
-    coverImage: '/images/books/mastering-lightning.svg',
     externalUrl: 'https://lnbook-zh.doge.tg/',
     description: '閃電網路怎麼運作的。支付通道、HTLC、路由、實作。',
     topics: ['支付通道', 'HTLC', '路由', '發票'],
@@ -76,7 +71,6 @@ export const books: Book[] = [
     subtitle: 'The Blocksize War',
     author: 'Jonathan Bier',
     translator: '社群翻譯',
-    coverImage: '/images/books/blocksize-war.svg',
     externalUrl: 'https://the-blocksize-war.doge.tg/#/',
     description: '2015-2017 比特幣社群為了區塊大小吵翻天。這本書記錄了整個過程。',
     topics: ['歷史', '治理', '分叉', '社群'],
@@ -90,7 +84,6 @@ export const books: Book[] = [
     subtitle: 'Bitcoin: A Peer-to-Peer Electronic Cash System',
     author: 'Satoshi Nakamoto',
     translator: 'Cypherpunks Core',
-    coverImage: '/images/books/bitcoin-whitepaper.svg',
     externalUrl: 'https://cypherpunks-core.github.io/books/BitcoinWhitePaper/',
     description: '2008 年中本聰發的那篇論文。9 頁，一切的起點。',
     topics: ['白皮書', '原理', '歷史'],
@@ -104,7 +97,6 @@ export const books: Book[] = [
     subtitle: 'The Bitcoin Lightning Network',
     author: 'Joseph Poon, Thaddeus Dryja',
     translator: 'Cypherpunks Core',
-    coverImage: '/images/books/lightning-whitepaper.svg',
     externalUrl: 'https://cypherpunks-core.github.io/books/LightningNetworkWhitePaper/',
     description: '2016 年的閃電網路白皮書。解釋支付通道怎麼讓比特幣擴展。',
     topics: ['白皮書', '支付通道', '擴展'],
