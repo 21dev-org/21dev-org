@@ -1,0 +1,279 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="錢包 RPC"
+  description="Bitcoin Core 錢包相關 RPC 命令，包括地址生成、交易建立和簽名。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '錢包 RPC' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'RPC 接口指南', href: '/tech/bitcoin-core/rpc-guide' }}
+  nextPage={{ title: '區塊鏈 RPC', href: '/tech/bitcoin-core/rpc-blockchain' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錢包管理</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Bitcoin Core 支持多錢包模式，每個錢包是獨立的密鑰和交易數據庫。
+    新版本使用描述符錢包（Descriptor Wallet），提供更好的備份和恢復能力。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">創建與加載錢包</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 創建新錢包
+bitcoin-cli createwallet "mywallet"
+
+# 創建描述符錢包（推薦）
+bitcoin-cli createwallet "mywallet" false false "" false true
+
+# 加載已有錢包
+bitcoin-cli loadwallet "mywallet"
+
+# 卸載錢包
+bitcoin-cli unloadwallet "mywallet"
+
+# 列出已加載的錢包
+bitcoin-cli listwallets`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">錢包信息</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取錢包信息
+bitcoin-cli getwalletinfo
+
+# 返回範例
+{
+  "walletname": "mywallet",
+  "walletversion": 169900,
+  "format": "sqlite",
+  "balance": 0.01234567,
+  "unconfirmed_balance": 0.00000000,
+  "immature_balance": 0.00000000,
+  "txcount": 42,
+  "keypoolsize": 1000,
+  "paytxfee": 0.00000000,
+  "private_keys_enabled": true,
+  "avoid_reuse": false,
+  "scanning": false,
+  "descriptors": true
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址管理</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">生成地址</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 生成新地址（預設類型）
+bitcoin-cli getnewaddress
+
+# 指定地址類型
+bitcoin-cli getnewaddress "" "legacy"      # P2PKH (1...)
+bitcoin-cli getnewaddress "" "p2sh-segwit" # P2SH-P2WPKH (3...)
+bitcoin-cli getnewaddress "" "bech32"      # P2WPKH (bc1q...)
+bitcoin-cli getnewaddress "" "bech32m"     # P2TR (bc1p...)
+
+# 帶標籤
+bitcoin-cli getnewaddress "savings" "bech32m"
+
+# 生成找零地址
+bitcoin-cli getrawchangeaddress "bech32m"`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">地址信息</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取地址信息
+bitcoin-cli getaddressinfo "bc1q..."
+
+# 驗證地址
+bitcoin-cli validateaddress "bc1q..."
+
+# 列出地址分組
+bitcoin-cli listlabels
+
+# 獲取標籤下的地址
+bitcoin-cli getaddressesbylabel "savings"`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看餘額與 UTXO</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取總餘額
+bitcoin-cli getbalance
+
+# 獲取各地址餘額（已棄用，改用 listunspent）
+bitcoin-cli getbalances
+
+# 列出未花費輸出
+bitcoin-cli listunspent
+
+# 過濾 UTXO
+bitcoin-cli listunspent 6 9999999 '["bc1q..."]'  # 特定地址
+bitcoin-cli listunspent 1 9999999 '[]' true      # 包含不安全的
+bitcoin-cli listunspent 0                         # 包含未確認的`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發送交易</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">簡單發送</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 發送到地址
+bitcoin-cli sendtoaddress "bc1q..." 0.001
+
+# 帶手續費率
+bitcoin-cli sendtoaddress "bc1q..." 0.001 "" "" false true 6 "unset" null false 10
+
+# 發送給多個接收者
+bitcoin-cli sendmany "" '{"bc1q...":0.001,"bc1p...":0.002}'`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">原始交易（完全控制）</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 1. 創建原始交易
+bitcoin-cli createrawtransaction \\
+  '[{"txid":"...","vout":0}]' \\
+  '{"bc1q...":0.001,"bc1q...(change)":0.0089}'
+
+# 2. 簽名交易
+bitcoin-cli signrawtransactionwithwallet "<hex>"
+
+# 3. 廣播交易
+bitcoin-cli sendrawtransaction "<signed_hex>"`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">PSBT 工作流程（推薦）</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 1. 創建 PSBT
+bitcoin-cli walletcreatefundedpsbt \\
+  '[]' \\
+  '{"bc1q...":0.001}' \\
+  0 \\
+  '{"fee_rate":10}'
+
+# 2. 簽名 PSBT
+bitcoin-cli walletprocesspsbt "<psbt>"
+
+# 3. 完成 PSBT
+bitcoin-cli finalizepsbt "<psbt>"
+
+# 4. 廣播
+bitcoin-cli sendrawtransaction "<hex>"`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>提示：</strong>
+      PSBT（部分簽名的比特幣交易）是多簽和硬體錢包整合的標準格式。
+      詳見 <a href="/bips/bip-0174" class="underline hover:no-underline">BIP-174</a>。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易歷史</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 列出所有交易
+bitcoin-cli listtransactions
+
+# 限制數量
+bitcoin-cli listtransactions "*" 10  # 最近 10 筆
+
+# 獲取特定交易
+bitcoin-cli gettransaction "<txid>"
+
+# 列出最近收到的
+bitcoin-cli listreceivedbyaddress`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手續費管理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 設定錢包預設手續費
+bitcoin-cli settxfee 0.00001  # BTC/kB
+
+# 估算手續費
+bitcoin-cli estimatesmartfee 6   # 6 區塊確認
+bitcoin-cli estimatesmartfee 1   # 下一區塊
+
+# RBF 加速交易
+bitcoin-cli bumpfee "<txid>"
+bitcoin-cli bumpfee "<txid>" '{"fee_rate":20}'`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錢包備份與恢復</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 備份錢包
+bitcoin-cli backupwallet "/path/to/backup.dat"
+
+# 導出所有私鑰（僅限傳統錢包）
+bitcoin-cli dumpwallet "/path/to/keys.txt"
+
+# 導入私鑰
+bitcoin-cli importprivkey "<wif>"
+
+# 導出描述符
+bitcoin-cli listdescriptors true  # 包含私鑰
+
+# 導入描述符
+bitcoin-cli importdescriptors '[{"desc":"...","timestamp":"now"}]'`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常用命令速查</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">命令</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getnewaddress</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">生成新地址</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getbalance</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">獲取餘額</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">listunspent</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">列出 UTXO</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">sendtoaddress</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">發送比特幣</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">listtransactions</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">交易歷史</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">walletpassphrase</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">解鎖加密錢包</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">encryptwallet</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">加密錢包</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">完整文檔：</strong>
+      使用 <code class="text-bitcoin-500">bitcoin-cli help &lt;命令&gt;</code> 查看每個命令的詳細參數說明。
+    </p>
+  </div>
+</ArticleLayout>

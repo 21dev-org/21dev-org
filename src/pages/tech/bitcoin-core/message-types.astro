@@ -1,0 +1,261 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="P2P 訊息類型"
+  description="比特幣 P2P 協議中的各種訊息類型，包括控制訊息、數據訊息和區塊傳播。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '訊息類型' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'P2P 協議', href: '/tech/bitcoin-core/p2p-protocol' }}
+  nextPage={{ title: '節點發現', href: '/tech/bitcoin-core/node-discovery' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息分類</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣 P2P 協議定義了多種訊息類型，可分為控制訊息、數據請求和數據回應三大類。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">控制訊息</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">version / verack</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        握手訊息。version 包含節點信息，verack 確認版本接受。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">ping / pong</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        心跳檢測。ping 包含 nonce，pong 回應相同 nonce。用於測量延遲和檢測死連線。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">sendheaders</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        請求對方直接發送新區塊頭，而非 inv 通知。提高區塊傳播效率。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">sendcmpct</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        啟用 Compact Block 協議（BIP-152）。減少區塊傳播所需頻寬。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">feefilter</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        設定交易過濾閾值。低於此費率的交易不會被中繼到此節點。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">數據請求訊息</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">訊息</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">回應</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">getdata</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">請求特定物件（區塊/交易）</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">block / tx</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">getblocks</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">請求區塊雜湊列表</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">inv</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">getheaders</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">請求區塊頭（最多 2000 個）</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">headers</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">mempool</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">請求 mempool 中的交易</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">inv (多個)</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">getaddr</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">請求節點地址</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">addr / addrv2</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">數據回應訊息</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">inv</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        庫存通知。告知對方自己有哪些區塊或交易可用。接收方可用 getdata 請求。
+      </p>
+      <div class="mt-2 p-2 bg-[var(--bg-secondary)] rounded font-mono text-xs">
+        類型: MSG_TX (1), MSG_BLOCK (2), MSG_FILTERED_BLOCK (3), MSG_CMPCT_BLOCK (4)
+      </div>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">block</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        完整區塊數據，包含區塊頭和所有交易。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">tx</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        單筆交易數據。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">headers</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        區塊頭列表。用於 headers-first 同步，每個區塊頭 80 bytes。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-mono font-semibold text-bitcoin-500 mb-2">addr / addrv2</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點地址列表。addrv2 (BIP-155) 支援 Tor v3、I2P 等地址格式。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Compact Blocks (BIP-152)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Compact Blocks 大幅減少區塊傳播的頻寬需求：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`傳統區塊傳播:
+1. 節點 A 發送 inv (區塊雜湊)
+2. 節點 B 發送 getdata
+3. 節點 A 發送完整 block (~1.5 MB)
+
+Compact Block 傳播:
+1. 節點 A 發送 cmpctblock
+   - 區塊頭
+   - 短交易 ID (6 bytes each)
+2. 節點 B 從 mempool 重建區塊
+3. 如有缺失，發送 getblocktxn 請求
+4. 節點 A 發送 blocktxn (缺失的交易)
+
+效果: 約 99% 的交易已在 mempool，只需傳輸 ~20 KB`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">高頻寬模式 vs 低頻寬模式</h3>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">高頻寬模式</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點主動發送 cmpctblock，不等待 getdata。
+        更快但可能重複傳送。用於信任的對等方。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">低頻寬模式</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        先發送 inv，等待 getdata 後才發送 cmpctblock。
+        避免浪費頻寬，是預設模式。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易傳播流程</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`1. 用戶廣播交易到節點 A
+2. 節點 A 驗證交易有效性
+3. 節點 A 加入 mempool
+4. 節點 A 發送 inv 到所有連接的節點
+5. 節點 B 收到 inv，檢查是否已有
+6. 節點 B 發送 getdata 請求交易
+7. 節點 A 發送 tx
+8. 節點 B 驗證、加入 mempool、繼續廣播
+
+隱私優化 (BIP-133 Dandelion):
+- Stem 階段: 交易沿隨機路徑傳播
+- Fluff 階段: 正常廣播
+- 效果: 難以追蹤交易來源`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">區塊同步流程</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Headers-First 同步 (現代方法):
+
+1. 發送 getheaders (從創世區塊開始)
+2. 收到 headers (最多 2000 個區塊頭)
+3. 驗證區塊頭的 PoW 和連結
+4. 重複 1-3 直到達到最新高度
+5. 對每個區塊發送 getdata
+6. 下載並驗證完整區塊
+7. 並行下載多個區塊加速同步
+
+優點:
+- 先驗證 PoW，避免下載無效區塊
+- 可並行下載區塊
+- IBD (初始區塊下載) 更快`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息速查表</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">類別</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">訊息</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">握手</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">version, verack, wtxidrelay, sendaddrv2</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">心跳</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">ping, pong</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">地址</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getaddr, addr, addrv2</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">區塊</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getheaders, headers, getdata, block, inv</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">交易</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">tx, inv, mempool</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">緊湊區塊</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">sendcmpct, cmpctblock, getblocktxn, blocktxn</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">相關 BIP：</strong>
+      <a href="/bips/bip-0152" class="text-bitcoin-500 hover:underline">BIP-152</a> (Compact Blocks)、
+      <a href="/bips/bip-0324" class="text-bitcoin-500 hover:underline">BIP-324</a> (v2 Transport)
+    </p>
+  </div>
+</ArticleLayout>

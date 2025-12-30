@@ -1,0 +1,247 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="UTXO 模型"
+  description="了解比特幣的未花費交易輸出模型，以及它如何追蹤所有權和防止雙重支付。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'UTXO 模型' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '交易結構', href: '/tech/bitcoin-core/transaction' }}
+  nextPage={{ title: 'RPC 接口指南', href: '/tech/bitcoin-core/rpc-guide' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 UTXO？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    UTXO（Unspent Transaction Output，未花費交易輸出）是比特幣追蹤所有權的基本單位。
+    不同於銀行帳戶餘額，比特幣沒有「餘額」概念，只有一堆可花費的 UTXO。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>類比：</strong> 把 UTXO 想像成硬幣或紙幣。你的「餘額」是你錢包裡所有硬幣的總和，
+      花費時必須整張/整個使用，多餘的找零會變成新的 UTXO。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO vs 帳戶模型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    以太坊等區塊鏈使用帳戶模型，比特幣使用 UTXO 模型。兩者各有優缺點：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">特性</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">UTXO 模型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">帳戶模型</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">狀態表示</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">UTXO 集合</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">帳戶餘額</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">並行處理</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">容易（不同 UTXO）</td>
+          <td class="px-4 py-3 text-red-600 dark:text-red-400">需要 nonce 排序</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">隱私性</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">每筆交易可用新地址</td>
+          <td class="px-4 py-3 text-red-600 dark:text-red-400">地址重複使用</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">餘額查詢</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">需要掃描 UTXO</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">直接讀取</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">智能合約</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">有限（無狀態）</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">強大（有狀態）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">雙重支付檢測</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">簡單（UTXO 存在檢查）</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">需要 nonce 檢查</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 生命週期</h2>
+
+  <div class="not-prose mb-6 space-y-3">
+    {[
+      { step: '1', title: '創建', desc: '交易輸出被創建，成為新的 UTXO', color: 'bg-green-500' },
+      { step: '2', title: '存在', desc: 'UTXO 存在於 UTXO 集合中，可被花費', color: 'bg-blue-500' },
+      { step: '3', title: '花費', desc: '被新交易引用為輸入', color: 'bg-yellow-500' },
+      { step: '4', title: '銷毀', desc: '從 UTXO 集合中移除', color: 'bg-red-500' },
+    ].map((item) => (
+      <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+        <div class={`flex-shrink-0 w-8 h-8 rounded-full ${item.color} text-white flex items-center justify-center font-bold text-sm`}>
+          {item.step}
+        </div>
+        <div>
+          <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+          <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 集合</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bitcoin Core 維護一個 UTXO 集合（也稱為 chainstate），存儲所有未花費的輸出。
+    這是驗證新交易所需的關鍵數據結構。
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="font-semibold text-[var(--text-primary)] mb-2">UTXO 集合統計</h3>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 約 8000 萬個 UTXO（2024）</li>
+        <li>• 數據庫大小約 8-10 GB</li>
+        <li>• 使用 LevelDB 存儲</li>
+        <li>• 存放在 chainstate/ 目錄</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="font-semibold text-[var(--text-primary)] mb-2">為什麼重要？</h3>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 快速驗證交易有效性</li>
+        <li>• 無需掃描整個區塊鏈</li>
+        <li>• 記憶體和磁碟效率</li>
+        <li>• 啟用修剪模式</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 數據結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個 UTXO 由以下信息唯一標識：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`UTXO = {
+  txid:         // 創建此輸出的交易 ID (32 bytes)
+  vout:         // 輸出索引 (4 bytes)
+
+  // 存儲的數據
+  value:        // 金額 (satoshis)
+  scriptPubKey: // 鎖定腳本
+  height:       // 創建區塊高度
+  coinbase:     // 是否為 coinbase 輸出
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Coin Selection（選幣）</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當發送比特幣時，錢包需要選擇哪些 UTXO 作為輸入。這稱為 Coin Selection，
+    會影響手續費和隱私：
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">常見策略</h3>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Branch and Bound</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        尋找精確匹配的 UTXO 組合，避免找零輸出。Bitcoin Core 優先使用此策略。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Knapsack</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        隨機選擇 UTXO，嘗試找到接近目標金額的組合。較舊的回退策略。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Largest First</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        優先使用最大的 UTXO。簡單但可能不是最優的費用效率。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 膨脹與粉塵</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">UTXO 膨脹問題</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每創建一個 UTXO，全網所有節點都需要存儲它直到被花費。
+    過多的小額 UTXO 會增加節點的存儲負擔。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">粉塵輸出 (Dust)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    粉塵是指金額太小，以至於花費它的手續費超過其價值的 UTXO。
+    Bitcoin Core 有粉塵限制防止創建這類輸出：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 粉塵閾值計算
+粉塵閾值 = 花費此輸出的最小交易大小 × 粉塵費率
+
+# 不同輸出類型的粉塵閾值（以 3 sat/vB 計算）
+P2PKH:  546 satoshis
+P2SH:   540 satoshis
+P2WPKH: 294 satoshis
+P2WSH:  330 satoshis
+P2TR:   330 satoshis`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 管理建議</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">良好實踐</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 低費率時合併小 UTXO</li>
+        <li>• 使用 SegWit 地址</li>
+        <li>• 避免地址重複使用</li>
+        <li>• 定期整理錢包</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">避免</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 創建大量小額 UTXO</li>
+        <li>• 在高費率時合併</li>
+        <li>• 持有粉塵輸出</li>
+        <li>• 忽略 UTXO 管理</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看 UTXO</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 查看特定 UTXO
+bitcoin-cli gettxout <txid> <vout>
+
+# 查看 UTXO 集合統計
+bitcoin-cli gettxoutsetinfo
+
+# 列出錢包的 UTXO
+bitcoin-cli listunspent
+
+# 掃描 UTXO 集合
+bitcoin-cli scantxoutset "start" '["addr(<address>)"]'`}</pre>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">延伸閱讀：</strong>
+      <a href="/learn/intermediate/utxo-model" class="text-bitcoin-500 hover:underline">學習中心的 UTXO 模型</a>
+      有更詳細的概念說明和圖解。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,300 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="區塊結構"
+  description="了解比特幣區塊的內部結構，包括區塊頭、Merkle 樹和 Coinbase 交易。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '區塊結構' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: '共識機制', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: '交易結構', href: '/tech/bitcoin-core/transaction' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">區塊概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣區塊是交易的容器，大約每 10 分鐘產生一個。
+    每個區塊包含兩個主要部分：區塊頭（Block Header）和交易列表（Transactions）。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`┌─────────────────────────────────────┐
+│           Block Header              │
+│         (固定 80 bytes)              │
+├─────────────────────────────────────┤
+│          Transaction Count          │
+│         (1-9 bytes, VarInt)         │
+├─────────────────────────────────────┤
+│           Transactions              │
+│    ┌─────────────────────────┐      │
+│    │  Coinbase Transaction   │      │
+│    └─────────────────────────┘      │
+│    ┌─────────────────────────┐      │
+│    │    Transaction 1        │      │
+│    └─────────────────────────┘      │
+│    ┌─────────────────────────┐      │
+│    │    Transaction 2        │      │
+│    └─────────────────────────┘      │
+│              ...                    │
+└─────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">區塊頭 (Block Header)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    區塊頭固定為 80 bytes，包含 6 個欄位。這 80 bytes 經過雙重 SHA-256 雜湊後，
+    就是我們常說的「區塊雜湊」（Block Hash）。
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">欄位</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">大小</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">version</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">4 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">區塊版本號，用於軟分叉信號</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">prev_block</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">32 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">前一區塊的雜湊值</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">merkle_root</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">32 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">所有交易的 Merkle 樹根</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">timestamp</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">4 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Unix 時間戳（秒）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">bits</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">4 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">難度目標的壓縮表示</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">nonce</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">4 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">礦工用於 PoW 的隨機數</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">版本號 (Version)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    版本號不僅表示區塊格式版本，在 BIP-9 之後還用作軟分叉的信號機制。
+    礦工可以在版本號的特定位元表示對提案的支持。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">難度目標 (Bits)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    <code>bits</code> 欄位是難度目標的壓縮表示，採用「指數-係數」格式。
+    完整的 256 位目標值從這 4 bytes 計算得出：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# bits = 0x1903a30c 為例
+指數 = 0x19 = 25
+係數 = 0x03a30c
+
+目標 = 係數 × 2^(8×(指數-3))
+     = 0x03a30c × 2^(8×22)
+     = 0x0000000000000003a30c00000000000000000000000000000000000000000000`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Merkle 樹</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Merkle 樹是一種二元雜湊樹，用於高效地彙總區塊中的所有交易。
+    只需 32 bytes 的 Merkle 根，就能代表數千筆交易。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`                    Merkle Root
+                         │
+            ┌────────────┴────────────┐
+            │                         │
+         Hash AB                   Hash CD
+            │                         │
+      ┌─────┴─────┐             ┌─────┴─────┐
+      │           │             │           │
+   Hash A      Hash B        Hash C      Hash D
+      │           │             │           │
+    Tx A        Tx B          Tx C        Tx D`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Merkle 證明 (SPV Proof)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Merkle 樹允許輕節點驗證交易是否包含在區塊中，而無需下載完整區塊。
+    只需提供交易雜湊和「兄弟節點」路徑，即可重建到 Merkle 根。
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 高效的交易存在證明</li>
+        <li>• 證明大小 O(log n)</li>
+        <li>• 適合輕錢包</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">限制</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 無法證明交易不存在</li>
+        <li>• 依賴節點誠實提供證明</li>
+        <li>• 需要區塊頭鏈驗證</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Coinbase 交易</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個區塊的第一筆交易稱為 Coinbase 交易，它有特殊的結構和用途：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">創造新幣</strong>：這是唯一能憑空創造比特幣的交易</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">收取手續費</strong>：區塊中所有交易的手續費歸礦工</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">無輸入</strong>：輸入欄位為特殊的「null」輸入</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">100 區塊成熟期</strong>：需等待 100 個確認才能花費</span>
+    </li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">區塊獎勵</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    區塊獎勵每 210,000 個區塊（約 4 年）減半：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">時期</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">區塊範圍</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">獎勵</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">年份</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">第 1 期</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">0 - 209,999</td>
+          <td class="px-4 py-3 text-bitcoin-500 font-semibold">50 BTC</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">2009-2012</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">第 2 期</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">210,000 - 419,999</td>
+          <td class="px-4 py-3 text-bitcoin-500 font-semibold">25 BTC</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">2012-2016</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">第 3 期</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">420,000 - 629,999</td>
+          <td class="px-4 py-3 text-bitcoin-500 font-semibold">12.5 BTC</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">2016-2020</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">第 4 期</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">630,000 - 839,999</td>
+          <td class="px-4 py-3 text-bitcoin-500 font-semibold">6.25 BTC</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">2020-2024</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">第 5 期</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">840,000 - ...</td>
+          <td class="px-4 py-3 text-bitcoin-500 font-semibold">3.125 BTC</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">2024-2028</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Coinbase 任意數據</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Coinbase 交易的輸入可以包含最多 100 bytes 的任意數據。著名例子：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 創世區塊 (Block 0) 的 Coinbase 數據
+"The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+
+# 這是中本聰留下的時間戳證明，
+# 引用了當天《泰晤士報》的頭條新聞`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">區塊大小限制</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">傳統限制 (1 MB)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    2010 年，中本聰加入了 1 MB 區塊大小限制，以防止垃圾交易攻擊。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">SegWit 後 (4 MWU)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    SegWit 引入了「區塊重量」概念，取代簡單的字節限制：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`區塊重量 = (非見證數據 × 4) + (見證數據 × 1)
+
+最大重量 = 4,000,000 weight units (4 MWU)
+
+# 實際效果
+# - 純傳統交易：最大 ~1 MB
+# - 純 SegWit 交易：最大 ~2.3 MB
+# - 混合交易：介於兩者之間`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看區塊信息</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用 Bitcoin Core RPC 查看區塊詳情：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取最新區塊雜湊
+bitcoin-cli getbestblockhash
+
+# 獲取區塊詳情
+bitcoin-cli getblock <blockhash>
+
+# 獲取區塊頭
+bitcoin-cli getblockheader <blockhash>
+
+# 獲取特定高度的區塊
+bitcoin-cli getblockhash <height>
+bitcoin-cli getblock $(bitcoin-cli getblockhash 0)  # 創世區塊`}</pre>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>相關文檔：</strong>
+      查看 <a href="/tech/bitcoin-core/rpc-blockchain" class="underline hover:no-underline">區塊鏈 RPC</a>
+      了解更多區塊查詢命令。
+    </p>
+  </div>
+</ArticleLayout>

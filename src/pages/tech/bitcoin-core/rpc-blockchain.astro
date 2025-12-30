@@ -1,0 +1,284 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="區塊鏈 RPC"
+  description="Bitcoin Core 區塊鏈查詢相關 RPC 命令，包括區塊、交易和 UTXO 查詢。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '區塊鏈 RPC' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '錢包 RPC', href: '/tech/bitcoin-core/rpc-wallet' }}
+  nextPage={{ title: '網路 RPC', href: '/tech/bitcoin-core/rpc-network' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">鏈狀態查詢</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">getblockchaininfo</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    獲取區塊鏈的整體狀態信息：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`bitcoin-cli getblockchaininfo
+
+# 返回範例
+{
+  "chain": "main",
+  "blocks": 825000,
+  "headers": 825000,
+  "bestblockhash": "00000000000000000002...",
+  "difficulty": 72006146478567.1,
+  "time": 1704067200,
+  "mediantime": 1704063600,
+  "verificationprogress": 0.9999998,
+  "initialblockdownload": false,
+  "chainwork": "00000000000000000000...",
+  "size_on_disk": 590000000000,
+  "pruned": false,
+  "warnings": ""
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">其他狀態命令</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取當前區塊高度
+bitcoin-cli getblockcount
+
+# 獲取最佳區塊雜湊
+bitcoin-cli getbestblockhash
+
+# 獲取難度
+bitcoin-cli getdifficulty
+
+# 獲取鏈上統計
+bitcoin-cli getchaintxstats 144  # 最近 144 區塊`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">區塊查詢</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">getblock</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取區塊（簡要信息）
+bitcoin-cli getblock "<blockhash>" 1
+
+# 獲取區塊（含交易詳情）
+bitcoin-cli getblock "<blockhash>" 2
+
+# 獲取區塊（原始 hex）
+bitcoin-cli getblock "<blockhash>" 0
+
+# 按高度獲取
+bitcoin-cli getblockhash 825000
+bitcoin-cli getblock $(bitcoin-cli getblockhash 825000) 1`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">區塊返回結構</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`{
+  "hash": "00000000000000000002...",
+  "confirmations": 100,
+  "height": 825000,
+  "version": 536870912,
+  "versionHex": "20000000",
+  "merkleroot": "abc123...",
+  "time": 1704067200,
+  "mediantime": 1704063600,
+  "nonce": 123456789,
+  "bits": "1703a30c",
+  "difficulty": 72006146478567.1,
+  "chainwork": "00000000...",
+  "nTx": 3500,
+  "previousblockhash": "00000000...",
+  "nextblockhash": "00000000...",
+  "strippedsize": 999999,
+  "size": 1500000,
+  "weight": 3999996,
+  "tx": ["txid1", "txid2", ...]  // verbosity=1
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">getblockheader</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 只獲取區塊頭（更快）
+bitcoin-cli getblockheader "<blockhash>"
+
+# 獲取原始區塊頭
+bitcoin-cli getblockheader "<blockhash>" false`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易查詢</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">getrawtransaction</h3>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong>
+      需要啟用 <code>txindex=1</code> 才能查詢任意交易，否則只能查詢 mempool 和錢包相關的交易。
+    </p>
+  </div>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取原始交易（hex）
+bitcoin-cli getrawtransaction "<txid>"
+
+# 獲取解碼後的交易
+bitcoin-cli getrawtransaction "<txid>" true
+
+# 指定區塊（不需要 txindex）
+bitcoin-cli getrawtransaction "<txid>" true "<blockhash>"`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">decoderawtransaction</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 解碼原始交易
+bitcoin-cli decoderawtransaction "<hex>"
+
+# 返回結構
+{
+  "txid": "...",
+  "hash": "...",         # wtxid (含 witness)
+  "version": 2,
+  "size": 250,
+  "vsize": 166,          # virtual size
+  "weight": 661,
+  "locktime": 0,
+  "vin": [...],          # 輸入
+  "vout": [...]          # 輸出
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 查詢</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">gettxout</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 查詢特定 UTXO
+bitcoin-cli gettxout "<txid>" <vout>
+
+# 包含未確認交易
+bitcoin-cli gettxout "<txid>" <vout> true
+
+# 返回範例
+{
+  "bestblock": "00000000...",
+  "confirmations": 100,
+  "value": 0.01234567,
+  "scriptPubKey": {
+    "asm": "0 abc123...",
+    "desc": "addr(bc1q...)#checksum",
+    "hex": "0014abc123...",
+    "address": "bc1q...",
+    "type": "witness_v0_keyhash"
+  },
+  "coinbase": false
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">gettxoutsetinfo</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 獲取 UTXO 集合統計（需要時間）
+bitcoin-cli gettxoutsetinfo
+
+# 返回範例
+{
+  "height": 825000,
+  "bestblock": "00000000...",
+  "txouts": 85000000,
+  "bogosize": 6500000000,
+  "muhash": "...",
+  "total_amount": 19500000.00000000,
+  "transactions": 50000000,
+  "disk_size": 8500000000
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">scantxoutset</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 掃描地址的 UTXO（不需要錢包）
+bitcoin-cli scantxoutset "start" '["addr(bc1q...)"]'
+
+# 掃描公鑰
+bitcoin-cli scantxoutset "start" '["combo(pubkey)"]'
+
+# 掃描描述符
+bitcoin-cli scantxoutset "start" '["wpkh([fingerprint/84h/0h/0h]xpub.../0/*)"]'
+
+# 中止掃描
+bitcoin-cli scantxoutset "abort"`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">腳本與驗證</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 解碼腳本
+bitcoin-cli decodescript "<hex>"
+
+# 驗證交易簽名（不廣播）
+bitcoin-cli testmempoolaccept '["<tx_hex>"]'
+
+# 獲取區塊過濾器（BIP-157）
+bitcoin-cli getblockfilter "<blockhash>"`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常用命令速查</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">命令</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getblockchaininfo</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">鏈狀態概覽</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getblockcount</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">當前高度</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getblockhash</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">高度 → 雜湊</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getblock</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">獲取區塊</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getrawtransaction</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">獲取交易</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">gettxout</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">查詢 UTXO</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">scantxoutset</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">掃描 UTXO</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">配置提示：</strong>
+      在 bitcoin.conf 中添加 <code class="text-bitcoin-500">txindex=1</code>
+      可以索引所有交易，但會增加約 30GB 存儲需求。
+    </p>
+  </div>
+</ArticleLayout>

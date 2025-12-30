@@ -1,0 +1,282 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="RPC 接口指南"
+  description="Bitcoin Core RPC 接口入門，包括配置、認證和基本使用方法。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'RPC 接口指南' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'UTXO 模型', href: '/tech/bitcoin-core/utxo' }}
+  nextPage={{ title: '錢包 RPC', href: '/tech/bitcoin-core/rpc-wallet' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 RPC？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    RPC（Remote Procedure Call）是 Bitcoin Core 提供的程式化接口，
+    允許外部程式查詢節點狀態、發送交易和管理錢包。
+    它使用 JSON-RPC 2.0 協議，支持 HTTP 和命令行兩種訪問方式。
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="font-semibold text-[var(--text-primary)] mb-2">bitcoin-cli</h3>
+      <p class="text-sm text-[var(--text-secondary)]">
+        命令行工具，最簡單的 RPC 調用方式。適合手動操作和腳本。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="font-semibold text-[var(--text-primary)] mb-2">HTTP JSON-RPC</h3>
+      <p class="text-sm text-[var(--text-secondary)]">
+        標準 HTTP 接口，可用任何程式語言調用。適合應用程式整合。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置 RPC</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    在 <code>bitcoin.conf</code> 中配置 RPC 訪問：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# bitcoin.conf 位置
+# Linux:   ~/.bitcoin/bitcoin.conf
+# macOS:   ~/Library/Application Support/Bitcoin/bitcoin.conf
+# Windows: %APPDATA%\\Bitcoin\\bitcoin.conf
+
+# 基本配置
+server=1                  # 啟用 RPC 服務
+rpcuser=myuser           # RPC 用戶名
+rpcpassword=mypassword   # RPC 密碼
+
+# 網路配置
+rpcbind=127.0.0.1        # 監聽地址（預設只本地）
+rpcport=8332             # RPC 端口（mainnet 預設）
+rpcallowip=127.0.0.1     # 允許連接的 IP`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>安全警告：</strong>
+      永遠不要在公開網路上暴露 RPC 接口。如果必須遠程訪問，請使用 SSH 隧道或 VPN。
+    </p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Cookie 認證（推薦）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bitcoin Core 支持更安全的 Cookie 認證，無需在配置文件中存儲密碼：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# Cookie 文件位置
+~/.bitcoin/.cookie
+
+# Cookie 格式
+__cookie__:隨機生成的密碼
+
+# bitcoin-cli 自動使用 Cookie 認證
+# 無需額外配置`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 bitcoin-cli</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 基本語法
+bitcoin-cli [選項] <命令> [參數...]
+
+# 常用選項
+-rpcuser=<user>         # 指定用戶名
+-rpcpassword=<pass>     # 指定密碼
+-rpcconnect=<ip>        # 指定節點 IP
+-rpcport=<port>         # 指定端口
+-testnet / -signet      # 連接測試網路
+
+# 範例
+bitcoin-cli getblockchaininfo
+bitcoin-cli -testnet getblockcount
+bitcoin-cli -rpcconnect=192.168.1.100 getnetworkinfo`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 HTTP 調用</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">cURL 範例</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# JSON-RPC 請求格式
+curl --user myuser:mypassword \\
+     --data-binary '{"jsonrpc":"1.0","id":"test","method":"getblockchaininfo","params":[]}' \\
+     -H 'content-type: text/plain;' \\
+     http://127.0.0.1:8332/
+
+# 帶參數的請求
+curl --user myuser:mypassword \\
+     --data-binary '{"jsonrpc":"1.0","id":"test","method":"getblock","params":["000000..."]}' \\
+     -H 'content-type: text/plain;' \\
+     http://127.0.0.1:8332/`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Python 範例</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`import requests
+import json
+
+def call_rpc(method, params=[]):
+    url = "http://127.0.0.1:8332/"
+    headers = {"content-type": "text/plain;"}
+    payload = json.dumps({
+        "jsonrpc": "1.0",
+        "id": "python",
+        "method": method,
+        "params": params
+    })
+    response = requests.post(
+        url,
+        headers=headers,
+        data=payload,
+        auth=("myuser", "mypassword")
+    )
+    return response.json()["result"]
+
+# 使用範例
+info = call_rpc("getblockchaininfo")
+print(f"區塊高度: {info['blocks']}")`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">JavaScript 範例</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`async function callRPC(method, params = []) {
+  const response = await fetch('http://127.0.0.1:8332/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain',
+      'Authorization': 'Basic ' + btoa('myuser:mypassword')
+    },
+    body: JSON.stringify({
+      jsonrpc: '1.0',
+      id: 'js',
+      method: method,
+      params: params
+    })
+  });
+  const data = await response.json();
+  return data.result;
+}
+
+// 使用範例
+const info = await callRPC('getblockchaininfo');
+console.log(\`區塊高度: \${info.blocks}\`);`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">RPC 命令分類</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">分類</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">常用命令</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">區塊鏈</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getblock, getblockchaininfo</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">查詢區塊和鏈狀態</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">錢包</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">listunspent, sendtoaddress</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">管理錢包和發送交易</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">網路</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getnetworkinfo, getpeerinfo</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2P 網路狀態</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">交易</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getrawtransaction, sendrawtransaction</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">原始交易操作</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">挖礦</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">getblocktemplate, submitblock</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">礦池接口</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">控制</td>
+          <td class="px-4 py-3 font-mono text-xs text-bitcoin-500">stop, uptime, help</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">節點控制</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">獲取幫助</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 列出所有命令
+bitcoin-cli help
+
+# 查看特定命令的詳細說明
+bitcoin-cli help getblock
+
+# 查看命令分類
+bitcoin-cli help | grep -E "^== "`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤處理</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    RPC 錯誤會返回標準化的錯誤碼：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">錯誤碼</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">含義</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">-1</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">一般錯誤</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">-3</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">無效參數類型</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">-5</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">無效地址或密鑰</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">-8</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">無效參數</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">-28</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">節點正在初始化</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>下一步：</strong>
+      查看具體的 RPC 命令：
+      <a href="/tech/bitcoin-core/rpc-wallet" class="underline hover:no-underline">錢包 RPC</a>、
+      <a href="/tech/bitcoin-core/rpc-blockchain" class="underline hover:no-underline">區塊鏈 RPC</a>、
+      <a href="/tech/bitcoin-core/rpc-network" class="underline hover:no-underline">網路 RPC</a>
+    </p>
+  </div>
+</ArticleLayout>

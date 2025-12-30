@@ -1,0 +1,273 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="P2P 協議概覽"
+  description="了解比特幣節點之間的點對點通訊協議，包括握手流程和連線類型。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'P2P 協議' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{ title: '網路 RPC', href: '/tech/bitcoin-core/rpc-network' }}
+  nextPage={{ title: '訊息類型', href: '/tech/bitcoin-core/message-types' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">P2P 網路架構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣使用去中心化的點對點（P2P）網路架構。每個節點都是平等的，
+    沒有「伺服器」和「客戶端」之分。節點之間直接通訊，交換區塊和交易。
+  </p>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] text-center">
+      <div class="text-3xl font-bold text-bitcoin-500 mb-2">~17,000</div>
+      <p class="text-sm text-[var(--text-secondary)]">可達節點</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] text-center">
+      <div class="text-3xl font-bold text-bitcoin-500 mb-2">8333</div>
+      <p class="text-sm text-[var(--text-secondary)]">預設端口 (mainnet)</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] text-center">
+      <div class="text-3xl font-bold text-bitcoin-500 mb-2">125</div>
+      <p class="text-sm text-[var(--text-secondary)]">預設最大連線數</p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連線握手</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當兩個節點建立連線時，需要進行握手交換版本信息：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`節點 A                          節點 B
+   │                               │
+   │──────── version ─────────────>│  A 發送版本訊息
+   │                               │
+   │<──────── version ─────────────│  B 發送版本訊息
+   │                               │
+   │──────── verack ──────────────>│  A 確認 B 的版本
+   │                               │
+   │<──────── verack ──────────────│  B 確認 A 的版本
+   │                               │
+   │       [握手完成，開始通訊]      │`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Version 訊息內容</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">欄位</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">version</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">協議版本號（如 70016）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">services</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">支援的服務標誌</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">timestamp</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Unix 時間戳</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">addr_recv</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">接收方地址</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">addr_from</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">發送方地址</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">nonce</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">隨機數（防止自連）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">user_agent</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">軟體標識（如 /Satoshi:26.0.0/）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">start_height</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">節點的區塊高度</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">relay</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">是否中繼交易</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連線類型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bitcoin Core 區分不同類型的連線，以優化網路效能和安全性：
+  </p>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Outbound Full-Relay (8 個)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點主動發起的連線，接收區塊和交易。這些連線最受信任。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Outbound Block-Relay-Only (2 個)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        只同步區塊，不中繼交易。提供額外的區塊來源，增加抗審查能力。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Inbound (最多 115 個)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        其他節點發起的連線。需要更謹慎處理，因為可能是攻擊者。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Feeler (短暫)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        短暫連線，測試潛在節點是否可達，用於維護地址庫。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">服務標誌 (Services)</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">標誌</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">值</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">NODE_NETWORK</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">1</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">完整區塊鏈節點</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">NODE_WITNESS</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">8</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">支援 SegWit</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">NODE_COMPACT_FILTERS</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">64</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">支援 BIP-157 區塊過濾器</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">NODE_NETWORK_LIMITED</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">1024</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">修剪節點（最近 288 區塊）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">NODE_P2P_V2</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">2048</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">支援 BIP-324 加密傳輸</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BIP-324：加密傳輸 (v2)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BIP-324 引入了加密的 P2P 傳輸協議，解決了傳統明文傳輸的隱私問題：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">v1 (傳統) 問題</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 所有流量明文傳輸</li>
+        <li>• ISP 可識別比特幣流量</li>
+        <li>• 中間人攻擊風險</li>
+        <li>• 交易可被監控</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">v2 (BIP-324) 優點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• ChaCha20-Poly1305 加密</li>
+        <li>• 流量不可識別</li>
+        <li>• 防止被動監聽</li>
+        <li>• 可選的認證握手</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">v2 握手流程</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`1. 發起方發送 64 bytes 橢圓曲線公鑰
+2. 響應方發送 64 bytes 橢圓曲線公鑰
+3. 雙方使用 ECDH 計算共享金鑰
+4. 之後所有通訊都加密`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息格式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">v1 訊息結構</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`┌──────────────────────────────────────────┐
+│ Header (24 bytes)                        │
+├──────────────────────────────────────────┤
+│ magic      │ 4 bytes  │ 網路識別符       │
+│ command    │ 12 bytes │ 訊息類型         │
+│ length     │ 4 bytes  │ payload 長度     │
+│ checksum   │ 4 bytes  │ payload 校驗和   │
+├──────────────────────────────────────────┤
+│ Payload (variable)                       │
+│ 訊息內容                                  │
+└──────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Magic 值</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">網路</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Magic 值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Mainnet</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">0xD9B4BEF9</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Testnet3</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">0x0709110B</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Signet</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">0x40CF030A</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Regtest</td>
+          <td class="px-4 py-3 font-mono text-bitcoin-500">0xDAB5BFFA</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">延伸閱讀：</strong>
+      查看 <a href="/tech/bitcoin-core/message-types" class="text-bitcoin-500 hover:underline">訊息類型</a>
+      了解各種 P2P 訊息的詳細格式。
+    </p>
+  </div>
+</ArticleLayout>

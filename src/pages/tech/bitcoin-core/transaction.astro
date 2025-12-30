@@ -1,0 +1,357 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="交易結構"
+  description="深入了解比特幣交易的內部結構，包括輸入、輸出、簽名和 SegWit 格式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '交易結構' },
+  ]}
+  difficulty="intermediate"
+  readingTime="22 分鐘"
+  prevPage={{ title: '區塊結構', href: '/tech/bitcoin-core/block-structure' }}
+  nextPage={{ title: 'UTXO 模型', href: '/tech/bitcoin-core/utxo' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣交易是價值轉移的基本單位。每筆交易消費之前的輸出（UTXO），
+    並創建新的輸出供未來花費。這種「輸入-輸出」模型是比特幣的核心設計。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`┌─────────────────────────────────────────────────┐
+│              Transaction                        │
+├─────────────────────────────────────────────────┤
+│  version      │  4 bytes                        │
+├─────────────────────────────────────────────────┤
+│  marker       │  1 byte  (0x00, SegWit only)    │
+│  flag         │  1 byte  (0x01, SegWit only)    │
+├─────────────────────────────────────────────────┤
+│  input_count  │  VarInt                         │
+│  inputs[]     │  Variable                       │
+├─────────────────────────────────────────────────┤
+│  output_count │  VarInt                         │
+│  outputs[]    │  Variable                       │
+├─────────────────────────────────────────────────┤
+│  witness[]    │  Variable (SegWit only)         │
+├─────────────────────────────────────────────────┤
+│  locktime     │  4 bytes                        │
+└─────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易欄位詳解</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">版本號 (Version)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    4 bytes 的版本號表示交易格式。目前主要使用：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <code class="text-bitcoin-500">1</code>：傳統交易格式</li>
+    <li>• <code class="text-bitcoin-500">2</code>：支持 BIP-68 相對時間鎖</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">鎖定時間 (Locktime)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    4 bytes 的鎖定時間定義交易最早可被打包的時間：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <code class="text-bitcoin-500">0</code>：無鎖定，立即有效</li>
+    <li>• <code class="text-bitcoin-500">&lt; 500,000,000</code>：區塊高度</li>
+    <li>• <code class="text-bitcoin-500">≥ 500,000,000</code>：Unix 時間戳</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">輸入 (Inputs)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個輸入引用一個之前的未花費輸出（UTXO），並提供解鎖腳本：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">欄位</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">大小</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">txid</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">32 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">引用的交易雜湊（小端序）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">vout</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">4 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">輸出索引（從 0 開始）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">scriptSig_len</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">VarInt</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">解鎖腳本長度</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">scriptSig</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Variable</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">解鎖腳本（簽名 + 公鑰）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">sequence</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">4 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">序列號（RBF、時間鎖）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">序列號 (Sequence)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    序列號有多種用途：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <code class="text-bitcoin-500">0xFFFFFFFF</code>：禁用 RBF 和相對時間鎖</li>
+    <li>• <code class="text-bitcoin-500">0xFFFFFFFE</code>：禁用 RBF，啟用絕對時間鎖</li>
+    <li>• <code class="text-bitcoin-500">&lt; 0xFFFFFFFE</code>：啟用 RBF（可替換）</li>
+    <li>• 低位用於相對時間鎖（BIP-68）</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">輸出 (Outputs)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個輸出定義一定數量的比特幣和花費條件：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">欄位</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">大小</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">value</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">8 bytes</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">金額（聰，satoshis）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">scriptPubKey_len</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">VarInt</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">鎖定腳本長度</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">scriptPubKey</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Variable</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">鎖定腳本（定義花費條件）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>單位說明：</strong>
+      1 BTC = 100,000,000 聰 (satoshis)。金額以 int64 存儲，
+      最小單位是 1 聰，最大供應量約 2,100 萬 BTC。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見腳本類型</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">P2PKH (Pay to Public Key Hash)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    最傳統的地址類型，以 <code>1</code> 開頭：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 鎖定腳本 (scriptPubKey)
+OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+
+# 解鎖腳本 (scriptSig)
+<signature> <publicKey>`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">P2SH (Pay to Script Hash)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    支持複雜腳本，以 <code>3</code> 開頭：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 鎖定腳本
+OP_HASH160 <scriptHash> OP_EQUAL
+
+# 解鎖腳本
+<...data...> <redeemScript>`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">P2WPKH (Native SegWit)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    原生 SegWit 地址，以 <code>bc1q</code> 開頭：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 鎖定腳本
+OP_0 <20-byte-pubKeyHash>
+
+# 見證數據 (witness)
+<signature> <publicKey>`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">P2TR (Taproot)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    最新的地址類型，以 <code>bc1p</code> 開頭：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 鎖定腳本
+OP_1 <32-byte-pubKey>
+
+# 見證數據 (key path spend)
+<schnorr-signature>`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址類型比較</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">前綴</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">大小</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">費用</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2PKH</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-secondary)]">1...</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">~148 vB/input</td>
+          <td class="px-4 py-3 text-red-600 dark:text-red-400">最高</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2SH-P2WPKH</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-secondary)]">3...</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">~91 vB/input</td>
+          <td class="px-4 py-3 text-yellow-600 dark:text-yellow-400">中等</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2WPKH</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-secondary)]">bc1q...</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">~68 vB/input</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">較低</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">P2TR</td>
+          <td class="px-4 py-3 font-mono text-[var(--text-secondary)]">bc1p...</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">~57 vB/input</td>
+          <td class="px-4 py-3 text-green-600 dark:text-green-400">最低</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">簽名類型 (SIGHASH)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    簽名類型決定簽名涵蓋交易的哪些部分：
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">值</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">涵蓋範圍</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">SIGHASH_ALL</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">0x01</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">所有輸入和輸出（最常用）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">SIGHASH_NONE</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">0x02</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">所有輸入，無輸出</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">SIGHASH_SINGLE</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">0x03</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">所有輸入，對應索引的輸出</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-bitcoin-500">ANYONECANPAY</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">0x80</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">只簽名當前輸入（可組合）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SegWit 交易</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    SegWit (Segregated Witness) 將簽名數據從交易主體中分離出來：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">SegWit 優點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 修復交易延展性問題</li>
+        <li>• 增加有效區塊容量</li>
+        <li>• 降低交易手續費</li>
+        <li>• 啟用閃電網路</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">識別 SegWit 交易</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• marker = 0x00</li>
+        <li>• flag = 0x01</li>
+        <li>• 有 witness 欄位</li>
+        <li>• txid 不含見證數據</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手續費計算</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    手續費 = 輸入總額 - 輸出總額
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 手續費率計算
+手續費率 = 手續費 (satoshis) / 交易大小 (vBytes)
+
+# 範例
+輸入: 0.001 BTC (100,000 sat)
+輸出: 0.0009 BTC (90,000 sat)
+手續費: 10,000 sat
+交易大小: 250 vB
+手續費率: 10,000 / 250 = 40 sat/vB`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看交易</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 解碼原始交易
+bitcoin-cli decoderawtransaction <hex>
+
+# 獲取交易詳情（需要 txindex）
+bitcoin-cli getrawtransaction <txid> true
+
+# 查看 mempool 中的交易
+bitcoin-cli getmempoolentry <txid>`}</pre>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">相關 BIP：</strong>
+      <a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a> (SegWit)、
+      <a href="/bips/bip-0143" class="text-bitcoin-500 hover:underline">BIP-143</a> (SegWit 簽名)、
+      <a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a> (Taproot)
+    </p>
+  </div>
+</ArticleLayout>

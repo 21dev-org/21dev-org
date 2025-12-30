@@ -1,0 +1,273 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="節點發現"
+  description="了解比特幣節點如何找到並連接其他節點，包括 DNS Seeds 和地址管理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '節點發現' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: '訊息類型', href: '/tech/bitcoin-core/message-types' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">節點發現機制</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    新節點需要找到其他節點才能加入網路。比特幣使用多種機制確保節點能夠發現對等方，
+    同時保持去中心化和抗審查特性。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">DNS Seeds</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    DNS Seeds 是新節點啟動時的首選發現方式。這些是由社群成員運營的 DNS 服務器，
+    返回活躍節點的 IP 地址列表。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# Bitcoin Core 預設的 DNS Seeds (mainnet)
+seed.bitcoin.sipa.be          # Pieter Wuille
+dnsseed.bluematt.me           # Matt Corallo
+dnsseed.bitcoin.dashjr.org    # Luke Dashjr
+seed.bitcoinstats.com         # Christian Decker
+seed.bitcoin.jonasschnelli.ch # Jonas Schnelli
+seed.btc.petertodd.org        # Peter Todd
+seed.bitcoin.sprovoost.nl     # Sjors Provoost
+dnsseed.emzy.de               # Stephan Oeste
+seed.bitcoin.wiz.biz          # Jason Maurice
+
+# 查詢範例
+nslookup seed.bitcoin.sipa.be`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>隱私考量：</strong>
+      DNS 查詢可能被監控。Bitcoin Core 會嘗試使用多個 seeds，
+      並優先使用已知的 hardcoded 節點來減少依賴。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Hardcoded Seeds</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    如果 DNS Seeds 不可用，Bitcoin Core 有一份編譯時嵌入的節點列表作為備用：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 位置: src/chainparamsseeds.h
+// 定期從網路爬取並更新
+static const uint8_t chainparams_seed_main[] = {
+    0x01,0x04,0x9d,0x42,0x28,0x34,0x20,0x8d,  // 157.66.40.52:8333
+    // ... 更多 IP 地址
+};
+
+# 使用條件
+- DNS Seeds 全部失敗
+- 沒有已知的對等方
+- 啟動時作為最後手段`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址管理 (AddrMan)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bitcoin Core 使用 AddrMan 數據結構管理已知的節點地址，設計用於抵抗各種攻擊。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">兩個地址表</h3>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">New Table (新表)</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 存儲從其他節點收到的地址</li>
+        <li>• 1024 個 bucket，每個 64 個地址</li>
+        <li>• 地址按來源 IP 分組</li>
+        <li>• 尚未驗證是否可達</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Tried Table (已驗證表)</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 存儲成功連接過的地址</li>
+        <li>• 256 個 bucket，每個 64 個地址</li>
+        <li>• 地址按其自身 IP 分組</li>
+        <li>• 已驗證可達</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">地址選擇算法</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`建立新連線時:
+1. 隨機決定從 New 還是 Tried 表選擇
+2. 隨機選擇一個 bucket
+3. 從 bucket 中隨機選擇地址
+4. 考慮地址的「新鮮度」權重
+
+權重因素:
+- 最後嘗試時間（越近越好）
+- 最後成功時間（越近越好）
+- 嘗試次數（越少越好）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址傳播</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">getaddr / addr 訊息</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 請求地址
+節點 A 發送 getaddr 到節點 B
+節點 B 回應 addr 訊息（最多 1000 個地址）
+
+# addr 訊息內容
+{
+  count: 地址數量,
+  addr_list: [
+    {
+      time: 最後活躍時間,
+      services: 服務標誌,
+      IP: 地址,
+      port: 端口
+    },
+    ...
+  ]
+}
+
+# addrv2 (BIP-155) 支持更多網路類型
+IPv4, IPv6, Tor v2/v3, I2P, CJDNS`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">地址中繼</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    節點會主動中繼收到的地址給其他對等方：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 隨機選擇 1-2 個對等方轉發每個新地址</li>
+    <li>• 限制轉發速率防止 DoS</li>
+    <li>• 只轉發近期活躍的地址（過去 10 分鐘內）</li>
+    <li>• 定期主動廣播自己的地址</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Eclipse Attack</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    攻擊者試圖控制受害節點的所有連線，使其與真實網路隔離：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`攻擊方式:
+1. 大量惡意節點連接到受害者（inbound）
+2. 污染受害者的地址表
+3. 等待受害者重啟
+4. 受害者所有 outbound 連到惡意節點
+
+後果:
+- 看到虛假的區塊鏈
+- 雙重支付攻擊
+- 交易被審查`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">防護措施</h3>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">AddrMan 設計</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 地址分散到多個 bucket</li>
+        <li>• 同一來源的地址不會填滿整個 bucket</li>
+        <li>• 隨機選擇減少可預測性</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">Outbound 連線保護</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 保證不同 /16 網段的連線</li>
+        <li>• Block-relay-only 連線不接受交易</li>
+        <li>• Anchor 連線在重啟後重連</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">連線多樣性</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 使用多種網路類型（IPv4、IPv6、Tor）</li>
+        <li>• 避免所有連線來自同一 ISP</li>
+        <li>• 手動添加可信節點</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor 連線</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bitcoin Core 會記住上次成功連接的 outbound 節點，重啟後優先嘗試重連：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# anchors.dat 文件
+- 存儲 2 個 block-relay-only 連線
+- 重啟後立即嘗試連接
+- 防止重啟時被 eclipse
+
+# 位置
+~/.bitcoin/anchors.dat`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手動配置</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# bitcoin.conf 配置
+
+# 手動添加節點
+addnode=192.168.1.100:8333
+addnode=mynode.example.com:8333
+
+# 只連接到指定節點（謹慎使用）
+connect=192.168.1.100:8333
+
+# 禁用 DNS seeds
+dnsseed=0
+
+# 禁用 DNS 查詢
+dns=0
+
+# 監聽端口
+port=8333
+bind=0.0.0.0:8333
+
+# 允許入站連線
+listen=1`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Tor 網路整合</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Bitcoin Core 原生支持 Tor，提供額外的隱私和抗審查能力：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# bitcoin.conf Tor 配置
+
+# 通過 Tor 連出
+proxy=127.0.0.1:9050
+
+# 創建 onion 服務接受入站
+listenonion=1
+
+# 只使用 Tor（最大隱私）
+onlynet=onion
+proxy=127.0.0.1:9050
+
+# 混合模式
+onlynet=onion
+onlynet=ipv4`}</pre>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>最佳實踐：</strong>
+      運行節點時，建議啟用 Tor 作為額外的出站連線，增加網路多樣性和隱私保護。
+    </p>
+  </div>
+</ArticleLayout>
