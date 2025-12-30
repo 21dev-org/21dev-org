@@ -1,439 +1,398 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="Output Descriptors"
-  description="學習 Output Descriptors 如何標準化描述比特幣地址和腳本的派生方式。"
+  description="Output Descriptors 是一種標準化語言，用於描述如何從密鑰派生比特幣地址和腳本，解決了錢包備份和恢復的可移植性問題。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '深入技術', href: '/learn/advanced/' },
+    { label: 'Output Descriptors' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Miniscript', href: '/learn/advanced/miniscript' }}
+  nextPage={{ title: 'Silent Payments', href: '/learn/advanced/silent-payments' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-<Breadcrumb items={[
-  { label: '學習', href: '/learn/' },
-  { label: '高級主題', href: '/learn/advanced/' },
-  { label: 'Output Descriptors' },
-]} />
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 Output Descriptors？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Output Descriptors（輸出描述符）是由 Pieter Wuille 提出的標準，
+    用於完整描述如何從密鑰材料生成比特幣輸出腳本。它解決了一個關鍵問題：
+    僅有種子詞是不夠的，還需要知道使用什麼腳本類型和派生路徑。
+  </p>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-500/10 text-red-600 dark:text-red-400">
-              深入技術
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：20 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            Output Descriptors
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            Output Descriptors 是一種標準化語言，用於描述如何從密鑰派生比特幣地址和腳本，
-            解決了錢包備份和恢復的可移植性問題。
-          </p>
-        </header>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>問題場景：</strong> Alice 有一個 12 詞助記詞。當她嘗試在新錢包恢復時，
+      發現餘額為零。原因是新錢包使用 P2WPKH，而原錢包使用 P2SH-P2WPKH。
+      Output Descriptors 通過明確指定腳本類型解決這個問題。
+    </p>
+  </div>
 
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 Output Descriptors？</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Output Descriptors（輸出描述符）是由 Pieter Wuille 提出的標準，
-            用於完整描述如何從密鑰材料生成比特幣輸出腳本。它解決了一個關鍵問題：
-            僅有種子詞是不夠的，還需要知道使用什麼腳本類型和派生路徑。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">基本語法</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Descriptor 由腳本函數和密鑰表達式組成：
+  </p>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-            <p class="text-sm text-yellow-700 dark:text-yellow-400">
-              <strong>問題場景：</strong> Alice 有一個 12 詞助記詞。當她嘗試在新錢包恢復時，
-              發現餘額為零。原因是新錢包使用 P2WPKH，而原錢包使用 P2SH-P2WPKH。
-              Output Descriptors 通過明確指定腳本類型解決這個問題。
-            </p>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># 基本格式</p>
+    <p class="text-[var(--text-secondary)]">SCRIPT(KEY)#CHECKSUM</p>
+    <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 實際範例</p>
+    <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub.../0/*)#checksum</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">基本語法</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            Descriptor 由腳本函數和密鑰表達式組成：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">腳本類型</h2>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># 基本格式</p>
-            <p class="text-[var(--text-secondary)]">SCRIPT(KEY)#CHECKSUM</p>
-            <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 實際範例</p>
-            <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub.../0/*)#checksum</p>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">Descriptor</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">腳本類型</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">地址前綴</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">pk(KEY)</td>
+          <td class="py-2">P2PK（早期格式）</td>
+          <td class="py-2">無地址</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">pkh(KEY)</td>
+          <td class="py-2">P2PKH</td>
+          <td class="py-2">1...</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">wpkh(KEY)</td>
+          <td class="py-2">P2WPKH (Native SegWit)</td>
+          <td class="py-2">bc1q...</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">sh(wpkh(KEY))</td>
+          <td class="py-2">P2SH-P2WPKH</td>
+          <td class="py-2">3...</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">tr(KEY)</td>
+          <td class="py-2">P2TR (Taproot)</td>
+          <td class="py-2">bc1p...</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">wsh(SCRIPT)</td>
+          <td class="py-2">P2WSH</td>
+          <td class="py-2">bc1q...（較長）</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono text-bitcoin-500">sh(wsh(SCRIPT))</td>
+          <td class="py-2">P2SH-P2WSH</td>
+          <td class="py-2">3...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">腳本類型</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">密鑰表達式</h2>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">Descriptor</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">腳本類型</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">地址前綴</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">pk(KEY)</td>
-                  <td class="py-2">P2PK（早期格式）</td>
-                  <td class="py-2">無地址</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">pkh(KEY)</td>
-                  <td class="py-2">P2PKH</td>
-                  <td class="py-2">1...</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">wpkh(KEY)</td>
-                  <td class="py-2">P2WPKH (Native SegWit)</td>
-                  <td class="py-2">bc1q...</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">sh(wpkh(KEY))</td>
-                  <td class="py-2">P2SH-P2WPKH</td>
-                  <td class="py-2">3...</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">tr(KEY)</td>
-                  <td class="py-2">P2TR (Taproot)</td>
-                  <td class="py-2">bc1p...</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">wsh(SCRIPT)</td>
-                  <td class="py-2">P2WSH</td>
-                  <td class="py-2">bc1q...（較長）</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-mono text-bitcoin-500">sh(wsh(SCRIPT))</td>
-                  <td class="py-2">P2SH-P2WSH</td>
-                  <td class="py-2">3...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">單一公鑰</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 壓縮公鑰（33 bytes hex）</p>
+    <p class="text-[var(--text-secondary)]">wpkh(02a1b2c3...)</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># WIF 私鑰</p>
+    <p class="text-[var(--text-secondary)]">wpkh(L1a2b3c4...)</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">密鑰表達式</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">擴展密鑰（xpub/xprv）</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># xpub 帶派生路徑</p>
+    <p class="text-[var(--text-secondary)]">wpkh(xpub661MyMwAq.../0/0)</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># 帶來源資訊</p>
+    <p class="text-[var(--text-secondary)]">wpkh([fingerprint/path]xpub.../0/0)</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">單一公鑰</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 壓縮公鑰（33 bytes hex）</p>
-            <p class="text-[var(--text-secondary)]">wpkh(02a1b2c3...)</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># WIF 私鑰</p>
-            <p class="text-[var(--text-secondary)]">wpkh(L1a2b3c4...)</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">密鑰來源資訊</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    密鑰來源（Key Origin）記錄了密鑰的派生歷史：
+  </p>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">擴展密鑰（xpub/xprv）</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># xpub 帶派生路徑</p>
-            <p class="text-[var(--text-secondary)]">wpkh(xpub661MyMwAq.../0/0)</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># 帶來源資訊</p>
-            <p class="text-[var(--text-secondary)]">wpkh([fingerprint/path]xpub.../0/0)</p>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-secondary)]">[d34db33f/84'/0'/0']xpub6D4...</p>
+    <p class="text-[var(--text-tertiary)] mt-2"># d34db33f = 主密鑰指紋（前 4 bytes）</p>
+    <p class="text-[var(--text-tertiary)]"># 84'/0'/0' = 從主密鑰到此 xpub 的派生路徑</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">密鑰來源資訊</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            密鑰來源（Key Origin）記錄了密鑰的派生歷史：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">範圍與萬用字元</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">*</code> 表示地址範圍：
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-secondary)]">[d34db33f/84'/0'/0']xpub6D4...</p>
-            <p class="text-[var(--text-tertiary)] mt-2"># d34db33f = 主密鑰指紋（前 4 bytes）</p>
-            <p class="text-[var(--text-tertiary)]"># 84'/0'/0' = 從主密鑰到此 xpub 的派生路徑</p>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 外部地址（接收）</p>
+    <p class="text-[var(--text-secondary)]">wpkh([fp/84'/0'/0']xpub.../0/*)</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># 內部地址（找零）</p>
+    <p class="text-[var(--text-secondary)]">wpkh([fp/84'/0'/0']xpub.../1/*)</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># * 代表 0, 1, 2, 3, ... 的索引</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">範圍與萬用字元</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            使用 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">*</code> 表示地址範圍：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">多簽 Descriptors</h2>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 外部地址（接收）</p>
-            <p class="text-[var(--text-secondary)]">wpkh([fp/84'/0'/0']xpub.../0/*)</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># 內部地址（找零）</p>
-            <p class="text-[var(--text-secondary)]">wpkh([fp/84'/0'/0']xpub.../1/*)</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># * 代表 0, 1, 2, 3, ... 的索引</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">傳統多簽</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 2-of-3 P2WSH 多簽</p>
+    <p class="text-[var(--text-secondary)]">wsh(multi(2,</p>
+    <p class="text-[var(--text-secondary)]">  [fp1/48'/0'/0'/2']xpub1.../0/*,</p>
+    <p class="text-[var(--text-secondary)]">  [fp2/48'/0'/0'/2']xpub2.../0/*,</p>
+    <p class="text-[var(--text-secondary)]">  [fp3/48'/0'/0'/2']xpub3.../0/*</p>
+    <p class="text-[var(--text-secondary)]">))</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">多簽 Descriptors</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">排序多簽</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># sortedmulti 按字典序排序公鑰</p>
+    <p class="text-[var(--text-secondary)]">wsh(sortedmulti(2, xpub1..., xpub2..., xpub3...))</p>
+    <p class="text-[var(--text-tertiary)] mt-2"># 確保不同順序輸入產生相同地址</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">傳統多簽</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 2-of-3 P2WSH 多簽</p>
-            <p class="text-[var(--text-secondary)]">wsh(multi(2,</p>
-            <p class="text-[var(--text-secondary)]">  [fp1/48'/0'/0'/2']xpub1.../0/*,</p>
-            <p class="text-[var(--text-secondary)]">  [fp2/48'/0'/0'/2']xpub2.../0/*,</p>
-            <p class="text-[var(--text-secondary)]">  [fp3/48'/0'/0'/2']xpub3.../0/*</p>
-            <p class="text-[var(--text-secondary)]">))</p>
-          </div>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Taproot Descriptors</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">排序多簽</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># sortedmulti 按字典序排序公鑰</p>
-            <p class="text-[var(--text-secondary)]">wsh(sortedmulti(2, xpub1..., xpub2..., xpub3...))</p>
-            <p class="text-[var(--text-tertiary)] mt-2"># 確保不同順序輸入產生相同地址</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">密鑰路徑</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 單純密鑰路徑花費</p>
+    <p class="text-[var(--text-secondary)]">tr([fp/86'/0'/0']xpub.../0/*)</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Taproot Descriptors</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">腳本路徑</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 密鑰路徑 + 腳本樹</p>
+    <p class="text-[var(--text-secondary)]">tr(INTERNAL_KEY, SCRIPT_TREE)</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># 帶備用腳本的 Taproot</p>
+    <p class="text-[var(--text-secondary)]">tr(Alice, pk(Bob))</p>
+    <p class="text-[var(--text-tertiary)] mt-2"># Alice 是內部密鑰，Bob 的簽名可作為備用</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">密鑰路徑</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 單純密鑰路徑花費</p>
-            <p class="text-[var(--text-secondary)]">tr([fp/86'/0'/0']xpub.../0/*)</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">複雜腳本樹</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 多個備用路徑</p>
+    <p class="text-[var(--text-secondary)]">tr(Main, {`{`}</p>
+    <p class="text-[var(--text-secondary)]">  pk(Backup1),</p>
+    <p class="text-[var(--text-secondary)]">  {`{`}pk(Backup2), and_v(pk(Recovery), older(52560)){`}`}</p>
+    <p class="text-[var(--text-secondary)]">{`}`})</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">腳本路徑</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 密鑰路徑 + 腳本樹</p>
-            <p class="text-[var(--text-secondary)]">tr(INTERNAL_KEY, SCRIPT_TREE)</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># 帶備用腳本的 Taproot</p>
-            <p class="text-[var(--text-secondary)]">tr(Alice, pk(Bob))</p>
-            <p class="text-[var(--text-tertiary)] mt-2"># Alice 是內部密鑰，Bob 的簽名可作為備用</p>
-          </div>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Miniscript 整合</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Descriptors 可以包含 Miniscript 表達式：
+  </p>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">複雜腳本樹</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 多個備用路徑</p>
-            <p class="text-[var(--text-secondary)]">tr(Main, {`{`}</p>
-            <p class="text-[var(--text-secondary)]">  pk(Backup1),</p>
-            <p class="text-[var(--text-secondary)]">  {`{`}pk(Backup2), and_v(pk(Recovery), older(52560)){`}`}</p>
-            <p class="text-[var(--text-secondary)]">{`}`})</p>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># P2WSH 包裝的 Miniscript</p>
+    <p class="text-[var(--text-secondary)]">wsh(or_d(</p>
+    <p class="text-[var(--text-secondary)]">  multi(2, Alice, Bob),</p>
+    <p class="text-[var(--text-secondary)]">  and_v(pk(Recovery), older(4320))</p>
+    <p class="text-[var(--text-secondary)]">))</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># Taproot 腳本路徑的 Miniscript</p>
+    <p class="text-[var(--text-secondary)]">tr(Internal, and_v(pk(External), after(1000000)))</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Miniscript 整合</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            Descriptors 可以包含 Miniscript 表達式：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">校驗碼</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個 descriptor 都應附帶 8 字元的校驗碼，防止輸入錯誤：
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># P2WSH 包裝的 Miniscript</p>
-            <p class="text-[var(--text-secondary)]">wsh(or_d(</p>
-            <p class="text-[var(--text-secondary)]">  multi(2, Alice, Bob),</p>
-            <p class="text-[var(--text-secondary)]">  and_v(pk(Recovery), older(4320))</p>
-            <p class="text-[var(--text-secondary)]">))</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># Taproot 腳本路徑的 Miniscript</p>
-            <p class="text-[var(--text-secondary)]">tr(Internal, and_v(pk(External), after(1000000)))</p>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub6DJ2.../0/*)#<span class="text-green-500">abcd1234</span></p>
+    <p class="text-[var(--text-tertiary)] mt-2"># 校驗碼是根據整個 descriptor 計算的</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">校驗碼</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            每個 descriptor 都應附帶 8 字元的校驗碼，防止輸入錯誤：
-          </p>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>Bitcoin Core 命令：</strong><br/>
+      <code class="text-xs">bitcoin-cli getdescriptorinfo "wpkh(xpub...)"</code><br/>
+      返回 descriptor 資訊和校驗碼
+    </p>
+  </div>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub6DJ2.../0/*)#<span class="text-green-500">abcd1234</span></p>
-            <p class="text-[var(--text-tertiary)] mt-2"># 校驗碼是根據整個 descriptor 計算的</p>
-          </div>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">BIP 標準</h2>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-            <p class="text-sm text-green-700 dark:text-green-400">
-              <strong>Bitcoin Core 命令：</strong><br/>
-              <code class="text-xs">bitcoin-cli getdescriptorinfo "wpkh(xpub...)"</code><br/>
-              返回 descriptor 資訊和校驗碼
-            </p>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">內容</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">狀態</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">BIP-380</td>
+          <td class="py-2">Output Descriptors 通用格式</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">BIP-381</td>
+          <td class="py-2">非 SegWit 腳本（pk, pkh, sh）</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">BIP-382</td>
+          <td class="py-2">SegWit 腳本（wpkh, wsh）</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">BIP-383</td>
+          <td class="py-2">多簽（multi, sortedmulti）</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">BIP-384</td>
+          <td class="py-2">組合腳本（sh(wsh(...))）</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono">BIP-385</td>
+          <td class="py-2">原始腳本（raw, addr）</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono">BIP-386</td>
+          <td class="py-2">Taproot 腳本（tr）</td>
+          <td class="py-2 text-green-500">Draft</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">BIP 標準</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Bitcoin Core 使用</h2>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">內容</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">狀態</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono">BIP-380</td>
-                  <td class="py-2">Output Descriptors 通用格式</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono">BIP-381</td>
-                  <td class="py-2">非 SegWit 腳本（pk, pkh, sh）</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono">BIP-382</td>
-                  <td class="py-2">SegWit 腳本（wpkh, wsh）</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono">BIP-383</td>
-                  <td class="py-2">多簽（multi, sortedmulti）</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono">BIP-384</td>
-                  <td class="py-2">組合腳本（sh(wsh(...))）</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono">BIP-385</td>
-                  <td class="py-2">原始腳本（raw, addr）</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-mono">BIP-386</td>
-                  <td class="py-2">Taproot 腳本（tr）</td>
-                  <td class="py-2 text-green-500">Draft</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">創建 Descriptor 錢包</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)]"># 創建新的 descriptor 錢包</p>
+    <p class="text-[var(--text-secondary)]">bitcoin-cli createwallet "mywallet" false false "" false true</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># 列出錢包 descriptors</p>
+    <p class="text-[var(--text-secondary)]">bitcoin-cli listdescriptors</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Bitcoin Core 使用</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">導入 Descriptors</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)]"># 導入 watch-only descriptor</p>
+    <p class="text-[var(--text-secondary)]">bitcoin-cli importdescriptors '[{`{`}</p>
+    <p class="text-[var(--text-secondary)]">  "desc": "wpkh([fp/84h/0h/0h]xpub.../0/*)#checksum",</p>
+    <p class="text-[var(--text-secondary)]">  "timestamp": "now",</p>
+    <p class="text-[var(--text-secondary)]">  "range": [0, 999],</p>
+    <p class="text-[var(--text-secondary)]">  "watchonly": true</p>
+    <p class="text-[var(--text-secondary)]">{`}`}]'</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">創建 Descriptor 錢包</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-tertiary)]"># 創建新的 descriptor 錢包</p>
-            <p class="text-[var(--text-secondary)]">bitcoin-cli createwallet "mywallet" false false "" false true</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># 列出錢包 descriptors</p>
-            <p class="text-[var(--text-secondary)]">bitcoin-cli listdescriptors</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">派生地址</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)]"># 從 descriptor 派生特定索引的地址</p>
+    <p class="text-[var(--text-secondary)]">bitcoin-cli deriveaddresses "wpkh([fp]xpub.../0/*)#cs" "[0,5]"</p>
+    <p class="text-[var(--text-tertiary)] mt-2"># 返回索引 0-5 的地址列表</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">導入 Descriptors</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-tertiary)]"># 導入 watch-only descriptor</p>
-            <p class="text-[var(--text-secondary)]">bitcoin-cli importdescriptors '[{`{`}</p>
-            <p class="text-[var(--text-secondary)]">  "desc": "wpkh([fp/84h/0h/0h]xpub.../0/*)#checksum",</p>
-            <p class="text-[var(--text-secondary)]">  "timestamp": "now",</p>
-            <p class="text-[var(--text-secondary)]">  "range": [0, 999],</p>
-            <p class="text-[var(--text-secondary)]">  "watchonly": true</p>
-            <p class="text-[var(--text-secondary)]">{`}`}]'</p>
-          </div>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見派生路徑</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">派生地址</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-tertiary)]"># 從 descriptor 派生特定索引的地址</p>
-            <p class="text-[var(--text-secondary)]">bitcoin-cli deriveaddresses "wpkh([fp]xpub.../0/*)#cs" "[0,5]"</p>
-            <p class="text-[var(--text-tertiary)] mt-2"># 返回索引 0-5 的地址列表</p>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">路徑</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">BIP-44</td>
+          <td class="py-2 font-mono">m/44'/0'/0'</td>
+          <td class="py-2">P2PKH (Legacy)</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">BIP-49</td>
+          <td class="py-2 font-mono">m/49'/0'/0'</td>
+          <td class="py-2">P2SH-P2WPKH</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">BIP-84</td>
+          <td class="py-2 font-mono">m/84'/0'/0'</td>
+          <td class="py-2">P2WPKH (Native SegWit)</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">BIP-86</td>
+          <td class="py-2 font-mono">m/86'/0'/0'</td>
+          <td class="py-2">P2TR (Taproot)</td>
+        </tr>
+        <tr>
+          <td class="py-2">BIP-48</td>
+          <td class="py-2 font-mono">m/48'/0'/0'/2'</td>
+          <td class="py-2">多簽 P2WSH</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見派生路徑</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">完整備份範例</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    一個完整的錢包備份應包含所有相關 descriptors：
+  </p>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">路徑</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">用途</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">BIP-44</td>
-                  <td class="py-2 font-mono">m/44'/0'/0'</td>
-                  <td class="py-2">P2PKH (Legacy)</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">BIP-49</td>
-                  <td class="py-2 font-mono">m/49'/0'/0'</td>
-                  <td class="py-2">P2SH-P2WPKH</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">BIP-84</td>
-                  <td class="py-2 font-mono">m/84'/0'/0'</td>
-                  <td class="py-2">P2WPKH (Native SegWit)</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">BIP-86</td>
-                  <td class="py-2 font-mono">m/86'/0'/0'</td>
-                  <td class="py-2">P2TR (Taproot)</td>
-                </tr>
-                <tr>
-                  <td class="py-2">BIP-48</td>
-                  <td class="py-2 font-mono">m/48'/0'/0'/2'</td>
-                  <td class="py-2">多簽 P2WSH</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)]"># 外部地址（接收）</p>
+    <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub6D.../0/*)#abc123</p>
+    <p class="text-[var(--text-tertiary)] mt-4"># 內部地址（找零）</p>
+    <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub6D.../1/*)#def456</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">完整備份範例</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            一個完整的錢包備份應包含所有相關 descriptors：
-          </p>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>最佳實踐：</strong> 備份時保存完整的 descriptor（包含密鑰來源和校驗碼），
+      而不僅僅是助記詞。這確保可以在任何支援 descriptor 的錢包中正確恢復。
+    </p>
+  </div>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-tertiary)]"># 外部地址（接收）</p>
-            <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub6D.../0/*)#abc123</p>
-            <p class="text-[var(--text-tertiary)] mt-4"># 內部地址（找零）</p>
-            <p class="text-[var(--text-secondary)]">wpkh([d34db33f/84'/0'/0']xpub6D.../1/*)#def456</p>
-          </div>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包支援</h2>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-            <p class="text-sm text-green-700 dark:text-green-400">
-              <strong>最佳實踐：</strong> 備份時保存完整的 descriptor（包含密鑰來源和校驗碼），
-              而不僅僅是助記詞。這確保可以在任何支援 descriptor 的錢包中正確恢復。
-            </p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包支援</h2>
-
-          <div class="not-prose mb-6 space-y-3">
-            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
-              <span class="text-[var(--text-primary)]">Bitcoin Core</span>
-              <span class="text-green-500 text-sm">完整支援</span>
-            </div>
-            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
-              <span class="text-[var(--text-primary)]">Sparrow</span>
-              <span class="text-green-500 text-sm">完整支援</span>
-            </div>
-            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
-              <span class="text-[var(--text-primary)]">Specter</span>
-              <span class="text-green-500 text-sm">完整支援</span>
-            </div>
-            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
-              <span class="text-[var(--text-primary)]">Electrum</span>
-              <span class="text-yellow-500 text-sm">部分支援</span>
-            </div>
-            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
-              <span class="text-[var(--text-primary)]">Liana</span>
-              <span class="text-green-500 text-sm">完整支援 + Miniscript</span>
-            </div>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關資源</h2>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <a href="/learn/advanced/miniscript" class="text-bitcoin-500 hover:underline">Miniscript 腳本語言</a></li>
-            <li>• <a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a>：HD 錢包</li>
-            <li>• <a href="/bips/bip-0044" class="text-bitcoin-500 hover:underline">BIP-44</a>：多帳戶層次結構</li>
-            <li>• <a href="/bips/bip-0084" class="text-bitcoin-500 hover:underline">BIP-84</a>：Native SegWit 派生路徑</li>
-            <li>• <a href="/learn/intermediate/multisig" class="text-bitcoin-500 hover:underline">多簽錢包入門</a></li>
-          </ul>
-
-          <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
-            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-              <strong>延伸閱讀：</strong> 查看
-              <a href="https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
-                Bitcoin Core 官方文檔
-              </a>
-              了解完整的 descriptor 語法。
-            </p>
-          </div>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/advanced/miniscript" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：Miniscript
-          </Button>
-          <Button href="/learn/advanced/silent-payments" variant="primary">
-            下一篇：Silent Payments
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
-        </div>
-      </div>
+  <div class="not-prose mb-6 space-y-3">
+    <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+      <span class="text-[var(--text-primary)]">Bitcoin Core</span>
+      <span class="text-green-500 text-sm">完整支援</span>
     </div>
-  </article>
-</PageLayout>
+    <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+      <span class="text-[var(--text-primary)]">Sparrow</span>
+      <span class="text-green-500 text-sm">完整支援</span>
+    </div>
+    <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+      <span class="text-[var(--text-primary)]">Specter</span>
+      <span class="text-green-500 text-sm">完整支援</span>
+    </div>
+    <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+      <span class="text-[var(--text-primary)]">Electrum</span>
+      <span class="text-yellow-500 text-sm">部分支援</span>
+    </div>
+    <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+      <span class="text-[var(--text-primary)]">Liana</span>
+      <span class="text-green-500 text-sm">完整支援 + Miniscript</span>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關資源</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>* <a href="/learn/advanced/miniscript" class="text-bitcoin-500 hover:underline">Miniscript 腳本語言</a></li>
+    <li>* <a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a>：HD 錢包</li>
+    <li>* <a href="/bips/bip-0044" class="text-bitcoin-500 hover:underline">BIP-44</a>：多帳戶層次結構</li>
+    <li>* <a href="/bips/bip-0084" class="text-bitcoin-500 hover:underline">BIP-84</a>：Native SegWit 派生路徑</li>
+    <li>* <a href="/learn/intermediate/multisig" class="text-bitcoin-500 hover:underline">多簽錢包入門</a></li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        Bitcoin Core 官方文檔
+      </a>
+      了解完整的 descriptor 語法。
+    </p>
+  </div>
+</ArticleLayout>

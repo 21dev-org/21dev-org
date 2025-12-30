@@ -1,393 +1,352 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="選幣策略"
-  description="了解錢包如何選擇 UTXO 來構建交易，以及不同演算法對手續費和隱私的影響。"
+  description="選幣（Coin Selection）是錢包決定使用哪些 UTXO 作為交易輸入的過程，直接影響手續費、隱私和 UTXO 集合管理。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '進階知識', href: '/learn/intermediate/' },
+    { label: '選幣策略' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '上一篇：PSBT', href: '/learn/intermediate/psbt' }}
+  nextPage={{ title: '返回進階知識', href: '/learn/intermediate/' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-        <Breadcrumb items={[
-          { label: '學習', href: '/learn/' },
-          { label: '進階知識', href: '/learn/intermediate/' },
-          { label: '選幣策略' },
-        ]} />
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼選幣很重要？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    每筆比特幣交易必須完整花費一個或多個 UTXO。錢包需要選擇足夠的 UTXO
+    來支付目標金額加上手續費，並產生找零輸出。這個選擇會影響：
+  </p>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-              進階
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            選幣策略
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            選幣（Coin Selection）是錢包決定使用哪些 UTXO 作為交易輸入的過程，
-            直接影響手續費、隱私和 UTXO 集合管理。
-          </p>
-        </header>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong class="text-[var(--text-primary)]">手續費</strong>：更多輸入 = 更大交易 = 更高費用</li>
+    <li>• <strong class="text-[var(--text-primary)]">隱私</strong>：輸入連結暴露地址關聯</li>
+    <li>• <strong class="text-[var(--text-primary)]">UTXO 碎片化</strong>：影響未來交易成本</li>
+    <li>• <strong class="text-[var(--text-primary)]">找零輸出</strong>：產生新的 UTXO 需要未來花費</li>
+  </ul>
 
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼選幣很重要？</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            每筆比特幣交易必須完整花費一個或多個 UTXO。錢包需要選擇足夠的 UTXO
-            來支付目標金額加上手續費，並產生找零輸出。這個選擇會影響：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">選幣問題</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    假設你的錢包有以下 UTXO：
+  </p>
 
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <strong class="text-[var(--text-primary)]">手續費</strong>：更多輸入 = 更大交易 = 更高費用</li>
-            <li>• <strong class="text-[var(--text-primary)]">隱私</strong>：輸入連結暴露地址關聯</li>
-            <li>• <strong class="text-[var(--text-primary)]">UTXO 碎片化</strong>：影響未來交易成本</li>
-            <li>• <strong class="text-[var(--text-primary)]">找零輸出</strong>：產生新的 UTXO 需要未來花費</li>
-          </ul>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">可用 UTXO</p>
+    <div class="space-y-2 font-mono text-sm text-[var(--text-secondary)]">
+      <p>UTXO A: 0.5 BTC (bc1q...abc)</p>
+      <p>UTXO B: 0.3 BTC (bc1q...def)</p>
+      <p>UTXO C: 0.1 BTC (bc1q...ghi)</p>
+      <p>UTXO D: 0.05 BTC (bc1q...jkl)</p>
+      <p>UTXO E: 0.01 BTC (bc1q...mno)</p>
+    </div>
+    <p class="text-sm text-[var(--text-tertiary)] mt-3">總計：0.96 BTC</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">選幣問題</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            假設你的錢包有以下 UTXO：
-          </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    如果要發送 <strong>0.35 BTC</strong>，錢包有多種選擇：
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">可用 UTXO</p>
-            <div class="space-y-2 font-mono text-sm text-[var(--text-secondary)]">
-              <p>UTXO A: 0.5 BTC (bc1q...abc)</p>
-              <p>UTXO B: 0.3 BTC (bc1q...def)</p>
-              <p>UTXO C: 0.1 BTC (bc1q...ghi)</p>
-              <p>UTXO D: 0.05 BTC (bc1q...jkl)</p>
-              <p>UTXO E: 0.01 BTC (bc1q...mno)</p>
-            </div>
-            <p class="text-sm text-[var(--text-tertiary)] mt-3">總計：0.96 BTC</p>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">方案</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">輸入</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">找零</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">大小</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">1</td>
+          <td class="py-2">A (0.5)</td>
+          <td class="py-2">~0.15 BTC</td>
+          <td class="py-2">1 輸入</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">2</td>
+          <td class="py-2">B + C (0.4)</td>
+          <td class="py-2">~0.05 BTC</td>
+          <td class="py-2">2 輸入</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">3</td>
+          <td class="py-2">B + C + D (0.45)</td>
+          <td class="py-2">~0.10 BTC</td>
+          <td class="py-2">3 輸入</td>
+        </tr>
+        <tr>
+          <td class="py-2">4</td>
+          <td class="py-2">B + D + E + ... </td>
+          <td class="py-2">可能精確</td>
+          <td class="py-2">多輸入</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            如果要發送 <strong>0.35 BTC</strong>，錢包有多種選擇：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見選幣演算法</h2>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">方案</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">輸入</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">找零</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">大小</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">1</td>
-                  <td class="py-2">A (0.5)</td>
-                  <td class="py-2">~0.15 BTC</td>
-                  <td class="py-2">1 輸入</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">2</td>
-                  <td class="py-2">B + C (0.4)</td>
-                  <td class="py-2">~0.05 BTC</td>
-                  <td class="py-2">2 輸入</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">3</td>
-                  <td class="py-2">B + C + D (0.45)</td>
-                  <td class="py-2">~0.10 BTC</td>
-                  <td class="py-2">3 輸入</td>
-                </tr>
-                <tr>
-                  <td class="py-2">4</td>
-                  <td class="py-2">B + D + E + ... </td>
-                  <td class="py-2">可能精確</td>
-                  <td class="py-2">多輸入</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 最大優先 (Largest First)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    優先選擇金額最大的 UTXO，直到滿足目標金額。簡單但通常不是最優選擇。
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見選幣演算法</h2>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="flex gap-6 text-sm">
+      <div>
+        <p class="text-green-500 font-semibold mb-1">優點</p>
+        <ul class="text-[var(--text-secondary)] space-y-1">
+          <li>• 實現簡單</li>
+          <li>• 減少輸入數量</li>
+        </ul>
+      </div>
+      <div>
+        <p class="text-red-500 font-semibold mb-1">缺點</p>
+        <ul class="text-[var(--text-secondary)] space-y-1">
+          <li>• 可能產生大額找零</li>
+          <li>• 小額 UTXO 永遠不被使用</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 最大優先 (Largest First)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            優先選擇金額最大的 UTXO，直到滿足目標金額。簡單但通常不是最優選擇。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 先進先出 (FIFO)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    按照 UTXO 收到的時間順序選擇，最舊的先使用。
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <div class="flex gap-6 text-sm">
-              <div>
-                <p class="text-green-500 font-semibold mb-1">優點</p>
-                <ul class="text-[var(--text-secondary)] space-y-1">
-                  <li>• 實現簡單</li>
-                  <li>• 減少輸入數量</li>
-                </ul>
-              </div>
-              <div>
-                <p class="text-red-500 font-semibold mb-1">缺點</p>
-                <ul class="text-[var(--text-secondary)] space-y-1">
-                  <li>• 可能產生大額找零</li>
-                  <li>• 小額 UTXO 永遠不被使用</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="flex gap-6 text-sm">
+      <div>
+        <p class="text-green-500 font-semibold mb-1">優點</p>
+        <ul class="text-[var(--text-secondary)] space-y-1">
+          <li>• 避免 UTXO 積壓</li>
+          <li>• 隱私：混合新舊幣</li>
+        </ul>
+      </div>
+      <div>
+        <p class="text-red-500 font-semibold mb-1">缺點</p>
+        <ul class="text-[var(--text-secondary)] space-y-1">
+          <li>• 不考慮費用優化</li>
+          <li>• 可能產生大交易</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 先進先出 (FIFO)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            按照 UTXO 收到的時間順序選擇，最舊的先使用。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. Branch and Bound (BnB)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Bitcoin Core 使用的主要演算法。嘗試找到精確匹配目標金額的 UTXO 組合，
+    完全避免找零輸出。
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <div class="flex gap-6 text-sm">
-              <div>
-                <p class="text-green-500 font-semibold mb-1">優點</p>
-                <ul class="text-[var(--text-secondary)] space-y-1">
-                  <li>• 避免 UTXO 積壓</li>
-                  <li>• 隱私：混合新舊幣</li>
-                </ul>
-              </div>
-              <div>
-                <p class="text-red-500 font-semibold mb-1">缺點</p>
-                <ul class="text-[var(--text-secondary)] space-y-1">
-                  <li>• 不考慮費用優化</li>
-                  <li>• 可能產生大交易</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>無找零交易的好處：</strong>
+      <ul class="mt-2 space-y-1">
+        <li>• 省下一個輸出（約 31-43 vBytes）</li>
+        <li>• 減少 UTXO 集合膨脹</li>
+        <li>• 提升隱私（無法識別找零）</li>
+      </ul>
+    </p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. Branch and Bound (BnB)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Bitcoin Core 使用的主要演算法。嘗試找到精確匹配目標金額的 UTXO 組合，
-            完全避免找零輸出。
-          </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># BnB 搜尋示例</p>
+    <p class="text-[var(--text-secondary)]">目標：0.36 BTC（含手續費）</p>
+    <p class="text-[var(--text-secondary)] mt-2">嘗試：B + C + E = 0.3 + 0.1 + 0.01 = 0.41 ✗</p>
+    <p class="text-[var(--text-secondary)]">嘗試：B + D + E = 0.3 + 0.05 + 0.01 = 0.36 ✓</p>
+    <p class="text-green-500 mt-2">精確匹配，無需找零！</p>
+  </div>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-            <p class="text-sm text-green-700 dark:text-green-400">
-              <strong>無找零交易的好處：</strong>
-              <ul class="mt-2 space-y-1">
-                <li>• 省下一個輸出（約 31-43 vBytes）</li>
-                <li>• 減少 UTXO 集合膨脹</li>
-                <li>• 提升隱私（無法識別找零）</li>
-              </ul>
-            </p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">4. 隨機抽樣 (Random)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    隨機選擇 UTXO 直到滿足目標。常作為備選方案或與其他策略結合使用。
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># BnB 搜尋示例</p>
-            <p class="text-[var(--text-secondary)]">目標：0.36 BTC（含手續費）</p>
-            <p class="text-[var(--text-secondary)] mt-2">嘗試：B + C + E = 0.3 + 0.1 + 0.01 = 0.41 ✗</p>
-            <p class="text-[var(--text-secondary)]">嘗試：B + D + E = 0.3 + 0.05 + 0.01 = 0.36 ✓</p>
-            <p class="text-green-500 mt-2">精確匹配，無需找零！</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">5. Knapsack</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    經典的背包問題解法。Bitcoin Core 的 BnB 失敗時會回退到這個方法。
+    嘗試最小化找零金額。
+  </p>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">4. 隨機抽樣 (Random)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            隨機選擇 UTXO 直到滿足目標。常作為備選方案或與其他策略結合使用。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">影響選幣的因素</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">5. Knapsack</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            經典的背包問題解法。Bitcoin Core 的 BnB 失敗時會回退到這個方法。
-            嘗試最小化找零金額。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">費率環境</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    當前費率直接影響最優策略：
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">影響選幣的因素</h2>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">費率</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">策略</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">原因</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 text-green-500">低費率</td>
+          <td class="py-2">多輸入，整合 UTXO</td>
+          <td class="py-2">趁便宜清理碎片</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 text-yellow-500">中等費率</td>
+          <td class="py-2">平衡選擇</td>
+          <td class="py-2">正常交易</td>
+        </tr>
+        <tr>
+          <td class="py-2 text-red-500">高費率</td>
+          <td class="py-2">最少輸入，避免小 UTXO</td>
+          <td class="py-2">減少費用</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">費率環境</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            當前費率直接影響最優策略：
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">灰塵限制 (Dust Limit)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    當 UTXO 金額太小，花費它的手續費可能超過其價值。這類 UTXO 被稱為「灰塵」。
+  </p>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">費率</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">策略</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">原因</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 text-green-500">低費率</td>
-                  <td class="py-2">多輸入，整合 UTXO</td>
-                  <td class="py-2">趁便宜清理碎片</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 text-yellow-500">中等費率</td>
-                  <td class="py-2">平衡選擇</td>
-                  <td class="py-2">正常交易</td>
-                </tr>
-                <tr>
-                  <td class="py-2 text-red-500">高費率</td>
-                  <td class="py-2">最少輸入，避免小 UTXO</td>
-                  <td class="py-2">減少費用</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 灰塵判斷</p>
+    <p class="text-[var(--text-secondary)]">P2WPKH 輸入大小 ≈ 68 vBytes</p>
+    <p class="text-[var(--text-secondary)]">若費率 = 50 sat/vB</p>
+    <p class="text-[var(--text-secondary)]">花費成本 = 68 × 50 = 3,400 sats</p>
+    <p class="text-[var(--text-tertiary)] mt-2"># 小於 3,400 sats 的 UTXO 就是灰塵</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">灰塵限制 (Dust Limit)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            當 UTXO 金額太小，花費它的手續費可能超過其價值。這類 UTXO 被稱為「灰塵」。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">隱私考量</h2>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 灰塵判斷</p>
-            <p class="text-[var(--text-secondary)]">P2WPKH 輸入大小 ≈ 68 vBytes</p>
-            <p class="text-[var(--text-secondary)]">若費率 = 50 sat/vB</p>
-            <p class="text-[var(--text-secondary)]">花費成本 = 68 × 50 = 3,400 sats</p>
-            <p class="text-[var(--text-tertiary)] mt-2"># 小於 3,400 sats 的 UTXO 就是灰塵</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">地址連結</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    當多個 UTXO 作為同一筆交易的輸入時，它們被假設屬於同一個人。
+    這稱為「共同輸入所有權假設」(Common Input Ownership Heuristic)。
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">隱私考量</h2>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>隱私洩露：</strong> 如果地址 A 和地址 B 的 UTXO 同時作為輸入，
+      區塊鏈分析可以推斷這兩個地址屬於同一實體。
+    </p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">地址連結</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            當多個 UTXO 作為同一筆交易的輸入時，它們被假設屬於同一個人。
-            這稱為「共同輸入所有權假設」(Common Input Ownership Heuristic)。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">找零識別</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    分析者可以通過多種方式識別找零輸出：
+  </p>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-            <p class="text-sm text-red-700 dark:text-red-400">
-              <strong>隱私洩露：</strong> 如果地址 A 和地址 B 的 UTXO 同時作為輸入，
-              區塊鏈分析可以推斷這兩個地址屬於同一實體。
-            </p>
-          </div>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong class="text-[var(--text-primary)]">金額啟發</strong>：找零通常是「奇怪」的數字</li>
+    <li>• <strong class="text-[var(--text-primary)]">地址類型</strong>：找零使用相同地址類型</li>
+    <li>• <strong class="text-[var(--text-primary)]">輸出順序</strong>：找零位置可能有規律</li>
+  </ul>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">找零識別</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            分析者可以通過多種方式識別找零輸出：
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">隱私優化策略</h3>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>避免合併來自不同來源的 UTXO</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>使用無找零選幣（BnB）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>考慮使用 CoinJoin 或 PayJoin</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>隨機化輸出順序</span>
+    </li>
+  </ul>
 
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <strong class="text-[var(--text-primary)]">金額啟發</strong>：找零通常是「奇怪」的數字</li>
-            <li>• <strong class="text-[var(--text-primary)]">地址類型</strong>：找零使用相同地址類型</li>
-            <li>• <strong class="text-[var(--text-primary)]">輸出順序</strong>：找零位置可能有規律</li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">UTXO 管理最佳實踐</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">隱私優化策略</h3>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>避免合併來自不同來源的 UTXO</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>使用無找零選幣（BnB）</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>考慮使用 CoinJoin 或 PayJoin</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>隨機化輸出順序</span>
-            </li>
-          </ul>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">UTXO 管理最佳實踐</h2>
-
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <div class="space-y-4 text-sm">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">1</div>
-                <div>
-                  <p class="font-semibold text-[var(--text-primary)]">低費率時整合</p>
-                  <p class="text-[var(--text-secondary)]">週末或夜間，將小額 UTXO 合併成較大的</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">2</div>
-                <div>
-                  <p class="font-semibold text-[var(--text-primary)]">避免過度碎片化</p>
-                  <p class="text-[var(--text-secondary)]">接收時盡量使用較少的地址和較大的金額</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">3</div>
-                <div>
-                  <p class="font-semibold text-[var(--text-primary)]">標籤化 UTXO</p>
-                  <p class="text-[var(--text-secondary)]">記錄 UTXO 來源，避免混合不同隱私等級的幣</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">4</div>
-                <div>
-                  <p class="font-semibold text-[var(--text-primary)]">使用手動選幣</p>
-                  <p class="text-[var(--text-secondary)]">進階錢包允許手動選擇 UTXO，更好地控制隱私</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包實作</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            不同錢包的選幣策略：
-          </p>
-
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">錢包</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">演算法</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">手動選幣</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">Bitcoin Core</td>
-                  <td class="py-2">BnB + Knapsack</td>
-                  <td class="py-2 text-green-500">支援</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">Sparrow</td>
-                  <td class="py-2">多種可選</td>
-                  <td class="py-2 text-green-500">支援</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">Electrum</td>
-                  <td class="py-2">可配置</td>
-                  <td class="py-2 text-green-500">支援</td>
-                </tr>
-                <tr>
-                  <td class="py-2">一般手機錢包</td>
-                  <td class="py-2">自動</td>
-                  <td class="py-2 text-red-500">不支援</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
-            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-              <strong>延伸閱讀：</strong> 了解 <a href="/learn/intermediate/fee-estimation" class="underline">手續費估算</a>
-              和 <a href="/learn/intermediate/utxo-model" class="underline">UTXO 模型</a> 可以幫助更好地理解選幣決策。
-            </p>
-          </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="space-y-4 text-sm">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">1</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">低費率時整合</p>
+          <p class="text-[var(--text-secondary)]">週末或夜間，將小額 UTXO 合併成較大的</p>
         </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/intermediate/psbt" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：PSBT
-          </Button>
-          <Button href="/learn/intermediate/" variant="primary">
-            返回進階知識
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">2</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">避免過度碎片化</p>
+          <p class="text-[var(--text-secondary)]">接收時盡量使用較少的地址和較大的金額</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">3</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">標籤化 UTXO</p>
+          <p class="text-[var(--text-secondary)]">記錄 UTXO 來源，避免混合不同隱私等級的幣</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">4</div>
+        <div>
+          <p class="font-semibold text-[var(--text-primary)]">使用手動選幣</p>
+          <p class="text-[var(--text-secondary)]">進階錢包允許手動選擇 UTXO，更好地控制隱私</p>
         </div>
       </div>
     </div>
-  </article>
-</PageLayout>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包實作</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    不同錢包的選幣策略：
+  </p>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">錢包</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">演算法</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">手動選幣</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">Bitcoin Core</td>
+          <td class="py-2">BnB + Knapsack</td>
+          <td class="py-2 text-green-500">支援</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">Sparrow</td>
+          <td class="py-2">多種可選</td>
+          <td class="py-2 text-green-500">支援</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">Electrum</td>
+          <td class="py-2">可配置</td>
+          <td class="py-2 text-green-500">支援</td>
+        </tr>
+        <tr>
+          <td class="py-2">一般手機錢包</td>
+          <td class="py-2">自動</td>
+          <td class="py-2 text-red-500">不支援</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 了解 <a href="/learn/intermediate/fee-estimation" class="underline">手續費估算</a>
+      和 <a href="/learn/intermediate/utxo-model" class="underline">UTXO 模型</a> 可以幫助更好地理解選幣決策。
+    </p>
+  </div>
+</ArticleLayout>

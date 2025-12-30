@@ -1,204 +1,164 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 import KeysIllustration from '@/components/svg/KeysIllustration.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="安全基礎"
-  description="學習保護你的比特幣的基本原則：助記詞備份、私鑰保管和常見的安全陷阱。"
+  description="「Not your keys, not your coins」， 學習如何真正掌控你的比特幣。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '入門基礎', href: '/learn/basics/' },
+    { label: '安全基礎' },
+  ]}
+  difficulty="beginner"
+  readingTime="15 分鐘"
+  prevPage={{ title: '上一篇：錢包指南', href: '/learn/basics/wallet-guide' }}
+  nextPage={{ title: '下一篇：為什麼要跑節點', href: '/learn/basics/running-node' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-        <Breadcrumb items={[
-          { label: '學習', href: '/learn/' },
-          { label: '入門基礎', href: '/learn/basics/' },
-          { label: '安全基礎' },
-        ]} />
+  <!-- Keys Illustration -->
+  <div class="mb-12 p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <KeysIllustration class="w-full h-auto max-w-md mx-auto" />
+  </div>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-500/10 text-green-600 dark:text-green-400">
-              入門
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            安全基礎
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            「Not your keys, not your coins」， 學習如何真正掌控你的比特幣。
-          </p>
-        </header>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">核心概念：私鑰就是一切</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    在比特幣世界裡，私鑰就是所有權的證明。誰擁有私鑰，誰就控制著對應的比特幣。
+    沒有銀行客服可以幫你重設密碼，沒有「忘記密碼」按鈕，一旦私鑰丟失，比特幣就永遠無法找回。
+  </p>
 
-        <!-- Keys Illustration -->
-        <div class="mb-12 p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-          <KeysIllustration class="w-full h-auto max-w-md mx-auto" />
-        </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>重要警告：</strong> 永遠不要向任何人透露你的私鑰或助記詞。
+      任何要求你提供私鑰的人或網站都是詐騙。官方客服、技術支援、空投活動都不需要你的私鑰。
+    </p>
+  </div>
 
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">核心概念：私鑰就是一切</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            在比特幣世界裡，私鑰就是所有權的證明。誰擁有私鑰，誰就控制著對應的比特幣。
-            沒有銀行客服可以幫你重設密碼，沒有「忘記密碼」按鈕，一旦私鑰丟失，比特幣就永遠無法找回。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">助記詞（Seed Phrase）</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    助記詞是一組 12 或 24 個英文單詞，用於生成和恢復你的錢包。
+    它是你私鑰的人類可讀形式，更容易備份和儲存。
+  </p>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-            <p class="text-sm text-red-700 dark:text-red-400">
-              <strong>重要警告：</strong> 永遠不要向任何人透露你的私鑰或助記詞。
-              任何要求你提供私鑰的人或網站都是詐騙。官方客服、技術支援、空投活動都不需要你的私鑰。
-            </p>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># 助記詞範例（僅供說明，不要使用）</p>
+    <p class="text-[var(--text-secondary)]">abandon ability able about above absent absorb abstract absurd abuse access accident</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">助記詞（Seed Phrase）</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            助記詞是一組 12 或 24 個英文單詞，用於生成和恢復你的錢包。
-            它是你私鑰的人類可讀形式，更容易備份和儲存。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">如何安全備份助記詞</h3>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">紙筆備份</strong>：用紙和筆手寫，不要打字或截圖</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">多份備份</strong>：至少準備 2-3 份，存放在不同地點</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">防火防水</strong>：考慮使用金屬板刻字，防止火災或水災損毀</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">驗證備份</strong>：備份後，嘗試用它恢復錢包確認正確</span>
+    </li>
+  </ul>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># 助記詞範例（僅供說明，不要使用）</p>
-            <p class="text-[var(--text-secondary)]">abandon ability able about above absent absorb abstract absurd abuse access accident</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">絕對不要做的事</h3>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span>不要截圖或拍照存在手機裡</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span>不要存在雲端（iCloud、Google Drive、Dropbox）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span>不要用電子郵件發送給自己</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span>不要存在任何連網的設備上</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-red-500">✗</span>
+      <span>不要在任何網站上輸入（除了你信任的錢包恢復界面）</span>
+    </li>
+  </ul>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">如何安全備份助記詞</h3>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">紙筆備份</strong>：用紙和筆手寫，不要打字或截圖</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">多份備份</strong>：至少準備 2-3 份，存放在不同地點</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">防火防水</strong>：考慮使用金屬板刻字，防止火災或水災損毀</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">驗證備份</strong>：備份後，嘗試用它恢復錢包確認正確</span>
-            </li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包類型與安全等級</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">絕對不要做的事</h3>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-red-500">✗</span>
-              <span>不要截圖或拍照存在手機裡</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-red-500">✗</span>
-              <span>不要存在雲端（iCloud、Google Drive、Dropbox）</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-red-500">✗</span>
-              <span>不要用電子郵件發送給自己</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-red-500">✗</span>
-              <span>不要存在任何連網的設備上</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-red-500">✗</span>
-              <span>不要在任何網站上輸入（除了你信任的錢包恢復界面）</span>
-            </li>
-          </ul>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">熱錢包（Hot Wallet）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    連接到網路的錢包，方便日常使用，但安全性較低。
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 手機錢包：BlueWallet、Muun、Phoenix</li>
+    <li>• 桌面錢包：Sparrow、Electrum</li>
+    <li>• 適合：小額、日常交易</li>
+  </ul>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包類型與安全等級</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">冷錢包（Cold Wallet）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    私鑰永不接觸網路的錢包，安全性最高。
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 硬體錢包：Coldcard、Trezor、Ledger、BitBox</li>
+    <li>• 紙錢包（不推薦新手）</li>
+    <li>• 適合：大額、長期持有</li>
+  </ul>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">熱錢包（Hot Wallet）</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            連接到網路的錢包，方便日常使用，但安全性較低。
-          </p>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 手機錢包：BlueWallet、Muun、Phoenix</li>
-            <li>• 桌面錢包：Sparrow、Electrum</li>
-            <li>• 適合：小額、日常交易</li>
-          </ul>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>建議：</strong> 使用「分層安全」策略。熱錢包存放日常使用的小額比特幣，
+      冷錢包存放大部分儲蓄。就像你不會把全部存款放在皮夾裡一樣。
+    </p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">冷錢包（Cold Wallet）</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            私鑰永不接觸網路的錢包，安全性最高。
-          </p>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 硬體錢包：Coldcard、Trezor、Ledger、BitBox</li>
-            <li>• 紙錢包（不推薦新手）</li>
-            <li>• 適合：大額、長期持有</li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見詐騙與陷阱</h2>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
-            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-              <strong>建議：</strong> 使用「分層安全」策略。熱錢包存放日常使用的小額比特幣，
-              冷錢包存放大部分儲蓄。就像你不會把全部存款放在皮夾裡一樣。
-            </p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">釣魚網站</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    詐騙者建立看起來像正版錢包或交易所的假網站。永遠仔細檢查網址，
+    最好直接輸入或使用書籤，不要點擊郵件或訊息中的連結。
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見詐騙與陷阱</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">假客服詐騙</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    詐騙者冒充錢包或交易所客服，聲稱要幫你解決問題，要求你提供助記詞或私鑰。
+    記住：真正的客服永遠不會要求你的私鑰。
+  </p>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">釣魚網站</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            詐騙者建立看起來像正版錢包或交易所的假網站。永遠仔細檢查網址，
-            最好直接輸入或使用書籤，不要點擊郵件或訊息中的連結。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">假空投/贈送活動</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    「發送 0.1 BTC，獲得 1 BTC 返還」這類活動 100% 是詐騙。
+    沒有人會無緣無故給你錢，即使是 Elon Musk 也不會。
+  </p>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">假客服詐騙</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            詐騙者冒充錢包或交易所客服，聲稱要幫你解決問題，要求你提供助記詞或私鑰。
-            記住：真正的客服永遠不會要求你的私鑰。
-          </p>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">假空投/贈送活動</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            「發送 0.1 BTC，獲得 1 BTC 返還」這類活動 100% 是詐騙。
-            沒有人會無緣無故給你錢，即使是 Elon Musk 也不會。
-          </p>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">安全檢查清單</h2>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
-              <span>我已經用紙和筆備份了助記詞</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
-              <span>我的備份存放在安全的地方</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
-              <span>我已經測試過用備份恢復錢包</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
-              <span>我沒有在任何網路設備上存儲助記詞</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
-              <span>我知道永遠不要向任何人透露私鑰</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/basics/wallet-guide" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：錢包指南
-          </Button>
-          <Button href="/learn/basics/running-node" variant="primary">
-            下一篇：為什麼要跑節點
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
-        </div>
-      </div>
-    </div>
-  </article>
-</PageLayout>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">安全檢查清單</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
+      <span>我已經用紙和筆備份了助記詞</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
+      <span>我的備份存放在安全的地方</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
+      <span>我已經測試過用備份恢復錢包</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
+      <span>我沒有在任何網路設備上存儲助記詞</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <input type="checkbox" class="mt-1 rounded border-[var(--border-default)]" />
+      <span>我知道永遠不要向任何人透露私鑰</span>
+    </li>
+  </ul>
+</ArticleLayout>

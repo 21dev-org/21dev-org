@@ -1,114 +1,90 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="Discreet Log Contracts (DLC)"
-  description="學習 DLC 如何使用預言機簽章在比特幣上實現智能合約，無需信任第三方託管資金。"
+  description="DLC 是一種在比特幣上建立智能合約的方式，使用預言機（Oracle）簽章來決定合約結果，同時保持交易隱私，預言機無法得知合約內容或參與者身份。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '深入技術', href: '/learn/advanced/' },
+    { label: 'DLC' },
+  ]}
+  difficulty="advanced"
+  readingTime="30 分鐘"
+  prevPage={{ title: 'CoinJoin', href: '/learn/advanced/coinjoin' }}
+  nextPage={{ title: '返回深入技術', href: '/learn/advanced/' }}
 >
-  <!-- Hero section -->
-  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]">
-    <div class="container-wide">
-<Breadcrumb items={[
-  { label: '學習', href: '/learn/' },
-  { label: '高級主題', href: '/learn/advanced/' },
-  { label: 'DLC' },
-]} />
-      <div class="max-w-3xl">
-        <div class="inline-block px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 mb-4">
-          高級
-        </div>
-        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-          Discreet Log Contracts
-        </h1>
-        <p class="text-xl text-[var(--text-secondary)]">
-          DLC 是一種在比特幣上建立智能合約的方式，使用預言機（Oracle）簽章來決定合約結果，
-          同時保持交易隱私，預言機無法得知合約內容或參與者身份。
-        </p>
-      </div>
-    </div>
-  </section>
+  <h2 id="what-is-dlc">什麼是 DLC？</h2>
 
-  <!-- Main content -->
-  <section class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-        <article class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+  <p>
+    Discreet Log Contracts（離散對數合約）由 Tadge Dryja 在 2017 年提出，
+    是一種利用預言機簽章來執行條件支付的比特幣智能合約協議。
+  </p>
 
-          <!-- Introduction -->
-          <h2>什麼是 DLC？</h2>
+  <div class="not-prose my-8 p-6 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">DLC 核心特點</h3>
+    <ul class="space-y-2 text-[var(--text-secondary)]">
+      <li class="flex items-start gap-2">
+        <span class="text-bitcoin-500">*</span>
+        <span><strong>隱私保護</strong>：預言機不知道合約存在或內容</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-bitcoin-500">*</span>
+        <span><strong>無需託管</strong>：資金鎖定在 2-of-2 多簽，沒有第三方控制</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-bitcoin-500">*</span>
+        <span><strong>鏈上隱私</strong>：執行後的交易看起來像普通支付</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-bitcoin-500">*</span>
+        <span><strong>可擴展</strong>：可處理複雜的多結果合約</span>
+      </li>
+    </ul>
+  </div>
 
-          <p>
-            Discreet Log Contracts（離散對數合約）由 Tadge Dryja 在 2017 年提出，
-            是一種利用預言機簽章來執行條件支付的比特幣智能合約協議。
-          </p>
+  <h2 id="how-it-works">運作原理</h2>
 
-          <div class="not-prose my-8 p-6 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">DLC 核心特點</h3>
-            <ul class="space-y-2 text-[var(--text-secondary)]">
-              <li class="flex items-start gap-2">
-                <span class="text-bitcoin-500">•</span>
-                <span><strong>隱私保護</strong>：預言機不知道合約存在或內容</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-bitcoin-500">•</span>
-                <span><strong>無需託管</strong>：資金鎖定在 2-of-2 多簽，沒有第三方控制</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-bitcoin-500">•</span>
-                <span><strong>鏈上隱私</strong>：執行後的交易看起來像普通支付</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-bitcoin-500">•</span>
-                <span><strong>可擴展</strong>：可處理複雜的多結果合約</span>
-              </li>
-            </ul>
-          </div>
+  <h3>基本概念</h3>
 
-          <!-- How it works -->
-          <h2>運作原理</h2>
+  <p>
+    DLC 利用 Schnorr 簽章的數學特性，結合預言機的預先承諾（commitment）來建立合約：
+  </p>
 
-          <h3>基本概念</h3>
-
-          <p>
-            DLC 利用 Schnorr 簽章的數學特性，結合預言機的預先承諾（commitment）來建立合約：
-          </p>
-
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">關鍵角色</h3>
-            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>參與者：
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">關鍵角色</h3>
+    <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>參與者：
 ┌─────────────────────────────────────────────────┐
 │ Alice（合約方 A）                                │
-│ • 提供資金                                       │
-│ • 建構和簽署 CET（Contract Execution Tx）        │
+│ * 提供資金                                       │
+│ * 建構和簽署 CET（Contract Execution Tx）        │
 └─────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────┐
 │ Bob（合約方 B）                                  │
-│ • 提供資金                                       │
-│ • 建構和簽署 CET                                 │
+│ * 提供資金                                       │
+│ * 建構和簽署 CET                                 │
 └─────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────┐
 │ Oracle（預言機）                                 │
-│ • 發布事件公告和承諾點                           │
-│ • 事件發生後發布簽章                             │
-│ • 不知道有合約使用其簽章                         │
+│ * 發布事件公告和承諾點                           │
+│ * 事件發生後發布簽章                             │
+│ * 不知道有合約使用其簽章                         │
 └─────────────────────────────────────────────────┘</code></pre>
-          </div>
+  </div>
 
-          <h3>Adaptor Signatures（適配器簽章）</h3>
+  <h3>Adaptor Signatures（適配器簽章）</h3>
 
-          <p>
-            DLC 的核心技術是 Adaptor Signatures，這是一種「不完整」的簽章，
-            需要額外的秘密值才能變成有效簽章：
-          </p>
+  <p>
+    DLC 的核心技術是 Adaptor Signatures，這是一種「不完整」的簽章，
+    需要額外的秘密值才能變成有效簽章：
+  </p>
 
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Adaptor Signature 原理</h3>
-            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// Schnorr 簽章：s = k + H(R||P||m) * x
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Adaptor Signature 原理</h3>
+    <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// Schnorr 簽章：s = k + H(R||P||m) * x
 // 其中 k 是 nonce，x 是私鑰，R = k*G
 
 // Adaptor Signature 加入一個「適配點」T = t*G
@@ -132,35 +108,34 @@ import Breadcrumb from '@/components/ui/Breadcrumb.astro';
 │                                                 │
 │ 5. 知道 t_i 的一方可以完成交易簽章               │
 └─────────────────────────────────────────────────┘</code></pre>
-          </div>
+  </div>
 
-          <!-- Contract Flow -->
-          <h2>合約執行流程</h2>
+  <h2 id="contract-flow">合約執行流程</h2>
 
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">完整流程</h3>
-            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>階段 1：預言機公告
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">完整流程</h3>
+    <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>階段 1：預言機公告
 ┌─────────────────────────────────────────────────┐
 │ Oracle 發布事件公告：                            │
-│ • 事件 ID                                       │
-│ • 可能結果列表 [outcome_1, outcome_2, ...]       │
-│ • 承諾點 R_oracle                               │
-│ • 預計公告時間                                   │
+│ * 事件 ID                                       │
+│ * 可能結果列表 [outcome_1, outcome_2, ...]       │
+│ * 承諾點 R_oracle                               │
+│ * 預計公告時間                                   │
 └─────────────────────────────────────────────────┘
          ↓
 階段 2：合約建立
 ┌─────────────────────────────────────────────────┐
 │ Alice 和 Bob 協商：                              │
-│ • 選擇預言機和事件                               │
-│ • 確定每個結果的支付分配                         │
-│ • 各自投入的資金數量                             │
+│ * 選擇預言機和事件                               │
+│ * 確定每個結果的支付分配                         │
+│ * 各自投入的資金數量                             │
 └─────────────────────────────────────────────────┘
          ↓
 階段 3：Funding Transaction
 ┌─────────────────────────────────────────────────┐
 │ 建立 Funding Tx：                                │
-│ • 輸入：Alice 的 UTXO + Bob 的 UTXO             │
-│ • 輸出：2-of-2 多簽（Alice + Bob）              │
+│ * 輸入：Alice 的 UTXO + Bob 的 UTXO             │
+│ * 輸出：2-of-2 多簽（Alice + Bob）              │
 │                                                 │
 │ 注意：先建立 CET，再廣播 Funding Tx             │
 └─────────────────────────────────────────────────┘
@@ -185,9 +160,9 @@ import Breadcrumb from '@/components/ui/Breadcrumb.astro';
 階段 5：事件發生
 ┌─────────────────────────────────────────────────┐
 │ Oracle 發布結果簽章：                            │
-│ • 觀察真實世界事件                               │
-│ • 發布對應結果的簽章 s_oracle                    │
-│ • 不知道有 DLC 使用此簽章                        │
+│ * 觀察真實世界事件                               │
+│ * 發布對應結果的簽章 s_oracle                    │
+│ * 不知道有 DLC 使用此簽章                        │
 └─────────────────────────────────────────────────┘
          ↓
 階段 6：合約執行
@@ -198,18 +173,17 @@ import Breadcrumb from '@/components/ui/Breadcrumb.astro';
 │ 3. 廣播對應的 CET                               │
 │ 4. 根據結果分配資金                              │
 └─────────────────────────────────────────────────┘</code></pre>
-          </div>
+  </div>
 
-          <!-- Example -->
-          <h2>實際範例：BTC/USD 價格合約</h2>
+  <h2 id="example">實際範例：BTC/USD 價格合約</h2>
 
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">價格對賭合約</h3>
-            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>場景：Alice 和 Bob 對 BTC 價格打賭
-• 目前價格：$50,000
-• 到期日：30 天後
-• Alice 認為會漲，Bob 認為會跌
-• 各投入 1 BTC
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">價格對賭合約</h3>
+    <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>場景：Alice 和 Bob 對 BTC 價格打賭
+* 目前價格：$50,000
+* 到期日：30 天後
+* Alice 認為會漲，Bob 認為會跌
+* 各投入 1 BTC
 
 結果定義（簡化為 5 個區間）：
 ┌─────────────────────────────────────────────────┐
@@ -234,19 +208,18 @@ Oracle 公告：
 30 天後，BTC = $65,000
 Oracle 發布 outcome_4 的簽章
 Alice 可以廣播 CET_4，獲得 1.5 BTC</code></pre>
-          </div>
+  </div>
 
-          <!-- Numeric Outcomes -->
-          <h2>數值結果處理</h2>
+  <h2 id="numeric-outcomes">數值結果處理</h2>
 
-          <p>
-            對於連續數值（如價格），為每個可能值建立 CET 不切實際。
-            DLC 使用數字分解技術來處理：
-          </p>
+  <p>
+    對於連續數值（如價格），為每個可能值建立 CET 不切實際。
+    DLC 使用數字分解技術來處理：
+  </p>
 
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">數字分解（Digit Decomposition）</h3>
-            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// 假設價格範圍 0-99999，精度為 1 美元
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">數字分解（Digit Decomposition）</h3>
+    <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// 假設價格範圍 0-99999，精度為 1 美元
 // 直接方式需要 100,000 個 CET！
 
 // 數字分解：使用 base-10 表示
@@ -263,9 +236,9 @@ Oracle 為每個數字位發布承諾：
 └─────────────────────────────────────────────────┘
 
 CET 數量計算：
-• 5 位數字 × 10 種值 = 50 個 adaptor points
-• 使用區間優化後可進一步減少
-• 比 100,000 個 CET 高效得多！
+* 5 位數字 x 10 種值 = 50 個 adaptor points
+* 使用區間優化後可進一步減少
+* 比 100,000 個 CET 高效得多！
 
 Oracle 發布：
 s_0 = sign(6)  // 萬位
@@ -274,33 +247,32 @@ s_2 = sign(4)  // 百位
 s_3 = sign(3)  // 十位
 s_4 = sign(2)  // 個位
 // 組合得到 65432</code></pre>
-          </div>
+  </div>
 
-          <!-- Multi Oracle -->
-          <h2>多預言機支援</h2>
+  <h2 id="multi-oracle">多預言機支援</h2>
 
-          <p>
-            為了降低單一預言機風險，DLC 支援多種多預言機配置：
-          </p>
+  <p>
+    為了降低單一預言機風險，DLC 支援多種多預言機配置：
+  </p>
 
-          <div class="not-prose my-8 grid md:grid-cols-2 gap-4">
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">N-of-N</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                所有預言機必須同意。提供最高安全性，但任一預言機離線會導致合約無法執行。
-              </p>
-            </div>
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">K-of-N</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                需要 K 個預言機同意。例如 2-of-3 提供容錯能力，同時維持去中心化。
-              </p>
-            </div>
-          </div>
+  <div class="not-prose my-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">N-of-N</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有預言機必須同意。提供最高安全性，但任一預言機離線會導致合約無法執行。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">K-of-N</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        需要 K 個預言機同意。例如 2-of-3 提供容錯能力，同時維持去中心化。
+      </p>
+    </div>
+  </div>
 
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">多預言機實作</h3>
-            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// 2-of-3 預言機配置
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">多預言機實作</h3>
+    <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// 2-of-3 預言機配置
 oracles = [Oracle_A, Oracle_B, Oracle_C]
 
 // 建立 CET 需要任意兩個預言機的簽章組合
@@ -315,225 +287,203 @@ combinations = [
 
 // 容錯：即使一個預言機離線或作惡，
 // 合約仍可用其他兩個執行</code></pre>
-          </div>
+  </div>
 
-          <!-- Use Cases -->
-          <h2>應用場景</h2>
+  <h2 id="use-cases">應用場景</h2>
 
-          <div class="not-prose my-8 space-y-4">
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">金融衍生品</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                期貨、期權、差價合約（CFD）。用戶可以對資產價格進行對沖或投機，
-                無需信任交易對手或中央清算所。
-              </p>
-            </div>
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">預測市場</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                對選舉、體育賽事、天氣等事件結果進行預測。
-                預言機報告結果，資金自動分配給正確預測者。
-              </p>
-            </div>
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">保險合約</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                參數化保險，如航班延誤、天氣災害保險。
-                當觸發條件發生時自動理賠，無需傳統保險流程。
-              </p>
-            </div>
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">託管服務</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                條件託管，當預言機確認條件滿足時釋放資金。
-                可用於跨境交易、里程碑付款等。
-              </p>
-            </div>
-          </div>
-
-          <!-- Comparison -->
-          <h2>與其他方案比較</h2>
-
-          <div class="not-prose my-8 overflow-x-auto">
-            <table class="w-full text-sm border-collapse">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left p-3 text-[var(--text-primary)]">特性</th>
-                  <th class="text-left p-3 text-[var(--text-primary)]">DLC</th>
-                  <th class="text-left p-3 text-[var(--text-primary)]">傳統託管</th>
-                  <th class="text-left p-3 text-[var(--text-primary)]">以太坊智能合約</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="p-3">託管風險</td>
-                  <td class="p-3 text-green-500">無</td>
-                  <td class="p-3 text-red-500">高</td>
-                  <td class="p-3 text-yellow-500">智能合約風險</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="p-3">隱私性</td>
-                  <td class="p-3 text-green-500">高</td>
-                  <td class="p-3 text-red-500">低</td>
-                  <td class="p-3 text-red-500">低</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="p-3">預言機知情</td>
-                  <td class="p-3 text-green-500">否</td>
-                  <td class="p-3 text-red-500">是</td>
-                  <td class="p-3 text-red-500">是</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="p-3">鏈上足跡</td>
-                  <td class="p-3 text-green-500">最小</td>
-                  <td class="p-3 text-yellow-500">中等</td>
-                  <td class="p-3 text-red-500">大</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="p-3">靈活性</td>
-                  <td class="p-3 text-yellow-500">中等</td>
-                  <td class="p-3 text-green-500">高</td>
-                  <td class="p-3 text-green-500">最高</td>
-                </tr>
-                <tr>
-                  <td class="p-3">預先定義結果</td>
-                  <td class="p-3">必須</td>
-                  <td class="p-3">不需要</td>
-                  <td class="p-3">不需要</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Implementation -->
-          <h2>實作工具</h2>
-
-          <div class="not-prose my-8 space-y-4">
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">rust-dlc</h4>
-              <p class="text-sm text-[var(--text-secondary)] mb-2">
-                Rust 實作的 DLC 函式庫，提供完整的協議支援。
-              </p>
-              <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">
-                github.com/p2pderivatives/rust-dlc
-              </code>
-            </div>
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">bitcoin-s</h4>
-              <p class="text-sm text-[var(--text-secondary)] mb-2">
-                Scala 比特幣函式庫，包含 DLC 支援和錢包功能。
-              </p>
-              <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">
-                github.com/bitcoin-s/bitcoin-s
-              </code>
-            </div>
-            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">DLC.Link</h4>
-              <p class="text-sm text-[var(--text-secondary)] mb-2">
-                提供 DLC 基礎設施，簡化開發者整合。
-              </p>
-              <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">
-                dlc.link
-              </code>
-            </div>
-          </div>
-
-          <!-- Specifications -->
-          <h2>標準規格</h2>
-
-          <p>
-            DLC 有一套正在發展的標準規格，類似閃電網路的 BOLT：
-          </p>
-
-          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">DLC 規格列表</h3>
-            <ul class="space-y-2 text-[var(--text-secondary)] text-sm">
-              <li>• <strong>DLC Spec 0</strong>：介紹和術語定義</li>
-              <li>• <strong>DLC Spec 1</strong>：Oracle 公告和簽章格式</li>
-              <li>• <strong>DLC Spec 2</strong>：合約協商協議</li>
-              <li>• <strong>DLC Spec 3</strong>：交易結構（Funding, CET, Refund）</li>
-              <li>• <strong>DLC Spec 4</strong>：P2P 訊息格式</li>
-              <li>• <strong>DLC Spec 5</strong>：數值結果處理</li>
-            </ul>
-            <p class="mt-4 text-xs text-[var(--text-tertiary)]">
-              規格文件：github.com/discreetlogcontracts/dlcspecs
-            </p>
-          </div>
-
-          <!-- Challenges -->
-          <h2>挑戰與限制</h2>
-
-          <div class="not-prose my-8 p-6 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">目前挑戰</h3>
-            <ul class="space-y-3 text-[var(--text-secondary)]">
-              <li class="flex items-start gap-2">
-                <span class="text-yellow-500 font-bold">1.</span>
-                <span><strong>預言機可用性</strong>：需要可靠的預言機服務，且預言機必須在預定時間發布簽章</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-yellow-500 font-bold">2.</span>
-                <span><strong>資本效率</strong>：資金在合約期間被鎖定，無法用於其他用途</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-yellow-500 font-bold">3.</span>
-                <span><strong>CET 數量</strong>：複雜合約可能需要大量 CET，增加協商時間</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-yellow-500 font-bold">4.</span>
-                <span><strong>用戶體驗</strong>：需要雙方同時在線進行協商</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-yellow-500 font-bold">5.</span>
-                <span><strong>預言機審查</strong>：預言機可能拒絕發布簽章（但無法知道合約內容）</span>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Future -->
-          <h2>未來發展</h2>
-
-          <div class="not-prose my-8 grid md:grid-cols-2 gap-4">
-            <div class="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">Taproot 整合</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                使用 Taproot 可以大幅減少 CET 的鏈上足跡，
-                讓 DLC 交易看起來完全像普通支付。
-              </p>
-            </div>
-            <div class="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">閃電網路 DLC</h4>
-              <p class="text-sm text-[var(--text-secondary)]">
-                在閃電網路通道內執行 DLC，
-                實現即時結算和更高的資本效率。
-              </p>
-            </div>
-          </div>
-
-          <!-- Summary -->
-          <h2>總結</h2>
-
-          <p>
-            DLC 代表了比特幣智能合約的重要進展。透過巧妙運用密碼學，
-            它實現了無需信任的條件支付，同時保護所有參與方（包括預言機）的隱私。
-          </p>
-
-          <p>
-            雖然 DLC 不如以太坊智能合約靈活，但它提供了更強的安全性和隱私保障。
-            隨著工具和基礎設施的成熟，DLC 有望成為比特幣生態系統中重要的金融基礎設施。
-          </p>
-
-        </article>
-
-        <!-- Navigation -->
-        <div class="mt-16 flex flex-col sm:flex-row justify-between gap-4">
-          <Button href="/learn/advanced/coinjoin" variant="outline">
-            ← CoinJoin
-          </Button>
-          <Button href="/learn/advanced/" variant="outline">
-            返回深入技術 →
-          </Button>
-        </div>
-      </div>
+  <div class="not-prose my-8 space-y-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">金融衍生品</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        期貨、期權、差價合約（CFD）。用戶可以對資產價格進行對沖或投機，
+        無需信任交易對手或中央清算所。
+      </p>
     </div>
-  </section>
-</PageLayout>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">預測市場</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對選舉、體育賽事、天氣等事件結果進行預測。
+        預言機報告結果，資金自動分配給正確預測者。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">保險合約</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        參數化保險，如航班延誤、天氣災害保險。
+        當觸發條件發生時自動理賠，無需傳統保險流程。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">託管服務</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        條件託管，當預言機確認條件滿足時釋放資金。
+        可用於跨境交易、里程碑付款等。
+      </p>
+    </div>
+  </div>
+
+  <h2 id="comparison">與其他方案比較</h2>
+
+  <div class="not-prose my-8 overflow-x-auto">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left p-3 text-[var(--text-primary)]">特性</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">DLC</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">傳統託管</th>
+          <th class="text-left p-3 text-[var(--text-primary)]">以太坊智能合約</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">託管風險</td>
+          <td class="p-3 text-green-500">無</td>
+          <td class="p-3 text-red-500">高</td>
+          <td class="p-3 text-yellow-500">智能合約風險</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">隱私性</td>
+          <td class="p-3 text-green-500">高</td>
+          <td class="p-3 text-red-500">低</td>
+          <td class="p-3 text-red-500">低</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">預言機知情</td>
+          <td class="p-3 text-green-500">否</td>
+          <td class="p-3 text-red-500">是</td>
+          <td class="p-3 text-red-500">是</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">鏈上足跡</td>
+          <td class="p-3 text-green-500">最小</td>
+          <td class="p-3 text-yellow-500">中等</td>
+          <td class="p-3 text-red-500">大</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="p-3">靈活性</td>
+          <td class="p-3 text-yellow-500">中等</td>
+          <td class="p-3 text-green-500">高</td>
+          <td class="p-3 text-green-500">最高</td>
+        </tr>
+        <tr>
+          <td class="p-3">預先定義結果</td>
+          <td class="p-3">必須</td>
+          <td class="p-3">不需要</td>
+          <td class="p-3">不需要</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="implementation">實作工具</h2>
+
+  <div class="not-prose my-8 space-y-4">
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">rust-dlc</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        Rust 實作的 DLC 函式庫，提供完整的協議支援。
+      </p>
+      <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">
+        github.com/p2pderivatives/rust-dlc
+      </code>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">bitcoin-s</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        Scala 比特幣函式庫，包含 DLC 支援和錢包功能。
+      </p>
+      <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">
+        github.com/bitcoin-s/bitcoin-s
+      </code>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">DLC.Link</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        提供 DLC 基礎設施，簡化開發者整合。
+      </p>
+      <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">
+        dlc.link
+      </code>
+    </div>
+  </div>
+
+  <h2 id="specifications">標準規格</h2>
+
+  <p>
+    DLC 有一套正在發展的標準規格，類似閃電網路的 BOLT：
+  </p>
+
+  <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">DLC 規格列表</h3>
+    <ul class="space-y-2 text-[var(--text-secondary)] text-sm">
+      <li>* <strong>DLC Spec 0</strong>：介紹和術語定義</li>
+      <li>* <strong>DLC Spec 1</strong>：Oracle 公告和簽章格式</li>
+      <li>* <strong>DLC Spec 2</strong>：合約協商協議</li>
+      <li>* <strong>DLC Spec 3</strong>：交易結構（Funding, CET, Refund）</li>
+      <li>* <strong>DLC Spec 4</strong>：P2P 訊息格式</li>
+      <li>* <strong>DLC Spec 5</strong>：數值結果處理</li>
+    </ul>
+    <p class="mt-4 text-xs text-[var(--text-tertiary)]">
+      規格文件：github.com/discreetlogcontracts/dlcspecs
+    </p>
+  </div>
+
+  <h2 id="challenges">挑戰與限制</h2>
+
+  <div class="not-prose my-8 p-6 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">目前挑戰</h3>
+    <ul class="space-y-3 text-[var(--text-secondary)]">
+      <li class="flex items-start gap-2">
+        <span class="text-yellow-500 font-bold">1.</span>
+        <span><strong>預言機可用性</strong>：需要可靠的預言機服務，且預言機必須在預定時間發布簽章</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-yellow-500 font-bold">2.</span>
+        <span><strong>資本效率</strong>：資金在合約期間被鎖定，無法用於其他用途</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-yellow-500 font-bold">3.</span>
+        <span><strong>CET 數量</strong>：複雜合約可能需要大量 CET，增加協商時間</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-yellow-500 font-bold">4.</span>
+        <span><strong>用戶體驗</strong>：需要雙方同時在線進行協商</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-yellow-500 font-bold">5.</span>
+        <span><strong>預言機審查</strong>：預言機可能拒絕發布簽章（但無法知道合約內容）</span>
+      </li>
+    </ul>
+  </div>
+
+  <h2 id="future">未來發展</h2>
+
+  <div class="not-prose my-8 grid md:grid-cols-2 gap-4">
+    <div class="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Taproot 整合</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 Taproot 可以大幅減少 CET 的鏈上足跡，
+        讓 DLC 交易看起來完全像普通支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">閃電網路 DLC</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        在閃電網路通道內執行 DLC，
+        實現即時結算和更高的資本效率。
+      </p>
+    </div>
+  </div>
+
+  <h2 id="summary">總結</h2>
+
+  <p>
+    DLC 代表了比特幣智能合約的重要進展。透過巧妙運用密碼學，
+    它實現了無需信任的條件支付，同時保護所有參與方（包括預言機）的隱私。
+  </p>
+
+  <p>
+    雖然 DLC 不如以太坊智能合約靈活，但它提供了更強的安全性和隱私保障。
+    隨著工具和基礎設施的成熟，DLC 有望成為比特幣生態系統中重要的金融基礎設施。
+  </p>
+</ArticleLayout>

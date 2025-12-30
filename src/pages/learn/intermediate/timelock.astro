@@ -1,252 +1,212 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="時間鎖機制"
-  description="了解比特幣的時間鎖功能：nLockTime、CLTV 和 CSV 的原理與應用。"
+  description="時間鎖讓你可以鎖定比特幣直到未來某個時間點，是閃電網路和智能合約的核心技術。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '進階知識', href: '/learn/intermediate/' },
+    { label: '時間鎖機制' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '上一篇：多簽錢包', href: '/learn/intermediate/multisig' }}
+  nextPage={{ title: '進入深入技術', href: '/learn/advanced/' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-        <Breadcrumb items={[
-          { label: '學習', href: '/learn/' },
-          { label: '進階知識', href: '/learn/intermediate/' },
-          { label: '時間鎖機制' },
-        ]} />
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">時間鎖概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    比特幣有多種時間鎖機制，讓交易或輸出在特定條件下才能被花費。
+    這些機制是構建複雜智能合約的基礎。
+  </p>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-              進階
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            時間鎖機制
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            時間鎖讓你可以鎖定比特幣直到未來某個時間點，是閃電網路和智能合約的核心技術。
-          </p>
-        </header>
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">機制</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">層級</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">nLockTime</td>
+          <td class="py-2">絕對</td>
+          <td class="py-2">交易</td>
+          <td class="py-2">原始</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">CLTV</td>
+          <td class="py-2">絕對</td>
+          <td class="py-2">腳本</td>
+          <td class="py-2"><a href="/bips/bip-0065" class="text-bitcoin-500">BIP-65</a></td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">nSequence</td>
+          <td class="py-2">相對</td>
+          <td class="py-2">交易</td>
+          <td class="py-2"><a href="/bips/bip-0068" class="text-bitcoin-500">BIP-68</a></td>
+        </tr>
+        <tr>
+          <td class="py-2">CSV</td>
+          <td class="py-2">相對</td>
+          <td class="py-2">腳本</td>
+          <td class="py-2"><a href="/bips/bip-0112" class="text-bitcoin-500">BIP-112</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">時間鎖概述</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            比特幣有多種時間鎖機制，讓交易或輸出在特定條件下才能被花費。
-            這些機制是構建複雜智能合約的基礎。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">絕對時間鎖</h2>
 
-          <div class="not-prose mb-8 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">機制</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">層級</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">nLockTime</td>
-                  <td class="py-2">絕對</td>
-                  <td class="py-2">交易</td>
-                  <td class="py-2">原始</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">CLTV</td>
-                  <td class="py-2">絕對</td>
-                  <td class="py-2">腳本</td>
-                  <td class="py-2"><a href="/bips/bip-0065" class="text-bitcoin-500">BIP-65</a></td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">nSequence</td>
-                  <td class="py-2">相對</td>
-                  <td class="py-2">交易</td>
-                  <td class="py-2"><a href="/bips/bip-0068" class="text-bitcoin-500">BIP-68</a></td>
-                </tr>
-                <tr>
-                  <td class="py-2">CSV</td>
-                  <td class="py-2">相對</td>
-                  <td class="py-2">腳本</td>
-                  <td class="py-2"><a href="/bips/bip-0112" class="text-bitcoin-500">BIP-112</a></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">nLockTime</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    nLockTime 是交易欄位，指定交易在特定區塊高度或時間之前不能被包含在區塊中。
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 值 &lt; 500,000,000：解釋為區塊高度</li>
+    <li>• 值 ≥ 500,000,000：解釋為 UNIX 時間戳</li>
+    <li>• 可被繞過：收款人可以簽署新交易忽略鎖定</li>
+  </ul>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">絕對時間鎖</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">OP_CHECKLOCKTIMEVERIFY (CLTV)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    CLTV 是腳本操作碼，在腳本層面強制執行時間鎖。與 nLockTime 不同，它無法被繞過。
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)] mb-2"># 資金在區塊 800000 之後才能被花費</p>
+    <p class="text-[var(--text-secondary)]">&lt;800000&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
+    <p class="text-[var(--text-secondary)]">&lt;pubkey&gt; OP_CHECKSIG</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">nLockTime</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            nLockTime 是交易欄位，指定交易在特定區塊高度或時間之前不能被包含在區塊中。
-          </p>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 值 &lt; 500,000,000：解釋為區塊高度</li>
-            <li>• 值 ≥ 500,000,000：解釋為 UNIX 時間戳</li>
-            <li>• 可被繞過：收款人可以簽署新交易忽略鎖定</li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相對時間鎖</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">OP_CHECKLOCKTIMEVERIFY (CLTV)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            CLTV 是腳本操作碼，在腳本層面強制執行時間鎖。與 nLockTime 不同，它無法被繞過。
-          </p>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-tertiary)] mb-2"># 資金在區塊 800000 之後才能被花費</p>
-            <p class="text-[var(--text-secondary)]">&lt;800000&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
-            <p class="text-[var(--text-secondary)]">&lt;pubkey&gt; OP_CHECKSIG</p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相對時間鎖</h2>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">nSequence (BIP-68)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            nSequence 欄位被重新定義，可以指定輸入必須等待其父輸出被確認後的一段時間。
-          </p>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <div class="grid md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p class="font-semibold text-[var(--text-primary)] mb-2">區塊計數模式</p>
-                <p class="text-[var(--text-secondary)]">位元 22 = 0</p>
-                <p class="text-[var(--text-tertiary)]">值 = 區塊數（最大 65535）</p>
-              </div>
-              <div>
-                <p class="font-semibold text-[var(--text-primary)] mb-2">時間計數模式</p>
-                <p class="text-[var(--text-secondary)]">位元 22 = 1</p>
-                <p class="text-[var(--text-tertiary)]">值 × 512 秒</p>
-              </div>
-            </div>
-          </div>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">OP_CHECKSEQUENCEVERIFY (CSV)</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            CSV 在腳本中驗證 nSequence，使相對時間鎖成為強制性的花費條件。
-          </p>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-tertiary)] mb-2"># 輸出確認後等待 144 區塊才能花費</p>
-            <p class="text-[var(--text-secondary)]">&lt;144&gt; OP_CHECKSEQUENCEVERIFY OP_DROP</p>
-            <p class="text-[var(--text-secondary)]">&lt;pubkey&gt; OP_CHECKSIG</p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際應用</h2>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">閃電網路</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            閃電網路大量使用時間鎖：
-          </p>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <strong>CSV</strong>：撤銷機制中的懲罰窗口</li>
-            <li>• <strong>CLTV</strong>：HTLC 的超時退款</li>
-          </ul>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">HTLC（哈希時間鎖定合約）</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            HTLC 結合哈希鎖和時間鎖，是原子交換和閃電網路支付的核心。
-          </p>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-            <p class="text-[var(--text-secondary)]">OP_IF</p>
-            <p class="text-[var(--text-secondary)]">  # 接收者用原像領取</p>
-            <p class="text-[var(--text-secondary)]">  OP_HASH160 &lt;hash&gt; OP_EQUALVERIFY</p>
-            <p class="text-[var(--text-secondary)]">  &lt;receiver_pubkey&gt; OP_CHECKSIG</p>
-            <p class="text-[var(--text-secondary)]">OP_ELSE</p>
-            <p class="text-[var(--text-secondary)]">  # 超時後發送者可退款</p>
-            <p class="text-[var(--text-secondary)]">  &lt;timeout&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
-            <p class="text-[var(--text-secondary)]">  &lt;sender_pubkey&gt; OP_CHECKSIG</p>
-            <p class="text-[var(--text-secondary)]">OP_ENDIF</p>
-          </div>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">繼承規劃</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            使用時間鎖可以創建「死人開關」：
-          </p>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 正常情況：你可以隨時花費</li>
-            <li>• 1 年不活動後：繼承人可以花費</li>
-            <li>• 定期「心跳」交易重置計時器</li>
-          </ul>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">儲蓄鎖定</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            鎖定比特幣直到未來日期，防止衝動消費：
-          </p>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)]"># 鎖定到 2030 年</p>
-            <p class="text-[var(--text-secondary)]">&lt;1893456000&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">CLTV vs CSV</h2>
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">CLTV</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">CSV</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">時間類型</td>
-                  <td class="py-2">絕對（固定點）</td>
-                  <td class="py-2">相對（等待期）</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">參考點</td>
-                  <td class="py-2">區塊高度/時間戳</td>
-                  <td class="py-2">輸入確認時間</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">用途</td>
-                  <td class="py-2">到期日、HTLC 超時</td>
-                  <td class="py-2">懲罰窗口、冷卻期</td>
-                </tr>
-                <tr>
-                  <td class="py-2">閃電網路</td>
-                  <td class="py-2">退款路徑</td>
-                  <td class="py-2">撤銷機制</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">注意事項</h2>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-yellow-500">△</span>
-              <span><strong class="text-[var(--text-primary)]">區塊時間不精確</strong>：比特幣區塊平均 10 分鐘，但可能有較大波動</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-yellow-500">△</span>
-              <span><strong class="text-[var(--text-primary)]">時間戳使用 MTP</strong>：Median Time Past，過去 11 個區塊的中位數時間</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-yellow-500">△</span>
-              <span><strong class="text-[var(--text-primary)]">鎖定後無法提前</strong>：時間鎖是不可逆的</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/intermediate/multisig" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：多簽錢包
-          </Button>
-          <Button href="/learn/advanced/" variant="primary">
-            進入深入技術
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
-        </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">nSequence (BIP-68)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    nSequence 欄位被重新定義，可以指定輸入必須等待其父輸出被確認後的一段時間。
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="grid md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-2">區塊計數模式</p>
+        <p class="text-[var(--text-secondary)]">位元 22 = 0</p>
+        <p class="text-[var(--text-tertiary)]">值 = 區塊數（最大 65535）</p>
+      </div>
+      <div>
+        <p class="font-semibold text-[var(--text-primary)] mb-2">時間計數模式</p>
+        <p class="text-[var(--text-secondary)]">位元 22 = 1</p>
+        <p class="text-[var(--text-tertiary)]">值 × 512 秒</p>
       </div>
     </div>
-  </article>
-</PageLayout>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">OP_CHECKSEQUENCEVERIFY (CSV)</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    CSV 在腳本中驗證 nSequence，使相對時間鎖成為強制性的花費條件。
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-tertiary)] mb-2"># 輸出確認後等待 144 區塊才能花費</p>
+    <p class="text-[var(--text-secondary)]">&lt;144&gt; OP_CHECKSEQUENCEVERIFY OP_DROP</p>
+    <p class="text-[var(--text-secondary)]">&lt;pubkey&gt; OP_CHECKSIG</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際應用</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">閃電網路</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路大量使用時間鎖：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>CSV</strong>：撤銷機制中的懲罰窗口</li>
+    <li>• <strong>CLTV</strong>：HTLC 的超時退款</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">HTLC（哈希時間鎖定合約）</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    HTLC 結合哈希鎖和時間鎖，是原子交換和閃電網路支付的核心。
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <p class="text-[var(--text-secondary)]">OP_IF</p>
+    <p class="text-[var(--text-secondary)]">  # 接收者用原像領取</p>
+    <p class="text-[var(--text-secondary)]">  OP_HASH160 &lt;hash&gt; OP_EQUALVERIFY</p>
+    <p class="text-[var(--text-secondary)]">  &lt;receiver_pubkey&gt; OP_CHECKSIG</p>
+    <p class="text-[var(--text-secondary)]">OP_ELSE</p>
+    <p class="text-[var(--text-secondary)]">  # 超時後發送者可退款</p>
+    <p class="text-[var(--text-secondary)]">  &lt;timeout&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
+    <p class="text-[var(--text-secondary)]">  &lt;sender_pubkey&gt; OP_CHECKSIG</p>
+    <p class="text-[var(--text-secondary)]">OP_ENDIF</p>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">繼承規劃</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    使用時間鎖可以創建「死人開關」：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 正常情況：你可以隨時花費</li>
+    <li>• 1 年不活動後：繼承人可以花費</li>
+    <li>• 定期「心跳」交易重置計時器</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">儲蓄鎖定</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    鎖定比特幣直到未來日期，防止衝動消費：
+  </p>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)]"># 鎖定到 2030 年</p>
+    <p class="text-[var(--text-secondary)]">&lt;1893456000&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">CLTV vs CSV</h2>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">CLTV</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">CSV</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">時間類型</td>
+          <td class="py-2">絕對（固定點）</td>
+          <td class="py-2">相對（等待期）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">參考點</td>
+          <td class="py-2">區塊高度/時間戳</td>
+          <td class="py-2">輸入確認時間</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">用途</td>
+          <td class="py-2">到期日、HTLC 超時</td>
+          <td class="py-2">懲罰窗口、冷卻期</td>
+        </tr>
+        <tr>
+          <td class="py-2">閃電網路</td>
+          <td class="py-2">退款路徑</td>
+          <td class="py-2">撤銷機制</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">注意事項</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500">△</span>
+      <span><strong class="text-[var(--text-primary)]">區塊時間不精確</strong>：比特幣區塊平均 10 分鐘，但可能有較大波動</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500">△</span>
+      <span><strong class="text-[var(--text-primary)]">時間戳使用 MTP</strong>：Median Time Past，過去 11 個區塊的中位數時間</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500">△</span>
+      <span><strong class="text-[var(--text-primary)]">鎖定後無法提前</strong>：時間鎖是不可逆的</span>
+    </li>
+  </ul>
+</ArticleLayout>

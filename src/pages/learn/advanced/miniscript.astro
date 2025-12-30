@@ -1,464 +1,423 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="Miniscript 腳本語言"
-  description="學習 Miniscript 如何簡化比特幣腳本的編寫、分析和組合。"
+  description="Miniscript 是一種結構化的方式來編寫比特幣腳本，使複雜的支付條件變得可組合、可分析和可預測。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '深入技術', href: '/learn/advanced/' },
+    { label: 'Miniscript' },
+  ]}
+  difficulty="advanced"
+  readingTime="25 分鐘"
+  prevPage={{ title: 'MuSig2', href: '/learn/advanced/musig2' }}
+  nextPage={{ title: 'Output Descriptors', href: '/learn/advanced/output-descriptors' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-<Breadcrumb items={[
-  { label: '學習', href: '/learn/' },
-  { label: '高級主題', href: '/learn/advanced/' },
-  { label: 'Miniscript' },
-]} />
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 Miniscript？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Miniscript 由 Pieter Wuille、Andrew Poelstra 和 Sanket Kanjalkar 開發，
+    是一種用於表達比特幣腳本子集的語言。它不是新的共識規則，
+    而是一種更高層次的抽象，可以編譯為標準的 Bitcoin Script。
+  </p>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-500/10 text-red-600 dark:text-red-400">
-              深入技術
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：25 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            Miniscript 腳本語言
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            Miniscript 是一種結構化的方式來編寫比特幣腳本，
-            使複雜的支付條件變得可組合、可分析和可預測。
-          </p>
-        </header>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">Miniscript 的核心優勢</p>
+    <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+      <li class="flex items-start gap-2">
+        <span class="text-green-500">+</span>
+        <span><strong class="text-[var(--text-primary)]">可組合性</strong>：像積木一樣組合複雜條件</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-green-500">+</span>
+        <span><strong class="text-[var(--text-primary)]">可分析性</strong>：自動計算花費成本和安全屬性</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-green-500">+</span>
+        <span><strong class="text-[var(--text-primary)]">可滿足性</strong>：自動生成有效的見證數據</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-green-500">+</span>
+        <span><strong class="text-[var(--text-primary)]">互操作性</strong>：不同錢包可以理解相同的策略</span>
+      </li>
+    </ul>
+  </div>
 
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 Miniscript？</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Miniscript 由 Pieter Wuille、Andrew Poelstra 和 Sanket Kanjalkar 開發，
-            是一種用於表達比特幣腳本子集的語言。它不是新的共識規則，
-            而是一種更高層次的抽象，可以編譯為標準的 Bitcoin Script。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼需要 Miniscript？</h2>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">Miniscript 的核心優勢</p>
-            <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
-              <li class="flex items-start gap-2">
-                <span class="text-green-500">✓</span>
-                <span><strong class="text-[var(--text-primary)]">可組合性</strong>：像積木一樣組合複雜條件</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-green-500">✓</span>
-                <span><strong class="text-[var(--text-primary)]">可分析性</strong>：自動計算花費成本和安全屬性</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-green-500">✓</span>
-                <span><strong class="text-[var(--text-primary)]">可滿足性</strong>：自動生成有效的見證數據</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-green-500">✓</span>
-                <span><strong class="text-[var(--text-primary)]">互操作性</strong>：不同錢包可以理解相同的策略</span>
-              </li>
-            </ul>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">原始 Script 的問題</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    直接編寫 Bitcoin Script 面臨多個挑戰：
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼需要 Miniscript？</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>* <strong class="text-[var(--text-primary)]">難以理解</strong>：堆疊式語言不直觀</li>
+    <li>* <strong class="text-[var(--text-primary)]">容易出錯</strong>：微小錯誤可能導致資金鎖死</li>
+    <li>* <strong class="text-[var(--text-primary)]">難以分析</strong>：無法輕易計算最差情況成本</li>
+    <li>* <strong class="text-[var(--text-primary)]">不可組合</strong>：合併兩個腳本需要深入理解</li>
+  </ul>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">原始 Script 的問題</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            直接編寫 Bitcoin Script 面臨多個挑戰：
-          </p>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>真實案例：</strong> 2020 年，一個 DeFi 協議因為 Script 錯誤損失了數百萬美元。
+      使用 Miniscript 可以通過形式化分析避免這類問題。
+    </p>
+  </div>
 
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <strong class="text-[var(--text-primary)]">難以理解</strong>：堆疊式語言不直觀</li>
-            <li>• <strong class="text-[var(--text-primary)]">容易出錯</strong>：微小錯誤可能導致資金鎖死</li>
-            <li>• <strong class="text-[var(--text-primary)]">難以分析</strong>：無法輕易計算最差情況成本</li>
-            <li>• <strong class="text-[var(--text-primary)]">不可組合</strong>：合併兩個腳本需要深入理解</li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">基本語法</h2>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-            <p class="text-sm text-red-700 dark:text-red-400">
-              <strong>真實案例：</strong> 2020 年，一個 DeFi 協議因為 Script 錯誤損失了數百萬美元。
-              使用 Miniscript 可以通過形式化分析避免這類問題。
-            </p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">原子表達式</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Miniscript 的基本構建塊：
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">基本語法</h2>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">表達式</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">含義</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">Script</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">pk(KEY)</td>
+          <td class="py-2">公鑰檢查</td>
+          <td class="py-2 font-mono text-xs">&lt;KEY&gt; CHECKSIG</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">pkh(KEY)</td>
+          <td class="py-2">公鑰哈希檢查</td>
+          <td class="py-2 font-mono text-xs">DUP HASH160 &lt;HASH&gt; EQUALVERIFY CHECKSIG</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">older(N)</td>
+          <td class="py-2">相對時間鎖（N 區塊）</td>
+          <td class="py-2 font-mono text-xs">&lt;N&gt; CHECKSEQUENCEVERIFY</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">after(N)</td>
+          <td class="py-2">絕對時間鎖</td>
+          <td class="py-2 font-mono text-xs">&lt;N&gt; CHECKLOCKTIMEVERIFY</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">sha256(H)</td>
+          <td class="py-2">SHA256 前像</td>
+          <td class="py-2 font-mono text-xs">SIZE 32 EQUALVERIFY SHA256 &lt;H&gt; EQUAL</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono text-bitcoin-500">hash160(H)</td>
+          <td class="py-2">HASH160 前像</td>
+          <td class="py-2 font-mono text-xs">SIZE 32 EQUALVERIFY HASH160 &lt;H&gt; EQUAL</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">原子表達式</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            Miniscript 的基本構建塊：
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">組合器</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    用於組合多個條件：
+  </p>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">表達式</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">含義</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">Script</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">pk(KEY)</td>
-                  <td class="py-2">公鑰檢查</td>
-                  <td class="py-2 font-mono text-xs">&lt;KEY&gt; CHECKSIG</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">pkh(KEY)</td>
-                  <td class="py-2">公鑰哈希檢查</td>
-                  <td class="py-2 font-mono text-xs">DUP HASH160 &lt;HASH&gt; EQUALVERIFY CHECKSIG</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">older(N)</td>
-                  <td class="py-2">相對時間鎖（N 區塊）</td>
-                  <td class="py-2 font-mono text-xs">&lt;N&gt; CHECKSEQUENCEVERIFY</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">after(N)</td>
-                  <td class="py-2">絕對時間鎖</td>
-                  <td class="py-2 font-mono text-xs">&lt;N&gt; CHECKLOCKTIMEVERIFY</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">sha256(H)</td>
-                  <td class="py-2">SHA256 前像</td>
-                  <td class="py-2 font-mono text-xs">SIZE 32 EQUALVERIFY SHA256 &lt;H&gt; EQUAL</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-mono text-bitcoin-500">hash160(H)</td>
-                  <td class="py-2">HASH160 前像</td>
-                  <td class="py-2 font-mono text-xs">SIZE 32 EQUALVERIFY HASH160 &lt;H&gt; EQUAL</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">組合器</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">含義</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">and_v(X, Y)</td>
+          <td class="py-2">X AND Y</td>
+          <td class="py-2">兩個條件都必須滿足</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">and_b(X, Y)</td>
+          <td class="py-2">X AND Y</td>
+          <td class="py-2">兩個條件都必須滿足（布林）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">or_b(X, Y)</td>
+          <td class="py-2">X OR Y</td>
+          <td class="py-2">至少一個條件滿足</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">or_d(X, Y)</td>
+          <td class="py-2">X OR Y</td>
+          <td class="py-2">優先嘗試 X</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">or_c(X, Y)</td>
+          <td class="py-2">X OR Y</td>
+          <td class="py-2">X 失敗時嘗試 Y</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">thresh(k, X, Y, ...)</td>
+          <td class="py-2">k-of-n</td>
+          <td class="py-2">至少 k 個條件滿足</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono text-bitcoin-500">multi(k, KEY1, ...)</td>
+          <td class="py-2">k-of-n 多簽</td>
+          <td class="py-2">k 個簽名驗證</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">組合器</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            用於組合多個條件：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際範例</h2>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">組合器</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">含義</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">and_v(X, Y)</td>
-                  <td class="py-2">X AND Y</td>
-                  <td class="py-2">兩個條件都必須滿足</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">and_b(X, Y)</td>
-                  <td class="py-2">X AND Y</td>
-                  <td class="py-2">兩個條件都必須滿足（布林）</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">or_b(X, Y)</td>
-                  <td class="py-2">X OR Y</td>
-                  <td class="py-2">至少一個條件滿足</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">or_d(X, Y)</td>
-                  <td class="py-2">X OR Y</td>
-                  <td class="py-2">優先嘗試 X</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">or_c(X, Y)</td>
-                  <td class="py-2">X OR Y</td>
-                  <td class="py-2">X 失敗時嘗試 Y</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">thresh(k, X, Y, ...)</td>
-                  <td class="py-2">k-of-n</td>
-                  <td class="py-2">至少 k 個條件滿足</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-mono text-bitcoin-500">multi(k, KEY1, ...)</td>
-                  <td class="py-2">k-of-n 多簽</td>
-                  <td class="py-2">k 個簽名驗證</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2-of-3 多簽</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># Miniscript</p>
+    <p class="text-[var(--text-secondary)]">multi(2, Alice, Bob, Carol)</p>
+    <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 編譯為 Script</p>
+    <p class="text-[var(--text-secondary)]">OP_2 &lt;Alice&gt; &lt;Bob&gt; &lt;Carol&gt; OP_3 OP_CHECKMULTISIG</p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際範例</h2>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">帶超時的 2-of-2</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># Alice 和 Bob 一起，或者 1000 區塊後 Alice 單獨</p>
+    <p class="text-[var(--text-secondary)]">or_d(</p>
+    <p class="text-[var(--text-secondary)]">  multi(2, Alice, Bob),</p>
+    <p class="text-[var(--text-secondary)]">  and_v(pk(Alice), older(1000))</p>
+    <p class="text-[var(--text-secondary)]">)</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2-of-3 多簽</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># Miniscript</p>
-            <p class="text-[var(--text-secondary)]">multi(2, Alice, Bob, Carol)</p>
-            <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 編譯為 Script</p>
-            <p class="text-[var(--text-secondary)]">OP_2 &lt;Alice&gt; &lt;Bob&gt; &lt;Carol&gt; OP_3 OP_CHECKMULTISIG</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">閃電網路 HTLC</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># 提供原像可立即花費，或超時後退款</p>
+    <p class="text-[var(--text-secondary)]">or_d(</p>
+    <p class="text-[var(--text-secondary)]">  and_v(pk(Receiver), sha256(H)),</p>
+    <p class="text-[var(--text-secondary)]">  and_v(pk(Sender), after(1000000))</p>
+    <p class="text-[var(--text-secondary)]">)</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">帶超時的 2-of-2</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># Alice 和 Bob 一起，或者 1000 區塊後 Alice 單獨</p>
-            <p class="text-[var(--text-secondary)]">or_d(</p>
-            <p class="text-[var(--text-secondary)]">  multi(2, Alice, Bob),</p>
-            <p class="text-[var(--text-secondary)]">  and_v(pk(Alice), older(1000))</p>
-            <p class="text-[var(--text-secondary)]">)</p>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">企業金庫</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># 3-of-5 立即，或 2-of-5 + 1週延遲，或 1-of-5 + 1月延遲</p>
+    <p class="text-[var(--text-secondary)]">or_d(</p>
+    <p class="text-[var(--text-secondary)]">  multi(3, K1, K2, K3, K4, K5),</p>
+    <p class="text-[var(--text-secondary)]">  or_d(</p>
+    <p class="text-[var(--text-secondary)]">    and_v(multi(2, K1, K2, K3, K4, K5), older(1008)),</p>
+    <p class="text-[var(--text-secondary)]">    and_v(thresh(1, pk(K1), pk(K2), pk(K3), pk(K4), pk(K5)), older(4320))</p>
+    <p class="text-[var(--text-secondary)]">  )</p>
+    <p class="text-[var(--text-secondary)]">)</p>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">閃電網路 HTLC</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># 提供原像可立即花費，或超時後退款</p>
-            <p class="text-[var(--text-secondary)]">or_d(</p>
-            <p class="text-[var(--text-secondary)]">  and_v(pk(Receiver), sha256(H)),</p>
-            <p class="text-[var(--text-secondary)]">  and_v(pk(Sender), after(1000000))</p>
-            <p class="text-[var(--text-secondary)]">)</p>
-          </div>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">類型系統</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Miniscript 有嚴格的類型系統，確保生成的腳本是有效的：
+  </p>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">企業金庫</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># 3-of-5 立即，或 2-of-5 + 1週延遲，或 1-of-5 + 1月延遲</p>
-            <p class="text-[var(--text-secondary)]">or_d(</p>
-            <p class="text-[var(--text-secondary)]">  multi(3, K1, K2, K3, K4, K5),</p>
-            <p class="text-[var(--text-secondary)]">  or_d(</p>
-            <p class="text-[var(--text-secondary)]">    and_v(multi(2, K1, K2, K3, K4, K5), older(1008)),</p>
-            <p class="text-[var(--text-secondary)]">    and_v(thresh(1, pk(K1), pk(K2), pk(K3), pk(K4), pk(K5)), older(4320))</p>
-            <p class="text-[var(--text-secondary)]">  )</p>
-            <p class="text-[var(--text-secondary)]">)</p>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">含義</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">堆疊結果</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">B</td>
+          <td class="py-2">基礎表達式</td>
+          <td class="py-2">消耗輸入，產生 0 或 1</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">V</td>
+          <td class="py-2">驗證表達式</td>
+          <td class="py-2">成功時無輸出，失敗時中止</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-mono text-bitcoin-500">K</td>
+          <td class="py-2">密鑰表達式</td>
+          <td class="py-2">產生公鑰</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-mono text-bitcoin-500">W</td>
+          <td class="py-2">包裝表達式</td>
+          <td class="py-2">消耗頂部元素</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">類型系統</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            Miniscript 有嚴格的類型系統，確保生成的腳本是有效的：
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">分析能力</h2>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">含義</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">堆疊結果</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">B</td>
-                  <td class="py-2">基礎表達式</td>
-                  <td class="py-2">消耗輸入，產生 0 或 1</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">V</td>
-                  <td class="py-2">驗證表達式</td>
-                  <td class="py-2">成功時無輸出，失敗時中止</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-mono text-bitcoin-500">K</td>
-                  <td class="py-2">密鑰表達式</td>
-                  <td class="py-2">產生公鑰</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-mono text-bitcoin-500">W</td>
-                  <td class="py-2">包裝表達式</td>
-                  <td class="py-2">消耗頂部元素</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">花費成本分析</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Miniscript 可以自動計算每個花費路徑的成本：
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">分析能力</h2>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">花費成本分析</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Miniscript 可以自動計算每個花費路徑的成本：
-          </p>
-
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">2-of-3 多簽成本分析</p>
-            <div class="space-y-2 text-sm text-[var(--text-secondary)]">
-              <p><strong>Script 大小：</strong> 105 bytes</p>
-              <p><strong>Witness 大小：</strong> 1 + 72 + 72 = 145 bytes</p>
-              <p><strong>總 vBytes：</strong> ~105 + 145/4 ≈ 141 vBytes</p>
-            </div>
-          </div>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">安全屬性</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            Miniscript 可以驗證以下安全屬性：
-          </p>
-
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">共識有效性</strong>：腳本符合比特幣共識規則</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">標準性</strong>：腳本符合標準性規則，可被轉發</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">可塑性</strong>：見證數據是否可被第三方修改</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">時間鎖混合</strong>：區塊高度和時間戳是否混用</span>
-            </li>
-          </ul>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Policy 語言</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Policy 是比 Miniscript 更高層的抽象，描述「想要什麼」而不是「如何實現」：
-          </p>
-
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># Policy（描述意圖）</p>
-            <p class="text-[var(--text-secondary)]">or(99@pk(A), 1@and(pk(B), older(1000)))</p>
-            <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 編譯為 Miniscript（最佳化實現）</p>
-            <p class="text-[var(--text-secondary)]">or_d(pk(A), and_v(pk(B), older(1000)))</p>
-            <p class="text-[var(--text-tertiary)] mt-2"># 99% 機率走 A 路徑，優化為主路徑</p>
-          </div>
-
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Policy 編譯器會根據提供的機率優化生成最高效的 Miniscript。
-          </p>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Output Descriptors</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Miniscript 通常與 Output Descriptors 一起使用，完整描述如何生成地址：
-          </p>
-
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-            <p class="text-[var(--text-tertiary)] mb-2"># P2WSH 包裝的 Miniscript</p>
-            <p class="text-[var(--text-secondary)]">wsh(multi(2, xpub.../0/*, xpub.../0/*, xpub.../0/*))</p>
-            <p class="text-[var(--text-tertiary)] mt-4 mb-2"># Taproot 包裝的 Miniscript</p>
-            <p class="text-[var(--text-secondary)]">tr(KEY, multi_a(2, KEY1, KEY2))</p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Taproot 與 Miniscript</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            Taproot 引入了新的腳本功能，Miniscript 也相應擴展：
-          </p>
-
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">SegWit v0</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">Tapscript</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">多簽</td>
-                  <td class="py-2 font-mono">multi(k, ...)</td>
-                  <td class="py-2 font-mono text-green-500">multi_a(k, ...)</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">簽名驗證</td>
-                  <td class="py-2">ECDSA</td>
-                  <td class="py-2 text-green-500">Schnorr</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2">腳本大小限制</td>
-                  <td class="py-2">10,000 bytes</td>
-                  <td class="py-2 text-green-500">無限制</td>
-                </tr>
-                <tr>
-                  <td class="py-2">操作碼限制</td>
-                  <td class="py-2">201 個</td>
-                  <td class="py-2 text-green-500">無限制</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">工具與實現</h2>
-
-          <div class="not-prose mb-6 space-y-4">
-            <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
-              <p class="font-semibold text-[var(--text-primary)]">Bitcoin Core</p>
-              <p class="text-sm text-[var(--text-secondary)] mt-1">從 v24.0 開始支援 Miniscript descriptors</p>
-            </div>
-            <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
-              <p class="font-semibold text-[var(--text-primary)]">rust-miniscript</p>
-              <p class="text-sm text-[var(--text-secondary)] mt-1">Rust 實現，包含 Policy 編譯器</p>
-            </div>
-            <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
-              <p class="font-semibold text-[var(--text-primary)]">Liana Wallet</p>
-              <p class="text-sm text-[var(--text-secondary)] mt-1">使用 Miniscript 的繼承錢包</p>
-            </div>
-            <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
-              <p class="font-semibold text-[var(--text-primary)]">min.sc</p>
-              <p class="text-sm text-[var(--text-secondary)] mt-1">線上 Miniscript 編譯器和分析工具</p>
-            </div>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">應用場景</h2>
-
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">繼承規劃</strong>：時間鎖配合多重簽名的資產傳承</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">企業金庫</strong>：多層次的簽名和時間鎖要求</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">閃電網路</strong>：複雜的 HTLC 和懲罰機制</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">託管服務</strong>：用戶最終控制權的保障</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">DLC</strong>：離散日誌合約的條件執行</span>
-            </li>
-          </ul>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關資源</h2>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <a href="/learn/advanced/script-language" class="text-bitcoin-500 hover:underline">Script 語言</a></li>
-            <li>• <a href="/learn/advanced/taproot" class="text-bitcoin-500 hover:underline">Taproot 升級</a></li>
-            <li>• <a href="/learn/intermediate/multisig" class="text-bitcoin-500 hover:underline">多簽錢包入門</a></li>
-            <li>• <a href="/learn/intermediate/timelock" class="text-bitcoin-500 hover:underline">時間鎖機制</a></li>
-          </ul>
-
-          <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
-            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-              <strong>延伸閱讀：</strong> 查看
-              <a href="https://bitcoin.sipa.be/miniscript/" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
-                Miniscript 官方網站
-              </a>
-              了解完整的語法和分析工具。
-            </p>
-          </div>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/advanced/musig2" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：MuSig2
-          </Button>
-          <Button href="/learn/advanced/output-descriptors" variant="primary">
-            下一篇：Output Descriptors
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
-        </div>
-      </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">2-of-3 多簽成本分析</p>
+    <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+      <p><strong>Script 大小：</strong> 105 bytes</p>
+      <p><strong>Witness 大小：</strong> 1 + 72 + 72 = 145 bytes</p>
+      <p><strong>總 vBytes：</strong> ~105 + 145/4 = 141 vBytes</p>
     </div>
-  </article>
-</PageLayout>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">安全屬性</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Miniscript 可以驗證以下安全屬性：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">共識有效性</strong>：腳本符合比特幣共識規則</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">標準性</strong>：腳本符合標準性規則，可被轉發</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">可塑性</strong>：見證數據是否可被第三方修改</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">時間鎖混合</strong>：區塊高度和時間戳是否混用</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Policy 語言</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Policy 是比 Miniscript 更高層的抽象，描述「想要什麼」而不是「如何實現」：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># Policy（描述意圖）</p>
+    <p class="text-[var(--text-secondary)]">or(99@pk(A), 1@and(pk(B), older(1000)))</p>
+    <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 編譯為 Miniscript（最佳化實現）</p>
+    <p class="text-[var(--text-secondary)]">or_d(pk(A), and_v(pk(B), older(1000)))</p>
+    <p class="text-[var(--text-tertiary)] mt-2"># 99% 機率走 A 路徑，優化為主路徑</p>
+  </div>
+
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Policy 編譯器會根據提供的機率優化生成最高效的 Miniscript。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Output Descriptors</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Miniscript 通常與 Output Descriptors 一起使用，完整描述如何生成地址：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+    <p class="text-[var(--text-tertiary)] mb-2"># P2WSH 包裝的 Miniscript</p>
+    <p class="text-[var(--text-secondary)]">wsh(multi(2, xpub.../0/*, xpub.../0/*, xpub.../0/*))</p>
+    <p class="text-[var(--text-tertiary)] mt-4 mb-2"># Taproot 包裝的 Miniscript</p>
+    <p class="text-[var(--text-secondary)]">tr(KEY, multi_a(2, KEY1, KEY2))</p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Taproot 與 Miniscript</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Taproot 引入了新的腳本功能，Miniscript 也相應擴展：
+  </p>
+
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">SegWit v0</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">Tapscript</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">多簽</td>
+          <td class="py-2 font-mono">multi(k, ...)</td>
+          <td class="py-2 font-mono text-green-500">multi_a(k, ...)</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">簽名驗證</td>
+          <td class="py-2">ECDSA</td>
+          <td class="py-2 text-green-500">Schnorr</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2">腳本大小限制</td>
+          <td class="py-2">10,000 bytes</td>
+          <td class="py-2 text-green-500">無限制</td>
+        </tr>
+        <tr>
+          <td class="py-2">操作碼限制</td>
+          <td class="py-2">201 個</td>
+          <td class="py-2 text-green-500">無限制</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">工具與實現</h2>
+
+  <div class="not-prose mb-6 space-y-4">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <p class="font-semibold text-[var(--text-primary)]">Bitcoin Core</p>
+      <p class="text-sm text-[var(--text-secondary)] mt-1">從 v24.0 開始支援 Miniscript descriptors</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <p class="font-semibold text-[var(--text-primary)]">rust-miniscript</p>
+      <p class="text-sm text-[var(--text-secondary)] mt-1">Rust 實現，包含 Policy 編譯器</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <p class="font-semibold text-[var(--text-primary)]">Liana Wallet</p>
+      <p class="text-sm text-[var(--text-secondary)] mt-1">使用 Miniscript 的繼承錢包</p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <p class="font-semibold text-[var(--text-primary)]">min.sc</p>
+      <p class="text-sm text-[var(--text-secondary)] mt-1">線上 Miniscript 編譯器和分析工具</p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">應用場景</h2>
+
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">繼承規劃</strong>：時間鎖配合多重簽名的資產傳承</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">企業金庫</strong>：多層次的簽名和時間鎖要求</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">閃電網路</strong>：複雜的 HTLC 和懲罰機制</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">託管服務</strong>：用戶最終控制權的保障</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">+</span>
+      <span><strong class="text-[var(--text-primary)]">DLC</strong>：離散日誌合約的條件執行</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關資源</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>* <a href="/learn/advanced/script-language" class="text-bitcoin-500 hover:underline">Script 語言</a></li>
+    <li>* <a href="/learn/advanced/taproot" class="text-bitcoin-500 hover:underline">Taproot 升級</a></li>
+    <li>* <a href="/learn/intermediate/multisig" class="text-bitcoin-500 hover:underline">多簽錢包入門</a></li>
+    <li>* <a href="/learn/intermediate/timelock" class="text-bitcoin-500 hover:underline">時間鎖機制</a></li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a href="https://bitcoin.sipa.be/miniscript/" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+        Miniscript 官方網站
+      </a>
+      了解完整的語法和分析工具。
+    </p>
+  </div>
+</ArticleLayout>

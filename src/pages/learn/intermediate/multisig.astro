@@ -1,232 +1,192 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="多簽錢包入門"
-  description="了解多重簽章錢包的原理、設置方式和最佳實踐。"
+  description="多重簽章（Multisig）讓你需要多把鑰匙才能花費比特幣，大幅提高安全性。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '進階知識', href: '/learn/intermediate/' },
+    { label: '多簽錢包入門' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: '上一篇：地址類型', href: '/learn/intermediate/address-types' }}
+  nextPage={{ title: '下一篇：時間鎖機制', href: '/learn/intermediate/timelock' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-        <Breadcrumb items={[
-          { label: '學習', href: '/learn/' },
-          { label: '進階知識', href: '/learn/intermediate/' },
-          { label: '多簽錢包入門' },
-        ]} />
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是多簽？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    多重簽章（M-of-N Multisignature）是一種需要多個私鑰中的若干個才能授權交易的機制。
+    例如，2-of-3 多簽意味著需要 3 把鑰匙中的任意 2 把才能花費資金。
+  </p>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-              進階
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：18 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            多簽錢包入門
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            多重簽章（Multisig）讓你需要多把鑰匙才能花費比特幣，大幅提高安全性。
-          </p>
-        </header>
-
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是多簽？</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            多重簽章（M-of-N Multisignature）是一種需要多個私鑰中的若干個才能授權交易的機制。
-            例如，2-of-3 多簽意味著需要 3 把鑰匙中的任意 2 把才能花費資金。
-          </p>
-
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">常見配置</p>
-            <div class="grid md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p class="text-bitcoin-500 font-bold">2-of-3</p>
-                <p class="text-[var(--text-secondary)]">最常見，平衡安全與便利</p>
-              </div>
-              <div>
-                <p class="text-bitcoin-500 font-bold">3-of-5</p>
-                <p class="text-[var(--text-secondary)]">企業級，更高冗餘</p>
-              </div>
-              <div>
-                <p class="text-bitcoin-500 font-bold">2-of-2</p>
-                <p class="text-[var(--text-secondary)]">雙方共管</p>
-              </div>
-            </div>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼使用多簽？</h2>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 消除單點故障</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            單簽錢包中，一把私鑰丟失或被盜就意味著資金全部損失。
-            多簽錢包中，即使一把鑰匙被盜，攻擊者仍無法花費資金。
-          </p>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 備份冗餘</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            2-of-3 配置中，即使一把鑰匙丟失，你仍可以用剩餘的兩把鑰匙恢復資金。
-            這提供了額外的備份安全邊際。
-          </p>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. 共同管理</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            家庭、公司或 DAO 可以設置多簽，要求多人同意才能動用資金。
-            這實現了真正的共同治理。
-          </p>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">多簽類型</h2>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">P2SH 多簽（Legacy）</h3>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 地址以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">3</code> 開頭</li>
-            <li>• 最多支援 15-of-15</li>
-            <li>• 交易費用較高</li>
-            <li>• 參考：<a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">BIP-16</a></li>
-          </ul>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">P2WSH 多簽（Native SegWit）</h3>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 地址以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc1q</code> 開頭（較長）</li>
-            <li>• 費用比 P2SH 多簽低約 30%</li>
-            <li>• 使用 32 字節哈希（更安全）</li>
-            <li>• 推薦使用</li>
-          </ul>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">P2TR 多簽（Taproot）</h3>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 地址以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc1p</code> 開頭</li>
-            <li>• 使用 Schnorr 簽章和 MuSig2</li>
-            <li>• 多簽花費看起來像單簽（隱私性）</li>
-            <li>• 費用最低</li>
-          </ul>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">設置 2-of-3 多簽</h2>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">準備工作</h3>
-          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
-            <li>準備 3 個不同的簽章設備（建議不同廠商）</li>
-            <li>在每個設備上生成新的種子/私鑰</li>
-            <li>導出每個設備的 xpub（擴展公鑰）</li>
-            <li>使用協調軟體創建多簽錢包</li>
-          </ol>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">推薦軟體</h3>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <strong>Sparrow Wallet</strong>：功能完整，支援所有多簽類型</li>
-            <li>• <strong>Electrum</strong>：老牌軟體，穩定可靠</li>
-            <li>• <strong>Specter Desktop</strong>：專注於多簽和硬體錢包</li>
-            <li>• <strong>Nunchuk</strong>：協作多簽，支援手機</li>
-          </ul>
-
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">簽章設備組合建議</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">範例：2-of-3 配置</p>
-            <ul class="text-sm text-[var(--text-secondary)] space-y-2">
-              <li>• 鑰匙 1：Coldcard（家中保管）</li>
-              <li>• 鑰匙 2：Trezor（辦公室保管）</li>
-              <li>• 鑰匙 3：SeedSigner（異地保管）</li>
-            </ul>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">簽署交易流程</h2>
-          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
-            <li>在協調軟體中創建交易（PSBT）</li>
-            <li>將 PSBT 發送到第一個簽章設備</li>
-            <li>第一個設備驗證並簽署，返回部分簽章的 PSBT</li>
-            <li>將部分簽章的 PSBT 發送到第二個設備</li>
-            <li>第二個設備簽署，完成所需簽章數量</li>
-            <li>協調軟體合併簽章並廣播交易</li>
-          </ol>
-
-          <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
-            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-              <strong>PSBT（部分簽章的比特幣交易）</strong>是多簽的關鍵技術。
-              它允許交易在多個設備之間安全傳遞，每個設備只添加自己的簽章。
-              詳見 <a href="/bips/bip-0174" class="underline">BIP-174</a>。
-            </p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">備份策略</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            多簽錢包的備份比單簽更複雜，需要備份：
-          </p>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">所有助記詞</strong>：每把鑰匙的 12/24 詞</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">錢包描述符</strong>：包含 xpub 和派生路徑的完整配置</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span><strong class="text-[var(--text-primary)]">錢包配置文件</strong>：多數軟體可導出</span>
-            </li>
-          </ul>
-
-          <div class="not-prose mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-            <p class="text-sm text-red-700 dark:text-red-400">
-              <strong>警告：</strong> 僅備份助記詞不足以恢復多簽錢包！
-              你必須同時備份錢包配置（包含所有 xpub 和腳本類型）。
-              否則即使有足夠的私鑰，也無法重建正確的多簽地址。
-            </p>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">最佳實踐</h2>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>使用不同廠商的硬體錢包，避免供應鏈攻擊</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>將鑰匙存放在不同地理位置</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>定期測試恢復流程</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>記錄清晰的繼承計劃</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>使用描述符錢包（BIP-380+）以便標準化備份</span>
-            </li>
-          </ul>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關 BIP</h2>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">BIP-16</a>：P2SH</li>
-            <li>• BIP-67：多簽公鑰排序</li>
-            <li>• <a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT</li>
-            <li>• BIP-380+：描述符錢包</li>
-          </ul>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/intermediate/address-types" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：地址類型
-          </Button>
-          <Button href="/learn/intermediate/timelock" variant="primary">
-            下一篇：時間鎖機制
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
-        </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">常見配置</p>
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div>
+        <p class="text-bitcoin-500 font-bold">2-of-3</p>
+        <p class="text-[var(--text-secondary)]">最常見，平衡安全與便利</p>
+      </div>
+      <div>
+        <p class="text-bitcoin-500 font-bold">3-of-5</p>
+        <p class="text-[var(--text-secondary)]">企業級，更高冗餘</p>
+      </div>
+      <div>
+        <p class="text-bitcoin-500 font-bold">2-of-2</p>
+        <p class="text-[var(--text-secondary)]">雙方共管</p>
       </div>
     </div>
-  </article>
-</PageLayout>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼使用多簽？</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 消除單點故障</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    單簽錢包中，一把私鑰丟失或被盜就意味著資金全部損失。
+    多簽錢包中，即使一把鑰匙被盜，攻擊者仍無法花費資金。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 備份冗餘</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    2-of-3 配置中，即使一把鑰匙丟失，你仍可以用剩餘的兩把鑰匙恢復資金。
+    這提供了額外的備份安全邊際。
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. 共同管理</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    家庭、公司或 DAO 可以設置多簽，要求多人同意才能動用資金。
+    這實現了真正的共同治理。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">多簽類型</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">P2SH 多簽（Legacy）</h3>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 地址以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">3</code> 開頭</li>
+    <li>• 最多支援 15-of-15</li>
+    <li>• 交易費用較高</li>
+    <li>• 參考：<a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">BIP-16</a></li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">P2WSH 多簽（Native SegWit）</h3>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 地址以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc1q</code> 開頭（較長）</li>
+    <li>• 費用比 P2SH 多簽低約 30%</li>
+    <li>• 使用 32 字節哈希（更安全）</li>
+    <li>• 推薦使用</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">P2TR 多簽（Taproot）</h3>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 地址以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bc1p</code> 開頭</li>
+    <li>• 使用 Schnorr 簽章和 MuSig2</li>
+    <li>• 多簽花費看起來像單簽（隱私性）</li>
+    <li>• 費用最低</li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">設置 2-of-3 多簽</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">準備工作</h3>
+  <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+    <li>準備 3 個不同的簽章設備（建議不同廠商）</li>
+    <li>在每個設備上生成新的種子/私鑰</li>
+    <li>導出每個設備的 xpub（擴展公鑰）</li>
+    <li>使用協調軟體創建多簽錢包</li>
+  </ol>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">推薦軟體</h3>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>Sparrow Wallet</strong>：功能完整，支援所有多簽類型</li>
+    <li>• <strong>Electrum</strong>：老牌軟體，穩定可靠</li>
+    <li>• <strong>Specter Desktop</strong>：專注於多簽和硬體錢包</li>
+    <li>• <strong>Nunchuk</strong>：協作多簽，支援手機</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">簽章設備組合建議</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">範例：2-of-3 配置</p>
+    <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+      <li>• 鑰匙 1：Coldcard（家中保管）</li>
+      <li>• 鑰匙 2：Trezor（辦公室保管）</li>
+      <li>• 鑰匙 3：SeedSigner（異地保管）</li>
+    </ul>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">簽署交易流程</h2>
+  <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+    <li>在協調軟體中創建交易（PSBT）</li>
+    <li>將 PSBT 發送到第一個簽章設備</li>
+    <li>第一個設備驗證並簽署，返回部分簽章的 PSBT</li>
+    <li>將部分簽章的 PSBT 發送到第二個設備</li>
+    <li>第二個設備簽署，完成所需簽章數量</li>
+    <li>協調軟體合併簽章並廣播交易</li>
+  </ol>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>PSBT（部分簽章的比特幣交易）</strong>是多簽的關鍵技術。
+      它允許交易在多個設備之間安全傳遞，每個設備只添加自己的簽章。
+      詳見 <a href="/bips/bip-0174" class="underline">BIP-174</a>。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">備份策略</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    多簽錢包的備份比單簽更複雜，需要備份：
+  </p>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">所有助記詞</strong>：每把鑰匙的 12/24 詞</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">錢包描述符</strong>：包含 xpub 和派生路徑的完整配置</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span><strong class="text-[var(--text-primary)]">錢包配置文件</strong>：多數軟體可導出</span>
+    </li>
+  </ul>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>警告：</strong> 僅備份助記詞不足以恢復多簽錢包！
+      你必須同時備份錢包配置（包含所有 xpub 和腳本類型）。
+      否則即使有足夠的私鑰，也無法重建正確的多簽地址。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">最佳實踐</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>使用不同廠商的硬體錢包，避免供應鏈攻擊</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>將鑰匙存放在不同地理位置</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>定期測試恢復流程</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>記錄清晰的繼承計劃</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>使用描述符錢包（BIP-380+）以便標準化備份</span>
+    </li>
+  </ul>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">BIP-16</a>：P2SH</li>
+    <li>• BIP-67：多簽公鑰排序</li>
+    <li>• <a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT</li>
+    <li>• BIP-380+：描述符錢包</li>
+  </ul>
+</ArticleLayout>

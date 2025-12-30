@@ -1,139 +1,119 @@
 ---
-import PageLayout from '@/layouts/PageLayout.astro';
-import Button from '@/components/ui/Button.astro';
-import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
 ---
 
-<PageLayout
+<ArticleLayout
   title="PSBT：部分簽章交易"
-  description="了解 PSBT（Partially Signed Bitcoin Transaction）的結構和應用場景。"
+  description="PSBT 是一種標準格式，讓未完成的交易可以在多個軟體和設備之間安全傳遞。"
+  breadcrumbs={[
+    { label: '學習', href: '/learn/' },
+    { label: '進階知識', href: '/learn/intermediate/' },
+    { label: 'PSBT：部分簽章交易' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '上一篇：交易加速', href: '/learn/intermediate/rbf-cpfp' }}
+  nextPage={{ title: '下一篇：選幣策略', href: '/learn/intermediate/coin-selection' }}
 >
-  <article class="py-16 md:py-24">
-    <div class="container-wide">
-      <div class="max-w-3xl mx-auto">
-        <Breadcrumb items={[
-          { label: '學習', href: '/learn/' },
-          { label: '進階知識', href: '/learn/intermediate/' },
-          { label: 'PSBT' },
-        ]} />
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 PSBT？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    PSBT（Partially Signed Bitcoin Transaction）是 BIP-174 定義的標準格式，
+    用於在不同軟體和硬體之間傳遞尚未完成簽章的比特幣交易。
+  </p>
 
-        <!-- Header -->
-        <header class="mb-12">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-              進階
-            </span>
-            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-            PSBT：部分簽章交易
-          </h1>
-          <p class="text-xl text-[var(--text-secondary)]">
-            PSBT 是一種標準格式，讓未完成的交易可以在多個軟體和設備之間安全傳遞。
-          </p>
-        </header>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">PSBT 解決的問題</p>
+    <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+      <li>• 冷錢包/氣隙電腦的離線簽章</li>
+      <li>• 多簽錢包的多方協調</li>
+      <li>• 不同錢包軟體之間的互通</li>
+      <li>• 硬體錢包與軟體錢包的配合</li>
+    </ul>
+  </div>
 
-        <!-- Content -->
-        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 PSBT？</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            PSBT（Partially Signed Bitcoin Transaction）是 BIP-174 定義的標準格式，
-            用於在不同軟體和硬體之間傳遞尚未完成簽章的比特幣交易。
-          </p>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 的角色</h2>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">PSBT 解決的問題</p>
-            <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
-              <li>• 冷錢包/氣隙電腦的離線簽章</li>
-              <li>• 多簽錢包的多方協調</li>
-              <li>• 不同錢包軟體之間的互通</li>
-              <li>• 硬體錢包與軟體錢包的配合</li>
-            </ul>
-          </div>
+  <div class="not-prose mb-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-2 text-[var(--text-primary)]">角色</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">職責</th>
+          <th class="text-left py-2 text-[var(--text-primary)]">範例</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Creator</td>
+          <td class="py-2">創建交易框架（輸入/輸出）</td>
+          <td class="py-2">觀察錢包、協調軟體</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Updater</td>
+          <td class="py-2">添加簽章所需的資訊</td>
+          <td class="py-2">添加 UTXO、派生路徑</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Signer</td>
+          <td class="py-2">使用私鑰生成簽章</td>
+          <td class="py-2">硬體錢包、離線電腦</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Combiner</td>
+          <td class="py-2">合併多個簽章</td>
+          <td class="py-2">多簽協調軟體</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-2 font-semibold">Finalizer</td>
+          <td class="py-2">組裝最終的 scriptSig/witness</td>
+          <td class="py-2">完成交易</td>
+        </tr>
+        <tr>
+          <td class="py-2 font-semibold">Extractor</td>
+          <td class="py-2">提取可廣播的交易</td>
+          <td class="py-2">產生原始交易</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 的角色</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 流程圖</h2>
 
-          <div class="not-prose mb-6 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--border-default)]">
-                  <th class="text-left py-2 text-[var(--text-primary)]">角色</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">職責</th>
-                  <th class="text-left py-2 text-[var(--text-primary)]">範例</th>
-                </tr>
-              </thead>
-              <tbody class="text-[var(--text-secondary)]">
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-semibold">Creator</td>
-                  <td class="py-2">創建交易框架（輸入/輸出）</td>
-                  <td class="py-2">觀察錢包、協調軟體</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-semibold">Updater</td>
-                  <td class="py-2">添加簽章所需的資訊</td>
-                  <td class="py-2">添加 UTXO、派生路徑</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-semibold">Signer</td>
-                  <td class="py-2">使用私鑰生成簽章</td>
-                  <td class="py-2">硬體錢包、離線電腦</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-semibold">Combiner</td>
-                  <td class="py-2">合併多個簽章</td>
-                  <td class="py-2">多簽協調軟體</td>
-                </tr>
-                <tr class="border-b border-[var(--border-default)]">
-                  <td class="py-2 font-semibold">Finalizer</td>
-                  <td class="py-2">組裝最終的 scriptSig/witness</td>
-                  <td class="py-2">完成交易</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-semibold">Extractor</td>
-                  <td class="py-2">提取可廣播的交易</td>
-                  <td class="py-2">產生原始交易</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <div class="flex flex-col items-center text-sm text-[var(--text-secondary)]">
+      <div class="p-2 border border-[var(--border-default)] rounded mb-2 bg-[var(--bg-primary)]">
+        Creator: 創建 PSBT
+      </div>
+      <span class="text-bitcoin-500">↓</span>
+      <div class="p-2 border border-[var(--border-default)] rounded my-2 bg-[var(--bg-primary)]">
+        Updater: 添加 UTXO 資訊
+      </div>
+      <span class="text-bitcoin-500">↓</span>
+      <div class="p-2 border border-bitcoin-500 rounded my-2 bg-bitcoin-500/10">
+        <strong class="text-bitcoin-500">Signer(s): 簽章</strong>
+      </div>
+      <span class="text-bitcoin-500">↓</span>
+      <div class="p-2 border border-[var(--border-default)] rounded my-2 bg-[var(--bg-primary)]">
+        Combiner: 合併簽章
+      </div>
+      <span class="text-bitcoin-500">↓</span>
+      <div class="p-2 border border-[var(--border-default)] rounded my-2 bg-[var(--bg-primary)]">
+        Finalizer: 完成 witness
+      </div>
+      <span class="text-bitcoin-500">↓</span>
+      <div class="p-2 border border-green-500 rounded mt-2 bg-green-500/10">
+        <strong class="text-green-600 dark:text-green-400">Extractor: 廣播</strong>
+      </div>
+    </div>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 流程圖</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    PSBT 使用鍵值對格式存儲資訊：
+  </p>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <div class="flex flex-col items-center text-sm text-[var(--text-secondary)]">
-              <div class="p-2 border border-[var(--border-default)] rounded mb-2 bg-[var(--bg-primary)]">
-                Creator: 創建 PSBT
-              </div>
-              <span class="text-bitcoin-500">↓</span>
-              <div class="p-2 border border-[var(--border-default)] rounded my-2 bg-[var(--bg-primary)]">
-                Updater: 添加 UTXO 資訊
-              </div>
-              <span class="text-bitcoin-500">↓</span>
-              <div class="p-2 border border-bitcoin-500 rounded my-2 bg-bitcoin-500/10">
-                <strong class="text-bitcoin-500">Signer(s): 簽章</strong>
-              </div>
-              <span class="text-bitcoin-500">↓</span>
-              <div class="p-2 border border-[var(--border-default)] rounded my-2 bg-[var(--bg-primary)]">
-                Combiner: 合併簽章
-              </div>
-              <span class="text-bitcoin-500">↓</span>
-              <div class="p-2 border border-[var(--border-default)] rounded my-2 bg-[var(--bg-primary)]">
-                Finalizer: 完成 witness
-              </div>
-              <span class="text-bitcoin-500">↓</span>
-              <div class="p-2 border border-green-500 rounded mt-2 bg-green-500/10">
-                <strong class="text-green-600 dark:text-green-400">Extractor: 廣播</strong>
-              </div>
-            </div>
-          </div>
-
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 結構</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            PSBT 使用鍵值對格式存儲資訊：
-          </p>
-
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
-            <pre class="text-[var(--text-secondary)]">
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">
 PSBT 結構：
 ├── 全域欄位
 │   ├── 未簽章交易 (PSBT_GLOBAL_UNSIGNED_TX)
@@ -147,93 +127,93 @@ PSBT 結構：
 └── 輸出欄位 (每個輸出)
     ├── Redeem Script / Witness Script
     └── BIP-32 派生路徑</pre>
-          </div>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見應用場景</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見應用場景</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 硬體錢包簽章</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            軟體錢包創建 PSBT，透過 USB 或 SD 卡傳給硬體錢包簽章，
-            再返回已簽章的 PSBT 進行廣播。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 硬體錢包簽章</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    軟體錢包創建 PSBT，透過 USB 或 SD 卡傳給硬體錢包簽章，
+    再返回已簽章的 PSBT 進行廣播。
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">流程</p>
-            <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
-              <li>1. Sparrow Wallet 創建 PSBT</li>
-              <li>2. 通過 SD 卡傳給 Coldcard</li>
-              <li>3. Coldcard 驗證並簽章</li>
-              <li>4. 返回已簽章的 PSBT</li>
-              <li>5. Sparrow 廣播交易</li>
-            </ol>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">流程</p>
+    <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
+      <li>1. Sparrow Wallet 創建 PSBT</li>
+      <li>2. 通過 SD 卡傳給 Coldcard</li>
+      <li>3. Coldcard 驗證並簽章</li>
+      <li>4. 返回已簽章的 PSBT</li>
+      <li>5. Sparrow 廣播交易</li>
+    </ol>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 多簽錢包協調</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            2-of-3 多簽中，PSBT 在三個簽章者之間傳遞，收集足夠的簽章。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 多簽錢包協調</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    2-of-3 多簽中，PSBT 在三個簽章者之間傳遞，收集足夠的簽章。
+  </p>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">2-of-3 多簽流程</p>
-            <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
-              <li>1. 協調者創建 PSBT</li>
-              <li>2. 發送給簽章者 A → 返回帶 A 簽章的 PSBT</li>
-              <li>3. 發送給簽章者 B → 返回帶 A+B 簽章的 PSBT</li>
-              <li>4. 已達到 2 個簽章，可以廣播</li>
-            </ol>
-          </div>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">2-of-3 多簽流程</p>
+    <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
+      <li>1. 協調者創建 PSBT</li>
+      <li>2. 發送給簽章者 A → 返回帶 A 簽章的 PSBT</li>
+      <li>3. 發送給簽章者 B → 返回帶 A+B 簽章的 PSBT</li>
+      <li>4. 已達到 2 個簽章，可以廣播</li>
+    </ol>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. CoinJoin 協調</h3>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-            多個參與者各自簽署自己的輸入，協調者合併所有簽章。
-          </p>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. CoinJoin 協調</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    多個參與者各自簽署自己的輸入，協調者合併所有簽章。
+  </p>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 傳輸方式</h2>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-bitcoin-500">•</span>
-              <span><strong class="text-[var(--text-primary)]">Base64 文字</strong>：適合複製貼上</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-bitcoin-500">•</span>
-              <span><strong class="text-[var(--text-primary)]">QR Code</strong>：適合手機和氣隙設備</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-bitcoin-500">•</span>
-              <span><strong class="text-[var(--text-primary)]">.psbt 文件</strong>：適合 SD 卡和 USB</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-bitcoin-500">•</span>
-              <span><strong class="text-[var(--text-primary)]">NFC</strong>：某些硬體錢包支援</span>
-            </li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT 傳輸方式</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">Base64 文字</strong>：適合複製貼上</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">QR Code</strong>：適合手機和氣隙設備</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">.psbt 文件</strong>：適合 SD 卡和 USB</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-bitcoin-500">•</span>
+      <span><strong class="text-[var(--text-primary)]">NFC</strong>：某些硬體錢包支援</span>
+    </li>
+  </ul>
 
-          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-            <p class="font-semibold text-[var(--text-primary)] mb-3">Base64 編碼範例</p>
-            <p class="font-mono text-xs text-[var(--text-tertiary)] break-all">
-              cHNidP8BAHUCAAAAASaBcTce3/KF6Tig7cez...
-            </p>
-            <p class="text-sm text-[var(--text-tertiary)] mt-2">
-              開頭的 "cHNidP8" 解碼後是 "psbt" 魔術字節
-            </p>
-          </div>
+  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="font-semibold text-[var(--text-primary)] mb-3">Base64 編碼範例</p>
+    <p class="font-mono text-xs text-[var(--text-tertiary)] break-all">
+      cHNidP8BAHUCAAAAASaBcTce3/KF6Tig7cez...
+    </p>
+    <p class="text-sm text-[var(--text-tertiary)] mt-2">
+      開頭的 "cHNidP8" 解碼後是 "psbt" 魔術字節
+    </p>
+  </div>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT v2 (BIP-370)</h2>
-          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-            PSBT v2 改進了原始格式，主要變化：
-          </p>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• 交易欄位分散存儲，而非完整的未簽章交易</li>
-            <li>• 支援更靈活的交易構建（可增減輸入/輸出）</li>
-            <li>• 改善了 Creator 和 Updater 角色的分離</li>
-            <li>• 更好地支援多方交易協議（如 CoinJoin）</li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PSBT v2 (BIP-370)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    PSBT v2 改進了原始格式，主要變化：
+  </p>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• 交易欄位分散存儲，而非完整的未簽章交易</li>
+    <li>• 支援更靈活的交易構建（可增減輸入/輸出）</li>
+    <li>• 改善了 Creator 和 Updater 角色的分離</li>
+    <li>• 更好地支援多方交易協議（如 CoinJoin）</li>
+  </ul>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際操作</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際操作</h2>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">Bitcoin Core CLI</h3>
-          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
-            <pre class="text-[var(--text-secondary)]" set:html={`
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">Bitcoin Core CLI</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]" set:html={`
 # 創建 PSBT
 bitcoin-cli walletcreatefundedpsbt '[]' '[{"bc1q...": 0.01}]'
 
@@ -248,69 +228,49 @@ bitcoin-cli finalizepsbt "cHNidP8..."
 
 # 廣播
 bitcoin-cli sendrawtransaction "0200000001..."`}>
-            </pre>
-          </div>
+    </pre>
+  </div>
 
-          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">Sparrow Wallet</h3>
-          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
-            <li>創建交易後，點擊「Save Transaction」</li>
-            <li>選擇「PSBT」格式</li>
-            <li>傳給硬體錢包簽章</li>
-            <li>導入已簽章的 PSBT</li>
-            <li>廣播交易</li>
-          </ol>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">Sparrow Wallet</h3>
+  <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+    <li>創建交易後，點擊「Save Transaction」</li>
+    <li>選擇「PSBT」格式</li>
+    <li>傳給硬體錢包簽章</li>
+    <li>導入已簽章的 PSBT</li>
+    <li>廣播交易</li>
+  </ol>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">安全考量</h2>
-          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>PSBT 本身不包含私鑰，可以安全傳輸</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-green-500">✓</span>
-              <span>簽章設備應驗證交易詳情（地址、金額、手續費）</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-yellow-500">△</span>
-              <span>確保 PSBT 來源可信，避免簽署惡意交易</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <span class="text-yellow-500">△</span>
-              <span>硬體錢包應顯示完整交易資訊供用戶確認</span>
-            </li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">安全考量</h2>
+  <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>PSBT 本身不包含私鑰，可以安全傳輸</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-green-500">✓</span>
+      <span>簽章設備應驗證交易詳情（地址、金額、手續費）</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500">△</span>
+      <span>確保 PSBT 來源可信，避免簽署惡意交易</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500">△</span>
+      <span>硬體錢包應顯示完整交易資訊供用戶確認</span>
+    </li>
+  </ul>
 
-          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關 BIP</h2>
-          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-            <li>• <a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT 格式</li>
-            <li>• BIP-370：PSBT v2</li>
-            <li>• <a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a>：HD 錢包（派生路徑）</li>
-          </ul>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關 BIP</h2>
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT 格式</li>
+    <li>• BIP-370：PSBT v2</li>
+    <li>• <a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a>：HD 錢包（派生路徑）</li>
+  </ul>
 
-          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
-            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-              <strong>延伸閱讀：</strong>
-              <a href="/learn/intermediate/multisig" class="underline">多簽錢包入門</a> 詳細說明了 PSBT 在多簽場景的應用。
-            </p>
-          </div>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
-          <Button href="/learn/intermediate/rbf-cpfp" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            上一篇：交易加速
-          </Button>
-          <Button href="/learn/intermediate/coin-selection" variant="primary">
-            下一篇：選幣策略
-            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Button>
-        </div>
-      </div>
-    </div>
-  </article>
-</PageLayout>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong>
+      <a href="/learn/intermediate/multisig" class="underline">多簽錢包入門</a> 詳細說明了 PSBT 在多簽場景的應用。
+    </p>
+  </div>
+</ArticleLayout>
