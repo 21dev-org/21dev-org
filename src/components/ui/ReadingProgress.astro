@@ -1,0 +1,57 @@
+---
+// Reading progress bar - shows scroll progress through the page
+---
+
+<div
+  id="reading-progress"
+  class="fixed top-0 left-0 right-0 h-1 bg-transparent z-50 pointer-events-none"
+  role="progressbar"
+  aria-label="閱讀進度"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  aria-valuenow="0"
+>
+  <div
+    id="reading-progress-bar"
+    class="h-full bg-gradient-to-r from-bitcoin-400 to-bitcoin-600 transition-[width] duration-150 ease-out"
+    style="width: 0%"
+  ></div>
+</div>
+
+<script is:inline>
+  (function() {
+    function initReadingProgress() {
+      const progressBar = document.getElementById('reading-progress-bar');
+      const progressContainer = document.getElementById('reading-progress');
+      if (!progressBar || !progressContainer) return;
+
+      const bar = progressBar;
+      const container = progressContainer;
+
+      function updateProgress() {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = docHeight > 0 ? Math.min((scrollTop / docHeight) * 100, 100) : 0;
+
+        bar.style.width = progress + '%';
+        container.setAttribute('aria-valuenow', String(Math.round(progress)));
+      }
+
+      let ticking = false;
+      window.addEventListener('scroll', function() {
+        if (!ticking) {
+          requestAnimationFrame(function() {
+            updateProgress();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+
+      updateProgress();
+    }
+
+    initReadingProgress();
+    document.addEventListener('astro:after-swap', initReadingProgress);
+  })();
+</script>

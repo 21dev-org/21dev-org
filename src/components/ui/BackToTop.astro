@@ -1,0 +1,68 @@
+---
+// Back to top button - appears when scrolled down
+---
+
+<button
+  id="back-to-top"
+  class="fixed bottom-6 right-6 z-40 p-3 rounded-full bg-bitcoin-500 text-white shadow-lg
+         opacity-0 invisible translate-y-4
+         transition-all duration-300 ease-out
+         hover:bg-bitcoin-600 hover:shadow-xl hover:-translate-y-1
+         focus:outline-none focus-visible:ring-2 focus-visible:ring-bitcoin-500 focus-visible:ring-offset-2
+         active:scale-95"
+  aria-label="回到頂部"
+  type="button"
+>
+  <svg
+    class="w-5 h-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    stroke-width="2.5"
+    aria-hidden="true"
+  >
+    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+  </svg>
+</button>
+
+<script is:inline>
+  (function() {
+    function initBackToTop() {
+      var button = document.getElementById('back-to-top');
+      if (!button) return;
+
+      var showThreshold = 300;
+      var btn = button;
+
+      function toggleVisibility() {
+        if (window.scrollY > showThreshold) {
+          btn.classList.remove('opacity-0', 'invisible', 'translate-y-4');
+          btn.classList.add('opacity-100', 'visible', 'translate-y-0');
+        } else {
+          btn.classList.add('opacity-0', 'invisible', 'translate-y-4');
+          btn.classList.remove('opacity-100', 'visible', 'translate-y-0');
+        }
+      }
+
+      var ticking = false;
+      window.addEventListener('scroll', function() {
+        if (!ticking) {
+          requestAnimationFrame(function() {
+            toggleVisibility();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+
+      btn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      toggleVisibility();
+    }
+
+    initBackToTop();
+    document.addEventListener('astro:after-swap', initBackToTop);
+  })();
+</script>
