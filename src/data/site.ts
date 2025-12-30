@@ -13,8 +13,8 @@ export const siteConfig = {
     signal: 'https://signal.group/#CjQKIKEW5NtKmgLKX9JOei4GOaTCl1enEIOpFC1R6vjm5_RCEhD3TXZew1_1HSLkD9sh8r5K',
   },
 
-  // Default Open Graph image
-  ogImage: '/og-image.svg',
+  // Default Open Graph image (PNG for social media compatibility)
+  ogImage: '/og-image.png',
 
   // Navigation
   navLinks: [
