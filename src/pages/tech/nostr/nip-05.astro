@@ -1,0 +1,363 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-05 域名驗證"
+  description="深入了解如何使用 DNS 域名驗證 Nostr 身份，設定人類可讀的識別符。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-05 域名驗證' },
+  ]}
+  difficulty="beginner"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'NIP 規範概覽', href: '/tech/nostr/nips-overview' }}
+  nextPage={{ title: 'NIP-57 Zaps', href: '/tech/nostr/nip-57' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-05？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-05 定義了一種將人類可讀的識別符（如 alice@example.com）
+    映射到 Nostr 公鑰的方法。這讓用戶可以通過易記的「Nostr 地址」
+    找到其他用戶，而不必記住長長的公鑰。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>注意：</strong>
+      NIP-05 不是電子郵件地址，只是借用了相同的格式。
+      它是一種去中心化的身份驗證機制，不依賴任何中央機構。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作原理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`NIP-05 驗證流程：
+
+用戶 NIP-05: alice@example.com
+
+1. 客戶端解析識別符
+   name = "alice"
+   domain = "example.com"
+
+2. 查詢驗證端點
+   GET https://example.com/.well-known/nostr.json?name=alice
+
+3. 伺服器回應
+   {
+     "names": {
+       "alice": "abc123..."  // 公鑰（十六進制）
+     },
+     "relays": {
+       "abc123...": ["wss://relay1.com", "wss://relay2.com"]
+     }
+   }
+
+4. 客戶端驗證
+   - 檢查回應中的公鑰是否匹配
+   - 如果匹配，顯示驗證標記 ✓
+
+5. 可選：使用推薦的中繼器
+   - relays 欄位提供該用戶偏好的中繼器`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">設定 NIP-05</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">方法一：自有域名</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`在你的網站設定 NIP-05：
+
+1. 創建檔案
+   路徑: /.well-known/nostr.json
+
+2. 檔案內容
+   {
+     "names": {
+       "alice": "你的公鑰十六進制",
+       "_": "根域名用戶的公鑰"  // 可選：@example.com
+     },
+     "relays": {
+       "你的公鑰": [
+         "wss://relay.damus.io",
+         "wss://nos.lol"
+       ]
+     }
+   }
+
+3. 設定 CORS
+   Access-Control-Allow-Origin: *
+
+4. 設定 Content-Type
+   Content-Type: application/json
+
+Nginx 配置範例:
+location /.well-known/nostr.json {
+    add_header 'Access-Control-Allow-Origin' '*';
+    add_header 'Content-Type' 'application/json';
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">方法二：動態服務</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`使用伺服器端腳本動態生成：
+
+Node.js / Express 範例:
+app.get('/.well-known/nostr.json', (req, res) => {
+  const name = req.query.name;
+
+  // 從資料庫查詢
+  const user = db.getUserByName(name);
+
+  if (!user) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  res.set('Access-Control-Allow-Origin', '*');
+  res.json({
+    names: {
+      [name]: user.pubkey
+    },
+    relays: {
+      [user.pubkey]: user.relays
+    }
+  });
+});
+
+優點：
+- 支援多用戶
+- 可以動態更新
+- 可以加入驗證邏輯`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">方法三：NIP-05 服務</h3>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">免費服務</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• nostr.directory</li>
+        <li>• iris.to</li>
+        <li>• nip05.social</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">付費服務</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• nostr.directory（自訂域名）</li>
+        <li>• 各種 Nostr 服務商</li>
+        <li>• 自架伺服器</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">在客戶端設定</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`在個人資料中設定 NIP-05：
+
+更新 kind:0 (Metadata) 事件：
+{
+  "kind": 0,
+  "content": JSON.stringify({
+    "name": "Alice",
+    "about": "Just a Nostr user",
+    "picture": "https://example.com/avatar.jpg",
+    "nip05": "alice@example.com"  // 添加 NIP-05
+  })
+}
+
+客戶端行為：
+1. 讀取用戶的 kind:0 事件
+2. 解析 nip05 欄位
+3. 向域名發送驗證請求
+4. 比對回應中的公鑰
+5. 顯示驗證狀態
+
+驗證結果：
+✓ 驗證成功 - 顯示綠色勾號
+✗ 驗證失敗 - 不顯示或顯示警告
+? 無法驗證 - 域名無法連接`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼實現</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`JavaScript 驗證實現：
+
+async function verifyNip05(nip05, expectedPubkey) {
+  // 解析識別符
+  const [name, domain] = nip05.split('@');
+  if (!name || !domain) {
+    throw new Error('Invalid NIP-05 format');
+  }
+
+  // 查詢端點
+  const url = \`https://\${domain}/.well-known/nostr.json?name=\${name}\`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { valid: false, reason: 'Failed to fetch' };
+    }
+
+    const data = await response.json();
+    const pubkey = data.names?.[name];
+
+    if (!pubkey) {
+      return { valid: false, reason: 'Name not found' };
+    }
+
+    if (pubkey.toLowerCase() !== expectedPubkey.toLowerCase()) {
+      return { valid: false, reason: 'Pubkey mismatch' };
+    }
+
+    return {
+      valid: true,
+      relays: data.relays?.[pubkey] || []
+    };
+  } catch (error) {
+    return { valid: false, reason: error.message };
+  }
+}
+
+// 使用 nostr-tools
+import { nip05 } from 'nostr-tools'
+
+const profile = await nip05.queryProfile('alice@example.com')
+// 回傳 { pubkey: '...', relays: [...] } 或 null`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">特殊用法</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">根域名用戶</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`使用 "_" 作為根域名用戶：
+
+nostr.json:
+{
+  "names": {
+    "_": "公鑰..."  // @example.com
+  }
+}
+
+NIP-05 地址: _@example.com 或簡寫 example.com
+
+客戶端可能顯示為:
+- example.com ✓
+- @example.com ✓`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">多用戶支援</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`在同一域名下支援多用戶：
+
+nostr.json:
+{
+  "names": {
+    "_": "admin_pubkey",
+    "alice": "alice_pubkey",
+    "bob": "bob_pubkey",
+    "team": "team_pubkey"
+  },
+  "relays": {
+    "admin_pubkey": ["wss://relay1.com"],
+    "alice_pubkey": ["wss://relay2.com"],
+    "bob_pubkey": ["wss://relay1.com", "wss://relay2.com"]
+  }
+}
+
+對應的 NIP-05 地址:
+- _@example.com (或 example.com)
+- alice@example.com
+- bob@example.com
+- team@example.com`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 人類可讀的識別符</li>
+        <li>• 額外的信任層</li>
+        <li>• 可發現性</li>
+        <li>• 密鑰輪換支援</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 依賴域名所有權</li>
+        <li>• 域名可能過期</li>
+        <li>• DNS 可能被劫持</li>
+        <li>• 不是強制性的</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>信任模型：</strong>
+      NIP-05 驗證表示「這個域名聲稱這個公鑰屬於這個名稱」。
+      用戶仍需評估是否信任該域名。例如，alice@scam-site.com 的驗證
+      並不意味著可以信任這個用戶。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">驗證失敗？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        檢查：CORS 設定是否正確？Content-Type 是否為 application/json？
+        公鑰格式是否為十六進制（不是 npub）？
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">如何更換密鑰？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        更新 nostr.json 中的公鑰。這是 NIP-05 的優勢之一——
+        用戶可以通過更新域名記錄來更換密鑰。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">沒有自己的域名？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以使用 NIP-05 服務商提供的子域名，
+        如 alice@nostr.directory。但這意味著依賴第三方。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">GitHub Pages 可以用嗎？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以！創建 .well-known/nostr.json 檔案即可。
+        GitHub Pages 預設支援 CORS 和正確的 Content-Type。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>使用自有域名：</strong>控制自己的身份，不依賴第三方</li>
+    <li>• <strong>設定 HTTPS：</strong>確保連接安全，防止中間人攻擊</li>
+    <li>• <strong>包含中繼器資訊：</strong>幫助其他人找到你的內容</li>
+    <li>• <strong>定期檢查：</strong>確保 nostr.json 持續可用</li>
+    <li>• <strong>備份設定：</strong>保留 nostr.json 的備份</li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/nostr/nip-57" class="text-purple-600 dark:text-purple-400 hover:underline">NIP-57 Zaps</a>
+      如何通過閃電網路向內容打賞。
+    </p>
+  </div>
+</ArticleLayout>

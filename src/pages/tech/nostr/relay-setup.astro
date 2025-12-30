@@ -1,0 +1,470 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="中繼器架設"
+  description="學習如何架設和運營自己的 Nostr 中繼器，包括軟體選擇、配置和維護。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: '中繼器架設' },
+  ]}
+  difficulty="advanced"
+  readingTime="25 分鐘"
+  prevPage={{ title: 'NIP-57 Zaps', href: '/tech/nostr/nip-57' }}
+  nextPage={{ title: '客戶端開發', href: '/tech/nostr/client-dev' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼架設中繼器？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    架設自己的 Nostr 中繼器可以提供數據主權、增強隱私、
+    為社群提供服務，或作為備份。雖然使用公共中繼器足夠日常使用，
+    但自有中繼器給予你完全的控制權。
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 數據完全控制</li>
+        <li>• 增強隱私保護</li>
+        <li>• 自訂政策規則</li>
+        <li>• 貢獻網路基礎設施</li>
+        <li>• 可能的營收來源</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">考量</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 需要伺服器資源</li>
+        <li>• 需要維護時間</li>
+        <li>• 儲存空間成本</li>
+        <li>• 頻寬使用</li>
+        <li>• 需要技術知識</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器軟體選擇</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">軟體</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">語言</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">特點</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">strfry</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">C++</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">高效能、低資源、LMDB 儲存</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">nostr-rs-relay</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Rust</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">穩定可靠、SQLite/PostgreSQL</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">nostream</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">TypeScript</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">功能豐富、PostgreSQL</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">khatru</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Go</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">模組化、易於擴展</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">relay</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Go</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">簡單、可嵌入</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">快速開始：strfry</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 安裝依賴 (Ubuntu/Debian)
+sudo apt update
+sudo apt install -y git build-essential liblmdb-dev libflatbuffers-dev \\
+  libsecp256k1-dev libzstd-dev libssl-dev zlib1g-dev
+
+# 克隆並編譯
+git clone https://github.com/hoytech/strfry.git
+cd strfry
+git submodule update --init
+make setup-golpe
+make -j4
+
+# 創建配置
+cp strfry.conf /etc/strfry.conf
+
+# 運行
+./strfry relay`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">strfry 配置</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# /etc/strfry.conf
+
+db = "./strfry-db/"
+
+relay {
+    bind = "127.0.0.1"
+    port = 7777
+
+    info {
+        name = "My Nostr Relay"
+        description = "A personal Nostr relay"
+        contact = "admin@example.com"
+        pubkey = "你的公鑰"
+    }
+
+    maxWebsocketPayloadSize = 131072
+    autoPingInterval = 55
+    enableTcpKeepalive = true
+}
+
+events {
+    maxEventSize = 65536
+    rejectEventsNewerThanSeconds = 900
+    rejectEventsOlderThanSeconds = 94608000
+}
+
+negentropy {
+    enabled = true
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">快速開始：nostr-rs-relay</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 安裝 Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# 克隆並編譯
+git clone https://github.com/scsibug/nostr-rs-relay.git
+cd nostr-rs-relay
+cargo build --release
+
+# 創建配置
+cp config.toml.sample config.toml
+
+# 運行
+./target/release/nostr-rs-relay`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">nostr-rs-relay 配置</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# config.toml
+
+[info]
+relay_url = "wss://relay.example.com"
+name = "My Relay"
+description = "A Nostr relay"
+pubkey = "你的公鑰"
+contact = "admin@example.com"
+
+[database]
+data_directory = "./db"
+
+[network]
+port = 8080
+address = "127.0.0.1"
+
+[limits]
+messages_per_sec = 3
+max_event_bytes = 131072
+max_ws_message_bytes = 131072
+max_ws_frame_bytes = 131072
+
+[authorization]
+# 開放所有人或設定白名單
+pubkey_whitelist = []
+
+[verified_users]
+# 只接受有 NIP-05 驗證的用戶
+verify_expiration = 3600
+mode = "passive"`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">反向代理設定</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Nginx 配置</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# /etc/nginx/sites-available/nostr-relay
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+upstream nostr_relay {
+    server 127.0.0.1:7777;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name relay.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/relay.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/relay.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://nostr_relay;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket 超時
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # NIP-11 中繼器資訊
+    location = / {
+        if ($http_accept ~* "application/nostr\\+json") {
+            proxy_pass http://nostr_relay;
+        }
+        proxy_pass http://nostr_relay;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Caddy 配置</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# Caddyfile
+
+relay.example.com {
+    reverse_proxy localhost:7777
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Systemd 服務</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# /etc/systemd/system/nostr-relay.service
+
+[Unit]
+Description=Nostr Relay
+After=network.target
+
+[Service]
+Type=simple
+User=nostr
+Group=nostr
+WorkingDirectory=/opt/strfry
+ExecStart=/opt/strfry/strfry relay
+Restart=always
+RestartSec=5
+
+# 安全設定
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/strfry/strfry-db
+
+[Install]
+WantedBy=multi-user.target
+
+# 啟用服務
+sudo systemctl enable nostr-relay
+sudo systemctl start nostr-relay
+sudo systemctl status nostr-relay`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Docker 部署</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# docker-compose.yml
+
+version: '3'
+services:
+  relay:
+    image: scsibug/nostr-rs-relay:latest
+    volumes:
+      - ./config.toml:/usr/src/app/config.toml
+      - ./data:/usr/src/app/db
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # 可選：添加 Caddy 作為反向代理
+  caddy:
+    image: caddy:latest
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">政策設定</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`常見政策類型：
+
+1. 開放中繼器（預設）
+   - 接受所有有效事件
+   - 可能需要處理垃圾訊息
+
+2. 白名單
+   # nostr-rs-relay
+   [authorization]
+   pubkey_whitelist = [
+     "公鑰1",
+     "公鑰2"
+   ]
+
+3. 付費中繼器
+   - 整合 NIP-42 認證
+   - 整合閃電網路支付
+   - 需要額外開發
+
+4. NIP-05 驗證要求
+   [verified_users]
+   mode = "passive"  # 或 "active"
+
+5. 工作量證明要求
+   # 要求事件包含 NIP-13 PoW
+   [limits]
+   min_pow_difficulty = 16
+
+strfry 寫入政策（插件）：
+# write-policy.lua
+function filter(event)
+    -- 只接受特定 kind
+    if event.kind ~= 1 then
+        return "blocked: only kind 1 allowed"
+    end
+    return nil  -- 接受
+end`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">監控與維護</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`監控項目：
+
+1. 日誌監控
+   journalctl -u nostr-relay -f
+
+2. 連接數
+   ss -tnp | grep <port> | wc -l
+
+3. 磁碟使用
+   du -sh /path/to/db
+
+4. 資源使用
+   htop / top
+
+5. 健康檢查
+   curl -I https://relay.example.com
+
+維護任務：
+
+1. 定期備份
+   - 資料庫檔案
+   - 配置檔案
+
+2. 事件清理
+   - 刪除舊的臨時事件
+   - 清理垃圾事件
+
+3. 更新軟體
+   git pull
+   make / cargo build --release
+
+4. 監控儲存空間
+   - 設定告警閾值
+   - 自動清理策略`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">資源需求</h2>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">個人使用</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• CPU: 1 核心</li>
+        <li>• RAM: 512MB+</li>
+        <li>• 儲存: 5GB+</li>
+        <li>• 費用: ~$5/月</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">小型社群</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• CPU: 2 核心</li>
+        <li>• RAM: 2GB+</li>
+        <li>• 儲存: 50GB+</li>
+        <li>• 費用: ~$15/月</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">公共中繼器</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• CPU: 4+ 核心</li>
+        <li>• RAM: 8GB+</li>
+        <li>• 儲存: 500GB+ SSD</li>
+        <li>• 費用: ~$50+/月</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">WebSocket 連接被斷開？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        檢查 Nginx/Caddy 的 WebSocket 超時設定。
+        確保 proxy_read_timeout 足夠長。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">NIP-11 資訊不顯示？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        確保反向代理正確處理 Accept: application/nostr+json 請求。
+        測試: curl -H "Accept: application/nostr+json" https://relay.example.com
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">儲存空間增長太快？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        考慮限制事件保留時間、只接受特定 kind、
+        或要求 NIP-05 驗證來減少垃圾事件。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      學習 <a href="/tech/nostr/client-dev" class="text-purple-600 dark:text-purple-400 hover:underline">客戶端開發</a>
+      來創建你自己的 Nostr 應用。
+    </p>
+  </div>
+</ArticleLayout>

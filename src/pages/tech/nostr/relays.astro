@@ -1,0 +1,441 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="中繼器運作"
+  description="深入了解 Nostr 中繼器的角色、通訊協議、政策設定和選擇策略。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: '中繼器運作' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: '密鑰與身份', href: '/tech/nostr/keys' }}
+  nextPage={{ title: 'NIP 規範概覽', href: '/tech/nostr/nips-overview' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器是什麼？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    中繼器（Relay）是 Nostr 網路的基礎設施。它們是 WebSocket 伺服器，
+    負責接收、儲存和轉發事件。與傳統社交網路不同，
+    Nostr 中繼器彼此獨立運作，沒有中央協調。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>設計哲學：</strong>
+      中繼器是「愚蠢的」——它們只儲存和轉發事件，
+      不驗證內容的真實性（只驗證簽名）。
+      智能邏輯由客戶端處理。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通訊協議</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">WebSocket 連接</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`連接中繼器：
+
+URL 格式:
+wss://relay.example.com  (加密，推薦)
+ws://relay.example.com   (未加密)
+
+JavaScript 範例:
+const ws = new WebSocket('wss://relay.damus.io')
+
+ws.onopen = () => {
+  console.log('Connected to relay')
+}
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data)
+  console.log('Received:', message)
+}
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error)
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">訊息類型</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`客戶端 → 中繼器：
+
+["EVENT", <event>]
+  發布事件
+
+["REQ", <subscription_id>, <filter1>, <filter2>, ...]
+  訂閱事件
+
+["CLOSE", <subscription_id>]
+  關閉訂閱
+
+["COUNT", <subscription_id>, <filter1>, ...]
+  請求符合條件的事件數量（NIP-45）
+
+["AUTH", <signed_event>]
+  認證（NIP-42）
+
+中繼器 → 客戶端：
+
+["EVENT", <subscription_id>, <event>]
+  推送符合訂閱條件的事件
+
+["OK", <event_id>, <success>, <message>]
+  事件發布結果
+
+["EOSE", <subscription_id>]
+  End Of Stored Events - 歷史事件發送完畢
+
+["CLOSED", <subscription_id>, <message>]
+  訂閱被關閉（通常附帶原因）
+
+["NOTICE", <message>]
+  通知訊息（錯誤、警告等）
+
+["AUTH", <challenge>]
+  認證挑戰（NIP-42）
+
+["COUNT", <subscription_id>, {"count": <n>}]
+  事件計數結果（NIP-45）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`過濾器結構：
+
+{
+  "ids": ["<event_id>", ...],        // 精確匹配事件 ID
+  "authors": ["<pubkey>", ...],      // 精確匹配作者
+  "kinds": [1, 7, ...],              // 事件類型
+  "#e": ["<event_id>", ...],         // 包含 e 標籤
+  "#p": ["<pubkey>", ...],           // 包含 p 標籤
+  "#<tag>": ["value", ...],          // 任意標籤過濾
+  "since": 1234567890,               // 時間下限（包含）
+  "until": 1234567899,               // 時間上限（包含）
+  "limit": 100                       // 最多返回數量
+}
+
+查詢邏輯：
+- 同一過濾器內的條件是 AND 關係
+- 多個過濾器之間是 OR 關係
+- 陣列內的值是 OR 關係
+
+範例：
+
+// 取得某用戶最近 20 則貼文
+["REQ", "sub1", {
+  "authors": ["pubkey123..."],
+  "kinds": [1],
+  "limit": 20
+}]
+
+// 取得某貼文的所有回覆和反應
+["REQ", "sub2",
+  {"#e": ["event123..."], "kinds": [1]},  // 回覆
+  {"#e": ["event123..."], "kinds": [7]}   // 反應
+]
+
+// 取得多人的個人資料
+["REQ", "sub3", {
+  "authors": ["pk1...", "pk2...", "pk3..."],
+  "kinds": [0]
+}]`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器政策</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個中繼器可以設定自己的政策，決定接受哪些事件：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`常見政策類型：
+
+1. 開放中繼器
+   - 接受所有有效事件
+   - 可能有垃圾訊息問題
+   - 適合一般用途
+
+2. 付費中繼器
+   - 需要支付費用才能發布
+   - 減少垃圾訊息
+   - 可能有更好的服務品質
+
+3. 白名單中繼器
+   - 只接受特定用戶的事件
+   - 私人或社群使用
+   - 最嚴格的控制
+
+4. 內容審核中繼器
+   - 過濾特定類型的內容
+   - 可能有人工審核
+   - 符合特定社群標準
+
+5. 專用中繼器
+   - 只處理特定 kind 的事件
+   - 例如：只處理長篇文章
+   - 優化特定用例
+
+NIP-11 中繼器資訊：
+GET https://relay.example.com
+Accept: application/nostr+json
+
+{
+  "name": "My Relay",
+  "description": "A Nostr relay",
+  "pubkey": "operator_pubkey",
+  "contact": "email@example.com",
+  "supported_nips": [1, 11, 42, ...],
+  "software": "nostr-relay",
+  "version": "1.0.0",
+  "limitation": {
+    "max_message_length": 65536,
+    "max_event_tags": 100,
+    "payment_required": false,
+    "auth_required": false
+  }
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-42 認證</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`認證流程（NIP-42）：
+
+1. 中繼器發送挑戰
+   ["AUTH", "<challenge_string>"]
+
+2. 客戶端簽署認證事件
+   {
+     "kind": 22242,
+     "tags": [
+       ["relay", "wss://relay.example.com"],
+       ["challenge", "<challenge_string>"]
+     ],
+     "content": ""
+   }
+
+3. 客戶端發送認證
+   ["AUTH", <signed_event>]
+
+4. 中繼器驗證並授權
+
+使用場景：
+- 付費中繼器驗證訂閱
+- 限制寫入權限
+- 讀取私人內容
+- 獲取特殊功能
+
+範例回應：
+["OK", "<event_id>", false, "auth-required: need AUTH"]
+["CLOSED", "sub1", "auth-required: need AUTH"]`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">選擇中繼器</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">選擇考量</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 地理位置（延遲）</li>
+        <li>• 正常運行時間</li>
+        <li>• 速度和響應時間</li>
+        <li>• 支援的 NIP</li>
+        <li>• 政策和限制</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">建議策略</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 使用多個中繼器（冗餘）</li>
+        <li>• 至少一個大型公共中繼器</li>
+        <li>• 考慮地區性中繼器</li>
+        <li>• 定期檢查連接狀態</li>
+        <li>• 備份到個人中繼器</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">NIP-65 中繼器列表</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`NIP-65 用戶中繼器列表：
+
+發布 kind:10002 事件：
+{
+  "kind": 10002,
+  "tags": [
+    ["r", "wss://relay1.com", "read"],
+    ["r", "wss://relay2.com", "write"],
+    ["r", "wss://relay3.com"]  // 讀寫皆可
+  ],
+  "content": ""
+}
+
+標籤含義：
+- "read": 客戶端應從此中繼器讀取用戶內容
+- "write": 客戶端應向此中繼器寫入與用戶相關的事件
+- 無標記: 讀寫皆可
+
+客戶端行為：
+1. 查詢用戶的 kind:10002 事件
+2. 根據列表決定連接哪些中繼器
+3. 優化連接數量和效率`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見中繼器</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">中繼器</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500 text-xs">relay.damus.io</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">公開</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Damus 運營的主要中繼器</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500 text-xs">relay.nostr.band</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">公開</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">搜尋和索引服務</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500 text-xs">nos.lol</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">公開</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">高效能公共中繼器</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500 text-xs">relay.primal.net</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">公開</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Primal 運營</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500 text-xs">nostr.wine</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">付費</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">付費中繼器，較少垃圾訊息</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器軟體</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`常見中繼器實現：
+
+strfry (C++)
+├── 高效能
+├── 支持大多數 NIP
+└── github.com/hoytech/strfry
+
+nostr-rs-relay (Rust)
+├── 穩定可靠
+├── SQLite 儲存
+└── github.com/scsibug/nostr-rs-relay
+
+relay (Go)
+├── 易於部署
+├── 可嵌入其他應用
+└── github.com/fiatjaf/relay
+
+khatru (Go)
+├── 模組化設計
+├── 易於擴展
+└── github.com/fiatjaf/khatru
+
+選擇考量：
+- 效能需求
+- 儲存需求
+- 功能需求
+- 維護能力`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連接策略</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`客戶端連接策略：
+
+1. 初始連接
+   - 連接用戶設定的中繼器
+   - 連接一些預設中繼器
+   - 總數通常 5-10 個
+
+2. 動態發現
+   - 從 kind:10002 發現用戶偏好的中繼器
+   - 從事件的中繼器提示發現相關中繼器
+   - 從 NIP-05 發現推薦中繼器
+
+3. 連接管理
+   - 監控連接狀態
+   - 自動重連斷開的連接
+   - 限制總連接數
+
+4. 負載分配
+   - 優先使用快速響應的中繼器
+   - 分散查詢到多個中繼器
+   - 避免單點依賴
+
+範例代碼：
+const pool = new SimplePool()
+
+// 發布到多個中繼器
+await pool.publish(relays, signedEvent)
+
+// 查詢並合併結果
+const events = await pool.querySync(
+  relays,
+  { kinds: [1], limit: 20 }
+)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">問題排解</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">連接失敗</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        檢查 URL 格式、網路連接、防火牆設定。
+        嘗試其他中繼器確認是否為特定中繼器問題。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">事件發布失敗</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        檢查 OK 訊息的錯誤原因。可能是認證問題、
+        事件格式錯誤、或違反中繼器政策。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">訂閱無結果</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        確認過濾器條件正確。檢查是否收到 EOSE。
+        嘗試放寬過濾條件測試。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">認證要求</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        收到 auth-required 錯誤時，需要實現 NIP-42 認證流程。
+        檢查中繼器是否需要付費或白名單。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/nostr/nips-overview" class="text-purple-600 dark:text-purple-400 hover:underline">NIP 規範概覽</a>
+      探索協議的各種擴展功能。
+    </p>
+  </div>
+</ArticleLayout>

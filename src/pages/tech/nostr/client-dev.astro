@@ -1,0 +1,539 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="客戶端開發"
+  description="學習如何開發 Nostr 客戶端應用，包括連接中繼器、發送事件和處理訂閱。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: '客戶端開發' },
+  ]}
+  difficulty="intermediate"
+  readingTime="25 分鐘"
+  prevPage={{ title: '中繼器架設', href: '/tech/nostr/relay-setup' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開發工具</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    開發 Nostr 客戶端可以使用多種語言和工具。
+    最常用的是 JavaScript/TypeScript 生態系的 nostr-tools 函式庫，
+    它提供了完整的協議實現。
+  </p>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">語言</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">函式庫</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">JavaScript</td>
+          <td class="px-4 py-3 font-mono text-purple-500">nostr-tools</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">最完整的 JS 實現</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">Python</td>
+          <td class="px-4 py-3 font-mono text-purple-500">python-nostr</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Python 協議實現</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">Rust</td>
+          <td class="px-4 py-3 font-mono text-purple-500">nostr-sdk</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">高效能 Rust SDK</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">Go</td>
+          <td class="px-4 py-3 font-mono text-purple-500">go-nostr</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Go 語言實現</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">Swift</td>
+          <td class="px-4 py-3 font-mono text-purple-500">NostrKit</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">iOS/macOS 開發</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-primary)]">Kotlin</td>
+          <td class="px-4 py-3 font-mono text-purple-500">nostrino</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Android 開發</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開始使用 nostr-tools</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`# 安裝
+npm install nostr-tools
+
+# 基本引入
+import {
+  generateSecretKey,
+  getPublicKey,
+  finalizeEvent,
+  verifyEvent,
+  SimplePool
+} from 'nostr-tools'`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰管理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`import {
+  generateSecretKey,
+  getPublicKey,
+  nip19
+} from 'nostr-tools'
+
+// 生成新密鑰對
+const sk = generateSecretKey()  // Uint8Array
+const pk = getPublicKey(sk)     // hex string
+
+// 編碼為 bech32 格式
+const nsec = nip19.nsecEncode(sk)  // nsec1...
+const npub = nip19.npubEncode(pk)  // npub1...
+
+console.log('Public Key:', npub)
+console.log('Secret Key:', nsec)  // 保密！
+
+// 解碼 bech32
+const { type, data } = nip19.decode(npub)
+// type: 'npub', data: hex pubkey
+
+// 使用 NIP-07 瀏覽器擴展
+if (window.nostr) {
+  const pubkey = await window.nostr.getPublicKey()
+  // 簽名時使用 window.nostr.signEvent()
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連接中繼器</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`import { SimplePool } from 'nostr-tools'
+
+// 創建連接池
+const pool = new SimplePool()
+
+// 定義中繼器列表
+const relays = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.nostr.band'
+]
+
+// 發送事件到所有中繼器
+await pool.publish(relays, signedEvent)
+
+// 查詢事件
+const events = await pool.querySync(relays, {
+  kinds: [1],
+  authors: [pubkey],
+  limit: 20
+})
+
+// 訂閱事件（即時）
+const sub = pool.subscribeMany(
+  relays,
+  [{ kinds: [1], authors: [pubkey] }],
+  {
+    onevent(event) {
+      console.log('New event:', event)
+    },
+    oneose() {
+      console.log('End of stored events')
+    }
+  }
+)
+
+// 關閉訂閱
+sub.close()`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">創建和發送事件</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`import { finalizeEvent, verifyEvent } from 'nostr-tools'
+
+// 創建短文本事件（kind:1）
+const event = finalizeEvent({
+  kind: 1,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [],
+  content: 'Hello Nostr!'
+}, sk)
+
+// 驗證事件
+const isValid = verifyEvent(event)
+console.log('Valid:', isValid)
+
+// 發布
+await pool.publish(relays, event)
+
+// 創建回覆
+const reply = finalizeEvent({
+  kind: 1,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [
+    ['e', originalEventId, relays[0], 'root'],
+    ['e', parentEventId, relays[0], 'reply'],
+    ['p', originalAuthorPubkey]
+  ],
+  content: 'This is a reply!'
+}, sk)
+
+// 創建反應（kind:7）
+const reaction = finalizeEvent({
+  kind: 7,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [
+    ['e', targetEventId],
+    ['p', targetAuthorPubkey]
+  ],
+  content: '+'  // 或 '❤️', '🔥' 等
+}, sk)
+
+// 更新個人資料（kind:0）
+const metadata = finalizeEvent({
+  kind: 0,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [],
+  content: JSON.stringify({
+    name: 'Alice',
+    about: 'Nostr developer',
+    picture: 'https://example.com/avatar.jpg',
+    nip05: 'alice@example.com',
+    lud16: 'alice@walletofsatoshi.com'
+  })
+}, sk)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢和過濾</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`// 查詢特定用戶的貼文
+const posts = await pool.querySync(relays, {
+  kinds: [1],
+  authors: [pubkey],
+  limit: 50
+})
+
+// 查詢用戶個人資料
+const profiles = await pool.querySync(relays, {
+  kinds: [0],
+  authors: [pubkey1, pubkey2, pubkey3]
+})
+
+// 查詢特定事件的回覆
+const replies = await pool.querySync(relays, {
+  kinds: [1],
+  '#e': [eventId]
+})
+
+// 查詢帶特定標籤的事件
+const taggedPosts = await pool.querySync(relays, {
+  kinds: [1],
+  '#t': ['bitcoin', 'nostr']
+})
+
+// 時間範圍查詢
+const recentPosts = await pool.querySync(relays, {
+  kinds: [1],
+  since: Math.floor(Date.now() / 1000) - 3600,  // 過去一小時
+  limit: 100
+})
+
+// 多過濾器（OR 關係）
+const events = await pool.querySync(relays, [
+  { kinds: [1], authors: [pubkey] },  // 用戶的貼文
+  { kinds: [7], '#p': [pubkey] }      // 對用戶的反應
+])`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實時訂閱</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`// 訂閱動態消息
+const sub = pool.subscribeMany(
+  relays,
+  [
+    { kinds: [1], limit: 50 },  // 最近的貼文
+    { kinds: [7], '#p': [myPubkey] }  // 對我的反應
+  ],
+  {
+    onevent(event) {
+      switch (event.kind) {
+        case 1:
+          handleNewPost(event)
+          break
+        case 7:
+          handleReaction(event)
+          break
+      }
+    },
+    oneose() {
+      console.log('Historical events loaded')
+      // 可以在這裡更新 UI 狀態
+    },
+    onclose(reason) {
+      console.log('Subscription closed:', reason)
+    }
+  }
+)
+
+// 頁面卸載時關閉
+window.addEventListener('beforeunload', () => {
+  sub.close()
+})
+
+// 動態添加過濾器
+// 創建新訂閱，舊的會自動替換
+
+// 使用 REQ 自動重連
+// SimplePool 會自動處理連接斷開和重連`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-05 驗證</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`import { nip05 } from 'nostr-tools'
+
+// 查詢 NIP-05 資料
+const profile = await nip05.queryProfile('alice@example.com')
+
+if (profile) {
+  console.log('Public Key:', profile.pubkey)
+  console.log('Relays:', profile.relays)
+}
+
+// 驗證用戶的 NIP-05
+async function verifyNip05(event) {
+  // 解析個人資料
+  const metadata = JSON.parse(event.content)
+  const nip05Addr = metadata.nip05
+
+  if (!nip05Addr) {
+    return { verified: false, reason: 'No NIP-05' }
+  }
+
+  const profile = await nip05.queryProfile(nip05Addr)
+
+  if (!profile) {
+    return { verified: false, reason: 'Query failed' }
+  }
+
+  if (profile.pubkey !== event.pubkey) {
+    return { verified: false, reason: 'Pubkey mismatch' }
+  }
+
+  return { verified: true, relays: profile.relays }
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-07 瀏覽器擴展</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`// 檢查是否有 NIP-07 擴展
+function hasNostrExtension() {
+  return typeof window.nostr !== 'undefined'
+}
+
+// 使用 NIP-07 簽名
+async function signWithExtension(event) {
+  if (!hasNostrExtension()) {
+    throw new Error('No Nostr extension found')
+  }
+
+  // 獲取公鑰
+  const pubkey = await window.nostr.getPublicKey()
+
+  // 準備事件（不包含 id 和 sig）
+  const unsignedEvent = {
+    kind: event.kind,
+    created_at: event.created_at || Math.floor(Date.now() / 1000),
+    tags: event.tags || [],
+    content: event.content,
+    pubkey: pubkey
+  }
+
+  // 擴展會計算 id 並簽名
+  const signedEvent = await window.nostr.signEvent(unsignedEvent)
+
+  return signedEvent
+}
+
+// 加密訊息
+async function encryptMessage(recipientPubkey, plaintext) {
+  if (!hasNostrExtension()) {
+    throw new Error('No Nostr extension found')
+  }
+
+  // NIP-04（舊版）
+  const ciphertext = await window.nostr.nip04.encrypt(
+    recipientPubkey,
+    plaintext
+  )
+
+  // 或 NIP-44（新版，更安全）
+  // const ciphertext = await window.nostr.nip44.encrypt(
+  //   recipientPubkey,
+  //   plaintext
+  // )
+
+  return ciphertext
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">建構完整應用</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`// 簡易 Nostr 客戶端架構
+
+class NostrClient {
+  constructor(relays) {
+    this.pool = new SimplePool()
+    this.relays = relays
+    this.subscriptions = new Map()
+  }
+
+  // 登入（使用擴展或私鑰）
+  async login(method = 'extension') {
+    if (method === 'extension') {
+      this.pubkey = await window.nostr.getPublicKey()
+      this.signMethod = 'extension'
+    } else {
+      this.sk = generateSecretKey()
+      this.pubkey = getPublicKey(this.sk)
+      this.signMethod = 'local'
+    }
+    return this.pubkey
+  }
+
+  // 簽名事件
+  async signEvent(event) {
+    if (this.signMethod === 'extension') {
+      return await window.nostr.signEvent(event)
+    } else {
+      return finalizeEvent(event, this.sk)
+    }
+  }
+
+  // 發布貼文
+  async post(content, replyTo = null) {
+    const tags = []
+    if (replyTo) {
+      tags.push(['e', replyTo.id, this.relays[0], 'reply'])
+      tags.push(['p', replyTo.pubkey])
+    }
+
+    const event = await this.signEvent({
+      kind: 1,
+      created_at: Math.floor(Date.now() / 1000),
+      tags,
+      content
+    })
+
+    await this.pool.publish(this.relays, event)
+    return event
+  }
+
+  // 獲取動態消息
+  async getFeed(limit = 50) {
+    // 先獲取關注列表
+    const contactEvent = await this.pool.get(this.relays, {
+      kinds: [3],
+      authors: [this.pubkey]
+    })
+
+    const following = contactEvent?.tags
+      .filter(t => t[0] === 'p')
+      .map(t => t[1]) || []
+
+    // 獲取關注者的貼文
+    return await this.pool.querySync(this.relays, {
+      kinds: [1],
+      authors: following,
+      limit
+    })
+  }
+
+  // 訂閱通知
+  subscribeNotifications(callback) {
+    const sub = this.pool.subscribeMany(
+      this.relays,
+      [
+        { kinds: [1], '#p': [this.pubkey] },  // 提及
+        { kinds: [7], '#p': [this.pubkey] },  // 反應
+        { kinds: [9735], '#p': [this.pubkey] }  // Zaps
+      ],
+      {
+        onevent: callback
+      }
+    )
+    this.subscriptions.set('notifications', sub)
+    return sub
+  }
+
+  // 清理
+  cleanup() {
+    this.subscriptions.forEach(sub => sub.close())
+    this.pool.close(this.relays)
+  }
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">做</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 驗證所有收到的事件</li>
+        <li>• 使用連接池管理中繼器</li>
+        <li>• 實現錯誤處理和重試</li>
+        <li>• 快取常用數據</li>
+        <li>• 使用 NIP-07 保護私鑰</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">不要</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 在客戶端硬編碼私鑰</li>
+        <li>• 信任未驗證的事件</li>
+        <li>• 忽略 EOSE 訊號</li>
+        <li>• 建立過多連接</li>
+        <li>• 忽略事件大小限制</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">延伸閱讀</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-purple-500">•</span>
+      <span><a href="https://github.com/nbd-wtf/nostr-tools" class="text-purple-500 hover:underline" target="_blank" rel="noopener">nostr-tools GitHub</a>：完整 API 文檔</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-purple-500">•</span>
+      <span><a href="https://nostr.how" class="text-purple-500 hover:underline" target="_blank" rel="noopener">nostr.how</a>：Nostr 入門指南</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-purple-500">•</span>
+      <span><a href="https://github.com/nostr-protocol/nips" class="text-purple-500 hover:underline" target="_blank" rel="noopener">NIPs</a>：官方協議規範</span>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">開始動手：</strong>
+      嘗試用 nostr-tools 建構一個簡單的 Nostr 閱讀器，
+      然後逐步添加發文、反應和 Zaps 功能！
+    </p>
+  </div>
+</ArticleLayout>

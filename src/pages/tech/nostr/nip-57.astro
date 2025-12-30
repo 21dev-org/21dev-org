@@ -1,0 +1,386 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-57 Zaps"
+  description="深入了解 Nostr 的閃電網路打賞功能，包括 Zap 的運作原理、設定方法和技術細節。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-57 Zaps' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'NIP-05 域名驗證', href: '/tech/nostr/nip-05' }}
+  nextPage={{ title: '中繼器架設', href: '/tech/nostr/relay-setup' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Zaps？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Zaps 是 Nostr 的閃電網路打賞功能。它允許用戶通過閃電網路向其他用戶或特定內容
+    發送比特幣打賞，並將打賞記錄（Zap Receipt）公開發布到 Nostr 網路上。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>價值主張：</strong>
+      Zaps 將閃電網路的即時支付與 Nostr 的公開記錄結合。
+      不僅可以打賞，還能證明打賞發生過，創造社交認可。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作原理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Zap 流程概覽：
+
+1. 發送方創建 Zap Request
+   ┌──────────────────────┐
+   │ kind: 9734           │
+   │ 包含目標用戶/事件資訊 │
+   │ 包含金額和留言        │
+   │ 簽名並發送            │
+   └──────────────────────┘
+            ↓
+2. 獲取 LNURL-pay 端點
+   ┌──────────────────────┐
+   │ 從目標的 kind:0 讀取 │
+   │ lud06 或 lud16 欄位  │
+   │ 解析 LNURL-pay 端點  │
+   └──────────────────────┘
+            ↓
+3. 請求 Invoice
+   ┌──────────────────────┐
+   │ 向 LNURL 服務發送請求 │
+   │ 附帶 Zap Request     │
+   │ 獲得閃電網路 Invoice │
+   └──────────────────────┘
+            ↓
+4. 支付 Invoice
+   ┌──────────────────────┐
+   │ 用戶支付閃電網路發票 │
+   │ 資金轉移給接收方     │
+   └──────────────────────┘
+            ↓
+5. 發布 Zap Receipt
+   ┌──────────────────────┐
+   │ LNURL 服務創建       │
+   │ kind: 9735 事件      │
+   │ 發布到 Nostr 中繼器  │
+   └──────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Zap Request (kind:9734)</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Zap Request 事件：
+
+{
+  "kind": 9734,
+  "created_at": 1234567890,
+  "content": "Great post! ⚡",  // 可選留言
+  "tags": [
+    ["p", "接收方公鑰"],
+    ["e", "被打賞的事件ID"],      // 可選，Zap 特定貼文
+    ["amount", "21000"],        // 金額（millisatoshis）
+    ["relays", "wss://r1.com", "wss://r2.com"],  // Zap Receipt 發布位置
+    ["lnurl", "lnurl1..."]      // LNURL-pay 端點
+  ],
+  "pubkey": "發送方公鑰",
+  "sig": "..."
+}
+
+重要欄位：
+- p: 必須，接收方公鑰
+- e: 可選，被打賞的特定事件
+- amount: 必須，金額（毫聰）
+- relays: 必須，Zap Receipt 發布的中繼器
+- lnurl: 可選，如果已知 LNURL 端點`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Zap Receipt (kind:9735)</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Zap Receipt 事件：
+
+{
+  "kind": 9735,
+  "created_at": 1234567890,
+  "content": "",
+  "tags": [
+    ["p", "接收方公鑰"],
+    ["e", "被打賞的事件ID"],        // 從 Zap Request 複製
+    ["P", "發送方公鑰"],           // 注意大寫
+    ["bolt11", "lnbc..."],        // 閃電發票
+    ["description", "{...}"],      // Zap Request 的 JSON
+    ["preimage", "abc..."]        // 支付 preimage（證明）
+  ],
+  "pubkey": "LNURL 服務的公鑰",   // 不是接收方！
+  "sig": "..."
+}
+
+驗證要點：
+- pubkey 應該是已知的 LNURL 服務
+- description 中的 Zap Request 必須有效
+- bolt11 金額應該匹配 Zap Request
+- preimage 證明支付完成`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">設定接收 Zaps</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">步驟一：設定閃電地址</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`在 kind:0 個人資料中添加閃電地址：
+
+{
+  "kind": 0,
+  "content": JSON.stringify({
+    "name": "Alice",
+    "about": "Nostr user",
+    "lud16": "alice@walletofsatoshi.com",  // 閃電地址
+    "lud06": "lnurl1..."                   // 或 LNURL-pay
+  })
+}
+
+lud16 vs lud06：
+- lud16: 閃電地址格式（推薦）
+- lud06: 原始 LNURL-pay 格式
+
+常見支援 Zaps 的服務：
+- Wallet of Satoshi
+- Alby
+- Coinos
+- ZEBEDEE
+- Stacker.news`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">步驟二：確認服務支援 Zaps</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`LNURL-pay 服務必須：
+
+1. 接受 nostr 參數
+   GET /lnurl-pay/callback?amount=21000&nostr=<zap_request>
+
+2. 回應包含公鑰
+   {
+     "callback": "...",
+     "maxSendable": 100000000,
+     "minSendable": 1000,
+     "nostrPubkey": "服務的公鑰",  // 必須！
+     "allowsNostr": true           // 必須！
+   }
+
+3. 支付完成後發布 Zap Receipt
+
+檢查服務是否支援：
+const response = await fetch(lnurl_endpoint);
+const data = await response.json();
+
+if (data.allowsNostr && data.nostrPubkey) {
+  console.log('This service supports Zaps!');
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發送 Zaps</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`使用 nostr-tools 發送 Zap：
+
+import { nip57 } from 'nostr-tools'
+
+// 1. 獲取 Zap 端點
+const zapEndpoint = await nip57.getZapEndpoint(profileEvent)
+
+// 2. 創建 Zap Request
+const zapRequest = nip57.makeZapRequest({
+  profile: recipientPubkey,
+  event: eventId,           // 可選
+  amount: 21000,            // millisatoshis
+  relays: ['wss://relay1.com'],
+  comment: 'Great post!'    // 可選
+})
+
+// 3. 簽名 Zap Request
+const signedZapRequest = await signEvent(zapRequest)
+
+// 4. 獲取 Invoice
+const callback = zapEndpoint.callback
+const params = new URLSearchParams({
+  amount: '21000',
+  nostr: JSON.stringify(signedZapRequest)
+})
+const invoiceResponse = await fetch(\`\${callback}?\${params}\`)
+const { pr: invoice } = await invoiceResponse.json()
+
+// 5. 使用閃電錢包支付
+await wallet.payInvoice(invoice)
+
+// Zap Receipt 將由服務自動發布`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">驗證 Zaps</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`驗證 Zap Receipt：
+
+import { nip57 } from 'nostr-tools'
+
+// 驗證 Zap Receipt
+const validation = nip57.validateZapReceipt(zapReceipt)
+
+if (!validation.isValid) {
+  console.error('Invalid Zap:', validation.error)
+}
+
+手動驗證步驟：
+
+1. 檢查 kind 是否為 9735
+2. 解析 description 標籤中的 Zap Request
+3. 驗證 Zap Request 的簽名
+4. 確認 bolt11 金額匹配
+5. 驗證 preimage（可選但推薦）
+6. 確認 pubkey 是已知的 LNURL 服務
+
+安全考量：
+- 偽造的 Zap Receipt 可能來自惡意中繼器
+- 驗證 LNURL 服務的公鑰很重要
+- 客戶端應顯示來自未知服務的 Zap 警告`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">匿名 Zaps</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`匿名 Zaps：
+
+發送匿名 Zap 時，使用隨機生成的密鑰簽名 Zap Request：
+
+1. 生成臨時密鑰對
+   const tempSk = generateSecretKey()
+   const tempPk = getPublicKey(tempSk)
+
+2. 用臨時密鑰簽名 Zap Request
+   const zapRequest = {
+     ...
+     pubkey: tempPk
+   }
+   const signed = signEvent(zapRequest, tempSk)
+
+3. Zap Receipt 中的 P 標籤將是臨時公鑰
+   無法追溯到真實身份
+
+注意：
+- 接收方仍能看到金額和留言
+- 只是無法知道是誰發送的
+- 臨時密鑰使用後丟棄`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Zap 統計</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`查詢 Zap 統計：
+
+// 查詢特定事件的所有 Zaps
+const filter = {
+  kinds: [9735],
+  "#e": [eventId]
+}
+
+// 查詢特定用戶收到的所有 Zaps
+const filter = {
+  kinds: [9735],
+  "#p": [pubkey]
+}
+
+// 計算總金額
+let totalSats = 0
+for (const zap of zaps) {
+  const descriptionTag = zap.tags.find(t => t[0] === 'description')
+  const zapRequest = JSON.parse(descriptionTag[1])
+  const amountTag = zapRequest.tags.find(t => t[0] === 'amount')
+  totalSats += parseInt(amountTag[1]) / 1000  // 毫聰轉聰
+}
+
+常見統計：
+- 總打賞金額
+- 打賞次數
+- 最大單筆打賞
+- 打賞者排行`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">為什麼我收不到 Zaps？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        確認閃電地址服務支援 Zaps（allowsNostr: true）。
+        檢查個人資料中的 lud16 或 lud06 是否正確設定。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Zap 和普通閃電支付有什麼區別？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Zap 會在 Nostr 上發布公開記錄。普通閃電支付是私密的，
+        不會留下公開記錄。Zap 可以綁定到特定貼文。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Zap 安全嗎？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Zap Receipt 可能被偽造，但正規客戶端會驗證。
+        金錢方面，閃電網路支付本身是安全的。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">最小 Zap 金額是多少？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        取決於 LNURL 服務的 minSendable 設定。
+        通常最小 1-1000 sats 不等。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與閃電網路整合</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優勢</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 即時支付</li>
+        <li>• 極低手續費</li>
+        <li>• 全球可用</li>
+        <li>• 無需許可</li>
+        <li>• 公開可驗證</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">考量</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 需要閃電錢包</li>
+        <li>• 依賴 LNURL 服務</li>
+        <li>• 服務可能離線</li>
+        <li>• 最小金額限制</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">延伸閱讀：</strong>
+      了解 <a href="/tech/lightning/" class="text-purple-600 dark:text-purple-400 hover:underline">閃電網路</a>
+      的技術細節，以及如何運行自己的閃電節點。
+    </p>
+  </div>
+
+  <div class="mt-4 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解如何 <a href="/tech/nostr/relay-setup" class="text-purple-600 dark:text-purple-400 hover:underline">架設自己的中繼器</a>
+      以獲得更好的控制權和隱私。
+    </p>
+  </div>
+</ArticleLayout>

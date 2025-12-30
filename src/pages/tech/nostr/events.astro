@@ -1,0 +1,450 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="事件系統詳解"
+  description="深入了解 Nostr 事件的結構、類型和生命週期，掌握協議的核心數據模型。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: '事件系統' },
+  ]}
+  difficulty="intermediate"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Nostr 協議', href: '/tech/nostr/protocol' }}
+  nextPage={{ title: '密鑰與身份', href: '/tech/nostr/keys' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件是什麼？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    在 Nostr 中，所有數據都是「事件」（Event）。無論是貼文、個人資料、反應還是私訊，
+    都是以事件的形式存在。事件是不可變的——一旦創建並簽名，就不能被修改。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>設計哲學：</strong>
+      事件的不可變性確保了數據完整性。要「修改」內容，需要發布新事件來替代舊事件。
+      這與比特幣的 UTXO 模型有異曲同工之妙。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`{
+  "id": "32字節十六進制，事件的唯一標識符",
+  "pubkey": "32字節十六進制，創建者的公鑰",
+  "created_at": 1234567890,  // Unix 時間戳（秒）
+  "kind": 1,                 // 事件類型
+  "tags": [                  // 標籤陣列
+    ["e", "引用的事件ID", "中繼器URL"],
+    ["p", "提及的公鑰"],
+    ["t", "hashtag"],
+    ...
+  ],
+  "content": "事件的主要內容",
+  "sig": "64字節十六進制 Schnorr 簽名"
+}`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">欄位說明</h3>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">id</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        事件的唯一標識符，由事件內容的 SHA256 雜湊計算得出。
+        這確保了事件的完整性——任何修改都會改變 ID。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">pubkey</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        創建者的 secp256k1 公鑰（x-only 格式）。這是用戶的身份標識，
+        對應 bech32 編碼的 npub 格式。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">created_at</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        事件創建的 Unix 時間戳（秒）。用於排序事件和判斷可替換事件的新舊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">kind</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        事件類型，決定如何解釋 content 和 tags。不同 kind 有不同的語義和處理規則。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">tags</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        標籤陣列，每個標籤是一個字串陣列。第一個元素是標籤名稱，
+        後續元素是值。用於引用、分類和建立關係。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">content</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        事件的主要內容，格式取決於 kind。可以是純文字、JSON 或空字串。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">sig</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對事件 ID 的 Schnorr 簽名（BIP-340），證明事件由 pubkey 擁有者創建。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件 ID 計算</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`// 事件 ID 計算步驟
+
+1. 序列化事件（不包含 id 和 sig）:
+   [
+     0,              // 固定值
+     pubkey,         // 十六進制公鑰
+     created_at,     // 整數時間戳
+     kind,           // 整數類型
+     tags,           // 標籤陣列
+     content         // 內容字串
+   ]
+
+2. 計算 SHA256:
+   id = sha256(JSON.stringify(serialized))
+
+JavaScript 範例:
+const serialized = JSON.stringify([
+  0,
+  event.pubkey,
+  event.created_at,
+  event.kind,
+  event.tags,
+  event.content
+]);
+const id = sha256(serialized);`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件類型分類</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    事件類型（kind）決定事件的行為和語義。根據 NIP-01，kind 數字範圍有特殊含義：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Kind 範圍分類：
+
+0-9999:     常規事件（Regular Events）
+10000-19999: 可替換事件（Replaceable Events）
+20000-29999: 臨時事件（Ephemeral Events）
+30000-39999: 參數化可替換事件（Addressable Events）
+
+行為差異：
+- 常規事件：每個都是獨立的，永久保存
+- 可替換事件：同 pubkey+kind 只保留最新
+- 臨時事件：不儲存，僅轉發
+- 參數化可替換：同 pubkey+kind+d標籤 只保留最新`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">常規事件 (Regular)</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Kind</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">名稱</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">1</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Short Text Note</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">短文本貼文，類似推文</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">4</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Encrypted DM</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">加密私訊（NIP-04，已不推薦）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">5</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Deletion</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">刪除請求</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">6</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Repost</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">轉發</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">7</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Reaction</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">反應（點讚、表情）</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">1984</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Report</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">檢舉</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">9735</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Zap Receipt</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">Zap 收據</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">可替換事件 (Replaceable)</h3>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">Kind</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">名稱</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">0</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Metadata</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">用戶個人資料</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">3</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Contacts</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">關注列表</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 font-mono text-purple-500">10002</td>
+          <td class="px-4 py-3 text-[var(--text-primary)]">Relay List</td>
+          <td class="px-4 py-3 text-[var(--text-secondary)]">中繼器列表（NIP-65）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">參數化可替換事件 (Addressable)</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`參數化可替換事件使用 "d" 標籤作為標識符：
+
+Kind 30023: 長篇文章
+{
+  "kind": 30023,
+  "tags": [
+    ["d", "my-article-slug"],  // 文章標識符
+    ["title", "文章標題"],
+    ["published_at", "1234567890"]
+  ],
+  "content": "文章的 Markdown 內容..."
+}
+
+同一用戶的 kind:30023 + d:"my-article-slug" 只會保留最新版本
+這樣可以實現文章的更新功能
+
+常見參數化可替換事件：
+- Kind 30000: 自訂列表
+- Kind 30023: 長篇文章
+- Kind 30078: 應用特定數據`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤系統</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    標籤是 Nostr 協議的強大功能，用於建立事件之間的關係：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`常用標籤類型：
+
+["e", "<event_id>", "<relay_url>", "<marker>"]
+  引用事件，marker 可以是 "reply", "root", "mention"
+
+["p", "<pubkey>", "<relay_url>"]
+  提及用戶
+
+["a", "<kind>:<pubkey>:<d-tag>", "<relay_url>"]
+  引用參數化可替換事件
+
+["t", "hashtag"]
+  話題標籤
+
+["d", "identifier"]
+  參數化可替換事件的標識符
+
+["r", "url"]
+  引用外部 URL
+
+["nonce", "<nonce>", "<difficulty>"]
+  工作量證明（NIP-13）
+
+範例：回覆貼文
+{
+  "kind": 1,
+  "tags": [
+    ["e", "原始貼文ID", "wss://relay.example", "root"],
+    ["e", "直接回覆的貼文ID", "wss://relay.example", "reply"],
+    ["p", "原作者公鑰"]
+  ],
+  "content": "我的回覆..."
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件生命週期</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`事件生命週期：
+
+1. 創建 (Creation)
+   ┌─────────────────────────────┐
+   │ 客戶端構建事件              │
+   │ - 設定 kind, content, tags │
+   │ - 計算 created_at          │
+   └─────────────────────────────┘
+              ↓
+2. 簽名 (Signing)
+   ┌─────────────────────────────┐
+   │ 計算事件 ID (SHA256)        │
+   │ 使用私鑰簽名 ID             │
+   │ 填入 id 和 sig 欄位         │
+   └─────────────────────────────┘
+              ↓
+3. 發布 (Publishing)
+   ┌─────────────────────────────┐
+   │ 發送 ["EVENT", event]      │
+   │ 到多個中繼器                │
+   └─────────────────────────────┘
+              ↓
+4. 驗證 (Validation)
+   ┌─────────────────────────────┐
+   │ 中繼器驗證：                │
+   │ - ID 計算正確？             │
+   │ - 簽名有效？                │
+   │ - 符合中繼器政策？          │
+   └─────────────────────────────┘
+              ↓
+5. 儲存/轉發 (Storage/Relay)
+   ┌─────────────────────────────┐
+   │ 回覆 ["OK", id, true, ""]  │
+   │ 儲存事件                    │
+   │ 轉發給訂閱者                │
+   └─────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">刪除事件</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    雖然事件是不可變的，但可以發布 kind 5 事件來請求刪除：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`刪除請求（Kind 5）：
+
+{
+  "kind": 5,
+  "tags": [
+    ["e", "要刪除的事件ID1"],
+    ["e", "要刪除的事件ID2"],
+    ["a", "30023:pubkey:article-id"]  // 刪除參數化事件
+  ],
+  "content": "刪除原因（可選）"
+}
+
+重要注意事項：
+- 只能刪除自己的事件
+- 中繼器可以選擇是否遵守刪除請求
+- 已被其他用戶快取的事件無法真正刪除
+- 這是「請求刪除」而非「強制刪除」`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>隱私警告：</strong>
+      一旦事件被發布，就無法保證完全刪除。發布前請仔細考慮內容。
+      Nostr 的設計是公開和永久的。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">驗證事件</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`驗證步驟：
+
+1. 驗證 ID
+   - 重新計算 SHA256
+   - 比對 id 欄位
+
+2. 驗證簽名
+   - 使用 pubkey 驗證 Schnorr 簽名
+   - 簽名必須對應事件 ID
+
+3. 驗證格式
+   - kind 是非負整數
+   - created_at 是合理的時間戳
+   - tags 格式正確
+
+JavaScript 範例（使用 nostr-tools）：
+import { verifySignature, getEventHash } from 'nostr-tools'
+
+function validateEvent(event) {
+  // 驗證 ID
+  const expectedId = getEventHash(event);
+  if (event.id !== expectedId) {
+    return false;
+  }
+
+  // 驗證簽名
+  return verifySignature(event);
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">內容規範</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 使用 UTF-8 編碼</li>
+        <li>• 避免過大的內容</li>
+        <li>• 正確使用 kind</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">標籤使用</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 正確標記回覆關係</li>
+        <li>• 使用標準標籤名稱</li>
+        <li>• 包含中繼器 URL 提示</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">時間戳</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 使用準確的時間</li>
+        <li>• 不要設定未來時間</li>
+        <li>• 考慮時區問題</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">安全性</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 始終驗證收到的事件</li>
+        <li>• 不信任未驗證的數據</li>
+        <li>• 注意 content 中的 XSS</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/nostr/keys" class="text-purple-600 dark:text-purple-400 hover:underline">密鑰與身份</a>
+      如何管理你的 Nostr 身份。
+    </p>
+  </div>
+</ArticleLayout>
