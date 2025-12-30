@@ -320,7 +320,7 @@
 | 1.3 影片頁面修復 | Critical | 已完成 | 2025-12-30 |
 | 1.4 OG 圖片優化 | Critical | 已完成 | 2025-12-30 |
 | 2.1 Learn 頁面統一 | High | 已完成 | 2025-12-30 |
-| 2.2 GitHub 圖示清理 | High | 待開始 | - |
+| 2.2 GitHub 圖示清理 | High | 已完成 | 2025-12-30 |
 | 2.3 BIP 頁面補充 | High | 待開始 | - |
 | 3.1 行動版 TOC | Medium | 待開始 | - |
 | 3.2 程式碼複製按鈕 | Medium | 待開始 | - |
@@ -340,6 +340,7 @@
 - [x] 移除所有原生 emoji
 - [x] 移除所有破折號 (——)
 - [x] Learn 頁面統一使用 ArticleLayout (27 頁)
+- [x] 社交圖示元件化 (GitHub, Twitter, Signal)
 
 ---
 
