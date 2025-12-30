@@ -1,0 +1,321 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="承諾交易"
+  description="深入理解閃電網路承諾交易的結構、撤銷機制和安全性設計。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '承諾交易' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'HTLC 詳解', href: '/tech/lightning/htlc' }}
+  nextPage={{ title: '通道狀態機', href: '/tech/lightning/channel-states' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是承諾交易？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    承諾交易（Commitment Transaction）是支付通道的核心。它是一筆預先簽署但未廣播的交易，
+    代表通道在某一時刻的餘額狀態。雙方各自持有一個版本，可以隨時廣播來關閉通道。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>關鍵洞見：</strong>
+      承諾交易的巧妙設計在於：雙方持有的版本略有不同，
+      這種「不對稱性」使得撤銷機制成為可能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">承諾交易結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`承諾交易（Alice 持有的版本）：
+
+輸入：
+  funding_txid:0  (2-of-2 多簽)
+    └─ 需要 Alice + Bob 的簽名
+
+輸出：
+  0: to_local (Alice 的餘額)
+     ├─ 金額: 600,000 sats
+     └─ 腳本:
+        OP_IF
+          <revocation_pubkey>  # Bob 可用撤銷密鑰取走
+        OP_ELSE
+          <to_self_delay> OP_CSV
+          <alice_delayed_pubkey>  # 等待後 Alice 可取
+        OP_ENDIF
+        OP_CHECKSIG
+
+  1: to_remote (Bob 的餘額)
+     ├─ 金額: 400,000 sats
+     └─ 腳本: <bob_pubkey> OP_CHECKSIG  # 立即可取
+
+  2-N: HTLC 輸出 (如有待處理的 HTLC)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">不對稱性設計</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Alice 和 Bob 持有的承諾交易是「鏡像」版本：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Alice 持有的版本</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• Alice 的輸出：有延遲 + 可被撤銷</li>
+        <li>• Bob 的輸出：立即可取</li>
+        <li>• 由 Bob 簽名給 Alice</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Bob 持有的版本</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• Bob 的輸出：有延遲 + 可被撤銷</li>
+        <li>• Alice 的輸出：立即可取</li>
+        <li>• 由 Alice 簽名給 Bob</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`為什麼需要不對稱？
+
+如果雙方持有相同的交易：
+- 無法區分誰廣播了舊狀態
+- 無法實現懲罰機制
+
+不對稱設計：
+- 廣播者自己的輸出有延遲
+- 對方的輸出可以立即取走
+- 廣播舊狀態會被對方用撤銷密鑰懲罰
+
+這確保了：
+1. 誠實方可以立即取回資金
+2. 作弊方會損失全部資金`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">撤銷機制</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當通道狀態更新時，舊的承諾交易需要被「撤銷」：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`撤銷密鑰生成：
+
+每個承諾交易使用一對「撤銷基點」：
+- Alice 的 revocation_basepoint
+- Bob 的 revocation_basepoint
+
+撤銷公鑰：
+revocation_pubkey =
+  revocation_basepoint_alice * SHA256(revocation_basepoint_alice || per_commitment_point_bob)
+  + per_commitment_point_bob * SHA256(per_commitment_point_bob || revocation_basepoint_alice)
+
+撤銷時：
+- Alice 向 Bob 揭示 per_commitment_secret
+- Bob 可以計算出 revocation_privkey
+- 如果 Alice 廣播舊狀態，Bob 可以取走全部資金`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Per-Commitment Secret</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個承諾交易都有一個唯一的秘密值，使用高效的樹狀結構生成：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Shachain: 高效的秘密儲存
+
+種子 → 生成 2^48 個秘密
+只需儲存 O(log n) 個值即可重建任意舊秘密
+
+           seed
+          /    \\
+       H(0)    H(1)
+       /  \\    /  \\
+     H(00) H(01) H(10) H(11)
+     ...
+
+揭示順序：從最新到最舊
+每次揭示後，可以驗證並壓縮儲存
+
+優點：
+- 支持數十億次狀態更新
+- 儲存空間固定（約 1KB）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">to_local 輸出</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    廣播者自己的餘額輸出，有兩種花費路徑：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`to_local 腳本：
+
+OP_IF
+    # 撤銷路徑：對方懲罰
+    <revocationpubkey>
+OP_ELSE
+    # 正常路徑：等待後自己取回
+    <to_self_delay>
+    OP_CHECKSEQUENCEVERIFY
+    OP_DROP
+    <local_delayedpubkey>
+OP_ENDIF
+OP_CHECKSIG
+
+to_self_delay 典型值：
+- 144 blocks (~1 天)
+- 可協商，更大的值更安全
+- 給對方足夠時間檢測作弊`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">to_remote 輸出</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    對方的餘額輸出，可以立即花費：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`to_remote 腳本（原始版本）：
+<remotepubkey> OP_CHECKSIG
+
+to_remote 腳本（錨點版本）：
+<remotepubkey> OP_CHECKSIGVERIFY 1 OP_CHECKSEQUENCEVERIFY
+
+錨點版本添加 1 block 延遲
+允許使用 CPFP 調整手續費`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 輸出</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    待處理的 HTLC 創建額外的輸出：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Offered HTLC 腳本（Alice 提供給 Bob）：
+
+# 撤銷
+OP_DUP OP_HASH160 <RIPEMD160(revocationpubkey)> OP_EQUAL
+OP_IF
+    OP_CHECKSIG
+OP_ELSE
+    <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL
+    OP_NOTIF
+        # 超時：Alice 取回（需要 HTLC-timeout tx）
+        OP_DROP 2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG
+    OP_ELSE
+        # 成功：Bob 提供原像
+        OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY
+        OP_CHECKSIG
+    OP_ENDIF
+OP_ENDIF`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錨點輸出</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    現代承諾交易包含「錨點輸出」，解決手續費問題：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`承諾交易（含錨點）：
+
+輸出：
+  0: to_local           (Alice，延遲)
+  1: to_remote          (Bob，1 block CSV)
+  2: anchor_alice       (330 sats)
+  3: anchor_bob         (330 sats)
+  4-N: HTLCs
+
+錨點輸出腳本：
+<local_pubkey> OP_CHECKSIG
+OP_IFDUP OP_NOTIF
+    16 OP_CHECKSEQUENCEVERIFY
+OP_ENDIF
+
+用途：
+- 允許 CPFP 提高手續費
+- 承諾交易可以使用最低手續費
+- 廣播時動態調整`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">狀態更新流程</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`更新通道狀態（例如：Alice 付 Bob 1000 sats）：
+
+1. Alice 發送 update_add_htlc 或直接更新
+2. Alice 發送 commitment_signed
+   └─ 包含新承諾交易的簽名
+3. Bob 驗證並發送 revoke_and_ack
+   └─ 揭示舊狀態的 per_commitment_secret
+   └─ 發送新的 per_commitment_point
+4. Bob 發送 commitment_signed
+5. Alice 發送 revoke_and_ack
+
+完成後：
+- 雙方都有新的承諾交易
+- 舊的承諾交易已被撤銷
+- 任一方廣播舊狀態都會被懲罰`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰交易</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當檢測到對方廣播舊狀態時，可以創建懲罰交易：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`懲罰交易（Justice Transaction）：
+
+前提：Bob 廣播了舊的承諾交易
+Alice 有對應的 revocation_secret
+
+懲罰交易：
+輸入：
+  - Bob 的 to_local 輸出（使用撤銷密鑰）
+  - 所有 HTLC 輸出（使用撤銷密鑰）
+輸出：
+  - Alice 的地址
+
+結果：
+- Bob 損失所有通道資金
+- Alice 獲得全部資金
+
+時間窗口：
+- 必須在 to_self_delay 期間內
+- 這就是為什麼需要監控區塊鏈或使用瞭望塔`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">定期在線</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點需要定期檢查區塊鏈，在 to_self_delay 期間內發現作弊並懲罰。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">瞭望塔服務</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果無法持續在線，可以使用瞭望塔服務代為監控和懲罰。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">備份撤銷數據</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        必須安全備份通道狀態和撤銷密鑰，丟失可能導致無法懲罰作弊。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/channel-states" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道狀態機</a>
+      的完整狀態轉換和訊息交互。
+    </p>
+  </div>
+</ArticleLayout>

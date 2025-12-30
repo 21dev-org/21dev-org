@@ -1,0 +1,270 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="HTLC 詳解"
+  description="深入理解哈希時間鎖定合約（HTLC），閃電網路實現跨通道原子支付的核心機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'HTLC 詳解' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{ title: '支付通道', href: '/tech/lightning/payment-channels' }}
+  nextPage={{ title: '承諾交易', href: '/tech/lightning/commitment-tx' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 HTLC？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    HTLC（Hash Time-Locked Contract，哈希時間鎖定合約）是閃電網路的核心創新。
+    它允許兩個沒有直接通道的節點，通過中間節點安全地進行支付，
+    確保支付要麼完全成功，要麼完全失敗——不會有資金卡在中間。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心概念：</strong>
+      HTLC 結合了哈希鎖（只有知道原像才能解鎖）和時間鎖（超時後資金返還），
+      實現了無需信任中間人的多跳支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 的兩個條件</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">哈希鎖 (Hashlock)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        接收方必須提供一個秘密值（preimage），其哈希值等於預設的哈希。
+      </p>
+      <code class="text-xs bg-black/10 dark:bg-white/10 px-2 py-1 rounded">
+        SHA256(preimage) == hash
+      </code>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">時間鎖 (Timelock)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        如果在規定時間內沒有提供原像，資金會返還給發送方。
+      </p>
+      <code class="text-xs bg-black/10 dark:bg-white/10 px-2 py-1 rounded">
+        timeout: 144 blocks (~24h)
+      </code>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 腳本結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`HTLC 腳本（簡化版）：
+
+OP_IF
+    # 成功路徑：接收方提供原像
+    OP_HASH256 <payment_hash> OP_EQUALVERIFY
+    <receiver_pubkey> OP_CHECKSIG
+OP_ELSE
+    # 超時路徑：資金返還給發送方
+    <timeout> OP_CHECKLOCKTIMEVERIFY OP_DROP
+    <sender_pubkey> OP_CHECKSIG
+OP_ENDIF
+
+兩種花費方式：
+1. 提供原像 + 接收方簽名 → 接收方取款
+2. 等待超時 + 發送方簽名 → 發送方取回`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多跳支付流程</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    假設 Alice 想付款給 Carol，但她們沒有直接通道，需要通過 Bob 轉發：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`支付路徑：Alice ──→ Bob ──→ Carol
+
+步驟 1：Carol 生成秘密和哈希
+┌─────────────────────────────────────────┐
+│ Carol 生成：                            │
+│   preimage (R) = random 32 bytes        │
+│   hash (H) = SHA256(R)                  │
+│                                         │
+│ Carol 將 H 放入 invoice 給 Alice        │
+└─────────────────────────────────────────┘
+
+步驟 2：Alice 建立 HTLC 鏈
+┌─────────────────────────────────────────┐
+│ Alice → Bob: HTLC                       │
+│   金額: 1000 sats + 手續費              │
+│   條件: 提供 SHA256 原像 = H            │
+│   超時: 144 blocks                      │
+├─────────────────────────────────────────┤
+│ Bob → Carol: HTLC                       │
+│   金額: 1000 sats                       │
+│   條件: 提供 SHA256 原像 = H            │
+│   超時: 140 blocks (更短!)              │
+└─────────────────────────────────────────┘
+
+步驟 3：原像傳回，解鎖資金
+┌─────────────────────────────────────────┐
+│ Carol 知道 R，向 Bob 揭示 R             │
+│   → Carol 獲得 1000 sats                │
+│                                         │
+│ Bob 現在知道 R，向 Alice 揭示 R         │
+│   → Bob 獲得 1000 sats + 手續費         │
+│                                         │
+│ 支付完成！                              │
+└─────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖遞減</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每一跳的時間鎖必須遞減，確保中間節點有足夠時間取回資金：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`時間鎖設計：
+
+Alice → Bob → Carol → Dave
+
+時間鎖分配：
+Alice → Bob:   500 blocks
+Bob → Carol:   460 blocks  (-40)
+Carol → Dave:  420 blocks  (-40)
+
+cltv_expiry_delta = 40 blocks（約 6.7 小時）
+
+為什麼遞減？
+- Dave 揭示原像給 Carol
+- Carol 需要時間向 Bob 揭示
+- Bob 需要時間向 Alice 揭示
+- 每一跳都需要緩衝時間`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>安全警告：</strong>
+      如果時間鎖設計不當，中間節點可能來不及取回資金。
+      這就是為什麼節點軟體會自動計算安全的 CLTV delta。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 在承諾交易中</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個待處理的 HTLC 都會在承諾交易中創建一個額外的輸出：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`承諾交易結構（含 HTLC）：
+
+輸入：
+  funding_tx:0 (多簽)
+
+輸出：
+  0: to_local    - 550,000 sats (Alice，有延遲)
+  1: to_remote   - 400,000 sats (Bob，無延遲)
+  2: htlc_output - 50,000 sats  (HTLC #1)
+
+HTLC 輸出腳本：
+  如果 Bob 提供原像 → Bob 取得
+  如果超時 → Alice 取回（通過二級 HTLC-timeout tx）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offered vs Received HTLC</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Offered HTLC</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        你提供的 HTLC（你是發送方）。對方提供原像可取款，超時你可取回。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Received HTLC</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        你收到的 HTLC（你是接收方）。你提供原像可取款，超時對方可取回。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 二級交易</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當需要在鏈上解決 HTLC 時，使用二級交易：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`HTLC 二級交易類型：
+
+1. HTLC-success transaction
+   - 用於：接收方知道原像
+   - 輸入：HTLC 輸出 + 原像 + 接收方簽名
+   - 輸出：接收方地址（有延遲）
+
+2. HTLC-timeout transaction
+   - 用於：超時後發送方取回
+   - 輸入：HTLC 輸出 + 發送方簽名
+   - 輸出：發送方地址（有延遲）
+
+兩種交易都需要預先簽署！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">原像揭示與隱私</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    傳統 HTLC 使用相同的 payment_hash，這有隱私問題：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`隱私問題：
+
+Alice → Bob → Carol → Dave
+  H1      H1     H1
+
+所有節點看到相同的 H
+如果 Bob 和 Dave 是同一人或串謀
+他們可以推斷出支付路徑
+
+解決方案：Point Time-Locked Contracts (PTLCs)
+使用 Schnorr 簽名和適配器簽名
+每一跳使用不同的「點」
+無法關聯不同跳`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">中間節點能偷走資金嗎？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        不能。Bob 只有在向 Carol 支付後才能從 Alice 取得資金。
+        如果 Bob 不轉發，Alice 的 HTLC 會超時返還。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">如果中間節點離線怎麼辦？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        支付會失敗，所有 HTLC 最終超時返還給發送方。沒有人會損失資金。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">為什麼使用 SHA256？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        SHA256 是比特幣原生支持的哈希函數，且 32 字節的原像提供足夠的安全性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 限制</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>最小金額：</strong>HTLC 需要消耗鏈上空間，太小的 HTLC 不經濟（dust limit）</li>
+    <li>• <strong>最大數量：</strong>承諾交易大小有限，通常限制 483 個待處理 HTLC</li>
+    <li>• <strong>時間鎖限制：</strong>太長的路徑會累積太長的時間鎖</li>
+    <li>• <strong>在途資金：</strong>HTLC 佔用通道容量，直到解決</li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/commitment-tx" class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+      的完整結構和撤銷機制。
+    </p>
+  </div>
+</ArticleLayout>

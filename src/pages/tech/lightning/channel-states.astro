@@ -1,0 +1,341 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="通道狀態機"
+  description="理解閃電網路通道的完整生命週期，從開啟到關閉的所有狀態轉換。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '通道狀態機' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: '承諾交易', href: '/tech/lightning/commitment-tx' }}
+  nextPage={{ title: 'BOLT 規範概覽', href: '/tech/lightning/bolt-overview' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道生命週期概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路通道是一個有限狀態機，從建立到關閉經歷多個狀態。
+    理解這些狀態對於開發和調試閃電網路應用至關重要。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`通道狀態概覽：
+
+┌─────────────┐
+│   初始化    │
+└──────┬──────┘
+       │ open_channel / accept_channel
+       ▼
+┌─────────────┐
+│  資金交易   │
+│   待確認    │
+└──────┬──────┘
+       │ funding_locked (現在叫 channel_ready)
+       ▼
+┌─────────────┐
+│    正常     │ ←─── 支付、更新狀態
+│    運作     │
+└──────┬──────┘
+       │ shutdown / 單方關閉 / 懲罰
+       ▼
+┌─────────────┐
+│   關閉中    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   已關閉    │
+└─────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">階段一：通道建立</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">開啟流程</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Alice (發起方)                    Bob (接受方)
+     │                                  │
+     │──── open_channel ───────────────→│
+     │     - chain_hash                 │
+     │     - funding_satoshis           │
+     │     - push_msat                  │
+     │     - channel_reserve            │
+     │     - htlc_minimum               │
+     │     - feerate_per_kw             │
+     │     - funding_pubkey             │
+     │     - ...各種 basepoints          │
+     │                                  │
+     │←─── accept_channel ─────────────│
+     │     - minimum_depth              │
+     │     - channel_reserve            │
+     │     - funding_pubkey             │
+     │     - ...各種 basepoints          │
+     │                                  │`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">資金交易交換</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Alice                              Bob
+     │                                  │
+     │  (Alice 創建 funding tx)         │
+     │                                  │
+     │──── funding_created ────────────→│
+     │     - funding_txid               │
+     │     - funding_output_index       │
+     │     - signature (for Bob's       │
+     │       commitment tx)             │
+     │                                  │
+     │←─── funding_signed ──────────────│
+     │     - signature (for Alice's     │
+     │       commitment tx)             │
+     │                                  │
+     │  (Alice 廣播 funding tx)         │
+     │                                  │`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">等待確認</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Alice                              Bob
+     │                                  │
+     │  (等待 minimum_depth 確認)       │
+     │                                  │
+     │──── channel_ready ──────────────→│
+     │←─── channel_ready ───────────────│
+     │                                  │
+     │  ✓ 通道開啟！可以開始支付       │
+     │                                  │`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">階段二：正常運作</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">添加 HTLC</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Alice                              Bob
+     │                                  │
+     │──── update_add_htlc ────────────→│
+     │     - channel_id                 │
+     │     - id (htlc_id)               │
+     │     - amount_msat                │
+     │     - payment_hash               │
+     │     - cltv_expiry                │
+     │     - onion_routing_packet       │
+     │                                  │
+
+狀態：HTLC 已提議但未確認`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">提交新狀態</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Alice                              Bob
+     │                                  │
+     │──── commitment_signed ──────────→│
+     │     - signature                  │
+     │     - htlc_signatures[]          │
+     │                                  │
+     │←─── revoke_and_ack ──────────────│
+     │     - per_commitment_secret      │
+     │     - next_per_commitment_point  │
+     │                                  │
+     │←─── commitment_signed ───────────│
+     │                                  │
+     │──── revoke_and_ack ─────────────→│
+     │                                  │
+
+現在：雙方都有新的承諾交易，舊狀態已撤銷`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解決 HTLC</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`解決方式有三種：
+
+1. 成功 (fulfill)
+   │←─── update_fulfill_htlc ───────────│
+   │     - payment_preimage             │
+
+2. 失敗 (fail)
+   │←─── update_fail_htlc ──────────────│
+   │     - reason                       │
+
+3. 格式錯誤 (malformed)
+   │←─── update_fail_malformed_htlc ────│
+   │     - failure_code                 │
+
+解決後需要再次 commitment_signed / revoke_and_ack`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">階段三：通道關閉</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">協作關閉</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Alice                              Bob
+     │                                  │
+     │──── shutdown ───────────────────→│
+     │     - scriptpubkey (關閉地址)    │
+     │                                  │
+     │←─── shutdown ────────────────────│
+     │     - scriptpubkey               │
+     │                                  │
+     │  (不再接受新的 HTLC)             │
+     │  (等待所有 HTLC 解決)            │
+     │                                  │
+     │──── closing_signed ─────────────→│
+     │     - fee_satoshis               │
+     │     - signature                  │
+     │                                  │
+     │←─── closing_signed ──────────────│
+     │     - fee_satoshis (可能不同)    │
+     │     - signature                  │
+     │                                  │
+     │  (協商手續費直到達成一致)        │
+     │  (廣播 closing tx)               │
+     │                                  │`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">協作關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        雙方同意，創建簡單的 closing tx，無時間鎖。最快最便宜。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">單方關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        廣播最新承諾交易。發起方需等待 to_self_delay，對方可立即取款。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">懲罰關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對方廣播舊狀態，使用撤銷密鑰取走全部資金。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤處理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`錯誤訊息：
+
+│──── error ───────────────────────────→│
+│     - channel_id (或 0 表示全部)      │
+│     - data (人類可讀的錯誤訊息)       │
+
+warning 訊息（BOLT 1.1+）：
+│──── warning ─────────────────────────→│
+│     - channel_id                      │
+│     - data                            │
+
+error 會導致通道關閉
+warning 只是警告，通道可繼續`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道狀態完整圖</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`                    ┌─────────────────┐
+                    │   DISCONNECTED   │
+                    └────────┬────────┘
+                             │ connect
+                             ▼
+                    ┌─────────────────┐
+                    │    CONNECTED    │
+                    └────────┬────────┘
+                             │ open_channel
+                             ▼
+┌───────────────────────────────────────────────────────┐
+│                   CHANNEL OPENING                      │
+├───────────────────────────────────────────────────────┤
+│  SENT_OPEN → RCVD_ACCEPT → SENT_FUNDING_CREATED →    │
+│  RCVD_FUNDING_SIGNED → FUNDING_SPEND_SEEN →          │
+│  AWAITING_CHANNEL_READY                               │
+└───────────────────────────┬───────────────────────────┘
+                            │ channel_ready (雙方)
+                            ▼
+                   ┌─────────────────┐
+                   │    CHANNELD     │←──┐
+                   │    (正常)       │   │ 更新狀態
+                   └────────┬────────┘───┘
+                            │ shutdown
+                            ▼
+                   ┌─────────────────┐
+                   │   SHUTTING_DOWN │
+                   └────────┬────────┘
+                            │ closing_signed
+                            ▼
+                   ┌─────────────────┐
+                   │   CLOSINGD      │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │     CLOSED      │
+                   └─────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">重新連接</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當節點斷開後重新連接，需要同步狀態：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`重新連接流程：
+
+Alice                              Bob
+     │                                  │
+     │←──→ channel_reestablish ────────→│
+     │     - next_commitment_number     │
+     │     - next_revocation_number     │
+     │     - your_last_per_commitment   │
+     │       _secret                    │
+     │                                  │
+
+比較雙方狀態：
+- 如果同步 → 繼續正常運作
+- 如果不同步 → 重傳遺失的訊息
+- 如果無法恢復 → 強制關閉`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見狀態問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Stuck Channel</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道卡在某個狀態無法前進。常見原因：對方離線、網路問題、軟體 bug。
+        解決方案：等待重連或強制關閉。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Pending HTLC</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        HTLC 長時間未解決。可能是路由問題或下游節點問題。
+        最終會超時返還，但會佔用流動性。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">State Mismatch</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        雙方狀態不一致。通常是備份恢復後發生。
+        可能導致資金損失，需要謹慎處理。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/bolt-overview" class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 規範</a>
+      的完整協議定義。
+    </p>
+  </div>
+</ArticleLayout>

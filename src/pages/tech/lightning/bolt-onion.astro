@@ -1,0 +1,292 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="洋蔥路由"
+  description="深入理解閃電網路的洋蔥路由機制，如何在多跳支付中保護發送方和接收方的隱私。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '洋蔥路由' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: '訊息協議', href: '/tech/lightning/bolt-messages' }}
+  nextPage={{ title: '發票格式', href: '/tech/lightning/bolt-invoice' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是洋蔥路由？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    洋蔥路由（Onion Routing）是閃電網路保護支付隱私的核心機制。
+    它確保每個中間節點只知道自己的「前一跳」和「後一跳」，
+    無法得知完整的支付路徑、發送方或接收方。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心概念：</strong>
+      就像剝洋蔥一樣，每個節點剝開一層加密，只能看到給自己的指令和下一層加密的封包。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">洋蔥封包結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`洋蔥封包 (1366 bytes)：
+
+┌────────────────────────────────────────────────┐
+│ version (1 byte): 0x00                         │
+├────────────────────────────────────────────────┤
+│ public_key (33 bytes): 會話公鑰               │
+├────────────────────────────────────────────────┤
+│ hop_payloads (1300 bytes):                     │
+│   ├── hop 1 payload (加密)                     │
+│   ├── hop 2 payload (加密)                     │
+│   ├── ...                                      │
+│   └── 填充至 1300 bytes                        │
+├────────────────────────────────────────────────┤
+│ hmac (32 bytes): 完整性驗證                    │
+└────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密流程</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    發送方使用 Sphinx 混合格式加密，每一跳使用不同的共享密鑰：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`加密過程：
+
+1. 生成會話私鑰 (session_key)
+2. 對每一跳計算共享密鑰：
+   shared_secret[i] = SHA256(ECDH(session_key, node_pubkey[i]))
+
+3. 從最後一跳開始，向前加密：
+
+   ┌─────────────────────────────────────────────────┐
+   │ 最內層（接收方 Carol）:                         │
+   │   payload_carol = [amt, cltv, payment_secret]  │
+   │   加密: encrypt(payload_carol, key_carol)      │
+   ├─────────────────────────────────────────────────┤
+   │ 中間層（Bob）:                                  │
+   │   payload_bob = [amt, cltv, next_channel]      │
+   │   + 已加密的內層                                │
+   │   加密: encrypt(all, key_bob)                  │
+   ├─────────────────────────────────────────────────┤
+   │ 最外層（Alice 的下一跳）:                       │
+   │   payload = [amt, cltv, next_channel]          │
+   │   + 已加密的所有內層                            │
+   │   加密: encrypt(all, key_hop1)                 │
+   └─────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">每跳 Payload</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`TLV Payload 格式（現代格式）：
+
+hop_payload:
+├── amt_to_forward (type 2): 轉發金額 (毫聰)
+├── outgoing_cltv_value (type 4): 出站 CLTV
+├── short_channel_id (type 6): 下一通道 ID
+│   （最後一跳可選）
+├── payment_data (type 8): 支付數據
+│   ├── payment_secret (32 bytes)
+│   └── total_msat (8 bytes)
+└── 其他可選 TLV...
+
+非最後一跳範例：
+{
+  amt_to_forward: 100000,
+  outgoing_cltv_value: 700000,
+  short_channel_id: 123x456x0
+}
+
+最後一跳範例：
+{
+  amt_to_forward: 100000,
+  outgoing_cltv_value: 700000,
+  payment_data: {
+    payment_secret: 0x...,
+    total_msat: 100000
+  }
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解密與轉發</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`節點處理洋蔥封包：
+
+1. 從封包提取 public_key
+2. 計算共享密鑰：
+   shared_secret = SHA256(ECDH(node_privkey, public_key))
+
+3. 驗證 HMAC
+4. 解密 hop_payloads 的第一層
+5. 讀取自己的 payload
+6. 移除自己的 payload，左移其餘內容
+7. 填充尾部以保持長度
+8. 更新 public_key（橢圓曲線盲化）
+9. 計算新的 HMAC
+10. 轉發給下一跳
+
+橢圓曲線盲化：
+new_pubkey = old_pubkey * SHA256(shared_secret)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">發送方隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中間節點不知道誰發起支付。可能是前一跳，也可能是更早的節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">接收方隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中間節點不知道誰是最終接收方。可能是下一跳，也可能是更後的節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">路徑隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中間節點不知道完整路徑長度（因為封包長度固定）。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">金額隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        只知道自己這一跳的轉發金額，不知道總金額。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤回報</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當支付失敗時，錯誤需要安全地回報給發送方：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`錯誤封包結構：
+
+failure_packet:
+├── hmac (32 bytes): 完整性驗證
+├── length (2 bytes)
+├── error_code (2 bytes): 錯誤類型
+├── data_length (2 bytes)
+└── data: 額外錯誤資訊
+
+每一跳加密回傳：
+Carol 發現錯誤 → 加密 → Bob
+Bob 收到 → 再加密 → Alice
+
+Alice 嘗試用每一跳的密鑰解密：
+1. 用 hop1 密鑰解密 → 失敗
+2. 用 hop2 密鑰解密 → 失敗
+3. 用 hop3 密鑰解密 → 成功！錯誤來自 hop3`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見錯誤碼</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`節點產生的錯誤：
+0x400F: temporary_node_failure
+0x4010: permanent_node_failure
+0x4011: required_node_feature_missing
+
+通道產生的錯誤：
+0x1007: temporary_channel_failure
+0x1008: permanent_channel_failure
+0x1009: required_channel_feature_missing
+0x100A: unknown_next_peer
+
+更新建議的錯誤：
+0x100B: amount_below_minimum
+0x100C: fee_insufficient
+0x100D: incorrect_cltv_expiry
+0x100E: expiry_too_soon
+
+最終節點錯誤：
+0x400D: incorrect_or_unknown_payment_details
+0x400E: incorrect_payment_amount
+0x400F: final_incorrect_cltv_expiry`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Route Blinding</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Route Blinding 進一步增強接收方隱私，隱藏最後幾跳：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`盲化路徑結構：
+
+接收方 Carol 創建盲化路徑：
+1. 選擇引入節點 (introduction node)
+2. 盲化後續節點 ID
+3. 提供 blinded_payloads
+
+┌─────────────────────────────────────────────┐
+│ 發送方看到：                                │
+│   Alice → ... → Intro → [盲化] → [盲化]    │
+│                   ↑                         │
+│              明文公開     不知道是誰         │
+└─────────────────────────────────────────────┘
+
+盲化路徑中：
+- 每一跳只知道下一個盲化點
+- 發送方無法識別真正的接收方
+- 引入節點知道第一跳，但不知道終點`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Trampoline 路由</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Trampoline 允許輕客戶端外包路由計算：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Trampoline 路由：
+
+傳統路由：
+Alice → B → C → D → E → Carol
+(Alice 需要知道完整網路拓撲)
+
+Trampoline 路由：
+Alice → [Trampoline1] → [Trampoline2] → Carol
+        ↓                ↓
+    T1 找路到 T2    T2 找路到 Carol
+
+優點：
+- 輕客戶端不需儲存完整網路圖
+- 減少資源消耗
+- 仍保持隱私（Trampoline 節點不知道發送方）
+
+缺點：
+- 需要信任 Trampoline 節點可用
+- 手續費可能較高`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私限制</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400 mb-2">
+      <strong>已知的隱私弱點：</strong>
+    </p>
+    <ul class="text-sm text-red-700 dark:text-red-400 space-y-1 list-disc list-inside">
+      <li>相同的 payment_hash 出現在所有跳（可被關聯）</li>
+      <li>金額和 CLTV 的遞減模式可推測位置</li>
+      <li>時間相關性（支付通過各節點的時間）</li>
+      <li>網路拓撲資訊公開</li>
+    </ul>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/bolt-invoice" class="text-yellow-600 dark:text-yellow-400 hover:underline">發票格式</a>
+      如何編碼支付請求資訊。
+    </p>
+  </div>
+</ArticleLayout>

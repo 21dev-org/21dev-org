@@ -1,0 +1,286 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="路由與尋路"
+  description="了解閃電網路如何找到從發送方到接收方的支付路徑，以及路由算法的工作原理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '路由與尋路' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '發票格式', href: '/tech/lightning/bolt-invoice' }}
+  nextPage={{ title: '流動性管理', href: '/tech/lightning/liquidity' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由基礎</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路是一個由支付通道組成的圖網路。當你想支付給一個沒有直接通道的節點時，
+    需要找到一條由多個通道串連的「路徑」，這就是路由問題。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心挑戰：</strong>
+      路由需要考慮通道容量、手續費、在線狀態等因素，
+      而且這些資訊可能不完整或過時。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路拓撲</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`閃電網路圖結構：
+
+節點 (Nodes):
+- 每個運行閃電網路軟體的實體
+- 由 33 bytes 公鑰標識
+- 通過 node_announcement 廣播
+
+邊 (Channels):
+- 兩個節點之間的支付通道
+- 由 short_channel_id 標識
+- 有兩個方向，各有獨立的手續費和限制
+
+┌─────┐     通道 A      ┌─────┐     通道 B      ┌─────┐
+│Alice│ ─────────────── │ Bob │ ─────────────── │Carol│
+└─────┘                 └─────┘                 └─────┘
+   │                                               │
+   │              通道 C                           │
+   └───────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 協議</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    節點通過 Gossip 協議學習網路拓撲：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Gossip 訊息類型：
+
+1. channel_announcement
+   - 新通道上線
+   - 包含雙方節點 ID 和 Bitcoin 公鑰
+   - 需要鏈上 funding tx 驗證
+
+2. channel_update
+   - 通道參數變更
+   - 手續費率、CLTV delta、最小/最大 HTLC
+   - 可標記通道為停用
+
+3. node_announcement
+   - 節點資訊更新
+   - 別名、顏色、地址、功能
+
+Gossip 傳播：
+- 節點收到新訊息後轉發給所有對等方
+- 使用 timestamp 防止舊訊息覆蓋新訊息
+- 過舊的訊息會被忽略`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">尋路算法</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Dijkstra 變體</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    大多數實現使用 Dijkstra 或類似的最短路徑算法：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`尋路過程：
+
+1. 從目的地開始反向搜索
+   - 為什麼反向？因為需要知道最終 CLTV 來計算每一跳
+
+2. 計算邊的「成本」
+   cost = base_fee + (amount × fee_rate) + risk_factor
+
+3. 選擇總成本最低的路徑
+
+4. 驗證路徑可行性
+   - 每一跳金額 <= 通道容量
+   - HTLC 數量限制
+   - CLTV 在合理範圍
+
+成本因素：
+- 手續費（最重要）
+- 成功機率（基於歷史資料）
+- 時間鎖風險（較長的 CLTV 較高風險）
+- 通道年齡（較新可能不穩定）`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">機率評估</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`成功機率估算：
+
+問題：公開的是通道容量，不是當前餘額分布
+
+假設：餘額均勻分布
+對於容量 C 的通道，轉發金額 A：
+成功機率 ≈ (C - A) / C
+
+更精確的估算（基於歷史）：
+- 記錄每個通道的成功/失敗
+- 用貝葉斯方法更新餘額估計
+- 考慮時間衰減（餘額會變化）
+
+LND 的 Mission Control：
+- 維護每個通道的成功機率
+- 失敗後降低機率
+- 時間過後逐漸恢復`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多路徑支付 (MPP)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當單一路徑無法處理大額支付時，可以拆分成多個小額支付：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`MPP (Multi-Path Payments)：
+
+支付 1 BTC：
+┌─────────────────────────────────────────┐
+│ 路徑 1: Alice → X → Y → Carol (0.4 BTC)│
+│ 路徑 2: Alice → M → N → Carol (0.3 BTC)│
+│ 路徑 3: Alice → P → Carol (0.3 BTC)    │
+└─────────────────────────────────────────┘
+
+所有部分使用相同的 payment_hash
+接收方等所有部分到齊後一次揭示 preimage
+
+優點：
+- 突破單一通道容量限制
+- 提高大額支付成功率
+- 更好地利用網路流動性
+
+要求：
+- 接收方支持 MPP (feature bit 16/17)
+- 發送方智能拆分金額
+- 所有部分必須使用相同的 payment_secret`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由失敗處理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`常見失敗原因和處理：
+
+1. TEMPORARY_CHANNEL_FAILURE
+   - 通道暫時無法轉發
+   - 暫時迴避，稍後重試
+
+2. FEE_INSUFFICIENT
+   - 手續費太低
+   - 更新 channel_update 後重試
+
+3. UNKNOWN_NEXT_PEER
+   - 下一跳節點離線
+   - 選擇其他路徑
+
+4. AMOUNT_BELOW_MINIMUM
+   - 金額低於通道最小限制
+   - 選擇其他通道
+
+5. EXPIRY_TOO_SOON
+   - CLTV 太近
+   - 增加 CLTV 或選其他路徑
+
+重試策略：
+- 排除失敗的邊
+- 重新計算路徑
+- 最多重試 N 次`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手續費計算</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`每一跳的手續費：
+
+fee = base_fee_msat + (amount_msat × fee_rate / 1000000)
+
+範例路徑手續費：
+Alice → Bob → Carol → Dave
+
+Carol → Dave: 1000 sat, fee = 0
+Bob → Carol:  1001 sat, fee = 1 sat
+Alice → Bob:  1003 sat, fee = 2 sat
+
+總手續費 = 3 sat (0.3%)
+
+計算方向：從終點反向計算
+每一跳金額 = 下一跳金額 + 下一跳手續費`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">保護發送方</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        洋蔥路由確保中間節點不知道發送方身份。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">保護接收方</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Route blinding 可隱藏接收方的最後幾跳。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">金額隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中間節點只知道轉發金額，不知道總金額（MPP 情況下）。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">路徑隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        封包長度固定，中間節點無法推測路徑長度。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優化策略</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`路由優化技巧：
+
+1. 預計算路由
+   - 事先計算常用目的地的路徑
+   - 減少支付延遲
+
+2. 路由緩存
+   - 記住成功的路徑
+   - 對相同目的地優先使用
+
+3. 本地通道優先
+   - 先嘗試直接通道
+   - 減少手續費和跳數
+
+4. 並行嘗試
+   - 同時嘗試多條路徑
+   - 使用第一個成功的
+
+5. 智能拆分 (MPP)
+   - 根據通道容量決定拆分
+   - 平衡成功率和手續費`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來發展</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>流動性廣告：</strong>節點可以主動廣播可用流動性</li>
+    <li>• <strong>PTLCs：</strong>用 Schnorr 簽名取代 HTLC，增強隱私</li>
+    <li>• <strong>Trampoline 路由：</strong>委託路由計算給大節點</li>
+    <li>• <strong>Rendezvous 路由：</strong>發送方和接收方各負責一半路徑</li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/liquidity" class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a>
+      如何確保支付順利進行。
+    </p>
+  </div>
+</ArticleLayout>

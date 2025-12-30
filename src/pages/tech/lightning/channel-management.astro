@@ -1,0 +1,342 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="通道管理"
+  description="學習如何有效管理閃電網路通道，包括開啟、監控、維護和關閉通道的最佳實踐。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '通道管理' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '流動性管理', href: '/tech/lightning/liquidity' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道管理概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    運行閃電網路節點需要積極管理通道。好的通道管理可以提高支付成功率、
+    降低手續費成本，並為路由節點帶來收益。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開啟通道</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">選擇對等節點</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`選擇對等節點考量：
+
+1. 連接性
+   - 節點有多少通道？
+   - 連接到哪些主要節點？
+   - 網路中心性如何？
+
+2. 穩定性
+   - 在線時間（uptime）
+   - 運行歷史
+   - 軟體版本
+
+3. 政策
+   - 手續費率是否合理？
+   - 最小/最大 HTLC 設定
+   - 是否接受入站通道？
+
+4. 用途
+   - 路由節點：選擇高流量節點
+   - 個人使用：選擇穩定的大節點
+   - 商家：選擇與客戶群相關的節點
+
+工具：
+- 1ML.com - 節點排名
+- Amboss.space - 節點資訊
+- LnRouter.app - 路由分析`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">通道大小</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`通道大小建議：
+
+最小可用：20,000 sats（粉塵限制）
+建議最小：100,000 sats（小額支付）
+一般使用：500,000 - 2,000,000 sats
+路由節點：2,000,000 - 16,777,215 sats
+大型通道：> 16,777,215 sats（需 wumbo）
+
+考量因素：
+- 鏈上手續費（開/關都需要）
+- 預期支付金額
+- 資金效率
+- 對等節點的通道大小
+
+Wumbo 通道：
+- 突破 16,777,215 sats 限制
+- 雙方都需支持 option_support_large_channel
+- 適合高流量路由`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">開通道操作</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`LND 開通道：
+
+# 連接到節點
+lncli connect <pubkey>@<host>:<port>
+
+# 開啟通道
+lncli openchannel \\
+  --node_key=<pubkey> \\
+  --local_amt=1000000 \\
+  --sat_per_vbyte=10
+
+# 批量開通道（節省手續費）
+lncli batchopenchannel \\
+  --sat_per_vbyte=10 \\
+  '[{"node_pubkey":"...", "local_funding_amount":1000000},
+    {"node_pubkey":"...", "local_funding_amount":2000000}]'
+
+Core Lightning 開通道：
+
+lightning-cli connect <pubkey>@<host>:<port>
+lightning-cli fundchannel <pubkey> 1000000 normal`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">監控通道</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`監控指標：
+
+1. 餘額分布
+   - 本地 vs 遠端餘額
+   - 是否接近耗盡？
+
+2. 在途 HTLC
+   - 數量和金額
+   - 是否有卡住的 HTLC？
+
+3. 轉發統計
+   - 成功/失敗次數
+   - 賺取的手續費
+
+4. 對等節點狀態
+   - 是否在線？
+   - 最後活動時間
+
+LND 查看通道：
+lncli listchannels
+lncli pendingchannels
+lncli closedchannels
+
+轉發歷史：
+lncli fwdinghistory --start_time=-1d
+
+監控工具：
+- RTL (Ride The Lightning)
+- ThunderHub
+- LNDg
+- Charge-lnd（自動手續費）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手續費管理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`手續費結構：
+
+fee = base_fee_msat + (amount × fee_rate_ppm / 1000000)
+
+設定手續費 (LND)：
+lncli updatechanpolicy \\
+  --base_fee_msat=1000 \\
+  --fee_rate_ppm=100 \\
+  --time_lock_delta=40 \\
+  --chan_point=<funding_txid>:<output_index>
+
+策略建議：
+
+個人節點：
+  base_fee: 0-1000 msat
+  fee_rate: 1-100 ppm
+
+路由節點：
+  base_fee: 0-1000 msat
+  fee_rate: 50-500 ppm
+  視通道流動性調整
+
+動態調整：
+  低流動性 → 提高手續費
+  高流動性 → 降低手續費
+
+工具：charge-lnd, fees.wtf`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">關閉通道</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">何時關閉</h3>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">應該關閉</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 對等節點長期離線</li>
+        <li>• 通道從未被使用</li>
+        <li>• 對等節點行為異常</li>
+        <li>• 需要釋放資金</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">考慮保留</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 只是暫時不平衡</li>
+        <li>• 對等節點仍然活躍</li>
+        <li>• 有路由潛力</li>
+        <li>• 開關成本高於收益</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">關閉方式</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`協作關閉（推薦）：
+
+lncli closechannel --chan_point=<txid>:<index>
+
+# 指定手續費
+lncli closechannel \\
+  --chan_point=<txid>:<index> \\
+  --sat_per_vbyte=10
+
+特點：
+- 雙方同意
+- 資金立即可用
+- 最低手續費
+
+強制關閉（最後手段）：
+
+lncli closechannel --force --chan_point=<txid>:<index>
+
+特點：
+- 單方面執行
+- 你的資金需等待 to_self_delay
+- 較高手續費
+- 用於對方離線
+
+注意：有待處理 HTLC 時要小心
+可能需要額外交易解決`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">備份與恢復</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`備份類型：
+
+1. Static Channel Backup (SCB)
+   - 可恢復資金（通過強制關閉）
+   - 不能恢復通道狀態
+   - LND: ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
+
+2. 完整數據庫備份
+   - 可嘗試恢復完整狀態
+   - 有風險（舊狀態可能被懲罰）
+   - LND: ~/.lnd/data/graph/mainnet/channel.db
+
+SCB 恢復：
+lncli restorechanbackup --multi_file=channel.backup
+
+最佳實踐：
+- 自動備份 SCB 到雲端
+- 每次通道變更後更新
+- 多個備份位置
+- 測試恢復流程`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>警告：</strong>
+      永遠不要用舊的數據庫備份恢復！如果你的節點廣播舊狀態，
+      對等節點可以用撤銷密鑰取走全部資金。SCB 是安全的恢復方式。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自動化工具</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`常用自動化工具：
+
+Balance of Satoshis (bos)：
+- 再平衡
+- 通道管理
+- 節點操作
+npm install -g balanceofsatoshis
+bos rebalance --amount 100000
+
+charge-lnd：
+- 自動調整手續費
+- 基於規則的策略
+pip install charge-lnd
+charge-lnd --config charge.config
+
+LNDg：
+- Web 界面
+- 自動手續費
+- 再平衡助手
+
+Lightning Terminal (LiT)：
+- Lightning Labs 官方工具
+- Loop, Pool 集成
+- 節點監控`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題處理</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">卡住的通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道長時間 pending：檢查 funding tx 確認狀態，可能需要 CPFP 加速。
+        使用 <code>lncli pendingchannels</code> 查看狀態。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">卡住的 HTLC</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        HTLC 長時間未解決：等待超時或對方響應。如果對方離線，最終會超時返還。
+        嚴重情況可能需要強制關閉。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對等節點離線</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        暫時等待重連。長期離線（數天）考慮強制關閉。
+        使用 <code>lncli listpeers</code> 檢查連接狀態。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">強制關閉卡住</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        承諾交易未確認：使用錨點輸出 CPFP 加速。
+        資金需等待 to_self_delay 後才能使用。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐總結</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>選擇好的對等節點：</strong>穩定、連接良好、政策合理</li>
+    <li>• <strong>適當的通道大小：</strong>根據用途選擇，避免太小</li>
+    <li>• <strong>定期監控：</strong>使用工具追蹤餘額和健康狀態</li>
+    <li>• <strong>動態手續費：</strong>根據流動性調整，引導平衡</li>
+    <li>• <strong>及時備份：</strong>SCB 自動備份到安全位置</li>
+    <li>• <strong>謹慎關閉：</strong>優先協作關閉，強制關閉是最後手段</li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">延伸閱讀：</strong>
+      <a href="/books/mastering-lightning" class="text-yellow-600 dark:text-yellow-400 hover:underline">《精通閃電網路》</a>
+      有更完整的節點操作指南。
+    </p>
+  </div>
+</ArticleLayout>

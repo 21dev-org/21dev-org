@@ -1,0 +1,332 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="訊息協議"
+  description="深入了解閃電網路的 P2P 訊息協議，包括連線、通道和支付相關的訊息格式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '訊息協議' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'BOLT 規範概覽', href: '/tech/lightning/bolt-overview' }}
+  nextPage={{ title: '洋蔥路由', href: '/tech/lightning/bolt-onion' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息分類</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路的訊息按功能可分為四大類：連線訊息、通道訊息、支付訊息和網路訊息。
+    每種訊息都有特定的格式和用途。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`訊息類型範圍：
+
+連線管理：
+  16: init
+  17: error
+  18: ping
+  19: pong
+  1:  warning
+
+通道建立：
+  32: open_channel
+  33: accept_channel
+  34: funding_created
+  35: funding_signed
+  36: channel_ready (原 funding_locked)
+
+通道運作：
+  128: update_add_htlc
+  130: update_fulfill_htlc
+  131: update_fail_htlc
+  132: commitment_signed
+  133: revoke_and_ack
+  134: update_fee
+  135: update_fail_malformed_htlc
+  136: channel_reestablish
+
+通道關閉：
+  38: shutdown
+  39: closing_signed`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連線訊息</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">init</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    連線後雙方交換的第一個訊息，表明各自支援的功能：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`init (type: 16)
+├── gflen (2 bytes): global features 長度
+├── globalfeatures (gflen bytes): 全域功能位
+├── flen (2 bytes): features 長度
+├── features (flen bytes): 功能位
+└── tlvs:
+    └── networks (type 1): 支援的鏈 (chain_hash[])
+
+範例：
+init:
+  features: 0x2a02 (bit 1, 9, 11, 13 設置)
+  networks: [mainnet_genesis_hash]
+
+功能協商：
+- 雙方取交集
+- 必須功能不支援 → 斷開連線`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">ping / pong</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`ping (type: 18)
+├── num_pong_bytes (2 bytes): 期望 pong 回應的大小
+└── byteslen (2 bytes): 填充長度
+    └── ignored (byteslen bytes): 可忽略的填充
+
+pong (type: 19)
+└── byteslen (2 bytes): 填充長度
+    └── ignored (byteslen bytes): 填充
+
+用途：
+- 保持連線活躍
+- 檢測對方是否在線
+- 探測連線延遲`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道建立訊息</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">open_channel</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`open_channel (type: 32)
+├── chain_hash (32 bytes): 區塊鏈 ID
+├── temporary_channel_id (32 bytes): 臨時通道 ID
+├── funding_satoshis (8 bytes): 資金金額
+├── push_msat (8 bytes): 推送給對方的金額
+├── dust_limit_satoshis (8 bytes): 粉塵限制
+├── max_htlc_value_in_flight_msat (8 bytes): 最大在途 HTLC
+├── channel_reserve_satoshis (8 bytes): 通道儲備金
+├── htlc_minimum_msat (8 bytes): 最小 HTLC
+├── feerate_per_kw (4 bytes): 每 kw 手續費率
+├── to_self_delay (2 bytes): 自己的延遲塊數
+├── max_accepted_htlcs (2 bytes): 最大接受 HTLC 數
+├── funding_pubkey (33 bytes): 資金公鑰
+├── revocation_basepoint (33 bytes)
+├── payment_basepoint (33 bytes)
+├── delayed_payment_basepoint (33 bytes)
+├── htlc_basepoint (33 bytes)
+├── first_per_commitment_point (33 bytes)
+├── channel_flags (1 byte): 標誌位
+└── tlvs:
+    ├── upfront_shutdown_script (type 0)
+    └── channel_type (type 1)`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">accept_channel</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`accept_channel (type: 33)
+├── temporary_channel_id (32 bytes)
+├── dust_limit_satoshis (8 bytes)
+├── max_htlc_value_in_flight_msat (8 bytes)
+├── channel_reserve_satoshis (8 bytes)
+├── htlc_minimum_msat (8 bytes)
+├── minimum_depth (4 bytes): 需要的確認數
+├── to_self_delay (2 bytes)
+├── max_accepted_htlcs (2 bytes)
+├── funding_pubkey (33 bytes)
+├── revocation_basepoint (33 bytes)
+├── payment_basepoint (33 bytes)
+├── delayed_payment_basepoint (33 bytes)
+├── htlc_basepoint (33 bytes)
+├── first_per_commitment_point (33 bytes)
+└── tlvs:
+    ├── upfront_shutdown_script (type 0)
+    └── channel_type (type 1)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 訊息</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">update_add_htlc</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`update_add_htlc (type: 128)
+├── channel_id (32 bytes)
+├── id (8 bytes): HTLC ID (每通道遞增)
+├── amount_msat (8 bytes): 金額 (毫聰)
+├── payment_hash (32 bytes): 支付哈希
+├── cltv_expiry (4 bytes): 超時區塊高度
+├── onion_routing_packet (1366 bytes): 洋蔥封包
+└── tlvs:
+    └── blinding_point (type 0): 盲化點
+
+驗證規則：
+- amount_msat >= htlc_minimum_msat
+- cltv_expiry 在合理範圍內
+- 不超過 max_htlc_value_in_flight_msat
+- HTLC 數量不超過 max_accepted_htlcs`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">update_fulfill_htlc</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`update_fulfill_htlc (type: 130)
+├── channel_id (32 bytes)
+├── id (8 bytes): 要解決的 HTLC ID
+└── payment_preimage (32 bytes): 原像
+
+驗證：
+SHA256(payment_preimage) == payment_hash`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">update_fail_htlc</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`update_fail_htlc (type: 131)
+├── channel_id (32 bytes)
+├── id (8 bytes): 要失敗的 HTLC ID
+└── len (2 bytes)
+    └── reason (len bytes): 洋蔥加密的失敗原因
+
+失敗原因（解密後）：
+├── incorrect_or_unknown_payment_details
+├── fee_insufficient
+├── cltv_expiry_too_soon
+├── channel_disabled
+├── temporary_channel_failure
+└── ...更多錯誤碼`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">承諾訊息</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">commitment_signed</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`commitment_signed (type: 132)
+├── channel_id (32 bytes)
+├── signature (64 bytes): 承諾交易簽名
+├── num_htlcs (2 bytes): HTLC 簽名數量
+└── htlc_signature (num_htlcs × 64 bytes): HTLC 簽名
+
+簽名順序：
+- 按 HTLC 在承諾交易中的輸出順序
+- offered HTLCs 簽 HTLC-timeout tx
+- received HTLCs 簽 HTLC-success tx`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">revoke_and_ack</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`revoke_and_ack (type: 133)
+├── channel_id (32 bytes)
+├── per_commitment_secret (32 bytes): 舊狀態的秘密
+└── next_per_commitment_point (33 bytes): 下一狀態的點
+
+意義：
+- 揭示舊秘密 = 撤銷舊承諾交易
+- 如果廣播舊狀態，對方可用此秘密懲罰`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路公告訊息</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">channel_announcement</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`channel_announcement (type: 256)
+├── node_signature_1 (64 bytes)
+├── node_signature_2 (64 bytes)
+├── bitcoin_signature_1 (64 bytes)
+├── bitcoin_signature_2 (64 bytes)
+├── len (2 bytes)
+├── features (len bytes)
+├── chain_hash (32 bytes)
+├── short_channel_id (8 bytes)
+├── node_id_1 (33 bytes)
+├── node_id_2 (33 bytes)
+├── bitcoin_key_1 (33 bytes)
+└── bitcoin_key_2 (33 bytes)
+
+short_channel_id 格式：
+block_height (3 bytes) || tx_index (3 bytes) || output_index (2 bytes)`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">channel_update</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`channel_update (type: 258)
+├── signature (64 bytes)
+├── chain_hash (32 bytes)
+├── short_channel_id (8 bytes)
+├── timestamp (4 bytes)
+├── message_flags (1 byte)
+├── channel_flags (1 byte)
+│   └── bit 0: direction (0=node1→node2, 1=node2→node1)
+│   └── bit 1: disable
+├── cltv_expiry_delta (2 bytes)
+├── htlc_minimum_msat (8 bytes)
+├── fee_base_msat (4 bytes)
+├── fee_proportional_millionths (4 bytes)
+└── htlc_maximum_msat (8 bytes, if message_flags bit 0)
+
+手續費計算：
+fee = fee_base_msat + (amount_msat × fee_proportional_millionths / 1000000)`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">node_announcement</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`node_announcement (type: 257)
+├── signature (64 bytes)
+├── flen (2 bytes)
+├── features (flen bytes)
+├── timestamp (4 bytes)
+├── node_id (33 bytes)
+├── rgb_color (3 bytes): 節點顏色
+├── alias (32 bytes): 節點別名
+├── addrlen (2 bytes)
+└── addresses (addrlen bytes):
+    ├── type 1: IPv4 (4 bytes)
+    ├── type 2: IPv6 (16 bytes)
+    ├── type 3: Tor v2 (10 bytes, 已棄用)
+    ├── type 4: Tor v3 (35 bytes)
+    └── type 5: DNS hostname`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 查詢</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`gossip_timestamp_filter (type: 265)
+├── chain_hash (32 bytes)
+├── first_timestamp (4 bytes)
+└── timestamp_range (4 bytes)
+
+用於過濾接收的 gossip：
+- 只接收 timestamp 在指定範圍內的訊息
+- 減少同步時的資料量
+
+query_channel_range (type: 263)
+├── chain_hash (32 bytes)
+├── first_blocknum (4 bytes)
+└── number_of_blocks (4 bytes)
+
+reply_channel_range (type: 264)
+├── chain_hash (32 bytes)
+├── first_blocknum (4 bytes)
+├── number_of_blocks (4 bytes)
+├── sync_complete (1 byte)
+├── len (2 bytes)
+└── encoded_short_ids (len bytes)`}</pre>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/bolt-onion" class="text-yellow-600 dark:text-yellow-400 hover:underline">洋蔥路由</a>
+      如何保護支付隱私。
+    </p>
+  </div>
+</ArticleLayout>

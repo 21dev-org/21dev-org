@@ -1,0 +1,346 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="發票格式"
+  description="深入理解閃電網路 BOLT 11 發票格式，以及新一代 BOLT 12 Offers 協議。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '發票格式' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '洋蔥路由', href: '/tech/lightning/bolt-onion' }}
+  nextPage={{ title: '路由與尋路', href: '/tech/lightning/routing' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 11 發票</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BOLT 11 定義了閃電網路支付請求的標準格式。發票包含支付所需的所有資訊，
+    使用 Bech32 編碼，易於複製分享和 QR 碼掃描。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`BOLT 11 發票範例：
+
+lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl
+2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5
+tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n
+7erqz25le42c4u4ecky03ylcqca784w
+
+結構：
+lnbc    - 前綴（mainnet）
+1       - 金額（可選）
+p...    - 標籤化資料
+8rkx... - 簽名`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`BOLT 11 發票結構：
+
+┌──────────────────────────────────────────────┐
+│ 前綴 (prefix)                                │
+│   ln + 網路:                                 │
+│   lnbc  - 比特幣主網                         │
+│   lntb  - 測試網                             │
+│   lnbcrt - regtest                           │
+│   lnsb  - signet                             │
+├──────────────────────────────────────────────┤
+│ 金額 (可選)                                  │
+│   數字 + 乘數:                               │
+│   m = milli (0.001)                          │
+│   u = micro (0.000001)                       │
+│   n = nano (0.000000001)                     │
+│   p = pico (0.000000000001)                  │
+│                                              │
+│   例: 2500u = 2500 micro = 250000 sats       │
+├──────────────────────────────────────────────┤
+│ 時間戳 (timestamp)                           │
+│   發票創建時間 (UNIX 秒)                     │
+├──────────────────────────────────────────────┤
+│ 標籤化資料 (tagged fields)                   │
+│   各種支付資訊...                            │
+├──────────────────────────────────────────────┤
+│ 簽名 (signature)                             │
+│   接收方節點簽名                             │
+└──────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤化欄位</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`標籤化欄位格式：
+type (5 bits) + data_length (10 bits) + data
+
+常用標籤：
+
+p (1): payment_hash (52 chars, 256 bits)
+       SHA256 支付哈希，必須
+
+s (16): payment_secret (52 chars, 256 bits)
+        防止探測攻擊
+
+d (13): description (variable)
+        UTF-8 描述文字
+
+h (23): description_hash (52 chars)
+        長描述的哈希
+
+x (6): expiry (variable)
+       過期秒數，預設 3600 (1 小時)
+
+c (24): min_final_cltv_expiry (variable)
+        最小 CLTV 差值，預設 18
+
+n (19): payee node_id (53 chars)
+        接收方公鑰（可從簽名恢復）
+
+r (3): routing hint
+       私有通道路由資訊
+
+f (9): fallback address
+       鏈上備用地址
+
+9 (5): feature bits
+       支援的功能`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由提示</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當接收方只有私有通道時，需要提供路由提示：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`路由提示結構 (r 標籤)：
+
+每個提示包含一個通道：
+├── pubkey (33 bytes): 入口節點公鑰
+├── short_channel_id (8 bytes)
+├── fee_base_msat (4 bytes)
+├── fee_proportional_millionths (4 bytes)
+└── cltv_expiry_delta (2 bytes)
+
+範例場景：
+Carol 只有私有通道連到 Bob
+
+發票包含提示：
+r = [
+  {
+    pubkey: Bob 的公鑰,
+    short_channel_id: Bob-Carol 通道,
+    fee: ...,
+    cltv: ...
+  }
+]
+
+發送方路由：
+Alice → ... → Bob → Carol (私有通道)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解析發票</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`解析範例（使用 lncli）：
+
+$ lncli decodepayreq lnbc...
+
+{
+  "destination": "03...公鑰",
+  "payment_hash": "0001020304...",
+  "num_satoshis": "100000",
+  "timestamp": "1609459200",
+  "expiry": "3600",
+  "description": "Coffee payment",
+  "cltv_expiry": "18",
+  "features": {
+    "9": { "name": "tlv-onion" },
+    "14": { "name": "payment-addr" },
+    "17": { "name": "multi-path-payments" }
+  },
+  "payment_addr": "abcd..."
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 11 限制</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">一次性使用</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        每次支付需要生成新發票，不適合訂閱或捐款場景。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">需要交互</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        發送方必須先從接收方獲取發票，無法離線支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">會過期</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        發票有過期時間，過期後無法支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">無退款機制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        沒有標準的退款或部分退款協議。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 Offers</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BOLT 12 (Offers) 是新一代支付協議，解決了 BOLT 11 的諸多限制：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`BOLT 12 核心概念：
+
+Offer (要約)：
+- 可重複使用的支付請求模板
+- 類似「捐款連結」
+- 不包含 payment_hash（每次請求時生成）
+
+lno1qcp4256ypq...
+
+流程：
+1. 商家發布 Offer
+2. 付款人發送 invoice_request（通過洋蔥訊息）
+3. 商家回應 invoice（帶 payment_hash）
+4. 付款人支付
+
+優點：
+- 可重複使用（訂閱、捐款）
+- 支持退款（refund 訊息）
+- 增強隱私（接收方可用盲化路徑）
+- 無需中心化服務器`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offer 結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Offer TLV 欄位：
+
+offer_chains (2): 支援的區塊鏈
+offer_metadata (4): 商家自訂資料
+offer_currency (6): 貨幣代碼 (如 USD)
+offer_amount (8): 金額（如使用法幣計價）
+offer_description (10): 描述
+offer_features (12): 功能位
+offer_absolute_expiry (14): 絕對過期時間
+offer_paths (16): 盲化路徑
+offer_issuer (18): 發行者名稱
+offer_quantity_max (20): 最大數量
+offer_node_id (22): 節點 ID
+
+invoice_request 額外欄位：
+invreq_metadata (0): 請求者資料
+invreq_chain (80): 選擇的鏈
+invreq_amount (82): 支付金額
+invreq_features (84): 功能
+invreq_quantity (86): 數量
+invreq_payer_id (88): 付款人臨時公鑰
+invreq_payer_note (89): 付款人備註`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 退款</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`退款流程：
+
+1. 原始支付
+   付款人 → 商家 (支付 invoice)
+
+2. 退款請求
+   商家創建 refund（類似 offer 的反向）
+   發送給原付款人
+
+3. 退款 invoice
+   付款人發送 invoice_request
+   商家回應 invoice
+
+4. 退款支付
+   商家支付 invoice
+
+退款 TLV：
+refund_for: 原始 payment_hash
+refund_amount: 退款金額`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私增強</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`BOLT 12 隱私特性：
+
+1. 盲化路徑
+   - Offer 可包含盲化路徑
+   - 付款人無法識別接收方真實節點
+   - 適合匿名捐款
+
+2. 洋蔥訊息
+   - invoice_request 通過洋蔥網路傳送
+   - 不需要直接連接接收方
+
+3. 付款人臨時身份
+   - 每次請求使用新的 payer_id
+   - 不洩露付款人真實節點 ID
+
+4. 無 payment_hash 關聯
+   - 每次支付使用新的 hash
+   - 無法關聯同一 offer 的多次支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">比較</h2>
+
+  <div class="not-prose mb-8 overflow-x-auto">
+    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden">
+      <thead class="bg-[var(--bg-secondary)]">
+        <tr>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">特性</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">BOLT 11</th>
+          <th class="px-4 py-3 text-left text-[var(--text-primary)]">BOLT 12</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">重複使用</td>
+          <td class="px-4 py-3 text-red-500">❌ 一次性</td>
+          <td class="px-4 py-3 text-green-500">✓ 可重複</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">退款</td>
+          <td class="px-4 py-3 text-red-500">❌ 無標準</td>
+          <td class="px-4 py-3 text-green-500">✓ 原生支持</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">接收方隱私</td>
+          <td class="px-4 py-3 text-yellow-500">⚠️ 有限</td>
+          <td class="px-4 py-3 text-green-500">✓ 盲化路徑</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">離線接收</td>
+          <td class="px-4 py-3 text-red-500">❌ 需在線</td>
+          <td class="px-4 py-3 text-yellow-500">⚠️ 需處理請求</td>
+        </tr>
+        <tr class="border-t border-[var(--border-default)]">
+          <td class="px-4 py-3 text-[var(--text-secondary)]">採用狀態</td>
+          <td class="px-4 py-3 text-green-500">✓ 廣泛</td>
+          <td class="px-4 py-3 text-yellow-500">⚠️ 逐步採用中</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/routing" class="text-yellow-600 dark:text-yellow-400 hover:underline">路由與尋路</a>
+      如何找到支付路徑。
+    </p>
+  </div>
+</ArticleLayout>

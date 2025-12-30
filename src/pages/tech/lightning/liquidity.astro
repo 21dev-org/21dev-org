@@ -1,0 +1,316 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="流動性管理"
+  description="了解閃電網路流動性的概念，以及如何有效管理通道餘額以確保支付順利。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '流動性管理' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: '路由與尋路', href: '/tech/lightning/routing' }}
+  nextPage={{ title: '通道管理', href: '/tech/lightning/channel-management' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是流動性？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    在閃電網路中，「流動性」指的是你在通道中可用於支付的資金。
+    由於支付通道是雙向的，你的流動性決定了你能發送和接收多少資金。
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`流動性類型：
+
+通道容量: 1,000,000 sats
+┌────────────────────────────────────────┐
+│         通道總容量                      │
+├───────────────────┬────────────────────┤
+│   本地餘額        │    遠端餘額        │
+│   600,000 sats    │    400,000 sats    │
+├───────────────────┼────────────────────┤
+│   出站流動性      │    入站流動性      │
+│   (可發送)        │    (可接收)        │
+└───────────────────┴────────────────────┘
+
+出站流動性 (Outbound) = 本地餘額
+入站流動性 (Inbound) = 遠端餘額`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>關鍵洞見：</strong>
+      開啟通道時你提供的資金是「出站流動性」。
+      要獲得「入站流動性」，需要別人向你開通道，或者你先花掉一些資金。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">流動性問題</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">缺乏入站流動性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        剛開通道的節點只有出站流動性，無法接收大額支付。商家經常遇到這個問題。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">通道不平衡</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        經常收款或付款會導致通道餘額偏向一側，影響雙向支付能力。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">流動性碎片化</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        資金分散在多個小通道，單個通道無法處理大額支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">路由節點耗盡</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        高流量的路由節點某一側流動性被耗盡，無法繼續轉發。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">獲取入站流動性</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 請求入站通道</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`方式：請別人向你開通道
+
+免費方式：
+- 加入閃電網路社群
+- 提供有價值的節點（好的連接性）
+- 參與流動性交換群組
+
+付費方式：
+- 流動性市場（Magma、Pool、Amboss）
+- LSP（Lightning Service Provider）
+- 通道租賃服務`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 使用 LSP</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`LSP (Lightning Service Provider)：
+
+服務內容：
+- 自動開啟入站通道
+- 按需流動性（JIT channels）
+- 流動性管理
+
+常見 LSP：
+- ACINQ (Phoenix)
+- Breez
+- Voltage
+- Zero Fee Routing
+
+JIT (Just-In-Time) 通道：
+1. 收到支付請求
+2. LSP 即時開通道
+3. 通道費從支付中扣除
+4. 用戶無需等待確認`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 流動性市場</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`流動性市場平台：
+
+Lightning Pool (Lightning Labs):
+- 拍賣模式
+- 購買/出租通道
+- APY 計費
+
+Magma (Amboss):
+- P2P 流動性市場
+- 固定價格或拍賣
+- 信譽系統
+
+定價因素：
+- 通道大小
+- 租賃期限
+- 對方節點質量
+- 市場供需`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道再平衡</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當通道不平衡時，可以通過「再平衡」來調整餘額分布：
+  </p>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">循環再平衡</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`循環再平衡原理：
+
+目標：將通道 A 的資金移到通道 B
+
+你的節點 ─── 通道A ─── Node1
+    │                      │
+    │                      │
+通道B                     │
+    │                      │
+    └─── Node2 ──────────┘
+
+步驟：
+1. 通過通道 B 發送給自己
+2. 經由 Node2 → Node1 路由
+3. 從通道 A 回到自己
+
+結果：
+- 通道 A 的本地餘額減少
+- 通道 B 的本地餘額增加
+- 支付路由手續費
+
+工具：
+- lncli: bos rebalance
+- Core Lightning: rebalance plugin
+- RTL, ThunderHub 等 GUI`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">潛水艇交換</h3>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`潛水艇交換 (Submarine Swap)：
+
+Loop Out (增加入站)：
+閃電 → 鏈上
+1. 發送閃電支付給交換服務
+2. 服務發送鏈上 BTC 給你
+3. 你的出站流動性變成入站
+
+Loop In (增加出站)：
+鏈上 → 閃電
+1. 發送鏈上 BTC 給交換服務
+2. 服務發送閃電支付給你
+3. 你獲得更多出站流動性
+
+服務提供商：
+- Loop (Lightning Labs)
+- Boltz
+- Deezy`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Splicing</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Splicing 允許在不關閉通道的情況下調整容量：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Splice-In (增加容量)：
+1. 添加更多資金到現有通道
+2. 創建新的 funding tx
+3. 通道繼續運作，無需中斷
+
+原通道: 1 BTC → 新通道: 2 BTC
+
+Splice-Out (減少容量)：
+1. 從通道中提取部分資金
+2. 資金發送到鏈上地址
+3. 通道容量減少但繼續運作
+
+原通道: 2 BTC → 新通道: 1.5 BTC + 0.5 BTC 鏈上
+
+優點：
+- 無需關閉/重開通道
+- 節省鏈上手續費
+- 保持支付路由連續性
+
+狀態：Core Lightning 已支持，LND 開發中`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由節點策略</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`路由節點流動性策略：
+
+1. 動態手續費
+   - 低流動性方向提高手續費
+   - 高流動性方向降低手續費
+   - 自動引導流量平衡
+
+2. 通道選擇
+   - 選擇高流量的對等方
+   - 避免死胡同節點
+   - 建立三角連接
+
+3. 再平衡時機
+   - 設定閾值（如 20%-80%）
+   - 低於閾值自動再平衡
+   - 考慮手續費成本效益
+
+4. 監控工具
+   - 追蹤每個通道的流量
+   - 識別瓶頸通道
+   - 分析利潤率`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">流動性成本</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`流動性成本計算：
+
+開通道成本：
+- 鏈上手續費（開啟）
+- 資金佔用成本（機會成本）
+- 鏈上手續費（關閉）
+
+維護成本：
+- 再平衡手續費
+- 監控和管理時間
+
+收入：
+- 路由手續費
+- 流動性租賃收入
+
+ROI 計算：
+收益率 = (路由收入 - 成本) / 資金投入
+
+典型路由節點：
+- APY 1-5%（視市場而定）
+- 需要積極管理`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">多樣化連接</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        與不同類型的節點建立通道：大型路由節點、商家、交易所等。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">適當的通道大小</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道太小無法處理正常支付，太大則資金效率低。根據需求選擇。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">定期監控</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用工具監控通道餘額，在失衡嚴重前採取行動。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">成本意識</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        再平衡有成本，只在必要時進行。考慮使用動態手續費替代。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/channel-management" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道管理</a>
+      的具體操作和工具。
+    </p>
+  </div>
+</ArticleLayout>

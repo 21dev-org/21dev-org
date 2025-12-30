@@ -1,0 +1,259 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="支付通道"
+  description="深入理解閃電網路支付通道的運作原理，包括資金鎖定、狀態更新和通道關閉。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: '支付通道' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  nextPage={{ title: 'HTLC 詳解', href: '/tech/lightning/htlc' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是支付通道？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    支付通道是兩個節點之間建立的「鏈下」連接，允許雙方進行無限次即時交易，
+    而無需每次都在比特幣區塊鏈上廣播。只有開啟和關閉通道時才需要鏈上交易。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心概念：</strong>
+      支付通道本質上是一個 2-of-2 多簽地址，雙方都必須同意才能移動資金。
+      通過不斷更新「承諾交易」來反映最新餘額，實現即時支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道生命週期</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 開啟通道</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    開啟通道需要一筆鏈上交易（funding transaction），將資金鎖定到 2-of-2 多簽地址：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`開啟通道流程：
+
+1. Alice 想與 Bob 建立通道
+2. 雙方交換公鑰，創建 2-of-2 多簽腳本
+3. Alice 創建 funding tx，鎖定 0.1 BTC 到多簽地址
+4. 在廣播 funding tx 之前，雙方先簽署初始承諾交易
+5. funding tx 上鏈並確認後，通道正式開啟
+
+多簽腳本：
+OP_2 <Alice_pubkey> <Bob_pubkey> OP_2 OP_CHECKMULTISIG`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 使用通道</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    通道開啟後，雙方可以通過更新承諾交易來進行支付：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`初始狀態：
+┌─────────────────────────────────┐
+│      通道容量: 0.1 BTC          │
+├─────────────────────────────────┤
+│ Alice: 0.1 BTC  │  Bob: 0 BTC   │
+└─────────────────────────────────┘
+
+Alice 支付 0.02 BTC 給 Bob：
+┌─────────────────────────────────┐
+│      通道容量: 0.1 BTC          │
+├─────────────────────────────────┤
+│ Alice: 0.08 BTC │  Bob: 0.02 BTC│
+└─────────────────────────────────┘
+
+每次支付都創建新的承諾交易
+舊的承諾交易被「撤銷」`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 關閉通道</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    關閉通道時，將最終餘額結算回區塊鏈。有三種關閉方式：
+  </p>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">協作關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        雙方同意關閉，創建一筆簡單交易分配餘額。最快、最便宜。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">單方關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        一方廣播最新承諾交易。需要等待時間鎖，對方可以取回資金。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">懲罰關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果一方廣播舊狀態，對方可以使用撤銷密鑰取走全部資金。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">資金交易結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Funding transaction 是開啟通道的鏈上交易：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`Funding Transaction
+├── 輸入
+│   └── Alice 的 UTXO (0.1 BTC + 手續費)
+│
+└── 輸出
+    └── 2-of-2 多簽輸出 (0.1 BTC)
+        P2WSH: OP_2 <A> <B> OP_2 OP_CHECKMULTISIG
+
+特點：
+- 需要等待足夠確認（通常 3-6 個區塊）
+- 確認後通道才能使用
+- funding tx 的 txid 成為通道 ID 的一部分`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道容量與餘額</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">通道容量</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        funding transaction 鎖定的總金額。開啟後固定不變，除非使用 splice-in/out。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">本地/遠端餘額</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        你能花費的金額（本地）和對方的金額（遠端）。隨著支付不斷變化。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`通道餘額示例：
+
+容量: 1,000,000 sats (0.01 BTC)
+┌────────────────────────────────────────┐
+│ 本地餘額      │ 遠端餘額               │
+│ 600,000 sats  │ 400,000 sats           │
+├───────────────┴────────────────────────┤
+│ 出站流動性    │ 入站流動性             │
+│ 600,000 sats  │ 400,000 sats           │
+└────────────────────────────────────────┘
+
+出站流動性 = 你能發送的最大金額
+入站流動性 = 你能接收的最大金額`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">雙向支付</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    支付通道是雙向的，資金可以在雙方之間來回流動：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`雙向支付示例：
+
+初始: Alice 100% ←──────────────→ Bob 0%
+
+Alice 付給 Bob 30%:
+       Alice 70%  ←──────────────→ Bob 30%
+
+Bob 付給 Alice 10%:
+       Alice 80%  ←──────────────→ Bob 20%
+
+資金在通道內來回流動
+不需要任何鏈上交易！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道儲備金</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    閃電網路要求每一方保留一定的「儲備金」，確保有資金可被懲罰：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`通道儲備金規則：
+
+儲備金 = 通道容量的 1%（或協商值）
+
+通道容量: 1,000,000 sats
+儲備金:   10,000 sats (每方)
+
+可用餘額:
+Alice 可花費 = Alice 餘額 - 儲備金
+Bob 可花費   = Bob 餘額 - 儲備金
+
+用途：
+- 確保有資金可被罰沒
+- 防止廣播舊狀態`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手續費</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">鏈上手續費</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    開啟和關閉通道需要支付鏈上手續費：
+  </p>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>• <strong>開啟通道：</strong>funding tx 手續費由開啟方支付</li>
+    <li>• <strong>關閉通道：</strong>承諾交易手續費從通道餘額中預留</li>
+    <li>• <strong>錨點輸出：</strong>允許關閉時動態調整手續費（CPFP）</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">路由手續費</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    當通道用於轉發支付時，可以收取手續費：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]">{`路由手續費結構：
+
+手續費 = base_fee + (amount × fee_rate)
+
+範例：
+base_fee:  1 sat（固定費用）
+fee_rate:  100 ppm（百萬分之一）
+
+轉發 100,000 sats:
+手續費 = 1 + (100,000 × 0.0001) = 11 sats`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全機制</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">時間鎖保護</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        單方關閉時，發起方的資金會被時間鎖定（to_self_delay），
+        給對方時間檢查是否為舊狀態。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">撤銷機制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        每次更新狀態時，雙方交換舊狀態的撤銷密鑰。
+        如果廣播舊狀態，對方可以用撤銷密鑰取走全部資金。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">瞭望塔</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        第三方服務監控區塊鏈，在你離線時代你執行懲罰交易，防止對方作弊。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a href="/tech/lightning/htlc" class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC（哈希時間鎖定合約）</a>
+      如何實現跨通道的原子支付。
+    </p>
+  </div>
+</ArticleLayout>
