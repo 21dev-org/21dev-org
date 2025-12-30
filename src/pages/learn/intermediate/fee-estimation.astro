@@ -1,0 +1,275 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="手續費估算"
+  description="了解比特幣交易手續費的運作原理和估算策略。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/intermediate/" class="hover:text-[var(--text-primary)]">進階知識</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">手續費估算</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              進階
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            手續費估算
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            手續費決定交易被確認的速度。學習如何計算和估算合適的手續費。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">手續費基礎</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            比特幣交易手續費不是按金額計算，而是按交易的「虛擬位元組」(vBytes) 大小計算。
+            礦工優先處理每 vByte 費率較高的交易。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">手續費公式</p>
+            <p class="font-mono text-lg text-bitcoin-500 mb-2">
+              手續費 = 交易大小 (vBytes) × 費率 (sat/vB)
+            </p>
+            <p class="text-sm text-[var(--text-tertiary)]">
+              例如：250 vBytes × 10 sat/vB = 2,500 sats
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">虛擬位元組 (vBytes)</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            SegWit 引入了「權重」概念。witness 數據享有 75% 折扣。
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">數據類型</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">權重</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">基礎數據</td>
+                  <td class="py-2 font-mono">4 WU/byte</td>
+                  <td class="py-2">版本、輸入、輸出、locktime</td>
+                </tr>
+                <tr>
+                  <td class="py-2">Witness 數據</td>
+                  <td class="py-2 font-mono">1 WU/byte</td>
+                  <td class="py-2">簽章和公鑰（SegWit）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+            <p class="text-[var(--text-tertiary)] mb-2"># vBytes 計算</p>
+            <p class="text-[var(--text-secondary)]">vBytes = weight / 4</p>
+            <p class="text-[var(--text-tertiary)] mt-2 mb-2"># 區塊限制</p>
+            <p class="text-[var(--text-secondary)]">最大權重 = 4,000,000 WU ≈ 1,000,000 vBytes</p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">交易大小估算</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            不同地址類型的交易大小差異很大：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">輸入類型</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">大小</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">相對成本</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">P2PKH (1...)</td>
+                  <td class="py-2 font-mono">~148 vB</td>
+                  <td class="py-2">100%</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">P2SH-P2WPKH (3...)</td>
+                  <td class="py-2 font-mono">~91 vB</td>
+                  <td class="py-2">61%</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">P2WPKH (bc1q...)</td>
+                  <td class="py-2 font-mono">~68 vB</td>
+                  <td class="py-2">46%</td>
+                </tr>
+                <tr>
+                  <td class="py-2">P2TR (bc1p...)</td>
+                  <td class="py-2 font-mono">~57.5 vB</td>
+                  <td class="py-2">39%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+            <p class="text-sm text-green-700 dark:text-green-400">
+              <strong>省錢秘訣：</strong> 使用 Taproot (bc1p) 地址可以節省高達 61% 的手續費！
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">記憶池 (Mempool)</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            未確認的交易在記憶池中等待被打包。礦工從記憶池中選擇費率最高的交易來填滿區塊。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">記憶池狀態對費率的影響</p>
+            <div class="grid md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p class="text-green-500 font-bold">低擁堵</p>
+                <p class="text-[var(--text-secondary)]">1-5 sat/vB 即可確認</p>
+              </div>
+              <div>
+                <p class="text-yellow-500 font-bold">中等擁堵</p>
+                <p class="text-[var(--text-secondary)]">10-30 sat/vB 建議</p>
+              </div>
+              <div>
+                <p class="text-red-500 font-bold">高擁堵</p>
+                <p class="text-[var(--text-secondary)]">50+ sat/vB 可能需要</p>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">費率估算方法</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 歷史區塊分析</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            分析最近幾個區塊中被確認的交易費率，推斷當前需要的費率。
+            Bitcoin Core 使用這種方法提供 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">estimatesmartfee</code> RPC。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 記憶池分析</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            直接分析當前記憶池中的交易，按費率排序，估算需要多高的費率才能在下一個區塊被確認。
+            mempool.space 使用這種方法。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">3. 確認時間目標</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            根據希望在多少個區塊內確認，動態調整費率建議：
+          </p>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• <strong>下一個區塊</strong>：最高費率，緊急交易</li>
+            <li>• <strong>1 小時內</strong>：中等費率（約 6 個區塊）</li>
+            <li>• <strong>1 天內</strong>：低費率，可以等待</li>
+            <li>• <strong>不急</strong>：最低費率，週末或夜間可能確認</li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">費率查詢工具</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">mempool.space</strong>：最常用，即時記憶池視覺化</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">bitcoinfees.net</strong>：簡單的費率建議</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">自建節點</strong>：<code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">bitcoin-cli estimatesmartfee &lt;blocks&gt;</code></span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見錯誤</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span>設置過低的費率，導致交易長時間不確認</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span>在高擁堵時段發送大額交易（週末通常較便宜）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span>不考慮 UTXO 合併（低費率時段可以整理 UTXO）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span>使用舊地址類型，多付不必要的手續費</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">省錢策略</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>使用 Native SegWit 或 Taproot 地址</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>在低費率時段合併小額 UTXO</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>批量處理多筆付款（減少交易數量）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>支援 RBF，可在需要時加速交易</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>使用閃電網路處理小額支付</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 了解 <a href="/learn/intermediate/rbf-cpfp" class="underline">RBF 和 CPFP</a> 交易加速技術，
+              以及 <a href="/bips/bip-0125" class="underline">BIP-125 RBF</a> 標準。
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/intermediate/timelock" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：時間鎖機制
+          </Button>
+          <Button href="/learn/intermediate/rbf-cpfp" variant="primary">
+            下一篇：交易加速
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

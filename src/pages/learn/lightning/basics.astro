@@ -1,0 +1,285 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="閃電網路基礎"
+  description="了解閃電網路的設計目標、架構概念和基本運作原理。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/lightning/" class="hover:text-[var(--text-primary)]">閃電網路</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">基礎</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              閃電網路
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            閃電網路基礎
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            閃電網路讓比特幣能夠實現即時支付和極低手續費，是比特幣擴容的關鍵技術。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼需要閃電網路？</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            比特幣主鏈每秒只能處理約 7 筆交易，遠低於 Visa 等傳統支付網路。
+            閃電網路作為 Layer 2 解決方案，將大量交易移到鏈下處理，只在必要時才結算到主鏈。
+          </p>
+
+          <div class="not-prose mb-8 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">比特幣主鏈</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">閃電網路</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">確認時間</td>
+                  <td class="py-2">約 10 分鐘</td>
+                  <td class="py-2 text-green-500 font-semibold">毫秒級</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">手續費</td>
+                  <td class="py-2">數千聰起</td>
+                  <td class="py-2 text-green-500 font-semibold">1 聰以下</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">吞吐量</td>
+                  <td class="py-2">~7 TPS</td>
+                  <td class="py-2 text-green-500 font-semibold">理論無限</td>
+                </tr>
+                <tr>
+                  <td class="py-2">最小金額</td>
+                  <td class="py-2">546 聰（粉塵限制）</td>
+                  <td class="py-2 text-green-500 font-semibold">1 聰</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">核心概念</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">支付通道</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            支付通道是兩個參與者之間的資金鎖定。開啟通道時，雙方將資金鎖定在鏈上的多簽地址中。
+            之後的所有支付都在鏈下進行，只有關閉通道時才將最終餘額結算到鏈上。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">通道生命週期</p>
+            <div class="flex items-center justify-between text-sm text-[var(--text-secondary)]">
+              <div class="text-center">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-bitcoin-500/10 flex items-center justify-center">
+                  <span class="text-bitcoin-500 font-bold">1</span>
+                </div>
+                <p>開啟通道</p>
+                <p class="text-xs text-[var(--text-tertiary)]">鏈上交易</p>
+              </div>
+              <div class="flex-1 border-t border-dashed border-[var(--border-default)] mx-4"></div>
+              <div class="text-center">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <span class="text-green-500 font-bold">2</span>
+                </div>
+                <p>鏈下支付</p>
+                <p class="text-xs text-[var(--text-tertiary)]">無限次數</p>
+              </div>
+              <div class="flex-1 border-t border-dashed border-[var(--border-default)] mx-4"></div>
+              <div class="text-center">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-bitcoin-500/10 flex items-center justify-center">
+                  <span class="text-bitcoin-500 font-bold">3</span>
+                </div>
+                <p>關閉通道</p>
+                <p class="text-xs text-[var(--text-tertiary)]">鏈上交易</p>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">多跳路由</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            你不需要與每個人都開通道。閃電網路形成一個互聯的支付網路，
+            透過多跳路由，支付可以經過多個中間節點到達最終收款人。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">多跳支付示例</p>
+            <div class="flex items-center justify-center gap-2 text-sm text-[var(--text-secondary)]">
+              <div class="px-3 py-2 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                Alice
+              </div>
+              <span class="text-yellow-500">→</span>
+              <div class="px-3 py-2 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                Bob
+              </div>
+              <span class="text-yellow-500">→</span>
+              <div class="px-3 py-2 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                Carol
+              </div>
+              <span class="text-yellow-500">→</span>
+              <div class="px-3 py-2 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                Dave
+              </div>
+            </div>
+            <p class="text-xs text-center text-[var(--text-tertiary)] mt-3">
+              Alice 支付給 Dave，即使沒有直接通道
+            </p>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">HTLC</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            Hash Time-Locked Contract（哈希時間鎖定合約）確保多跳支付的原子性。
+            要麼所有中間節點都成功轉發，要麼整個支付回滾，不會有人損失資金。
+          </p>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">技術基礎</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            閃電網路建立在比特幣的幾個關鍵技術之上：
+          </p>
+
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">多簽交易</strong>：通道資金由 2-of-2 多簽控制</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">時間鎖</strong>：CLTV 和 CSV 確保安全結算</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">哈希鎖</strong>：HTLC 實現原子化支付</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">SegWit</strong>：解決交易可塑性，是閃電網路的前提</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">節點類型</h2>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">特點</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">適用場景</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">完整節點</td>
+                  <td class="py-2">運行 LND/CLN/Eclair，完全自主</td>
+                  <td class="py-2">商家、路由節點</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">LSP 客戶端</td>
+                  <td class="py-2">依賴 LSP 提供流動性</td>
+                  <td class="py-2">日常用戶</td>
+                </tr>
+                <tr>
+                  <td class="py-2 font-semibold">託管錢包</td>
+                  <td class="py-2">資金由第三方保管</td>
+                  <td class="py-2">新手入門</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見閃電錢包</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">Phoenix</strong>：自託管，使用 LSP，用戶友好</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">Breez</strong>：自託管，商家解決方案</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">Zeus</strong>：連接自己的節點</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-yellow-500">△</span>
+              <span><strong class="text-[var(--text-primary)]">Wallet of Satoshi</strong>：託管，最簡單</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>安全提醒：</strong> 優先選擇自託管（non-custodial）錢包。
+              託管錢包雖然方便，但你不持有私鑰，存在交易對手風險。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">閃電網路的限制</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">•</span>
+              <span>需要線上接收支付</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">•</span>
+              <span>通道容量限制單筆支付金額</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">•</span>
+              <span>開關通道需要鏈上手續費</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">•</span>
+              <span>流動性管理較為複雜</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 了解 <a href="/learn/lightning/channels" class="underline">支付通道原理</a>，
+              深入理解閃電網路的核心機制。
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/lightning/" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            返回閃電網路
+          </Button>
+          <Button href="/learn/lightning/channels" variant="primary">
+            下一篇：支付通道
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

@@ -1,0 +1,223 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+
+const articles = [
+  {
+    title: '閃電網路基礎',
+    description: '了解閃電網路的設計目標、架構概念和基本運作原理。',
+    href: '/learn/lightning/basics',
+    readTime: '15 分鐘',
+  },
+  {
+    title: '支付通道原理',
+    description: '深入理解支付通道的開啟、更新和關閉機制，以及承諾交易的運作方式。',
+    href: '/learn/lightning/channels',
+    readTime: '20 分鐘',
+  },
+  {
+    title: 'HTLC 詳解',
+    description: '學習 Hash Time-Locked Contract 如何實現跨通道的原子化支付。',
+    href: '/learn/lightning/htlc',
+    readTime: '18 分鐘',
+  },
+  {
+    title: '路由與尋路',
+    description: '了解閃電網路如何在多個節點之間找到最佳支付路徑。',
+    href: '/learn/lightning/routing',
+    readTime: '15 分鐘',
+  },
+  {
+    title: '發票格式 (BOLT-11)',
+    description: '解析閃電網路發票的結構和編碼方式。',
+    href: '/learn/lightning/invoices',
+    readTime: '12 分鐘',
+  },
+  {
+    title: '閃電網路服務商 (LSP)',
+    description: '了解 LSP 如何簡化閃電網路使用，提供流動性和通道管理服務。',
+    href: '/learn/lightning/lsp',
+    readTime: '15 分鐘',
+  },
+];
+---
+
+<PageLayout
+  title="閃電網路"
+  description="學習比特幣的 Layer 2 擴容方案，實現快速、低費用的微支付。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]">
+    <div class="container-wide">
+      <nav class="mb-8" aria-label="麵包屑">
+        <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+          <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+          <li>/</li>
+          <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+          <li>/</li>
+          <li class="text-[var(--text-primary)]">閃電網路</li>
+        </ol>
+      </nav>
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 mb-4">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13 3L4 14h7l-2 7 9-11h-7l2-7z" />
+          </svg>
+          Layer 2
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          閃電網路
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          閃電網路是建構在比特幣之上的 Layer 2 支付協議，
+          實現即時確認和極低手續費的交易，讓比特幣成為真正的日常支付手段。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features -->
+  <section class="py-8 border-b border-[var(--border-default)]">
+    <div class="container-wide">
+      <div class="grid md:grid-cols-4 gap-6 text-sm">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-green-500/10">
+            <svg class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <span class="text-[var(--text-primary)]">即時確認</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-blue-500/10">
+            <svg class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <span class="text-[var(--text-primary)]">極低手續費</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-purple-500/10">
+            <svg class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <span class="text-[var(--text-primary)]">隱私保護</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-bitcoin-500/10">
+            <svg class="h-5 w-5 text-bitcoin-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <span class="text-[var(--text-primary)]">高可擴展性</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Overview -->
+  <section class="py-12 bg-[var(--bg-secondary)]">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-6">概覽</h2>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="p-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-default)]">
+            <h3 class="font-semibold text-[var(--text-primary)] mb-2">Layer 1 (鏈上)</h3>
+            <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+              <li>• 開啟/關閉通道</li>
+              <li>• 結算最終狀態</li>
+              <li>• 安全保障</li>
+            </ul>
+          </div>
+          <div class="p-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-default)]">
+            <h3 class="font-semibold text-[var(--text-primary)] mb-2">Layer 2 (鏈下)</h3>
+            <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+              <li>• 即時支付</li>
+              <li>• 無限交易次數</li>
+              <li>• 極低費用</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Articles -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto space-y-6">
+        {articles.map((article, index) => (
+          <a
+            href={article.href}
+            class="group block p-6 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] hover:border-yellow-500 transition-colors"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-yellow-500 text-white flex items-center justify-center font-bold">
+                {index + 1}
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-[var(--text-primary)] group-hover:text-yellow-500 transition-colors mb-2">
+                  {article.title}
+                </h2>
+                <p class="text-[var(--text-secondary)] mb-3">
+                  {article.description}
+                </p>
+                <span class="text-sm text-[var(--text-tertiary)]">
+                  閱讀時間：{article.readTime}
+                </span>
+              </div>
+              <svg class="h-5 w-5 text-[var(--text-tertiary)] group-hover:text-yellow-500 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Prerequisites -->
+  <section class="py-12 border-t border-[var(--border-default)]">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">建議先修知識</h2>
+        <div class="flex flex-wrap gap-3">
+          <a href="/learn/intermediate/transaction-structure" class="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:border-bitcoin-500 hover:text-bitcoin-500">
+            交易結構
+          </a>
+          <a href="/learn/intermediate/script-basics" class="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:border-bitcoin-500 hover:text-bitcoin-500">
+            腳本系統
+          </a>
+          <a href="/learn/intermediate/timelock" class="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:border-bitcoin-500 hover:text-bitcoin-500">
+            時間鎖機制
+          </a>
+          <a href="/learn/intermediate/multisig" class="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:border-bitcoin-500 hover:text-bitcoin-500">
+            多簽錢包
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Resources -->
+  <section class="py-16 md:py-24 bg-[var(--bg-secondary)]">
+    <div class="container-wide text-center">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">
+        相關資源
+      </h2>
+      <p class="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
+        探索閃電網路的官方規格和開發者資源。
+      </p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="https://github.com/lightning/bolts" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center px-4 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-primary)] hover:border-bitcoin-500 transition-colors">
+          BOLT 規格
+        </a>
+        <Button href="/learn/" variant="ghost">
+          返回學習中心
+        </Button>
+      </div>
+    </div>
+  </section>
+</PageLayout>

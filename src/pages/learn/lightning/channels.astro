@@ -1,0 +1,287 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="支付通道原理"
+  description="深入理解支付通道的開啟、更新和關閉機制，以及承諾交易的運作方式。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/lightning/" class="hover:text-[var(--text-primary)]">閃電網路</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">支付通道</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              閃電網路
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：20 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            支付通道原理
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            支付通道是閃電網路的基礎構建塊。了解它如何使用多簽和時間鎖實現安全的鏈下支付。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是支付通道？</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            支付通道是兩方之間建立的持續支付關係。雙方將資金鎖定在鏈上的 2-of-2 多簽地址中，
+            然後透過交換簽章的交易來更新各自的餘額，無需每次都上鏈。
+          </p>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">開啟通道</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">1. 資金交易 (Funding Transaction)</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            開啟通道需要創建一筆鏈上交易，將資金發送到 2-of-2 多簽地址。
+            這筆交易被稱為「資金交易」，需要等待確認後通道才正式開啟。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">資金交易示例</p>
+            <div class="font-mono text-sm text-[var(--text-secondary)]">
+              <p class="text-[var(--text-tertiary)] mb-2"># Alice 開啟 1 BTC 通道給 Bob</p>
+              <p>輸入: Alice 的 UTXO (1.0005 BTC)</p>
+              <p>輸出: 2-of-2 多簽 (Alice + Bob) = 1 BTC</p>
+              <p>輸出: 找零給 Alice = 0.0004 BTC</p>
+              <p class="text-[var(--text-tertiary)]">手續費: 0.0001 BTC</p>
+            </div>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">2. 初始承諾交易</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            在廣播資金交易之前，雙方必須先交換簽章的「承諾交易」。
+            承諾交易定義了如何分配通道中的資金，確保在任何時候都可以單方面關閉通道。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">初始狀態</p>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+              <div class="p-3 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                <p class="text-[var(--text-tertiary)] mb-1">Alice 的視角</p>
+                <p class="text-[var(--text-secondary)]">Alice: 1 BTC</p>
+                <p class="text-[var(--text-secondary)]">Bob: 0 BTC</p>
+              </div>
+              <div class="p-3 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                <p class="text-[var(--text-tertiary)] mb-1">Bob 的視角</p>
+                <p class="text-[var(--text-secondary)]">Alice: 1 BTC</p>
+                <p class="text-[var(--text-secondary)]">Bob: 0 BTC</p>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">承諾交易結構</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            承諾交易是閃電網路安全性的核心。每一方都持有不同版本的承諾交易，
+            這些交易設計為：可以單方面廣播，但對方有機會懲罰作弊行為。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">非對稱設計</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            Alice 和 Bob 持有的承諾交易略有不同：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">輸出</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">Alice 版本</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">Bob 版本</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">自己的餘額</td>
+                  <td class="py-2">延遲輸出（to_local）</td>
+                  <td class="py-2">延遲輸出（to_local）</td>
+                </tr>
+                <tr>
+                  <td class="py-2">對方的餘額</td>
+                  <td class="py-2">立即輸出（to_remote）</td>
+                  <td class="py-2">立即輸出（to_remote）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">延遲輸出 (to_local)</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            廣播承諾交易的一方，自己的資金會被鎖定一段時間（例如 144 區塊 ≈ 1 天）。
+            這給了對方時間來檢測並懲罰作弊行為。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <pre class="text-[var(--text-secondary)]">
+# to_local 腳本（簡化版）
+OP_IF
+    &lt;revocation_pubkey&gt;           # 對方可以立即領取（如果我作弊）
+OP_ELSE
+    &lt;to_self_delay&gt;               # 等待 N 個區塊
+    OP_CSV
+    OP_DROP
+    &lt;local_delayed_pubkey&gt;        # 然後我可以領取
+OP_ENDIF</pre>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">更新通道狀態</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            每次支付都會創建新的承諾交易。舊的承諾交易必須被撤銷，否則可能被用來作弊。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">撤銷機制</h3>
+          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+            <li>Alice 想支付 0.1 BTC 給 Bob</li>
+            <li>雙方創建新的承諾交易（Alice: 0.9, Bob: 0.1）</li>
+            <li>Alice 交出舊承諾交易的撤銷密鑰</li>
+            <li>Bob 交出舊承諾交易的撤銷密鑰</li>
+            <li>舊狀態被撤銷，新狀態生效</li>
+          </ol>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>撤銷密鑰：</strong> 如果 Bob 廣播已撤銷的舊承諾交易（試圖作弊），
+              Alice 可以使用 Bob 之前交出的撤銷密鑰，立即領走通道中的所有資金。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">關閉通道</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">協作關閉 (Mutual Close)</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            最理想的情況：雙方同意關閉，創建一筆簡單的結算交易，
+            直接將資金分配給各方，無需等待延遲期。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+            <p class="font-semibold text-green-600 dark:text-green-400 mb-2">協作關閉</p>
+            <ul class="text-sm text-green-700 dark:text-green-400 space-y-1">
+              <li>• 費用最低（一筆簡單交易）</li>
+              <li>• 立即可用（無延遲期）</li>
+              <li>• 雙方友好分手</li>
+            </ul>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">強制關閉 (Force Close)</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            當對方不合作或離線時，可以單方面廣播最新的承諾交易。
+            自己的資金會被延遲鎖定，對方可以立即領取。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">強制關閉</p>
+            <ul class="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+              <li>• 費用較高（需預估未來費率）</li>
+              <li>• 自己的資金需等待延遲期</li>
+              <li>• 對方的資金立即可用</li>
+            </ul>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">懲罰關閉 (Penalty Close)</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            如果對方試圖廣播已撤銷的舊承諾交易（作弊），
+            你可以使用撤銷密鑰在延遲期內領走通道中的所有資金。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+            <p class="font-semibold text-red-600 dark:text-red-400 mb-2">懲罰機制</p>
+            <ul class="text-sm text-red-700 dark:text-red-400 space-y-1">
+              <li>• 作弊者失去所有資金</li>
+              <li>• 需要在延遲期內檢測並響應</li>
+              <li>• 這就是為什麼需要「瞭望塔」服務</li>
+            </ul>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">通道容量和流動性</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            理解通道的容量限制：
+          </p>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• <strong>通道容量</strong>：通道中的總資金</li>
+            <li>• <strong>本地餘額</strong>：你可以發送的金額</li>
+            <li>• <strong>遠端餘額</strong>：你可以接收的金額</li>
+            <li>• 本地 + 遠端 = 通道容量</li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">通道餘額示例</p>
+            <div class="flex items-center gap-4 text-sm">
+              <div class="flex-1">
+                <p class="text-[var(--text-tertiary)] text-xs mb-1">本地（可發送）</p>
+                <div class="h-6 bg-bitcoin-500 rounded-l" style="width: 70%"></div>
+              </div>
+              <div class="flex-1">
+                <p class="text-[var(--text-tertiary)] text-xs mb-1">遠端（可接收）</p>
+                <div class="h-6 bg-blue-500 rounded-r" style="width: 30%"></div>
+              </div>
+            </div>
+            <p class="text-xs text-[var(--text-tertiary)] mt-2 text-center">
+              70% 可發送 / 30% 可接收
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">最佳實踐</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>選擇穩定、信譽良好的節點開通道</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>開通道時預留足夠的鏈上手續費</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>使用瞭望塔服務防止對方作弊</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>定期備份通道狀態</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 了解 <a href="/learn/lightning/htlc" class="underline">HTLC</a>，
+              這是實現多跳支付的關鍵技術。
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/lightning/basics" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：基礎
+          </Button>
+          <Button href="/learn/lightning/htlc" variant="primary">
+            下一篇：HTLC
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

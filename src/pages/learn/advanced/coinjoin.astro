@@ -1,0 +1,549 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="CoinJoin 隱私技術"
+  description="學習 CoinJoin 如何透過交易混合提升比特幣隱私，了解各種協議實作和匿名集概念。"
+>
+  <!-- Hero section -->
+  <section class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]">
+    <div class="container-wide">
+      <nav class="mb-8" aria-label="麵包屑">
+        <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+          <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+          <li>/</li>
+          <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+          <li>/</li>
+          <li><a href="/learn/advanced/" class="hover:text-[var(--text-primary)]">深入技術</a></li>
+          <li>/</li>
+          <li class="text-[var(--text-primary)]">CoinJoin</li>
+        </ol>
+      </nav>
+      <div class="max-w-3xl">
+        <div class="inline-block px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 mb-4">
+          高級
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          CoinJoin 隱私技術
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          CoinJoin 是一種透過合併多個使用者交易來打破交易圖分析的隱私技術。
+          本文將深入介紹其原理、主要協議實作和實務考量。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main content -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <article class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+
+          <!-- Introduction -->
+          <h2>為什麼需要 CoinJoin？</h2>
+
+          <p>
+            比特幣區塊鏈是完全公開的，任何人都可以追蹤交易流向。這種透明性帶來了嚴重的隱私問題：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-red-500/5 border border-red-500/20">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">鏈上隱私威脅</h3>
+            <ul class="space-y-2 text-[var(--text-secondary)]">
+              <li class="flex items-start gap-2">
+                <span class="text-red-500">•</span>
+                <span><strong>交易圖分析</strong>：追蹤資金從一個地址流向另一個地址</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-red-500">•</span>
+                <span><strong>共同輸入啟發法</strong>：假設同一交易的所有輸入屬於同一人</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-red-500">•</span>
+                <span><strong>找零輸出辨識</strong>：透過金額推斷哪個輸出是找零</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-red-500">•</span>
+                <span><strong>地址聚類</strong>：將多個地址關聯到同一實體</span>
+              </li>
+            </ul>
+          </div>
+
+          <p>
+            CoinJoin 的核心想法是打破「共同輸入啟發法」：讓多個不相關的使用者共同建構一筆交易，
+            使分析者無法確定哪個輸入對應哪個輸出。
+          </p>
+
+          <!-- Basic Mechanism -->
+          <h2>基本原理</h2>
+
+          <p>
+            CoinJoin 由 Gregory Maxwell 在 2013 年提出。其核心機制非常簡單：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">CoinJoin 交易結構</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>普通交易：
+Alice: 1 BTC → Alice': 0.7 BTC + 手續費
+Bob:   1 BTC → Bob':   0.8 BTC + 手續費
+
+CoinJoin 交易：
+┌─────────────────────────────────────────┐
+│ 輸入                    輸出            │
+│ ─────                   ─────           │
+│ Alice: 1 BTC     →      0.5 BTC (?)     │
+│ Bob:   1 BTC     →      0.5 BTC (?)     │
+│                  →      0.5 BTC (?)     │
+│                  →      0.3 BTC (找零?) │
+│                  →      0.2 BTC (找零?) │
+└─────────────────────────────────────────┘
+觀察者無法確定哪個 0.5 BTC 屬於誰</code></pre>
+          </div>
+
+          <h3>關鍵特性</h3>
+
+          <ol>
+            <li>
+              <strong>無需信任</strong>：每個參與者只簽署自己的輸入，沒有人能偷取他人資金
+            </li>
+            <li>
+              <strong>等額輸出</strong>：相同金額的輸出無法被區分
+            </li>
+            <li>
+              <strong>原子性</strong>：交易要麼完全成功，要麼完全失敗
+            </li>
+          </ol>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">簽名流程</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// 1. 協調者收集所有輸入和輸出
+inputs = [alice_utxo, bob_utxo, carol_utxo]
+outputs = [
+  alice_output,   // Alice 提供的輸出地址
+  bob_output,     // Bob 提供的輸出地址
+  carol_output,   // Carol 提供的輸出地址
+  alice_change,   // Alice 的找零
+  bob_change,     // Bob 的找零
+]
+
+// 2. 建構未簽名交易
+unsigned_tx = create_transaction(inputs, outputs)
+
+// 3. 每個參與者驗證並簽署自己的輸入
+alice_sig = alice.sign(unsigned_tx, alice_utxo)
+bob_sig = bob.sign(unsigned_tx, bob_utxo)
+carol_sig = carol.sign(unsigned_tx, carol_utxo)
+
+// 4. 組合所有簽名並廣播
+final_tx = combine_signatures(unsigned_tx, [alice_sig, bob_sig, carol_sig])
+broadcast(final_tx)</code></pre>
+          </div>
+
+          <!-- Anonymity Set -->
+          <h2>匿名集 (Anonymity Set)</h2>
+
+          <p>
+            匿名集是衡量 CoinJoin 隱私強度的關鍵指標：
+          </p>
+
+          <div class="not-prose my-8 grid md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+              <h4 class="font-semibold text-[var(--text-primary)] mb-2">前向匿名集</h4>
+              <p class="text-sm text-[var(--text-secondary)]">
+                一個 UTXO 可能來自多少個輸入？如果有 10 個等額輸入，
+                觀察者有 1/10 的機率猜對來源。
+              </p>
+            </div>
+            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+              <h4 class="font-semibold text-[var(--text-primary)] mb-2">後向匿名集</h4>
+              <p class="text-sm text-[var(--text-secondary)]">
+                一個輸入可能對應多少個輸出？這決定了追蹤資金去向的困難度。
+              </p>
+            </div>
+          </div>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">匿名集計算</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>// 假設一筆 CoinJoin 有以下等額輸出
+outputs = [
+  0.1 BTC,  // 等額輸出
+  0.1 BTC,  // 等額輸出
+  0.1 BTC,  // 等額輸出
+  0.1 BTC,  // 等額輸出
+  0.1 BTC,  // 等額輸出
+  0.05 BTC, // 找零（可辨識）
+  0.03 BTC, // 找零（可辨識）
+]
+
+// 等額輸出的匿名集 = 5
+// 找零輸出的匿名集 = 1（可能被關聯到輸入）
+
+// 多輪 CoinJoin 後，匿名集會累積
+// 例如：5 × 5 × 5 = 125（三輪後）</code></pre>
+          </div>
+
+          <!-- Protocols -->
+          <h2>主要協議實作</h2>
+
+          <h3>JoinMarket</h3>
+
+          <p>
+            JoinMarket 採用做市商模式，分為 Maker（提供流動性）和 Taker（發起 CoinJoin）：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">JoinMarket 架構</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>Maker（流動性提供者）：
+┌─────────────────────────────────────┐
+│ • 在訂單簿發布報價                  │
+│ • 提供 UTXO 參與 CoinJoin           │
+│ • 收取少量手續費（約 0.01-0.1%）    │
+│ • 被動等待 Taker 選擇               │
+└─────────────────────────────────────┘
+
+Taker（隱私需求者）：
+┌─────────────────────────────────────┐
+│ • 選擇多個 Maker 參與               │
+│ • 建構 CoinJoin 交易                │
+│ • 支付 Maker 手續費                 │
+│ • 獲得隱私保護                      │
+└─────────────────────────────────────┘
+
+優點：
+• 去中心化，沒有中央協調者
+• Maker 可以賺取收益
+• 任何時候都可以發起 CoinJoin
+
+缺點：
+• 需要技術知識設定
+• Taker 付費，Maker 獲益</code></pre>
+          </div>
+
+          <h3>Wasabi Wallet (WabiSabi)</h3>
+
+          <p>
+            Wasabi Wallet 使用 WabiSabi 協議，這是一種基於 Keyed-Verification Anonymous Credentials 的進階方案：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">WabiSabi 協議</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>WabiSabi 流程：
+
+1. 輸入註冊階段
+   ┌─────────────────────────────────────┐
+   │ 用戶向協調者註冊輸入                │
+   │ 協調者簽發匿名憑證（代表金額）      │
+   │ 憑證隱藏實際金額                    │
+   └─────────────────────────────────────┘
+
+2. 輸出註冊階段
+   ┌─────────────────────────────────────┐
+   │ 用戶透過 Tor 以新身份連接           │
+   │ 使用憑證註冊輸出                    │
+   │ 協調者無法關聯輸入和輸出            │
+   └─────────────────────────────────────┘
+
+3. 簽名階段
+   ┌─────────────────────────────────────┐
+   │ 用戶驗證交易包含自己的輸出          │
+   │ 簽署自己的輸入                      │
+   │ 協調者廣播完整交易                  │
+   └─────────────────────────────────────┘
+
+特點：
+• 支援任意金額（不限於固定面額）
+• 協調者無法學習輸入輸出對應
+• 內建 Tor 匿名網路支援</code></pre>
+          </div>
+
+          <h3>Whirlpool (Samourai)</h3>
+
+          <p>
+            Whirlpool 使用固定面額池（Pool）設計：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Whirlpool 池設計</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>可用池：
+┌─────────────────────────────────────┐
+│ 池名稱        │ 面額      │ 最低輸入 │
+│ ─────────────│───────────│─────────│
+│ Pool 100k    │ 0.001 BTC │ ~0.001  │
+│ Pool 01      │ 0.01 BTC  │ ~0.0101 │
+│ Pool 05      │ 0.05 BTC  │ ~0.0505 │
+│ Pool 5       │ 0.5 BTC   │ ~0.505  │
+└─────────────────────────────────────┘
+
+交易結構（Tx0）：
+┌─────────────────────────────────────┐
+│ 輸入: 用戶原始 UTXO                 │
+│                                     │
+│ 輸出:                               │
+│ • 多個池面額 UTXO（準備混幣）       │
+│ • 協調者手續費                      │
+│ • 找零（送回錢包）                  │
+└─────────────────────────────────────┘
+
+混幣特點：
+• 每輪 5 個等額輸入 → 5 個等額輸出
+• 首次混幣付費，後續免費重混
+• 完美的等額輸出，無找零</code></pre>
+          </div>
+
+          <!-- Equal Output vs PayJoin -->
+          <h2>等額輸出 vs PayJoin</h2>
+
+          <h3>等額輸出 CoinJoin</h3>
+
+          <p>
+            傳統 CoinJoin 要求等額輸出以確保不可區分性：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-green-500/5 border border-green-500/20">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">優點</h3>
+            <ul class="space-y-2 text-[var(--text-secondary)]">
+              <li>• 輸出完全不可區分</li>
+              <li>• 明確的匿名集</li>
+              <li>• 易於分析隱私增益</li>
+            </ul>
+          </div>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">缺點</h3>
+            <ul class="space-y-2 text-[var(--text-secondary)]">
+              <li>• 找零輸出會洩露資訊</li>
+              <li>• 明顯是 CoinJoin 交易</li>
+              <li>• 可能被某些服務拒絕</li>
+            </ul>
+          </div>
+
+          <h3>PayJoin (P2EP)</h3>
+
+          <p>
+            PayJoin（Pay-to-EndPoint）是一種看起來像普通支付的 CoinJoin：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">PayJoin 原理</h3>
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>普通支付：
+Alice (1 BTC) → Bob (0.3 BTC) + Alice 找零 (0.699 BTC)
+
+PayJoin：
+Alice (1 BTC) + Bob (0.5 BTC) →
+  Bob (0.8 BTC) +     // Bob 收款 + 他自己的輸入
+  Alice (0.699 BTC)   // Alice 找零
+
+分析者看到：
+• 2 個輸入，2 個輸出
+• 看起來像普通的雙輸入支付
+• 無法確定支付金額（0.3? 0.8? 其他?）
+• 打破「共同輸入啟發法」
+
+BIP-78 標準化了 PayJoin 協議</code></pre>
+          </div>
+
+          <!-- Challenges -->
+          <h2>實務挑戰</h2>
+
+          <h3>協調問題</h3>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>挑戰：
+1. 參與者發現
+   • 如何找到其他想混幣的人？
+   • 中央協調者 vs 去中心化
+
+2. 拒絕服務攻擊
+   • 惡意參與者拒絕簽名
+   • 浪費其他人時間
+   • 解決方案：保證金、信譽系統
+
+3. 隱私洩露給協調者
+   • 協調者可能看到輸入輸出對應
+   • 解決方案：盲簽名、WabiSabi
+
+4. 時間協調
+   • 所有參與者必須同時在線
+   • 超時處理機制</code></pre>
+          </div>
+
+          <h3>找零問題</h3>
+
+          <p>
+            找零輸出是 CoinJoin 最大的隱私漏洞：
+          </p>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <pre class="text-sm overflow-x-auto bg-[var(--bg-primary)] p-4 rounded-lg"><code>問題示例：
+┌─────────────────────────────────────┐
+│ 輸入              │ 輸出            │
+│ ─────────────────│─────────────────│
+│ Alice: 1.234 BTC │ 0.1 BTC (混合)  │
+│ Bob:   0.567 BTC │ 0.1 BTC (混合)  │
+│                  │ 0.1 BTC (混合)  │
+│                  │ 1.131 BTC (找零)│ ← 可推斷屬於 Alice
+│                  │ 0.464 BTC (找零)│ ← 可推斷屬於 Bob
+└─────────────────────────────────────┘
+
+解決策略：
+1. 選擇適當的池大小，最小化找零
+2. 將找零也納入後續混幣
+3. 使用找零作為 Maker 流動性
+4. 捐贈找零作為礦工費</code></pre>
+          </div>
+
+          <h3>合規風險</h3>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">注意事項</h3>
+            <ul class="space-y-2 text-[var(--text-secondary)]">
+              <li>• 某些交易所可能標記或拒絕 CoinJoin 輸出</li>
+              <li>• 不同司法管轄區對隱私工具有不同態度</li>
+              <li>• CoinJoin 本身是中性技術，用於合法隱私保護</li>
+              <li>• 建議了解當地法規再使用</li>
+            </ul>
+          </div>
+
+          <!-- Comparison -->
+          <h2>協議比較</h2>
+
+          <div class="not-prose my-8 overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left p-3 text-[var(--text-primary)]">特性</th>
+                  <th class="text-left p-3 text-[var(--text-primary)]">JoinMarket</th>
+                  <th class="text-left p-3 text-[var(--text-primary)]">Wasabi</th>
+                  <th class="text-left p-3 text-[var(--text-primary)]">Whirlpool</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="p-3">協調方式</td>
+                  <td class="p-3">去中心化</td>
+                  <td class="p-3">中央協調</td>
+                  <td class="p-3">中央協調</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="p-3">輸出類型</td>
+                  <td class="p-3">等額</td>
+                  <td class="p-3">任意金額</td>
+                  <td class="p-3">固定面額</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="p-3">費用模式</td>
+                  <td class="p-3">Taker 付費</td>
+                  <td class="p-3">協調費</td>
+                  <td class="p-3">首次付費</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="p-3">最小金額</td>
+                  <td class="p-3">靈活</td>
+                  <td class="p-3">~0.01 BTC</td>
+                  <td class="p-3">~0.001 BTC</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="p-3">找零處理</td>
+                  <td class="p-3">可混幣</td>
+                  <td class="p-3">自動處理</td>
+                  <td class="p-3">隔離</td>
+                </tr>
+                <tr>
+                  <td class="p-3">技術門檻</td>
+                  <td class="p-3">高</td>
+                  <td class="p-3">低</td>
+                  <td class="p-3">中</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Best Practices -->
+          <h2>最佳實務</h2>
+
+          <div class="not-prose my-8 p-6 rounded-xl bg-green-500/5 border border-green-500/20">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">CoinJoin 使用建議</h3>
+            <ul class="space-y-3 text-[var(--text-secondary)]">
+              <li class="flex items-start gap-2">
+                <span class="text-green-500 font-bold">1.</span>
+                <span><strong>多輪混幣</strong>：單次混幣提供有限保護，多輪累積匿名集</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500 font-bold">2.</span>
+                <span><strong>隔離找零</strong>：不要將找零與混合輸出合併使用</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500 font-bold">3.</span>
+                <span><strong>使用 Tor</strong>：隱藏 IP 地址，避免網路層關聯</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500 font-bold">4.</span>
+                <span><strong>等待時間</strong>：不要立即花費混合輸出，等待更多區塊確認</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500 font-bold">5.</span>
+                <span><strong>UTXO 管理</strong>：避免合併不同匿名集的輸出</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500 font-bold">6.</span>
+                <span><strong>金額考量</strong>：選擇適當的池大小，減少找零</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Related Technologies -->
+          <h2>相關技術</h2>
+
+          <div class="not-prose my-8 grid md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+              <h4 class="font-semibold text-[var(--text-primary)] mb-2">Silent Payments</h4>
+              <p class="text-sm text-[var(--text-secondary)]">
+                避免地址重用，每次收款使用新地址。與 CoinJoin 互補，
+                提供接收端隱私。
+              </p>
+              <a href="/learn/advanced/silent-payments" class="text-sm text-bitcoin-500 hover:underline">
+                了解更多 →
+              </a>
+            </div>
+            <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+              <h4 class="font-semibold text-[var(--text-primary)] mb-2">Taproot</h4>
+              <p class="text-sm text-[var(--text-secondary)]">
+                使複雜腳本看起來像普通支付，提升 CoinJoin 和多簽的隱私性。
+              </p>
+              <a href="/learn/advanced/taproot" class="text-sm text-bitcoin-500 hover:underline">
+                了解更多 →
+              </a>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <h2>總結</h2>
+
+          <p>
+            CoinJoin 是目前最實用的比特幣鏈上隱私技術。通過讓多個使用者共同建構交易，
+            打破了交易圖分析的基本假設。雖然各協議有不同的權衡，但核心原理相同：
+            使觀察者無法確定輸入和輸出之間的對應關係。
+          </p>
+
+          <p>
+            隨著 WabiSabi 等新協議的發展，CoinJoin 變得更加靈活和隱私。
+            結合 Silent Payments 和 Taproot，比特幣的隱私工具箱正在不斷完善。
+          </p>
+
+        </article>
+
+        <!-- Navigation -->
+        <div class="mt-16 flex flex-col sm:flex-row justify-between gap-4">
+          <Button href="/learn/advanced/silent-payments" variant="outline">
+            ← Silent Payments
+          </Button>
+          <Button href="/learn/advanced/dlc" variant="outline">
+            DLC →
+          </Button>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>

@@ -1,0 +1,334 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="HTLC 詳解"
+  description="學習 Hash Time-Locked Contract 如何實現跨通道的原子化支付。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/lightning/" class="hover:text-[var(--text-primary)]">閃電網路</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">HTLC</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              閃電網路
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：18 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            HTLC 詳解
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            Hash Time-Locked Contract 是閃電網路實現多跳支付的核心機制，確保支付的原子性。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 HTLC？</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            HTLC（Hash Time-Locked Contract）是一種智能合約，結合了哈希鎖和時間鎖：
+          </p>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">哈希鎖</strong>：接收者必須提供正確的 preimage（原像）才能領取資金</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">時間鎖</strong>：如果超時未領取，發送者可以取回資金</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">HTLC 邏輯</p>
+            <div class="font-mono text-sm text-[var(--text-secondary)]">
+              <p class="text-[var(--text-tertiary)] mb-2"># 偽代碼</p>
+              <p>如果 提供 preimage 且 hash(preimage) == payment_hash:</p>
+              <p class="pl-4">Bob 可以領取</p>
+              <p>否則 如果 當前時間 > timeout:</p>
+              <p class="pl-4">Alice 可以取回</p>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">HTLC 腳本結構</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            HTLC 在比特幣腳本中的實現：
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <pre class="text-[var(--text-secondary)]">
+# HTLC 腳本（簡化版）
+OP_IF
+    # 成功路徑：提供正確的 preimage
+    OP_HASH256 &lt;payment_hash&gt; OP_EQUALVERIFY
+    &lt;receiver_pubkey&gt;
+OP_ELSE
+    # 超時路徑：時間到了發送者可以取回
+    &lt;timeout&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP
+    &lt;sender_pubkey&gt;
+OP_ENDIF
+OP_CHECKSIG</pre>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">多跳支付流程</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            HTLC 讓支付可以安全地跨越多個通道。讓我們看一個 Alice → Bob → Carol 的支付：
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-4">步驟詳解</p>
+
+            <div class="space-y-6 text-sm">
+              <!-- Step 1 -->
+              <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold">1</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">Carol 創建發票</p>
+                  <p class="text-[var(--text-secondary)]">生成隨機 preimage R，計算 hash H = hash(R)</p>
+                  <p class="font-mono text-xs text-[var(--text-tertiary)] mt-1">
+                    R = "secret123..." → H = "abc123..."
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold">2</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">Alice 創建 HTLC 給 Bob</p>
+                  <p class="text-[var(--text-secondary)]">條件：Bob 提供 preimage for H，timeout = T+2</p>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold">3</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">Bob 創建 HTLC 給 Carol</p>
+                  <p class="text-[var(--text-secondary)]">條件：Carol 提供 preimage for H，timeout = T+1</p>
+                  <p class="text-xs text-[var(--text-tertiary)] mt-1">注意：Bob 的 timeout 比 Alice 給的短</p>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">4</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">Carol 揭示 preimage</p>
+                  <p class="text-[var(--text-secondary)]">Carol 提供 R 給 Bob，領取 HTLC</p>
+                </div>
+              </div>
+
+              <!-- Step 5 -->
+              <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">5</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">Bob 轉發 preimage</p>
+                  <p class="text-[var(--text-secondary)]">Bob 現在知道 R，向 Alice 領取 HTLC</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">時間鎖階梯</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            為確保安全，HTLC 的 timeout 必須沿路由遞減。這確保中間節點有足夠時間取回資金。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">Timeout 階梯示例</p>
+            <div class="flex items-center justify-between text-sm text-[var(--text-secondary)]">
+              <div class="text-center">
+                <p class="font-semibold text-[var(--text-primary)]">Alice</p>
+                <p class="font-mono text-bitcoin-500">T + 3</p>
+              </div>
+              <span class="text-[var(--text-tertiary)]">→</span>
+              <div class="text-center">
+                <p class="font-semibold text-[var(--text-primary)]">Bob</p>
+                <p class="font-mono text-bitcoin-500">T + 2</p>
+              </div>
+              <span class="text-[var(--text-tertiary)]">→</span>
+              <div class="text-center">
+                <p class="font-semibold text-[var(--text-primary)]">Carol</p>
+                <p class="font-mono text-bitcoin-500">T + 1</p>
+              </div>
+              <span class="text-[var(--text-tertiary)]">→</span>
+              <div class="text-center">
+                <p class="font-semibold text-[var(--text-primary)]">Dave</p>
+                <p class="font-mono text-green-500">接收者</p>
+              </div>
+            </div>
+            <p class="text-xs text-[var(--text-tertiary)] mt-4 text-center">
+              每一跳減少一個區塊間隔，確保上游節點有時間響應
+            </p>
+          </div>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>為什麼需要 timeout 階梯？</strong><br />
+              如果 Carol 在 timeout 前揭示 preimage 給 Bob，Bob 需要足夠時間向 Alice 揭示 preimage。
+              如果 Bob 和 Alice 的 timeout 相同，Bob 可能來不及取回資金。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">原子性保證</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            HTLC 確保支付要麼完全成功，要麼完全失敗：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">情況</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">結果</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">Carol 揭示 preimage</td>
+                  <td class="py-2 text-green-500">所有節點依次領取 HTLC，支付成功</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">Carol 不揭示（超時）</td>
+                  <td class="py-2 text-yellow-500">所有 HTLC 超時，資金返回發送者</td>
+                </tr>
+                <tr>
+                  <td class="py-2">中間節點作弊</td>
+                  <td class="py-2 text-red-500">不可能：沒有 preimage 無法領取</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">HTLC 在承諾交易中</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            HTLC 作為承諾交易的額外輸出存在，直到被解決（成功或超時）：
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <pre class="text-[var(--text-secondary)]">
+承諾交易結構（有 HTLC 時）：
+├── 輸出 1: to_local (延遲輸出)
+├── 輸出 2: to_remote (立即輸出)
+├── 輸出 3: HTLC #1 (等待解決)
+├── 輸出 4: HTLC #2 (等待解決)
+└── 輸出 5: HTLC #3 (等待解決)</pre>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">路由費用</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            中間節點可以收取少量費用來轉發支付。費用結構通常包括：
+          </p>
+
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• <strong>基本費用 (base_fee)</strong>：每筆支付的固定費用，例如 1 sat</li>
+            <li>• <strong>費率 (fee_rate)</strong>：按支付金額的比例，例如 0.0001 (0.01%)</li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+            <p class="text-[var(--text-tertiary)] mb-2"># 費用計算</p>
+            <p class="text-[var(--text-secondary)]">fee = base_fee + (amount × fee_rate)</p>
+            <p class="text-[var(--text-tertiary)] mt-2"># 例如：轉發 100,000 sats</p>
+            <p class="text-[var(--text-secondary)]">fee = 1 + (100000 × 0.0001) = 11 sats</p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">PTLCs：HTLC 的改進</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            Point Time-Locked Contracts (PTLCs) 是 HTLC 的下一代版本，
+            使用適配器簽章代替哈希鎖，提供更好的隱私性。
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">HTLC</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">PTLC</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">鎖定機制</td>
+                  <td class="py-2">Hash lock</td>
+                  <td class="py-2">Point lock (Schnorr)</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">路徑隱私</td>
+                  <td class="py-2 text-red-500">同一 payment_hash</td>
+                  <td class="py-2 text-green-500">每跳不同的 point</td>
+                </tr>
+                <tr>
+                  <td class="py-2">需要</td>
+                  <td class="py-2">SegWit</td>
+                  <td class="py-2">Taproot + Schnorr</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">安全注意事項</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>節點必須監控鏈上交易，及時響應強制關閉</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>HTLC 超時前必須解決，否則可能損失資金</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>使用瞭望塔服務確保離線時的安全</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-yellow-500">△</span>
+              <span>大額支付可能面臨流動性限制</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 了解 <a href="/learn/lightning/routing" class="underline">路由與尋路</a>，
+              學習閃電網路如何找到最佳支付路徑。
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/lightning/channels" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：支付通道
+          </Button>
+          <Button href="/learn/lightning/routing" variant="primary">
+            下一篇：路由與尋路
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

@@ -1,0 +1,436 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="Silent Payments 靜默支付"
+  description="學習 Silent Payments 如何實現無需互動的隱私收款，避免地址重用問題。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/advanced/" class="hover:text-[var(--text-primary)]">深入技術</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">Silent Payments</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-500/10 text-red-600 dark:text-red-400">
+              深入技術
+            </span>
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              隱私
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：20 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            Silent Payments 靜默支付
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            Silent Payments (BIP-352) 是一種隱私增強協議，允許接收者公開一個靜態地址，
+            而每筆收到的付款都會發送到獨特的鏈上地址，無法被外部觀察者關聯。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">地址重用問題</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            比特幣最佳實踐建議每個地址只使用一次。但這在實際操作中很困難：
+          </p>
+
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• <strong class="text-[var(--text-primary)]">捐款地址</strong>：網站上公開的地址會收到多筆付款</li>
+            <li>• <strong class="text-[var(--text-primary)]">商家收款</strong>：需要為每個客戶生成新地址</li>
+            <li>• <strong class="text-[var(--text-primary)]">社交媒體</strong>：個人簡介中的比特幣地址</li>
+            <li>• <strong class="text-[var(--text-primary)]">名片/QR碼</strong>：印刷後無法更改</li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+            <p class="text-sm text-red-700 dark:text-red-400">
+              <strong>地址重用的風險：</strong>
+              <ul class="mt-2 space-y-1">
+                <li>• 所有付款者可以看到該地址的完整交易歷史</li>
+                <li>• 任何人可以追蹤該地址的餘額</li>
+                <li>• 多筆付款可被關聯到同一個接收者</li>
+                <li>• 嚴重損害發送者和接收者的隱私</li>
+              </ul>
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Silent Payments 如何運作</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            Silent Payments 使用橢圓曲線 Diffie-Hellman (ECDH) 密鑰交換，
+            讓發送者為每筆付款計算一個唯一的輸出地址，而無需與接收者互動。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-4">簡化流程</p>
+            <div class="space-y-4 text-sm">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">1</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">接收者公開靜態地址</p>
+                  <p class="text-[var(--text-secondary)]">Bob 公開他的 Silent Payment 地址（sp1q...）</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">2</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">發送者計算唯一地址</p>
+                  <p class="text-[var(--text-secondary)]">Alice 用她的私鑰和 Bob 的公鑰進行 ECDH</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500/20 text-bitcoin-500 flex items-center justify-center font-bold">3</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">付款發送到派生地址</p>
+                  <p class="text-[var(--text-secondary)]">輸出發送到只有 Bob 能花費的唯一 Taproot 地址</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">4</div>
+                <div>
+                  <p class="font-semibold text-[var(--text-primary)]">接收者掃描並識別</p>
+                  <p class="text-[var(--text-secondary)]">Bob 掃描區塊鏈，識別屬於他的付款</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">密碼學原理</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">接收者設置</h3>
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+            <p class="text-[var(--text-tertiary)]"># 接收者生成兩對密鑰</p>
+            <p class="text-[var(--text-secondary)]">掃描密鑰：(b_scan, B_scan = b_scan·G)</p>
+            <p class="text-[var(--text-secondary)]">花費密鑰：(b_spend, B_spend = b_spend·G)</p>
+            <p class="text-[var(--text-tertiary)] mt-4"># Silent Payment 地址包含兩個公鑰</p>
+            <p class="text-[var(--text-secondary)]">SP 地址 = Bech32m(B_scan || B_spend)</p>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">發送流程</h3>
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+            <p class="text-[var(--text-tertiary)]"># 發送者有輸入私鑰 a（來自 UTXO）</p>
+            <p class="text-[var(--text-secondary)]">A = a·G （輸入的公鑰）</p>
+            <p class="text-[var(--text-tertiary)] mt-4"># ECDH 共享密鑰</p>
+            <p class="text-[var(--text-secondary)]">shared_secret = SHA256(a·B_scan || A)</p>
+            <p class="text-[var(--text-tertiary)] mt-4"># 計算輸出公鑰</p>
+            <p class="text-[var(--text-secondary)]">P_output = B_spend + SHA256(shared_secret)·G</p>
+            <p class="text-[var(--text-tertiary)] mt-4"># 發送到 Taproot 地址</p>
+            <p class="text-[var(--text-secondary)]">輸出地址 = P2TR(P_output)</p>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">接收者掃描</h3>
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+            <p class="text-[var(--text-tertiary)]"># 對每筆交易，接收者用掃描密鑰計算</p>
+            <p class="text-[var(--text-secondary)]">shared_secret = SHA256(b_scan·A || A)</p>
+            <p class="text-[var(--text-tertiary)] mt-4"># 檢查輸出是否匹配</p>
+            <p class="text-[var(--text-secondary)]">expected_P = B_spend + SHA256(shared_secret)·G</p>
+            <p class="text-[var(--text-secondary)]">if output_pubkey == expected_P:</p>
+            <p class="text-[var(--text-secondary)]">    # 這筆付款是給我的！</p>
+            <p class="text-[var(--text-tertiary)] mt-4"># 計算花費私鑰</p>
+            <p class="text-[var(--text-secondary)]">p_output = b_spend + SHA256(shared_secret)</p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">地址格式</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            Silent Payment 地址使用 Bech32m 編碼，以 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">sp1q</code> 開頭：
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <p class="text-[var(--text-tertiary)]"># 主網 Silent Payment 地址</p>
+            <p class="text-[var(--text-secondary)] break-all">sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgq7c2zfthc7ugp6h3mdfhs6sxnc9vjkxunqmgqsy</p>
+          </div>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">網路</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">前綴</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">HRP</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">主網</td>
+                  <td class="py-2 font-mono">sp1q...</td>
+                  <td class="py-2">sp</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">測試網</td>
+                  <td class="py-2 font-mono">tsp1q...</td>
+                  <td class="py-2">tsp</td>
+                </tr>
+                <tr>
+                  <td class="py-2">Signet</td>
+                  <td class="py-2 font-mono">tsp1q...</td>
+                  <td class="py-2">tsp</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">標籤功能</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            Silent Payments 支援標籤（Labels），允許接收者區分不同來源的付款：
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">標籤用途</p>
+            <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+              <li>• <strong class="text-[var(--text-primary)]">商家</strong>：為每個客戶生成帶標籤的地址</li>
+              <li>• <strong class="text-[var(--text-primary)]">個人</strong>：區分薪資、投資、禮物等來源</li>
+              <li>• <strong class="text-[var(--text-primary)]">組織</strong>：為不同部門或活動使用不同標籤</li>
+            </ul>
+          </div>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+            <p class="text-[var(--text-tertiary)]"># 帶標籤的地址派生</p>
+            <p class="text-[var(--text-secondary)]">label = SHA256("label" || b_scan || m)</p>
+            <p class="text-[var(--text-secondary)]">B_m = B_spend + label·G</p>
+            <p class="text-[var(--text-tertiary)] mt-2"># m 是標籤編號（0, 1, 2, ...）</p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">與其他方案比較</h2>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">普通地址</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">BIP-47 PayNym</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">Silent Payments</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">需要互動</td>
+                  <td class="py-2 text-red-500">每次</td>
+                  <td class="py-2 text-yellow-500">首次</td>
+                  <td class="py-2 text-green-500">從不</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">鏈上足跡</td>
+                  <td class="py-2">無額外</td>
+                  <td class="py-2 text-red-500">通知交易</td>
+                  <td class="py-2 text-green-500">無額外</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">地址重用風險</td>
+                  <td class="py-2 text-red-500">高</td>
+                  <td class="py-2 text-green-500">無</td>
+                  <td class="py-2 text-green-500">無</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">掃描成本</td>
+                  <td class="py-2 text-green-500">無</td>
+                  <td class="py-2 text-green-500">低</td>
+                  <td class="py-2 text-yellow-500">中等</td>
+                </tr>
+                <tr>
+                  <td class="py-2">輕客戶端支援</td>
+                  <td class="py-2 text-green-500">簡單</td>
+                  <td class="py-2 text-green-500">簡單</td>
+                  <td class="py-2 text-yellow-500">需要額外數據</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">掃描效率</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            接收者需要掃描區塊鏈來識別付款。這是 Silent Payments 的主要權衡：
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">掃描優化</p>
+            <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+              <li class="flex items-start gap-2">
+                <span class="text-green-500">✓</span>
+                <span><strong class="text-[var(--text-primary)]">只掃描 Taproot 輸出</strong>：減少檢查範圍</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500">✓</span>
+                <span><strong class="text-[var(--text-primary)]">Tweaked 公鑰索引</strong>：全節點可預計算</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500">✓</span>
+                <span><strong class="text-[var(--text-primary)]">輕客戶端過濾器</strong>：BIP-158 擴展</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-green-500">✓</span>
+                <span><strong class="text-[var(--text-primary)]">批量掃描</strong>：多個輸入可合併計算</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>掃描成本：</strong> 接收者每筆交易需要執行約 1 次橢圓曲線乘法。
+              對於每天 300,000 筆交易的區塊鏈，現代硬體可以在幾秒內完成掃描。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">發送者要求</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            Silent Payments 對發送者有特定要求：
+          </p>
+
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-yellow-500">!</span>
+              <span>必須使用支援的輸入類型（P2PKH、P2WPKH、P2TR）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-yellow-500">!</span>
+              <span>需要存取輸入的私鑰（無法使用 watch-only 錢包發送）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-yellow-500">!</span>
+              <span>多簽錢包需要特殊處理</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">隱私特性</h2>
+
+          <div class="not-prose mb-6 space-y-3">
+            <div class="flex items-start gap-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              <span class="text-green-500 text-lg">✓</span>
+              <div>
+                <p class="font-semibold text-[var(--text-primary)]">無地址重用</p>
+                <p class="text-sm text-[var(--text-secondary)]">每筆付款使用唯一地址</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              <span class="text-green-500 text-lg">✓</span>
+              <div>
+                <p class="font-semibold text-[var(--text-primary)]">無鏈上關聯</p>
+                <p class="text-sm text-[var(--text-secondary)]">不同付款的輸出地址無法被關聯</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              <span class="text-green-500 text-lg">✓</span>
+              <div>
+                <p class="font-semibold text-[var(--text-primary)]">與 Taproot 相同外觀</p>
+                <p class="text-sm text-[var(--text-secondary)]">輸出看起來像普通 Taproot 交易</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              <span class="text-green-500 text-lg">✓</span>
+              <div>
+                <p class="font-semibold text-[var(--text-primary)]">無需信任第三方</p>
+                <p class="text-sm text-[var(--text-secondary)]">不依賴中心化服務</p>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">限制與權衡</h2>
+
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span><strong class="text-[var(--text-primary)]">掃描開銷</strong>：接收者需要掃描所有交易</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span><strong class="text-[var(--text-primary)]">輕客戶端複雜</strong>：需要額外基礎設施支援</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span><strong class="text-[var(--text-primary)]">發送者限制</strong>：需要私鑰參與計算</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">✗</span>
+              <span><strong class="text-[var(--text-primary)]">僅限 Taproot</strong>：輸出只能是 P2TR 類型</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">錢包支援</h2>
+
+          <div class="not-prose mb-6 space-y-3">
+            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+              <span class="text-[var(--text-primary)]">Cake Wallet</span>
+              <span class="text-green-500 text-sm">支援</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+              <span class="text-[var(--text-primary)]">Silentium</span>
+              <span class="text-green-500 text-sm">支援</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+              <span class="text-[var(--text-primary)]">Bitcoin Core</span>
+              <span class="text-yellow-500 text-sm">開發中</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)]">
+              <span class="text-[var(--text-primary)]">BlueWallet</span>
+              <span class="text-yellow-500 text-sm">計劃中</span>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">BIP-352 規範</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            BIP-352 定義了 Silent Payments 的完整規範，包括：
+          </p>
+
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• 地址格式和編碼</li>
+            <li>• 密鑰派生和共享密鑰計算</li>
+            <li>• 輸出生成和掃描演算法</li>
+            <li>• 標籤系統</li>
+            <li>• 輕客戶端支援</li>
+            <li>• 多輸入處理</li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關資源</h2>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• <a href="/learn/advanced/taproot" class="text-bitcoin-500 hover:underline">Taproot 升級</a></li>
+            <li>• <a href="/learn/advanced/schnorr-signatures" class="text-bitcoin-500 hover:underline">Schnorr 簽章</a></li>
+            <li>• <a href="/learn/intermediate/address-types" class="text-bitcoin-500 hover:underline">地址類型</a></li>
+          </ul>
+
+          <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 查看
+              <a href="https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+                BIP-352 完整規範
+              </a>
+              和
+              <a href="https://silentpayments.xyz" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+                Silent Payments 資源網站
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/advanced/output-descriptors" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：Output Descriptors
+          </Button>
+          <Button href="/learn/advanced/coinjoin" variant="primary">
+            下一篇：CoinJoin
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

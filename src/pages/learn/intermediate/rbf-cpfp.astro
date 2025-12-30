@@ -1,0 +1,276 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="交易加速：RBF 與 CPFP"
+  description="學習如何使用 RBF 和 CPFP 加速未確認的比特幣交易。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/intermediate/" class="hover:text-[var(--text-primary)]">進階知識</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">交易加速</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              進階
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：12 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            交易加速：RBF 與 CPFP
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            當交易卡在記憶池中時，RBF 和 CPFP 是兩種讓交易更快被確認的方法。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">為什麼交易會卡住？</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            當你發送交易時設置的手續費率太低，礦工會優先處理費率更高的交易。
+            你的交易可能需要等待數小時、數天，甚至可能永遠不被確認。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">兩種加速方法</p>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+              <div class="p-3 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                <p class="text-bitcoin-500 font-bold mb-2">RBF (Replace-by-Fee)</p>
+                <p class="text-[var(--text-secondary)]">用更高費率的新交易替換原交易</p>
+              </div>
+              <div class="p-3 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                <p class="text-bitcoin-500 font-bold mb-2">CPFP (Child Pays for Parent)</p>
+                <p class="text-[var(--text-secondary)]">創建一筆高費率的子交易，拉高整體費率</p>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">RBF (Replace-by-Fee)</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">工作原理</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            RBF 讓你可以廣播一筆新交易，花費與原交易相同的輸入，但支付更高的手續費。
+            節點會用新交易替換記憶池中的舊交易。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">RBF 流程</p>
+            <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
+              <li>1. 原交易：UTXO A → 目標 + 找零（10 sat/vB）</li>
+              <li>2. 發現費率不夠，交易卡住</li>
+              <li>3. 創建新交易：UTXO A → 目標 + 較少找零（50 sat/vB）</li>
+              <li>4. 新交易替換舊交易，更快被確認</li>
+            </ol>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">RBF 類型</h3>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">類型</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">說明</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">BIP</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">Opt-in RBF</td>
+                  <td class="py-2">發送時標記 nSequence，明確表示可替換</td>
+                  <td class="py-2"><a href="/bips/bip-0125" class="text-bitcoin-500 hover:underline">BIP-125</a></td>
+                </tr>
+                <tr>
+                  <td class="py-2 font-semibold">Full RBF</td>
+                  <td class="py-2">無論是否標記都可替換（Bitcoin Core 24+）</td>
+                  <td class="py-2">mempoolfullrbf=1</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">RBF 規則</h3>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• 新交易的手續費必須高於舊交易</li>
+            <li>• 新手續費必須至少覆蓋替換成本（通常 +1 sat/vB）</li>
+            <li>• 新交易不能增加記憶池中的交易數量</li>
+            <li>• 不能替換已確認的交易</li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>注意：</strong> RBF 可以改變交易的輸出（包括收款地址和金額），
+              因此商家通常會等待確認後才認可支付，或要求使用不支援 RBF 的交易。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">CPFP (Child Pays for Parent)</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">工作原理</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            CPFP 創建一筆新交易（子交易），花費卡住交易的輸出，並支付足夠高的手續費，
+            使得礦工為了獲取子交易的手續費，必須先確認父交易。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">CPFP 流程</p>
+            <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
+              <li>1. 父交易：UTXO A → 目標 + 找零（5 sat/vB，卡住）</li>
+              <li>2. 創建子交易：找零 → 新地址（100 sat/vB）</li>
+              <li>3. 礦工計算組合費率：(父手續費 + 子手續費) / (父大小 + 子大小)</li>
+              <li>4. 如果組合費率足夠高，礦工會一起打包確認</li>
+            </ol>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">誰可以使用 CPFP？</h3>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">發送者</strong>：使用找零輸出創建子交易</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">接收者</strong>：使用收到的輸出創建子交易</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+            <p class="text-sm text-green-700 dark:text-green-400">
+              <strong>優勢：</strong> CPFP 可以由接收者執行，無需發送者的私鑰，
+              這對於無法使用 RBF 的情況很有用。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">RBF vs CPFP 比較</h2>
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">RBF</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">CPFP</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">執行者</td>
+                  <td class="py-2">發送者</td>
+                  <td class="py-2">發送者或接收者</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">效率</td>
+                  <td class="py-2">較高（不增加交易）</td>
+                  <td class="py-2">較低（需要額外交易）</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">前提條件</td>
+                  <td class="py-2">交易標記 RBF 或 Full RBF</td>
+                  <td class="py-2">有可花費的輸出</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">可改變輸出</td>
+                  <td class="py-2">是</td>
+                  <td class="py-2">否</td>
+                </tr>
+                <tr>
+                  <td class="py-2">額外手續費</td>
+                  <td class="py-2">只需補差額</td>
+                  <td class="py-2">需要為子交易付費</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">實際操作</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">RBF 操作（以 Sparrow 為例）</h3>
+          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+            <li>在發送交易前，確保啟用「Allow fee bumping」</li>
+            <li>交易卡住後，在交易列表中右鍵選擇「Increase Fee」</li>
+            <li>設置新的費率</li>
+            <li>簽署並廣播替換交易</li>
+          </ol>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">CPFP 操作</h3>
+          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+            <li>找到卡住交易的找零輸出（或你收到的輸出）</li>
+            <li>創建新交易花費該輸出</li>
+            <li>計算需要的組合費率，設置足夠高的子交易費率</li>
+            <li>廣播子交易</li>
+          </ol>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <p class="text-[var(--text-tertiary)] mb-2"># 計算 CPFP 所需費率</p>
+            <pre class="text-[var(--text-secondary)]">
+目標費率 = 20 sat/vB
+父交易大小 = 200 vB，費率 = 5 sat/vB
+子交易大小 = 150 vB
+
+需要的總手續費 = (200 + 150) × 20 = 7,000 sat
+父交易已付 = 200 × 5 = 1,000 sat
+子交易需付 = 7,000 - 1,000 = 6,000 sat
+子交易費率 = 6,000 / 150 = 40 sat/vB</pre>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">最佳實踐</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>始終啟用 RBF 標記（大多數錢包預設啟用）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>優先使用 RBF，比 CPFP 更經濟</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>接收者想加速時使用 CPFP</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>確保交易有找零輸出，以便需要時使用 CPFP</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關 BIP</h2>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• <a href="/bips/bip-0125" class="text-bitcoin-500 hover:underline">BIP-125</a>：Opt-in RBF 信號</li>
+            <li>• <a href="/bips/bip-0068" class="text-bitcoin-500 hover:underline">BIP-68</a>：相對時間鎖（nSequence 用於 RBF 信號）</li>
+          </ul>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/intermediate/fee-estimation" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：手續費估算
+          </Button>
+          <Button href="/learn/intermediate/psbt" variant="primary">
+            下一篇：PSBT
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

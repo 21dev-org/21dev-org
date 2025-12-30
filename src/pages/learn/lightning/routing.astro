@@ -1,0 +1,282 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="路由與尋路"
+  description="了解閃電網路如何在多個節點之間找到最佳支付路徑。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/lightning/" class="hover:text-[var(--text-primary)]">閃電網路</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">路由與尋路</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              閃電網路
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：15 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            路由與尋路
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            閃電網路是一個動態的支付網路。了解節點如何發現路徑並成功轉發支付。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">閃電網路拓撲</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            閃電網路是由節點和通道組成的圖狀結構。每個節點都維護著這個網路的「地圖」，
+            稱為「路由表」或「網路圖」。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">網路組成</p>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+              <div class="p-3 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                <p class="font-semibold text-bitcoin-500 mb-2">節點 (Nodes)</p>
+                <p class="text-[var(--text-secondary)]">運行閃電網路軟體的實體</p>
+                <p class="text-xs text-[var(--text-tertiary)]">由公鑰識別</p>
+              </div>
+              <div class="p-3 rounded bg-[var(--bg-primary)] border border-[var(--border-default)]">
+                <p class="font-semibold text-bitcoin-500 mb-2">通道 (Channels)</p>
+                <p class="text-[var(--text-secondary)]">兩個節點之間的支付通道</p>
+                <p class="text-xs text-[var(--text-tertiary)]">由資金交易的 TXID 識別</p>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Gossip 協議</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            節點通過 gossip 協議互相交換網路信息，傳播三類消息：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">消息類型</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">內容</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">作用</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-mono">node_announcement</td>
+                  <td class="py-2">節點公鑰、別名、地址</td>
+                  <td class="py-2">宣布節點存在</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-mono">channel_announcement</td>
+                  <td class="py-2">通道 ID、兩端節點</td>
+                  <td class="py-2">宣布新通道</td>
+                </tr>
+                <tr>
+                  <td class="py-2 font-mono">channel_update</td>
+                  <td class="py-2">費率、時間鎖、啟用狀態</td>
+                  <td class="py-2">更新通道參數</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>注意：</strong> Gossip 只傳播公開通道的信息。
+              「私有通道」不會在網路中廣播，只有通道雙方知道它的存在。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">尋路算法</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            發送支付時，節點需要找到一條從自己到收款人的路徑。
+            這是一個經典的圖論問題，通常使用 Dijkstra 算法的變體。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">路徑選擇考量</h3>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">費用</strong>：總路由費用最低</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">可靠性</strong>：節點在線率和成功率</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">跳數</strong>：較少的跳數意味著較低的延遲和時間鎖</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">容量</strong>：通道必須有足夠的流動性</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">流動性挑戰</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            尋路的最大挑戰是：節點只知道通道的總容量，不知道餘額分布。
+            因此可能選擇的路徑實際上沒有足夠的流動性。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">流動性問題示例</p>
+            <div class="text-sm text-[var(--text-secondary)]">
+              <p>通道容量：1 BTC</p>
+              <p>實際分布：Alice 0.1 BTC ⟷ Bob 0.9 BTC</p>
+              <p class="text-yellow-500 mt-2">→ Alice 最多只能發送 0.1 BTC，儘管通道容量是 1 BTC</p>
+            </div>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">解決方案</h3>
+
+          <h4 class="text-lg font-semibold text-[var(--text-primary)] mt-6 mb-2">1. 探測 (Probing)</h4>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            發送虛假支付來探測路徑是否有足夠流動性。這會暴露網路信息但幫助找到可行路徑。
+          </p>
+
+          <h4 class="text-lg font-semibold text-[var(--text-primary)] mt-6 mb-2">2. 多路徑支付 (MPP)</h4>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            將大額支付拆分成多個小額支付，通過不同路徑發送。這大大提高了大額支付的成功率。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">MPP 示例</p>
+            <div class="text-sm text-[var(--text-secondary)]">
+              <p>目標：支付 1 BTC</p>
+              <p class="mt-2">路徑 1: Alice → Bob → Carol (0.4 BTC)</p>
+              <p>路徑 2: Alice → Dave → Carol (0.3 BTC)</p>
+              <p>路徑 3: Alice → Eve → Carol (0.3 BTC)</p>
+            </div>
+          </div>
+
+          <h4 class="text-lg font-semibold text-[var(--text-primary)] mt-6 mb-2">3. 重試機制</h4>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            如果支付失敗，節點會記住失敗原因，避開有問題的通道，嘗試其他路徑。
+          </p>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">洋蔥路由</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            閃電網路使用「洋蔥路由」(Onion Routing) 保護支付隱私。
+            每個節點只知道前一跳和下一跳，不知道完整路徑。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">洋蔥結構</p>
+            <div class="font-mono text-xs text-[var(--text-secondary)] space-y-1">
+              <p>Layer 4 (外層): [加密: Bob 的下一跳信息]</p>
+              <p class="pl-4">Layer 3: [加密: Carol 的下一跳信息]</p>
+              <p class="pl-8">Layer 2: [加密: Dave 的下一跳信息]</p>
+              <p class="pl-12">Layer 1 (核心): [payment_hash, amount]</p>
+            </div>
+            <p class="text-xs text-[var(--text-tertiary)] mt-3">
+              每個節點只能解密自己的那一層，然後轉發給下一跳
+            </p>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">隱私保護</h3>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• 中間節點不知道發送者是誰</li>
+            <li>• 中間節點不知道接收者是誰</li>
+            <li>• 中間節點不知道支付在路徑中的位置</li>
+            <li>• 路徑長度被填充到固定大小（1300 bytes）</li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">路由提示 (Route Hints)</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            對於使用私有通道的接收者，發票中可以包含「路由提示」，
+            告訴發送者如何到達最後一跳。
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <pre class="text-[var(--text-secondary)]" set:html={`
+路由提示示例：
+{
+  "pubkey": "02abc...",      // 最後一個公開節點
+  "short_channel_id": "...",  // 私有通道 ID
+  "fee_base_msat": 1000,
+  "fee_proportional_millionths": 1,
+  "cltv_expiry_delta": 40
+}`}>
+            </pre>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Trampoline 路由</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            對於輕客戶端，維護完整的網路圖太昂貴。Trampoline 路由允許將尋路工作委託給中間節點：
+          </p>
+
+          <ol class="space-y-3 text-[var(--text-secondary)] mb-6 list-decimal list-inside">
+            <li>發送者只指定幾個「Trampoline 節點」</li>
+            <li>Trampoline 節點負責找到到下一個 Trampoline 的路徑</li>
+            <li>支付在 Trampoline 節點之間跳轉，最終到達目的地</li>
+          </ol>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">路由節點運營</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            運營路由節點需要考慮：
+          </p>
+
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">費率設置</strong>：太高沒人用，太低不賺錢</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">流動性管理</strong>：定期 rebalance 通道</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">節點連接</strong>：與活躍節點建立通道</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span><strong class="text-[var(--text-primary)]">正常運行時間</strong>：7×24 在線</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 了解 <a href="/learn/lightning/invoices" class="underline">閃電發票格式</a>，
+              學習如何解碼和創建閃電網路支付請求。
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/lightning/htlc" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：HTLC
+          </Button>
+          <Button href="/learn/lightning/invoices" variant="primary">
+            下一篇：發票格式
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>

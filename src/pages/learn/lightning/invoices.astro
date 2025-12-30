@@ -1,0 +1,331 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<PageLayout
+  title="發票格式 (BOLT-11)"
+  description="解析閃電網路發票的結構和編碼方式。"
+>
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <nav class="mb-8" aria-label="麵包屑">
+          <ol class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            <li><a href="/" class="hover:text-[var(--text-primary)]">首頁</a></li>
+            <li>/</li>
+            <li><a href="/learn/" class="hover:text-[var(--text-primary)]">學習</a></li>
+            <li>/</li>
+            <li><a href="/learn/lightning/" class="hover:text-[var(--text-primary)]">閃電網路</a></li>
+            <li>/</li>
+            <li class="text-[var(--text-primary)]">發票格式</li>
+          </ol>
+        </nav>
+
+        <!-- Header -->
+        <header class="mb-12">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+              閃電網路
+            </span>
+            <span class="text-sm text-[var(--text-tertiary)]">閱讀時間：12 分鐘</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+            發票格式 (BOLT-11)
+          </h1>
+          <p class="text-xl text-[var(--text-secondary)]">
+            閃電發票是支付請求的編碼格式，包含收款所需的所有信息。
+          </p>
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是閃電發票？</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            閃電發票（Lightning Invoice）是 BOLT-11 規範定義的支付請求格式。
+            它使用 Bech32 編碼，包含收款人、金額、過期時間等信息。
+          </p>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+            <p class="font-semibold text-[var(--text-primary)] mb-3">發票示例</p>
+            <p class="font-mono text-xs text-[var(--text-tertiary)] break-all">
+              lnbc1500n1pjlg3z5pp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpusp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zs9qypqsqsp5zyg3zyg3...
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">發票結構</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            發票由以下部分組成：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">部分</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">內容</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">示例</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">前綴</td>
+                  <td class="py-2">網路標識</td>
+                  <td class="py-2 font-mono">lnbc (主網) / lntb (測試網)</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">金額</td>
+                  <td class="py-2">可選，帶單位</td>
+                  <td class="py-2 font-mono">1500n = 1500 msat</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">時間戳</td>
+                  <td class="py-2">創建時間</td>
+                  <td class="py-2">Unix 時間戳</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-semibold">標籤數據</td>
+                  <td class="py-2">各種欄位</td>
+                  <td class="py-2">payment_hash, 描述等</td>
+                </tr>
+                <tr>
+                  <td class="py-2 font-semibold">簽章</td>
+                  <td class="py-2">收款人簽章</td>
+                  <td class="py-2">65 bytes</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">金額單位</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            閃電網路使用毫聰（millisatoshi, msat）作為最小單位。發票金額可使用以下後綴：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">後綴</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">乘數</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">示例</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-mono">m</td>
+                  <td class="py-2">0.001 BTC</td>
+                  <td class="py-2">lnbc1m = 100,000 sats</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-mono">u</td>
+                  <td class="py-2">0.000001 BTC</td>
+                  <td class="py-2">lnbc1u = 100 sats</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2 font-mono">n</td>
+                  <td class="py-2">0.000000001 BTC</td>
+                  <td class="py-2">lnbc1500n = 150 sats</td>
+                </tr>
+                <tr>
+                  <td class="py-2 font-mono">p</td>
+                  <td class="py-2">0.000000000001 BTC</td>
+                  <td class="py-2">lnbc1000p = 1 msat</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">常見標籤</h2>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">p: Payment Hash</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            必填欄位，32 bytes 的 payment_hash。收款人創建 preimage，計算其 SHA256 哈希。
+            這是 HTLC 的核心。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">d: Description</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            UTF-8 描述字符串，說明支付用途。錢包通常會顯示給用戶確認。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">h: Description Hash</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            如果描述太長，可以只包含描述的哈希值。完整描述需要通過其他方式傳遞。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">x: Expiry</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            發票過期時間（秒）。默認 3600 秒（1 小時）。過期後發票無效。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">r: Route Hints</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            私有通道的路由提示，幫助發送者找到到達接收者的路徑。
+          </p>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">n: Node ID</h3>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            收款人的節點公鑰（33 bytes）。通常可以從簽章中恢復，但某些情況下需要明確指定。
+          </p>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">解碼發票</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+            使用命令行工具解碼發票：
+          </p>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
+            <pre class="text-[var(--text-secondary)]" set:html={`
+# lnd
+lncli decodepayreq lnbc1500n1p...
+
+# c-lightning
+lightning-cli decode lnbc1500n1p...
+
+# 輸出示例
+{
+  "currency": "bc",
+  "timestamp": 1234567890,
+  "expiry": 3600,
+  "payee": "02abcd...",
+  "payment_hash": "abc123...",
+  "description": "Coffee",
+  "amount_msat": 150000
+}`}>
+            </pre>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">無金額發票</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            發票可以不包含金額，讓付款人自行決定。這常用於：
+          </p>
+          <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+            <li>• 捐款</li>
+            <li>• 小費</li>
+            <li>• 可變價格的服務</li>
+          </ul>
+
+          <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+              <strong>注意：</strong> 無金額發票讓付款人控制金額，收款人應確保這符合預期。
+              某些錢包會警告用戶這類發票。
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">BOLT-12 Offers</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            BOLT-12 是新一代發票標準，解決了 BOLT-11 的一些限制：
+          </p>
+
+          <div class="not-prose mb-6 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-[var(--border-default)]">
+                  <th class="text-left py-2 text-[var(--text-primary)]">特性</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">BOLT-11</th>
+                  <th class="text-left py-2 text-[var(--text-primary)]">BOLT-12</th>
+                </tr>
+              </thead>
+              <tbody class="text-[var(--text-secondary)]">
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">可重用</td>
+                  <td class="py-2 text-red-500">否（每次一個 payment_hash）</td>
+                  <td class="py-2 text-green-500">是</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">隱私</td>
+                  <td class="py-2 text-yellow-500">暴露節點 ID</td>
+                  <td class="py-2 text-green-500">盲化路徑</td>
+                </tr>
+                <tr class="border-b border-[var(--border-default)]">
+                  <td class="py-2">退款</td>
+                  <td class="py-2 text-red-500">不支援</td>
+                  <td class="py-2 text-green-500">支援</td>
+                </tr>
+                <tr>
+                  <td class="py-2">訂閱</td>
+                  <td class="py-2 text-red-500">不支援</td>
+                  <td class="py-2 text-green-500">支援</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">Offer 示例</h3>
+          <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs">
+            <p class="text-[var(--text-tertiary)] break-all">
+              lno1qgsqvgnwgcg35z6ee2h3yczraddm72xrfua9uve2rlrm9deu7xyfzrc2q...
+            </p>
+          </div>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">LNURL</h2>
+          <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+            LNURL 是一套補充協議，提供更好的用戶體驗：
+          </p>
+
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">LNURL-pay</strong>：可重用的支付連結</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">LNURL-withdraw</strong>：提款連結</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">LNURL-auth</strong>：閃電登入</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-bitcoin-500">•</span>
+              <span><strong class="text-[var(--text-primary)]">Lightning Address</strong>：email 風格地址 (user@domain.com)</span>
+            </li>
+          </ul>
+
+          <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">最佳實踐</h2>
+          <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>設置合理的過期時間（太短用戶來不及支付，太長增加風險）</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>添加清晰的描述讓用戶知道支付什麼</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>如果使用私有通道，確保包含路由提示</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✓</span>
+              <span>考慮使用 LNURL 或 BOLT-12 提供更好的體驗</span>
+            </li>
+          </ul>
+
+          <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+            <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+              <strong>延伸閱讀：</strong> 查看 <a href="https://github.com/lightning/bolts/blob/master/11-payment-encoding.md" target="_blank" rel="noopener noreferrer" class="underline">BOLT-11 規範</a> 了解完整的技術細節。
+            </p>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          <Button href="/learn/lightning/routing" variant="ghost">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            上一篇：路由與尋路
+          </Button>
+          <Button href="/learn/lightning/lsp" variant="primary">
+            下一篇：LSP 服務商
+            <svg class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </article>
+</PageLayout>
