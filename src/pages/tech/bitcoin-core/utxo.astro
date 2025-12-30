@@ -23,8 +23,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-      <strong>類比：</strong> 把 UTXO 想像成硬幣或紙幣。你的「餘額」是你錢包裡所有硬幣的總和，
-      花費時必須整張/整個使用，多餘的找零會變成新的 UTXO。
+      <strong>類比：</strong> 把 UTXO 想像成硬幣或紙幣。你的「餘額」是你錢包裡所有硬幣的總和， 花費時必須整張/整個使用，多餘的找零會變成新的
+      UTXO。
     </p>
   </div>
 
@@ -34,7 +34,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="UTXO 模型與帳戶模型比較">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="UTXO 模型與帳戶模型比較"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">特性</th>
@@ -80,22 +83,31 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 生命週期</h2>
 
   <div class="not-prose mb-6 space-y-3">
-    {[
-      { step: '1', title: '創建', desc: '交易輸出被創建，成為新的 UTXO', color: 'bg-green-500' },
-      { step: '2', title: '存在', desc: 'UTXO 存在於 UTXO 集合中，可被花費', color: 'bg-blue-500' },
-      { step: '3', title: '花費', desc: '被新交易引用為輸入', color: 'bg-yellow-500' },
-      { step: '4', title: '銷毀', desc: '從 UTXO 集合中移除', color: 'bg-red-500' },
-    ].map((item) => (
-      <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
-        <div class={`flex-shrink-0 w-8 h-8 rounded-full ${item.color} text-white flex items-center justify-center font-bold text-sm`}>
-          {item.step}
+    {
+      [
+        { step: '1', title: '創建', desc: '交易輸出被創建，成為新的 UTXO', color: 'bg-green-500' },
+        {
+          step: '2',
+          title: '存在',
+          desc: 'UTXO 存在於 UTXO 集合中，可被花費',
+          color: 'bg-blue-500',
+        },
+        { step: '3', title: '花費', desc: '被新交易引用為輸入', color: 'bg-yellow-500' },
+        { step: '4', title: '銷毀', desc: '從 UTXO 集合中移除', color: 'bg-red-500' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div
+            class={`flex-shrink-0 w-8 h-8 rounded-full ${item.color} text-white flex items-center justify-center font-bold text-sm`}
+          >
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
         </div>
-        <div>
-          <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
-          <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
-        </div>
-      </div>
-    ))}
+      ))
+    }
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 集合</h2>
@@ -126,12 +138,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 數據結構</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    每個 UTXO 由以下信息唯一標識：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">每個 UTXO 由以下信息唯一標識：</p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`UTXO = {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`UTXO = {
   txid:         // 創建此輸出的交易 ID (32 bytes)
   vout:         // 輸出索引 (4 bytes)
 
@@ -145,8 +158,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Coin Selection（選幣）</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    當發送比特幣時，錢包需要選擇哪些 UTXO 作為輸入。這稱為 Coin Selection，
-    會影響手續費和隱私：
+    當發送比特幣時，錢包需要選擇哪些 UTXO 作為輸入。這稱為 Coin Selection， 會影響手續費和隱私：
   </p>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">常見策略</h3>
@@ -176,18 +188,20 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">UTXO 膨脹問題</h3>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    每創建一個 UTXO，全網所有節點都需要存儲它直到被花費。
-    過多的小額 UTXO 會增加節點的存儲負擔。
+    每創建一個 UTXO，全網所有節點都需要存儲它直到被花費。 過多的小額 UTXO 會增加節點的存儲負擔。
   </p>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">粉塵輸出 (Dust)</h3>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    粉塵是指金額太小，以至於花費它的手續費超過其價值的 UTXO。
-    Bitcoin Core 有粉塵限制防止創建這類輸出：
+    粉塵是指金額太小，以至於花費它的手續費超過其價值的 UTXO。 Bitcoin Core
+    有粉塵限制防止創建這類輸出：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`# 粉塵閾值計算
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`# 粉塵閾值計算
 粉塵閾值 = 花費此輸出的最小交易大小 × 粉塵費率
 
 # 不同輸出類型的粉塵閾值（以 3 sat/vB 計算）
@@ -223,8 +237,11 @@ P2TR:   330 satoshis`}</pre>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看 UTXO</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`# 查看特定 UTXO
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`# 查看特定 UTXO
 bitcoin-cli gettxout <txid> <vout>
 
 # 查看 UTXO 集合統計
@@ -240,7 +257,9 @@ bitcoin-cli scantxoutset "start" '["addr(<address>)"]'`}</pre>
   <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
     <p class="text-sm text-[var(--text-secondary)]">
       <strong class="text-[var(--text-primary)]">延伸閱讀：</strong>
-      <a href="/learn/intermediate/utxo-model" class="text-bitcoin-500 hover:underline">學習中心的 UTXO 模型</a>
+      <a href="/learn/intermediate/utxo-model" class="text-bitcoin-500 hover:underline"
+        >學習中心的 UTXO 模型</a
+      >
       有更詳細的概念說明和圖解。
     </p>
   </div>

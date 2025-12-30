@@ -56,20 +56,12 @@ const getEmbedUrl = () => {
 };
 ---
 
-<PageLayout
-  title={video.data.title}
-  description={video.data.description}
->
+<PageLayout title={video.data.title} description={video.data.description}>
   <article class="py-16 md:py-24">
     <div class="container-wide">
       <div class="max-w-4xl mx-auto">
         <!-- Breadcrumb -->
-        <Breadcrumb
-          items={[
-            { label: '影片', href: '/videos/' },
-            { label: video.data.title },
-          ]}
-        />
+        <Breadcrumb items={[{ label: '影片', href: '/videos/' }, { label: video.data.title }]} />
 
         <!-- Video player -->
         <div class="aspect-video rounded-xl overflow-hidden bg-neutral-900 mb-8">
@@ -77,8 +69,7 @@ const getEmbedUrl = () => {
             src={getEmbedUrl()}
             class="w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
+            allowfullscreen></iframe>
         </div>
 
         <!-- Header -->
@@ -94,54 +85,90 @@ const getEmbedUrl = () => {
           </h1>
 
           <div class="flex flex-wrap items-center gap-4 text-sm text-[var(--text-secondary)]">
-            {video.data.speaker && (
-              <span class="flex items-center gap-1">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {video.data.speaker}
-              </span>
-            )}
+            {
+              video.data.speaker && (
+                <span class="flex items-center gap-1">
+                  <svg
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  {video.data.speaker}
+                </span>
+              )
+            }
             <span class="flex items-center gap-1">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
               </svg>
-              {video.data.date.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {
+                video.data.date.toLocaleDateString('zh-TW', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })
+              }
             </span>
           </div>
         </header>
 
         <!-- Topics -->
         <div class="flex flex-wrap gap-2 mb-8">
-          {video.data.topics.map((topic) => (
-            <Tag size="md">{topic}</Tag>
-          ))}
+          {video.data.topics.map((topic) => <Tag size="md">{topic}</Tag>)}
         </div>
 
         <!-- Description -->
-        <div class="p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)] mb-8">
+        <div
+          class="p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)] mb-8"
+        >
           <h2 class="font-semibold text-[var(--text-primary)] mb-2">影片簡介</h2>
           <p class="text-[var(--text-secondary)]">{video.data.description}</p>
         </div>
 
         <!-- Content -->
-        {Content && (
-          <div class="prose prose-lg dark:prose-invert max-w-none mb-8">
-            <Content />
-          </div>
-        )}
+        {
+          Content && (
+            <div class="prose prose-lg dark:prose-invert max-w-none mb-8">
+              <Content />
+            </div>
+          )
+        }
 
         <!-- External link -->
         <div class="flex flex-wrap gap-4">
           <Button href={getVideoUrl()} variant="primary" external>
             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
+              <path d="M8 5v14l11-7z"></path>
             </svg>
             在 {platformLabels[video.data.platform]} 觀看
           </Button>
           <Button href="/videos/" variant="ghost">
-            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            <svg
+              class="h-4 w-4 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
             </svg>
             返回影片列表
           </Button>

@@ -35,51 +35,52 @@ const fullTitle = title === siteConfig.title ? title : `${title} | ${siteConfig.
 
 // JSON-LD structured data
 const websiteSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": siteConfig.name,
-  "description": siteConfig.description,
-  "url": siteConfig.url,
-  "inLanguage": "zh-Hant",
-  "publisher": {
-    "@type": "Organization",
-    "name": siteConfig.name,
-    "logo": {
-      "@type": "ImageObject",
-      "url": new URL("/favicon.svg", siteConfig.url).toString()
-    }
-  }
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: siteConfig.name,
+  description: siteConfig.description,
+  url: siteConfig.url,
+  inLanguage: 'zh-Hant',
+  publisher: {
+    '@type': 'Organization',
+    name: siteConfig.name,
+    logo: {
+      '@type': 'ImageObject',
+      url: new URL('/favicon.svg', siteConfig.url).toString(),
+    },
+  },
 };
 
-const articleSchema = article ? {
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": article.headline,
-  "description": article.description,
-  "url": canonicalURL.toString(),
-  "inLanguage": "zh-Hant",
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": canonicalURL.toString()
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": siteConfig.name,
-    "logo": {
-      "@type": "ImageObject",
-      "url": new URL("/favicon.svg", siteConfig.url).toString()
+const articleSchema = article
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: article.headline,
+      description: article.description,
+      url: canonicalURL.toString(),
+      inLanguage: 'zh-Hant',
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': canonicalURL.toString(),
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: siteConfig.name,
+        logo: {
+          '@type': 'ImageObject',
+          url: new URL('/favicon.svg', siteConfig.url).toString(),
+        },
+      },
+      ...(article.datePublished && { datePublished: article.datePublished }),
+      ...(article.dateModified && { dateModified: article.dateModified }),
+      ...(article.author && {
+        author: {
+          '@type': 'Person',
+          name: article.author,
+        },
+      }),
     }
-  },
-  ...(article.datePublished && { "datePublished": article.datePublished }),
-  ...(article.dateModified && { "dateModified": article.dateModified }),
-  ...(article.author && {
-    "author": {
-      "@type": "Person",
-      "name": article.author
-    }
-  })
-} : null;
-
+  : null;
 ---
 
 <!doctype html>
@@ -97,15 +98,17 @@ const articleSchema = article ? {
     <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9RXM7EXV1Q"></script>
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
+      function gtag() {
+        dataLayer.push(arguments);
+      }
       gtag('js', new Date());
       gtag('config', 'G-9RXM7EXV1Q');
 
       // Track page views on View Transitions navigation
-      document.addEventListener('astro:after-swap', function() {
+      document.addEventListener('astro:after-swap', function () {
         gtag('config', 'G-9RXM7EXV1Q', {
           page_path: window.location.pathname,
-          page_title: document.title
+          page_title: document.title,
         });
       });
     </script>
@@ -170,9 +173,11 @@ const articleSchema = article ? {
 
     <!-- JSON-LD Structured Data -->
     <script is:inline type="application/ld+json" set:html={JSON.stringify(websiteSchema)} />
-    {articleSchema && (
-      <script is:inline type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
-    )}
+    {
+      articleSchema && (
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+      )
+    }
 
     <!-- Theme initialization (prevent flash) -->
     <script is:inline>

@@ -48,7 +48,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Schnorr vs ECDSA</h3>
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="Schnorr 與 ECDSA 比較：兩種簽名演算法的特性對比">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="Schnorr 與 ECDSA 比較：兩種簽名演算法的特性對比"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">特性</th>
@@ -90,8 +93,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     Schnorr 簽名最強大的特性是線性密鑰聚合。多個公鑰可以組合成單一聚合公鑰：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`# MuSig2 密鑰聚合
 P_agg = P_1 + P_2 + P_3
 
@@ -109,8 +115,11 @@ s_agg = s_1 + s_2 + s_3
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     Taproot 輸出（P2TR）結合了密鑰路徑和腳本路徑兩種花費方式：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`Taproot 輸出公鑰：
 Q = P + H(P || merkle_root) * G
 
@@ -130,15 +139,14 @@ H = tagged hash 函數`}
         直接使用內部密鑰簽名花費。這是最高效的方式，看起來與普通單簽交易完全相同。
         適用於合作花費場景。
       </p>
-      <div class="font-mono text-xs text-[var(--text-tertiary)]">
-        見證數據: [schnorr_signature]
-      </div>
+      <div class="font-mono text-xs text-[var(--text-tertiary)]">見證數據: [schnorr_signature]</div>
     </div>
     <div class="p-4 rounded-lg border border-bitcoin-500/30 bg-bitcoin-500/10">
-      <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">腳本路徑 (Script Path)</h4>
+      <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">
+        腳本路徑 (Script Path)
+      </h4>
       <p class="text-sm text-[var(--text-secondary)] mb-2">
-        揭示並執行腳本樹中的特定腳本。需要提供控制塊和 Merkle 證明。
-        適用於非合作場景或複雜條件。
+        揭示並執行腳本樹中的特定腳本。需要提供控制塊和 Merkle 證明。 適用於非合作場景或複雜條件。
       </p>
       <div class="font-mono text-xs text-[var(--text-tertiary)]">
         見證數據: [script_args...] [script] [control_block]
@@ -146,12 +154,17 @@ H = tagged hash 函數`}
     </div>
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MAST（Merkle 化抽象語法樹）</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">
+    MAST（Merkle 化抽象語法樹）
+  </h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     MAST 允許將多個腳本組織成 Merkle 樹，花費時只需揭示使用的腳本：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`                    Merkle Root
                    /            \\
               Hash(AB)          Hash(CD)
@@ -181,29 +194,26 @@ H = tagged hash 函數`}
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">OP_CHECKSIGADD</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        替代 OP_CHECKMULTISIG，使用計數器累加方式實現多重簽名，
-        更高效且避免了原本的 off-by-one bug。
+        替代 OP_CHECKMULTISIG，使用計數器累加方式實現多重簽名， 更高效且避免了原本的 off-by-one
+        bug。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">OP_SUCCESS</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        預留的升級操作碼（OP_SUCCESS80-254），未來可以通過軟分叉添加新功能，
-        而不影響現有腳本。
+        預留的升級操作碼（OP_SUCCESS80-254），未來可以通過軟分叉添加新功能， 而不影響現有腳本。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">簽名驗證改進</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        所有簽名操作碼使用 Schnorr 簽名，64 字節固定大小，
-        支持批量驗證以提高性能。
+        所有簽名操作碼使用 Schnorr 簽名，64 字節固定大小， 支持批量驗證以提高性能。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">移除限制</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        移除了 201 操作碼限制和 520 字節元素限制（在腳本路徑中），
-        允許更複雜的腳本邏輯。
+        移除了 201 操作碼限制和 520 字節元素限制（在腳本路徑中）， 允許更複雜的腳本邏輯。
       </p>
     </div>
   </div>
@@ -214,8 +224,11 @@ H = tagged hash 函數`}
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     使用 MuSig2 聚合雙方公鑰，通道開啟和合作關閉看起來像普通交易：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`Key Path: Alice + Bob 聚合密鑰
 Script Path:
   - Alice + timelock（單方面關閉）
@@ -228,8 +241,11 @@ Script Path:
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     3-of-5 多簽在合作情況下看起來像單簽：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`Key Path: 所有 5 人的 MuSig 聚合（需要 5/5）
 Script Path: 10 個 3-of-3 組合的 MAST
   - A+B+C, A+B+D, A+B+E
@@ -243,8 +259,11 @@ Script Path: 10 個 3-of-3 組合的 MAST
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     結合時間鎖和多重簽名的遺產繼承方案：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`Key Path: 所有者密鑰（日常使用）
 Script Path:
   - 所有者 + 配偶（緊急情況）
@@ -291,19 +310,30 @@ Script Path:
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr 簽名規範</span>
+      <span
+        ><a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr
+        簽名規範</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot 規範</span>
+      <span
+        ><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot 規範</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0342" class="text-bitcoin-500 hover:underline">BIP-342</a>：Tapscript 規範</span>
+      <span
+        ><a href="/bips/bip-0342" class="text-bitcoin-500 hover:underline">BIP-342</a>：Tapscript
+        規範</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/tech/lightning/" class="text-bitcoin-500 hover:underline">閃電網絡</a>：了解 Taproot 如何改進閃電網絡</span>
+      <span
+        ><a href="/tech/lightning/" class="text-bitcoin-500 hover:underline">閃電網絡</a>：了解
+        Taproot 如何改進閃電網絡</span
+      >
     </li>
   </ul>
 </ArticleLayout>

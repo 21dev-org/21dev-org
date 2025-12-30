@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-370: PSBT 版本 2"
   description="改進的 PSBT 格式，支援更靈活的交易構建和多方協議。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-370' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-370' }]}
   tags={['Standards Track', 'Draft']}
   author="Andrew Chow"
   date={new Date('2021-01-14')}
   prevPage={{ title: 'BIP-350: Bech32m', href: '/bips/bip-0350' }}
   nextPage={{ title: 'BIP-380: Output Descriptors', href: '/bips/bip-0380' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -44,26 +43,36 @@ import Tag from '@/components/ui/Tag.astro';
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PSBT v0 的限制</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    原始 PSBT 格式存在一些限制：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">原始 PSBT 格式存在一些限制：</p>
 
   <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-red-500">✗</span>
-      <span><strong class="text-[var(--text-primary)]">不可修改</strong>：創建後無法添加/移除輸入輸出</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">不可修改</strong
+        >：創建後無法添加/移除輸入輸出</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-red-500">✗</span>
-      <span><strong class="text-[var(--text-primary)]">完整交易必須存在</strong>：全域欄位包含完整的未簽章交易</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">完整交易必須存在</strong
+        >：全域欄位包含完整的未簽章交易</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-red-500">✗</span>
-      <span><strong class="text-[var(--text-primary)]">角色混淆</strong>：Creator 和 Updater 角色難以分離</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">角色混淆</strong>：Creator 和 Updater
+        角色難以分離</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-red-500">✗</span>
-      <span><strong class="text-[var(--text-primary)]">多方困難</strong>：不適合 CoinJoin 等需要動態構建的協議</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">多方困難</strong>：不適合 CoinJoin
+        等需要動態構建的協議</span
+      >
     </li>
   </ul>
 
@@ -75,8 +84,12 @@ import Tag from '@/components/ui/Tag.astro';
     分別存儲在各自的區域，允許獨立修改。
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]" set:html={`
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"
+      set:html={`
 PSBT v0 結構：
 ├── Global
 │   ├── PSBT_GLOBAL_UNSIGNED_TX (完整交易)
@@ -99,17 +112,20 @@ PSBT v2 結構：
 └── Outputs[...]
     ├── PSBT_OUT_AMOUNT
     ├── PSBT_OUT_SCRIPT
-    └── ...`}>
-    </pre>
+    └── ...`}
+    />
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 可修改狀態</h3>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    新增 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">PSBT_GLOBAL_TX_MODIFIABLE</code> 欄位，
-    明確指示 PSBT 是否可以被修改。這允許 Constructor 角色動態添加輸入和輸出。
+    新增 <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded"
+      >PSBT_GLOBAL_TX_MODIFIABLE</code
+    > 欄位， 明確指示 PSBT 是否可以被修改。這允許 Constructor 角色動態添加輸入和輸出。
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-3">可修改標誌</p>
     <div class="grid md:grid-cols-3 gap-4 text-sm">
       <div>
@@ -189,7 +205,9 @@ PSBT v2 結構：
   </p>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">CoinJoin 示例</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <ol class="space-y-2 text-sm text-[var(--text-secondary)]">
       <li>1. 協調者創建空 PSBT v2</li>
       <li>2. 參與者 A 作為 Constructor 添加自己的輸入和輸出</li>
@@ -292,7 +310,10 @@ PSBT v2 結構：
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT v0（原始格式）</span>
+      <span
+        ><a href="/bips/bip-0174" class="text-bitcoin-500 hover:underline">BIP-174</a>：PSBT
+        v0（原始格式）</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
@@ -303,13 +324,16 @@ PSBT v2 結構：
   <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
       <strong>延伸閱讀：</strong> 查看
-      <a href="https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+      <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:no-underline"
+      >
         GitHub 上的完整 BIP-370 文件
       </a>
       以及
-      <a href="/learn/intermediate/psbt" class="underline hover:no-underline">
-        PSBT 學習文章
-      </a>
+      <a href="/learn/intermediate/psbt" class="underline hover:no-underline"> PSBT 學習文章 </a>
     </p>
   </div>
 </ArticleLayout>

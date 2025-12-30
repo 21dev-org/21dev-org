@@ -22,67 +22,97 @@ const blocks = [
 >
   <defs>
     <linearGradient id="block-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#F7931A;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#F7931A;stop-opacity:1"></stop>
+      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:1"></stop>
     </linearGradient>
     <linearGradient id="chain-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#F7931A;stop-opacity:0.6" />
-      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:0.6" />
+      <stop offset="0%" style="stop-color:#F7931A;stop-opacity:0.6"></stop>
+      <stop offset="100%" style="stop-color:#EA580C;stop-opacity:0.6"></stop>
     </linearGradient>
     <filter id="block-shadow">
-      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#F7931A" flood-opacity="0.3" />
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#F7931A" flood-opacity="0.3"
+      ></feDropShadow>
     </filter>
   </defs>
 
   <!-- Chain links -->
-  {blocks.slice(0, -1).map((block, i) => (
-    <g class="chain-link" style={`animation-delay: ${i * 0.3}s`}>
-      <line
-        x1={block.x + 18}
-        y1="25"
-        x2={blocks[i + 1].x}
-        y2="25"
-        stroke="url(#chain-gradient)"
-        stroke-width="3"
-        stroke-linecap="round"
-      />
-      <polygon
-        points={`${blocks[i + 1].x - 2},22 ${blocks[i + 1].x + 2},25 ${blocks[i + 1].x - 2},28`}
-        fill="url(#chain-gradient)"
-      />
-    </g>
-  ))}
+  {
+    blocks.slice(0, -1).map((block, i) => (
+      <g class="chain-link" style={`animation-delay: ${i * 0.3}s`}>
+        <line
+          x1={block.x + 18}
+          y1="25"
+          x2={blocks[i + 1].x}
+          y2="25"
+          stroke="url(#chain-gradient)"
+          stroke-width="3"
+          stroke-linecap="round"
+        />
+        <polygon
+          points={`${blocks[i + 1].x - 2},22 ${blocks[i + 1].x + 2},25 ${blocks[i + 1].x - 2},28`}
+          fill="url(#chain-gradient)"
+        />
+      </g>
+    ))
+  }
 
   <!-- Blocks -->
-  {blocks.map((block, i) => (
-    <g class="block" style={`animation-delay: ${i * 0.2}s`} filter="url(#block-shadow)">
-      <rect
-        x={block.x}
-        y="12"
-        width="18"
-        height="26"
-        rx="2"
-        fill="url(#block-gradient)"
-      />
-      <!-- Hash lines inside block -->
-      <line x1={block.x + 3} y1="18" x2={block.x + 15} y2="18" stroke="white" stroke-opacity="0.5" stroke-width="1" />
-      <line x1={block.x + 3} y1="22" x2={block.x + 12} y2="22" stroke="white" stroke-opacity="0.4" stroke-width="1" />
-      <line x1={block.x + 3} y1="26" x2={block.x + 14} y2="26" stroke="white" stroke-opacity="0.3" stroke-width="1" />
-      <line x1={block.x + 3} y1="30" x2={block.x + 10} y2="30" stroke="white" stroke-opacity="0.2" stroke-width="1" />
-      <!-- Block label -->
-      <text
-        x={block.x + 9}
-        y="46"
-        text-anchor="middle"
-        fill="currentColor"
-        font-size="5"
-        font-family="monospace"
-        class="block-label"
-      >
-        {block.label}
-      </text>
-    </g>
-  ))}
+  {
+    blocks.map((block, i) => (
+      <g class="block" style={`animation-delay: ${i * 0.2}s`} filter="url(#block-shadow)">
+        <rect x={block.x} y="12" width="18" height="26" rx="2" fill="url(#block-gradient)" />
+        {/* Hash lines inside block */}
+        <line
+          x1={block.x + 3}
+          y1="18"
+          x2={block.x + 15}
+          y2="18"
+          stroke="white"
+          stroke-opacity="0.5"
+          stroke-width="1"
+        />
+        <line
+          x1={block.x + 3}
+          y1="22"
+          x2={block.x + 12}
+          y2="22"
+          stroke="white"
+          stroke-opacity="0.4"
+          stroke-width="1"
+        />
+        <line
+          x1={block.x + 3}
+          y1="26"
+          x2={block.x + 14}
+          y2="26"
+          stroke="white"
+          stroke-opacity="0.3"
+          stroke-width="1"
+        />
+        <line
+          x1={block.x + 3}
+          y1="30"
+          x2={block.x + 10}
+          y2="30"
+          stroke="white"
+          stroke-opacity="0.2"
+          stroke-width="1"
+        />
+        {/* Block label */}
+        <text
+          x={block.x + 9}
+          y="46"
+          text-anchor="middle"
+          fill="currentColor"
+          font-size="5"
+          font-family="monospace"
+          class="block-label"
+        >
+          {block.label}
+        </text>
+      </g>
+    ))
+  }
 </svg>
 
 <style>

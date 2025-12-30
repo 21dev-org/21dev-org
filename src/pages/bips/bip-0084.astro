@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-84: 原生 SegWit 派生路徑"
   description="定義 P2WPKH（原生 SegWit）地址的派生路徑標準，使用 bech32 地址格式。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-84' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-84' }]}
   tags={['Standards Track', 'Proposed']}
   author="Pavol Rusnak"
   date={new Date('2017-12-28')}
   prevPage={{ title: 'BIP-68: 相對時間鎖', href: '/bips/bip-0068' }}
   nextPage={{ title: 'BIP-112: CSV', href: '/bips/bip-0112' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -39,34 +38,41 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    BIP-84 定義了用於 P2WPKH（Pay-to-Witness-Public-Key-Hash）腳本類型的
-    派生路徑結構。這是 BIP-44 的擴展，專門用於原生 SegWit 地址（bech32 格式，以 bc1q 開頭）。
+    BIP-84 定義了用於 P2WPKH（Pay-to-Witness-Public-Key-Hash）腳本類型的 派生路徑結構。這是 BIP-44
+    的擴展，專門用於原生 SegWit 地址（bech32 格式，以 bc1q 開頭）。
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">動機</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    SegWit（BIP-141）引入了新的腳本類型，包括 P2WPKH 和 P2WSH。
-    為了在 HD 錢包中正確支持這些新地址類型，需要定義新的派生路徑標準，
-    以避免與現有的 BIP-44（P2PKH）和 BIP-49（P2SH-P2WPKH）地址混淆。
+    SegWit（BIP-141）引入了新的腳本類型，包括 P2WPKH 和 P2WSH。 為了在 HD
+    錢包中正確支持這些新地址類型，需要定義新的派生路徑標準， 以避免與現有的 BIP-44（P2PKH）和
+    BIP-49（P2SH-P2WPKH）地址混淆。
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">派生路徑</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     BIP-84 使用與 BIP-44 相同的層級結構，但 purpose 設為 84'：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     m / 84' / coin_type' / account' / change / address_index
   </div>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
     對於比特幣主網，完整的派生路徑範例：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     m/84'/0'/0'/0/0
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址格式比較</h2>
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="不同 BIP 地址格式與交易費用比較">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="不同 BIP 地址格式與交易費用比較"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">BIP</th>
@@ -134,8 +140,11 @@ import Tag from '@/components/ui/Tag.astro';
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     從 BIP-84 派生的公鑰轉換為 P2WPKH 地址的過程：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`1. 從派生路徑獲取公鑰（33 字節壓縮格式）
 2. 計算公鑰的 HASH160（RIPEMD160(SHA256(pubkey))）
 3. 創建見證程序：0x00 0x14 <20字節哈希>
@@ -149,7 +158,10 @@ import Tag from '@/components/ui/Tag.astro';
     BIP-84 定義了新的擴展密鑰版本，與 BIP-44 區分：
   </p>
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="BIP-84 擴展密鑰版本">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="BIP-84 擴展密鑰版本"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
@@ -179,8 +191,7 @@ import Tag from '@/components/ui/Tag.astro';
     <h4 class="font-semibold text-bitcoin-700 dark:text-bitcoin-400 mb-2">現代錢包的最佳實踐</h4>
     <p class="text-sm text-bitcoin-700/80 dark:text-bitcoin-400/80">
       截至 2024 年，大多數現代錢包默認使用 BIP-84（bc1q 地址）來接收比特幣，
-      因為它提供最低的交易費用。對於需要 Taproot 功能的用戶，
-      可以使用 BIP-86（bc1p 地址）。
+      因為它提供最低的交易費用。對於需要 Taproot 功能的用戶， 可以使用 BIP-86（bc1p 地址）。
     </p>
   </div>
 
@@ -188,22 +199,36 @@ import Tag from '@/components/ui/Tag.astro';
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0044" class="text-bitcoin-500 hover:underline">BIP-44</a>：多帳戶 HD 錢包標準</span>
+      <span
+        ><a href="/bips/bip-0044" class="text-bitcoin-500 hover:underline">BIP-44</a>：多帳戶 HD
+        錢包標準</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：隔離見證</span>
+      <span
+        ><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a
+        >：隔離見證</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0173" class="text-bitcoin-500 hover:underline">BIP-173</a>：Bech32 地址編碼</span>
+      <span
+        ><a href="/bips/bip-0173" class="text-bitcoin-500 hover:underline">BIP-173</a>：Bech32
+        地址編碼</span
+      >
     </li>
   </ul>
 
   <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
       <strong>延伸閱讀：</strong> 查看
-      <a href="https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+      <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:no-underline"
+      >
         GitHub 上的完整 BIP-84 文件
       </a>
     </p>

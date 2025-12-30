@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-143: SegWit 交易簽章驗證"
   description="定義 SegWit 交易的簽章哈希演算法，解決二次哈希問題並修復簽章可塑性。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-143' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-143' }]}
   tags={['Standards Track', 'Final']}
   author="Johnson Lau, Pieter Wuille"
   date={new Date('2016-01-03')}
   prevPage={{ title: 'BIP-141: SegWit', href: '/bips/bip-0141' }}
   nextPage={{ title: 'BIP-144: SegWit 序列化', href: '/bips/bip-0144' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -45,16 +44,19 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解決的問題</h2>
 
-  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 二次哈希問題（O(n²) Hashing）</h3>
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">
+    1. 二次哈希問題（O(n²) Hashing）
+  </h3>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
     在傳統的簽章方案中，驗證一個包含 n 個輸入的交易需要進行 O(n²) 次哈希運算。
     這是因為每個輸入的簽章都需要包含整個交易數據的哈希。
     對於大型交易，這會導致驗證時間過長，甚至可以被攻擊者利用來進行 DoS 攻擊。
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="text-sm text-[var(--text-secondary)]">
-      <strong>攻擊場景：</strong> 惡意交易包含大量輸入，每個輸入都需要重新計算整個交易的哈希。
-      一個精心構造的交易可能需要數分鐘甚至更長時間來驗證。
+      <strong>攻擊場景：</strong> 惡意交易包含大量輸入，每個輸入都需要重新計算整個交易的哈希。 一個精心構造的交易可能需要數分鐘甚至更長時間來驗證。
     </p>
   </div>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
@@ -73,11 +75,12 @@ import Tag from '@/components/ui/Tag.astro';
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">新的簽章哈希算法</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    簽章哈希的計算方式如下：
-  </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">簽章哈希的計算方式如下：</p>
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 Double SHA256 of:
   1. nVersion (4 bytes)
   2. hashPrevouts (32 bytes)
@@ -126,10 +129,23 @@ Double SHA256 of:
     BIP-143 支援與傳統相同的 SIGHASH 類型：
   </p>
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_ALL (0x01)</code>：簽署所有輸入和輸出</li>
-    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_NONE (0x02)</code>：簽署所有輸入，不簽署輸出</li>
-    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_SINGLE (0x03)</code>：簽署所有輸入和對應索引的輸出</li>
-    <li>• <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_ANYONECANPAY (0x80)</code>：只簽署當前輸入（可與上述組合）</li>
+    <li>
+      • <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_ALL (0x01)</code
+      >：簽署所有輸入和輸出
+    </li>
+    <li>
+      • <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_NONE (0x02)</code
+      >：簽署所有輸入，不簽署輸出
+    </li>
+    <li>
+      • <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded">SIGHASH_SINGLE (0x03)</code
+      >：簽署所有輸入和對應索引的輸出
+    </li>
+    <li>
+      • <code class="px-1 bg-neutral-100 dark:bg-neutral-800 rounded"
+        >SIGHASH_ANYONECANPAY (0x80)</code
+      >：只簽署當前輸入（可與上述組合）
+    </li>
   </ul>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">對硬體錢包的改進</h2>
@@ -139,20 +155,31 @@ Double SHA256 of:
   <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-green-500">✓</span>
-      <span><strong class="text-[var(--text-primary)]">驗證手續費</strong>：計算 (總輸入 - 總輸出) = 手續費</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">驗證手續費</strong>：計算 (總輸入 - 總輸出) =
+        手續費</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-green-500">✓</span>
-      <span><strong class="text-[var(--text-primary)]">防止金額欺騙</strong>：惡意軟體無法謊報輸入金額</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">防止金額欺騙</strong
+        >：惡意軟體無法謊報輸入金額</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-green-500">✓</span>
-      <span><strong class="text-[var(--text-primary)]">簡化驗證</strong>：不需要下載完整的前序交易</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">簡化驗證</strong
+        >：不需要下載完整的前序交易</span
+      >
     </li>
   </ul>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">效能改進</h2>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid md:grid-cols-2 gap-4 text-sm">
       <div>
         <p class="font-semibold text-[var(--text-primary)] mb-2">傳統簽章</p>
@@ -171,7 +198,10 @@ Double SHA256 of:
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：Segregated Witness</span>
+      <span
+        ><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：Segregated
+        Witness</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
@@ -179,14 +209,22 @@ Double SHA256 of:
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot（使用類似但改進的方案）</span>
+      <span
+        ><a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a
+        >：Taproot（使用類似但改進的方案）</span
+      >
     </li>
   </ul>
 
   <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
       <strong>延伸閱讀：</strong> 查看
-      <a href="https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+      <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:no-underline"
+      >
         GitHub 上的完整 BIP-143 文件
       </a>
     </p>

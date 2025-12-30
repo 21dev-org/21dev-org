@@ -1,11 +1,11 @@
 ---
-title: "閃電網路開發工作坊"
+title: '閃電網路開發工作坊'
 date: 2025-02-20
-location: "香港"
-type: "workshop"
-url: "https://example.com/ln-workshop"
-description: "深入學習閃電網路開發，從支付通道原理到 HTLC 實作，適合有比特幣基礎的開發者。"
-tags: ["閃電網路", "開發", "工作坊"]
+location: '香港'
+type: 'workshop'
+url: 'https://example.com/ln-workshop'
+description: '深入學習閃電網路開發，從支付通道原理到 HTLC 實作，適合有比特幣基礎的開發者。'
+tags: ['閃電網路', '開發', '工作坊']
 ---
 
 ## 工作坊內容

@@ -31,9 +31,7 @@ const {
   class: className = '',
 } = Astro.props;
 
-const sortedEvents = events
-  .sort((a, b) => a.date.getTime() - b.date.getTime())
-  .slice(0, limit);
+const sortedEvents = events.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, limit);
 
 const upcomingEvents = sortedEvents.filter((e) => e.date > new Date());
 const pastEvents = sortedEvents.filter((e) => e.date <= new Date());
@@ -45,61 +43,79 @@ const pastEvents = sortedEvents.filter((e) => e.date <= new Date());
       <h2 class="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
         {title}
       </h2>
-      {subtitle && (
-        <p class="text-lg text-[var(--text-secondary)]">
-          {subtitle}
-        </p>
-      )}
+      {subtitle && <p class="text-lg text-[var(--text-secondary)]">{subtitle}</p>}
     </div>
 
-    {upcomingEvents.length > 0 && (
-      <div class="mb-12">
-        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-6 flex items-center gap-2">
-          <span class="relative flex h-3 w-3">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-          </span>
-          即將舉行
-        </h3>
-        <div class="grid md:grid-cols-2 gap-6">
-          {upcomingEvents.map((event) => (
-            <EventCard {...event} />
-          ))}
+    {
+      upcomingEvents.length > 0 && (
+        <div class="mb-12">
+          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-6 flex items-center gap-2">
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+            </span>
+            即將舉行
+          </h3>
+          <div class="grid md:grid-cols-2 gap-6">
+            {upcomingEvents.map((event) => (
+              <EventCard {...event} />
+            ))}
+          </div>
         </div>
-      </div>
-    )}
+      )
+    }
 
-    {pastEvents.length > 0 && (
-      <div>
-        <h3 class="text-lg font-semibold text-[var(--text-tertiary)] mb-6">
-          過往活動
-        </h3>
-        <div class="grid md:grid-cols-2 gap-6 opacity-75">
-          {pastEvents.map((event) => (
-            <EventCard {...event} />
-          ))}
+    {
+      pastEvents.length > 0 && (
+        <div>
+          <h3 class="text-lg font-semibold text-[var(--text-tertiary)] mb-6">過往活動</h3>
+          <div class="grid md:grid-cols-2 gap-6 opacity-75">
+            {pastEvents.map((event) => (
+              <EventCard {...event} />
+            ))}
+          </div>
         </div>
-      </div>
-    )}
+      )
+    }
 
-    {sortedEvents.length === 0 && (
-      <div class="text-center py-12 border border-dashed border-[var(--border-default)] rounded-xl">
-        <svg class="h-12 w-12 mx-auto text-[var(--text-tertiary)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        <p class="text-[var(--text-tertiary)]">暫無活動資訊</p>
-      </div>
-    )}
-
-    {showViewAll && events.length > limit && (
-      <div class="mt-12 text-center">
-        <Button href="/events/" variant="secondary">
-          查看所有活動
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+    {
+      sortedEvents.length === 0 && (
+        <div class="text-center py-12 border border-dashed border-[var(--border-default)] rounded-xl">
+          <svg
+            class="h-12 w-12 mx-auto text-[var(--text-tertiary)] mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
           </svg>
-        </Button>
-      </div>
-    )}
+          <p class="text-[var(--text-tertiary)]">暫無活動資訊</p>
+        </div>
+      )
+    }
+
+    {
+      showViewAll && events.length > limit && (
+        <div class="mt-12 text-center">
+          <Button href="/events/" variant="secondary">
+            查看所有活動
+            <svg
+              class="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </Button>
+        </div>
+      )
+    }
   </div>
 </section>

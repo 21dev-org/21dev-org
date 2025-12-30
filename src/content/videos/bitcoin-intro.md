@@ -1,13 +1,13 @@
 ---
-title: "比特幣完整入門指南"
+title: '比特幣完整入門指南'
 date: 2024-06-15
-duration: "45:30"
-platform: "youtube"
-embedId: "bBC-nXj3Ng4"
-speaker: "3Blue1Brown"
-topics: ["比特幣", "入門", "區塊鏈"]
-description: "最清楚易懂的比特幣原理解說，透過視覺化動畫深入淺出地介紹比特幣的運作機制。"
-language: "zh-sub"
+duration: '45:30'
+platform: 'youtube'
+embedId: 'bBC-nXj3Ng4'
+speaker: '3Blue1Brown'
+topics: ['比特幣', '入門', '區塊鏈']
+description: '最清楚易懂的比特幣原理解說，透過視覺化動畫深入淺出地介紹比特幣的運作機制。'
+language: 'zh-sub'
 ---
 
 ## 影片介紹

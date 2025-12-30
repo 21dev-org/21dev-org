@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-174: 部分簽名的比特幣交易 (PSBT)"
   description="定義一種格式用於在多方之間傳遞未完成的交易，以便進行協作簽名。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-174' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-174' }]}
   tags={['Standards Track', 'Final']}
   author="Andrew Chow"
   date={new Date('2017-07-12')}
   prevPage={{ title: 'BIP-173: Bech32 地址', href: '/bips/bip-0173' }}
   nextPage={{ title: 'BIP-322: 通用消息簽章', href: '/bips/bip-0322' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -50,19 +49,26 @@ import Tag from '@/components/ui/Tag.astro';
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><strong class="text-[var(--text-primary)]">硬體錢包</strong>：需要在離線設備上簽名</span>
+      <span><strong class="text-[var(--text-primary)]">硬體錢包</strong>：需要在離線設備上簽名</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><strong class="text-[var(--text-primary)]">多簽錢包</strong>：需要多個簽名者依次簽名</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">多簽錢包</strong>：需要多個簽名者依次簽名</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><strong class="text-[var(--text-primary)]">CoinJoin</strong>：需要多方協調輸入和輸出</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">CoinJoin</strong>：需要多方協調輸入和輸出</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><strong class="text-[var(--text-primary)]">空氣隔離</strong>：需要通過二維碼或 USB 傳輸交易</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">空氣隔離</strong>：需要通過二維碼或 USB 傳輸交易</span
+      >
     </li>
   </ul>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
@@ -70,39 +76,35 @@ import Tag from '@/components/ui/Tag.astro';
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PSBT 結構</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    一個 PSBT 由三個主要部分組成：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">一個 PSBT 由三個主要部分組成：</p>
   <div class="space-y-4 mb-8">
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">全局數據 (Global)</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        包含整個交易的通用信息，如未簽名的原始交易、擴展公鑰等。
-        這些數據對所有輸入和輸出都適用。
+        包含整個交易的通用信息，如未簽名的原始交易、擴展公鑰等。 這些數據對所有輸入和輸出都適用。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸入數據 (Inputs)</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        每個輸入的詳細信息，包括前一筆交易、贖回腳本、見證腳本、
-        簽名、BIP-32 派生路徑等。
+        每個輸入的詳細信息，包括前一筆交易、贖回腳本、見證腳本、 簽名、BIP-32 派生路徑等。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸出數據 (Outputs)</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        每個輸出的詳細信息，包括贖回腳本、見證腳本、BIP-32 派生路徑等。
-        這對於找零地址的驗證很重要。
+        每個輸出的詳細信息，包括贖回腳本、見證腳本、BIP-32 派生路徑等。 這對於找零地址的驗證很重要。
       </p>
     </div>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">二進制格式</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    PSBT 使用鍵值對格式存儲數據：
-  </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">PSBT 使用鍵值對格式存儲數據：</p>
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`<psbt> := <magic> <global-map> <input-map>* <output-map>*
 
 <magic> := 0x70736274 0xFF  ("psbt" + 分隔符)
@@ -119,7 +121,10 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">全局字段</h3>
   <div class="not-prose mb-6 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="PSBT 全局字段類型">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="PSBT 全局字段類型"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
@@ -149,7 +154,10 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">輸入字段</h3>
   <div class="not-prose mb-6 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="PSBT 輸入字段類型">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="PSBT 輸入字段類型"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">類型</th>
@@ -208,11 +216,12 @@ import Tag from '@/components/ui/Tag.astro';
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作流程</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    PSBT 定義了明確的角色和處理流程：
-  </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">PSBT 定義了明確的角色和處理流程：</p>
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`創建者 (Creator)
     │
     ▼ 創建空白 PSBT
@@ -265,15 +274,13 @@ import Tag from '@/components/ui/Tag.astro';
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">完成者 (Finalizer)</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        使用收集的簽名構建最終的 scriptSig 和見證數據。
-        這一步驟確保所有輸入都有完整的解鎖腳本。
+        使用收集的簽名構建最終的 scriptSig 和見證數據。 這一步驟確保所有輸入都有完整的解鎖腳本。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">提取者 (Extractor)</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        從完成的 PSBT 中提取可廣播的原始交易。
-        這是工作流程的最後一步。
+        從完成的 PSBT 中提取可廣播的原始交易。 這是工作流程的最後一步。
       </p>
     </div>
   </div>
@@ -281,8 +288,11 @@ import Tag from '@/components/ui/Tag.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實際應用範例</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">硬體錢包簽名</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`# 1. 軟體錢包創建 PSBT
 bitcoin-cli walletcreatefundedpsbt '[]' '[{"bc1q...": 0.01}]'
 
@@ -300,8 +310,11 @@ bitcoin-cli sendrawtransaction "0200000001..."`}
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2-of-3 多簽工作流程</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 {`# 協調者創建 PSBT
 psbt_base64 = create_psbt(inputs, outputs)
 
@@ -351,15 +364,24 @@ final_tx = finalize_and_extract(psbt_combined)`}
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a>：階層式確定性錢包</span>
+      <span
+        ><a href="/bips/bip-0032" class="text-bitcoin-500 hover:underline">BIP-32</a
+        >：階層式確定性錢包</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0044" class="text-bitcoin-500 hover:underline">BIP-44</a>：多帳戶 HD 錢包</span>
+      <span
+        ><a href="/bips/bip-0044" class="text-bitcoin-500 hover:underline">BIP-44</a>：多帳戶 HD
+        錢包</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a>：隔離見證</span>
+      <span
+        ><a href="/bips/bip-0141" class="text-bitcoin-500 hover:underline">BIP-141</a
+        >：隔離見證</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
@@ -370,7 +392,12 @@ final_tx = finalize_and_extract(psbt_combined)`}
   <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
       <strong>延伸閱讀：</strong> 查看
-      <a href="https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">
+      <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:no-underline"
+      >
         GitHub 上的完整 BIP-174 文件
       </a>
     </p>

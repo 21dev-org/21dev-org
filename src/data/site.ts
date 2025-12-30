@@ -1,7 +1,8 @@
 export const siteConfig = {
   name: '21dev.org',
   title: '21dev.org | 比特幣技術教育平台',
-  description: '華語中文圈最全面的比特幣技術教育平台，涵蓋 Bitcoin Core、閃電網路、Nostr 等核心技術領域。',
+  description:
+    '華語中文圈最全面的比特幣技術教育平台，涵蓋 Bitcoin Core、閃電網路、Nostr 等核心技術領域。',
   url: 'https://21dev.org',
   locale: 'zh-Hant',
   author: '21dev.org Community',
@@ -10,7 +11,8 @@ export const siteConfig = {
   social: {
     github: 'https://github.com/21dev-org',
     twitter: 'https://twitter.com/21devorg',
-    signal: 'https://signal.group/#CjQKIKEW5NtKmgLKX9JOei4GOaTCl1enEIOpFC1R6vjm5_RCEhD3TXZew1_1HSLkD9sh8r5K',
+    signal:
+      'https://signal.group/#CjQKIKEW5NtKmgLKX9JOei4GOaTCl1enEIOpFC1R6vjm5_RCEhD3TXZew1_1HSLkD9sh8r5K',
   },
 
   // Default Open Graph image (PNG for social media compatibility)

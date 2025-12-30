@@ -18,8 +18,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">什麼是 Schnorr 簽章？</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
     Schnorr 簽章是由 Claus Schnorr 在 1989 年發明的數位簽章演算法。
-    它基於離散對數問題，提供了數學上可證明的安全性。由於專利限制，
-    比特幣最初使用了 ECDSA。2021 年 Taproot 啟用後，Schnorr 成為比特幣的一部分。
+    它基於離散對數問題，提供了數學上可證明的安全性。由於專利限制， 比特幣最初使用了 ECDSA。2021 年
+    Taproot 啟用後，Schnorr 成為比特幣的一部分。
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">Schnorr vs ECDSA</h2>
@@ -66,11 +66,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">數學基礎</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">橢圓曲線參數</h3>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    比特幣使用 secp256k1 曲線：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">比特幣使用 secp256k1 曲線：</p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-tertiary)] mb-2"># 曲線方程</p>
     <p class="text-[var(--text-secondary)]">y² = x³ + 7 (mod p)</p>
     <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 參數</p>
@@ -80,7 +80,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">密鑰生成</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-tertiary)] mb-2"># 私鑰</p>
     <p class="text-[var(--text-secondary)]">x = 隨機數 ∈ [1, n-1]</p>
     <p class="text-[var(--text-tertiary)] mt-4 mb-2"># 公鑰</p>
@@ -90,31 +92,41 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">簽章流程</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">簽章生成</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <ol class="space-y-3 text-sm text-[var(--text-secondary)]">
-      <li><strong class="text-[var(--text-primary)]">1. 生成 nonce</strong>
+      <li>
+        <strong class="text-[var(--text-primary)]">1. 生成 nonce</strong>
         <p class="font-mono text-xs mt-1">k = 隨機數 ∈ [1, n-1]</p>
         <p class="font-mono text-xs">R = k·G</p>
       </li>
-      <li><strong class="text-[var(--text-primary)]">2. 計算挑戰</strong>
+      <li>
+        <strong class="text-[var(--text-primary)]">2. 計算挑戰</strong>
         <p class="font-mono text-xs mt-1">e = H(R || P || m)</p>
       </li>
-      <li><strong class="text-[var(--text-primary)]">3. 計算簽章</strong>
+      <li>
+        <strong class="text-[var(--text-primary)]">3. 計算簽章</strong>
         <p class="font-mono text-xs mt-1">s = k + e·x (mod n)</p>
       </li>
-      <li><strong class="text-[var(--text-primary)]">4. 輸出簽章</strong>
+      <li>
+        <strong class="text-[var(--text-primary)]">4. 輸出簽章</strong>
         <p class="font-mono text-xs mt-1">σ = (R, s) = 64 bytes</p>
       </li>
     </ol>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">簽章驗證</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <ol class="space-y-3 text-sm text-[var(--text-secondary)]">
-      <li><strong class="text-[var(--text-primary)]">1. 計算挑戰</strong>
+      <li>
+        <strong class="text-[var(--text-primary)]">1. 計算挑戰</strong>
         <p class="font-mono text-xs mt-1">e = H(R || P || m)</p>
       </li>
-      <li><strong class="text-[var(--text-primary)]">2. 驗證等式</strong>
+      <li>
+        <strong class="text-[var(--text-primary)]">2. 驗證等式</strong>
         <p class="font-mono text-xs mt-1">s·G == R + e·P ?</p>
       </li>
     </ol>
@@ -130,11 +142,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-8 mb-3">x-only 公鑰</h3>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    BIP-340 只使用公鑰的 x 座標（32 bytes），假設 y 座標總是偶數。
-    這減少了公鑰大小，並簡化了與 Taproot 的集成。
+    BIP-340 只使用公鑰的 x 座標（32 bytes），假設 y 座標總是偶數。 這減少了公鑰大小，並簡化了與
+    Taproot 的集成。
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-tertiary)]"># 公鑰格式</p>
     <p class="text-[var(--text-secondary)]">傳統：33 bytes (02/03 前綴 + 32 bytes x)</p>
     <p class="text-[var(--text-secondary)]">BIP-340：32 bytes (僅 x 座標)</p>
@@ -145,7 +159,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     BIP-340 使用「標籤化哈希」來防止跨協議攻擊：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-secondary)]">H_tag(m) = SHA256(SHA256(tag) || SHA256(tag) || m)</p>
     <p class="text-[var(--text-tertiary)] mt-2"># 標籤示例</p>
     <p class="text-[var(--text-secondary)]">"BIP0340/challenge" - 簽章挑戰</p>
@@ -154,39 +170,40 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">批量驗證</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    Schnorr 的線性特性允許高效的批量驗證。驗證 n 個簽章的成本
-    接近驗證單個簽章的成本，而不是 n 倍。
+    Schnorr 的線性特性允許高效的批量驗證。驗證 n 個簽章的成本 接近驗證單個簽章的成本，而不是 n 倍。
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-tertiary)] mb-2"># 批量驗證</p>
     <p class="text-[var(--text-secondary)]"># 驗證 (R₁,s₁,P₁,m₁), (R₂,s₂,P₂,m₂), ...</p>
-    <p class="text-[var(--text-secondary)] mt-2">(s₁+s₂+...)·G == (R₁+R₂+...) + e₁·P₁ + e₂·P₂ + ...</p>
+    <p class="text-[var(--text-secondary)] mt-2">
+      (s₁+s₂+...)·G == (R₁+R₂+...) + e₁·P₁ + e₂·P₂ + ...
+    </p>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
     <p class="text-sm text-green-700 dark:text-green-400">
-      <strong>效能提升：</strong> 批量驗證 100 個簽章的速度比單獨驗證 100 次快約 2-3 倍。
-      這對區塊驗證有重大影響。
+      <strong>效能提升：</strong> 批量驗證 100 個簽章的速度比單獨驗證 100 次快約 2-3 倍。 這對區塊驗證有重大影響。
     </p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">簽章聚合</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    Schnorr 簽章可以線性聚合。多個簽章者可以共同產生一個單一簽章，
-    這是 MuSig 協議的基礎。
+    Schnorr 簽章可以線性聚合。多個簽章者可以共同產生一個單一簽章， 這是 MuSig 協議的基礎。
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-3">簡化示例（不安全）</p>
     <div class="text-sm text-[var(--text-secondary)] space-y-2">
       <p>聚合公鑰：P = P₁ + P₂</p>
       <p>聚合 nonce：R = R₁ + R₂</p>
       <p>聚合簽章：s = s₁ + s₂</p>
     </div>
-    <p class="text-xs text-[var(--text-tertiary)] mt-3">
-      實際使用需要 MuSig 協議防止惡意密鑰攻擊
-    </p>
+    <p class="text-xs text-[var(--text-tertiary)] mt-3">實際使用需要 MuSig 協議防止惡意密鑰攻擊</p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">安全注意事項</h2>
@@ -206,9 +223,16 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">相關資源</h2>
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
-    <li>• <a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr 簽章規範</li>
-    <li>• <a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot</li>
+    <li>
+      • <a href="/bips/bip-0340" class="text-bitcoin-500 hover:underline">BIP-340</a>：Schnorr
+      簽章規範
+    </li>
+    <li>
+      • <a href="/bips/bip-0341" class="text-bitcoin-500 hover:underline">BIP-341</a>：Taproot
+    </li>
     <li>• <a href="/bips/bip-0327" class="text-bitcoin-500 hover:underline">BIP-327</a>：MuSig2</li>
-    <li>• <a href="/learn/advanced/musig2" class="text-bitcoin-500 hover:underline">MuSig2 詳解</a></li>
+    <li>
+      • <a href="/learn/advanced/musig2" class="text-bitcoin-500 hover:underline">MuSig2 詳解</a>
+    </li>
   </ul>
 </ArticleLayout>

@@ -1,13 +1,13 @@
 ---
-title: "閃電網路運作原理解析"
+title: '閃電網路運作原理解析'
 date: 2024-08-20
-duration: "32:15"
-platform: "youtube"
-embedId: "rrr_zPmEiME"
-speaker: "Whiteboard Crypto"
-topics: ["閃電網路", "Layer 2", "擴展"]
-description: "深入解釋閃電網路如何解決比特幣的擴展性問題，包含支付通道和 HTLC 的視覺化解說。"
-language: "zh-sub"
+duration: '32:15'
+platform: 'youtube'
+embedId: 'rrr_zPmEiME'
+speaker: 'Whiteboard Crypto'
+topics: ['閃電網路', 'Layer 2', '擴展']
+description: '深入解釋閃電網路如何解決比特幣的擴展性問題，包含支付通道和 HTLC 的視覺化解說。'
+language: 'zh-sub'
 ---
 
 ## 影片介紹

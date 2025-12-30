@@ -22,32 +22,41 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <ul class="space-y-3 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><strong class="text-[var(--text-primary)]">哈希鎖</strong>：接收者必須提供正確的 preimage（原像）才能領取資金</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">哈希鎖</strong>：接收者必須提供正確的
+        preimage（原像）才能領取資金</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500">•</span>
-      <span><strong class="text-[var(--text-primary)]">時間鎖</strong>：如果超時未領取，發送者可以取回資金</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">時間鎖</strong
+        >：如果超時未領取，發送者可以取回資金</span
+      >
     </li>
   </ul>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-3">HTLC 邏輯</p>
     <div class="font-mono text-sm text-[var(--text-secondary)]">
       <p class="text-[var(--text-tertiary)] mb-2"># 偽代碼</p>
       <p>如果 提供 preimage 且 hash(preimage) == payment_hash:</p>
       <p class="pl-4">Bob 可以領取</p>
-      <p>否則 如果 當前時間 > timeout:</p>
+      <p>否則 如果 當前時間 &gt; timeout:</p>
       <p class="pl-4">Alice 可以取回</p>
     </div>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-12 mb-4">HTLC 腳本結構</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    HTLC 在比特幣腳本中的實現：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">HTLC 在比特幣腳本中的實現：</p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 # HTLC 腳本（簡化版）
 OP_IF
     # 成功路徑：提供正確的 preimage
@@ -66,13 +75,19 @@ OP_CHECKSIG</pre>
     HTLC 讓支付可以安全地跨越多個通道。讓我們看一個 Alice → Bob → Carol 的支付：
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-4">步驟詳解</p>
 
     <div class="space-y-6 text-sm">
       <!-- Step 1 -->
       <div class="flex gap-4">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold">1</div>
+        <div
+          class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold"
+        >
+          1
+        </div>
         <div>
           <p class="font-semibold text-[var(--text-primary)]">Carol 創建發票</p>
           <p class="text-[var(--text-secondary)]">生成隨機 preimage R，計算 hash H = hash(R)</p>
@@ -84,7 +99,11 @@ OP_CHECKSIG</pre>
 
       <!-- Step 2 -->
       <div class="flex gap-4">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold">2</div>
+        <div
+          class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold"
+        >
+          2
+        </div>
         <div>
           <p class="font-semibold text-[var(--text-primary)]">Alice 創建 HTLC 給 Bob</p>
           <p class="text-[var(--text-secondary)]">條件：Bob 提供 preimage for H，timeout = T+2</p>
@@ -93,17 +112,27 @@ OP_CHECKSIG</pre>
 
       <!-- Step 3 -->
       <div class="flex gap-4">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold">3</div>
+        <div
+          class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold"
+        >
+          3
+        </div>
         <div>
           <p class="font-semibold text-[var(--text-primary)]">Bob 創建 HTLC 給 Carol</p>
           <p class="text-[var(--text-secondary)]">條件：Carol 提供 preimage for H，timeout = T+1</p>
-          <p class="text-xs text-[var(--text-tertiary)] mt-1">注意：Bob 的 timeout 比 Alice 給的短</p>
+          <p class="text-xs text-[var(--text-tertiary)] mt-1">
+            注意：Bob 的 timeout 比 Alice 給的短
+          </p>
         </div>
       </div>
 
       <!-- Step 4 -->
       <div class="flex gap-4">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">4</div>
+        <div
+          class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold"
+        >
+          4
+        </div>
         <div>
           <p class="font-semibold text-[var(--text-primary)]">Carol 揭示 preimage</p>
           <p class="text-[var(--text-secondary)]">Carol 提供 R 給 Bob，領取 HTLC</p>
@@ -112,7 +141,11 @@ OP_CHECKSIG</pre>
 
       <!-- Step 5 -->
       <div class="flex gap-4">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">5</div>
+        <div
+          class="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold"
+        >
+          5
+        </div>
         <div>
           <p class="font-semibold text-[var(--text-primary)]">Bob 轉發 preimage</p>
           <p class="text-[var(--text-secondary)]">Bob 現在知道 R，向 Alice 領取 HTLC</p>
@@ -126,7 +159,9 @@ OP_CHECKSIG</pre>
     為確保安全，HTLC 的 timeout 必須沿路由遞減。這確保中間節點有足夠時間取回資金。
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-3">Timeout 階梯示例</p>
     <div class="flex items-center justify-between text-sm text-[var(--text-secondary)]">
       <div class="text-center">
@@ -157,8 +192,8 @@ OP_CHECKSIG</pre>
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
     <p class="text-sm text-yellow-700 dark:text-yellow-400">
       <strong>為什麼需要 timeout 階梯？</strong><br />
-      如果 Carol 在 timeout 前揭示 preimage 給 Bob，Bob 需要足夠時間向 Alice 揭示 preimage。
-      如果 Bob 和 Alice 的 timeout 相同，Bob 可能來不及取回資金。
+      如果 Carol 在 timeout 前揭示 preimage 給 Bob，Bob 需要足夠時間向 Alice 揭示 preimage。 如果 Bob
+      和 Alice 的 timeout 相同，Bob 可能來不及取回資金。
     </p>
   </div>
 
@@ -197,8 +232,11 @@ OP_CHECKSIG</pre>
     HTLC 作為承諾交易的額外輸出存在，直到被解決（成功或超時）：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-xs overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">
 承諾交易結構（有 HTLC 時）：
 ├── 輸出 1: to_local (延遲輸出)
 ├── 輸出 2: to_remote (立即輸出)
@@ -217,7 +255,9 @@ OP_CHECKSIG</pre>
     <li>• <strong>費率 (fee_rate)</strong>：按支付金額的比例，例如 0.0001 (0.01%)</li>
   </ul>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-tertiary)] mb-2"># 費用計算</p>
     <p class="text-[var(--text-secondary)]">fee = base_fee + (amount × fee_rate)</p>
     <p class="text-[var(--text-tertiary)] mt-2"># 例如：轉發 100,000 sats</p>
@@ -281,8 +321,9 @@ OP_CHECKSIG</pre>
 
   <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-      <strong>延伸閱讀：</strong> 了解 <a href="/learn/lightning/routing" class="underline">路由與尋路</a>，
-      學習閃電網路如何找到最佳支付路徑。
+      <strong>延伸閱讀：</strong> 了解 <a href="/learn/lightning/routing" class="underline"
+        >路由與尋路</a
+      >， 學習閃電網路如何找到最佳支付路徑。
     </p>
   </div>
 </ArticleLayout>

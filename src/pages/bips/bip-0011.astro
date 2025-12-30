@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-11: M-of-N 標準交易"
   description="定義多重簽名交易的標準格式，允許多個密鑰共同控制資金。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-11' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-11' }]}
   tags={['Standards Track', 'Final']}
   author="Gavin Andresen"
   date={new Date('2011-10-18')}
   prevPage={{ title: 'BIP-9: Version Bits', href: '/bips/bip-0009' }}
   nextPage={{ title: 'BIP-13: P2SH 地址', href: '/bips/bip-0013' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -60,8 +59,7 @@ import Tag from '@/components/ui/Tag.astro';
     <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">備份冗餘</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        2-of-3 設置允許遺失一個備份而不影響資金存取。
-        這對於長期儲存非常重要。
+        2-of-3 設置允許遺失一個備份而不影響資金存取。 這對於長期儲存非常重要。
       </p>
     </div>
     <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
@@ -80,18 +78,22 @@ import Tag from '@/components/ui/Tag.astro';
     BIP-11 定義的「裸」多簽腳本直接放在 scriptPubKey 中：
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <h4 class="font-semibold text-[var(--text-primary)] mb-3">scriptPubKey 格式</h4>
-    <pre class="text-sm overflow-x-auto font-mono bg-[var(--bg-primary)] p-3 rounded">
+    <pre
+      class="text-sm overflow-x-auto font-mono bg-[var(--bg-primary)] p-3 rounded">
 OP_M &lt;pubkey1&gt; &lt;pubkey2&gt; ... &lt;pubkeyN&gt; OP_N OP_CHECKMULTISIG</pre>
-    <p class="text-xs text-[var(--text-tertiary)] mt-2">
-      M 和 N 是 OP_1 到 OP_16 之間的操作碼
-    </p>
+    <p class="text-xs text-[var(--text-tertiary)] mt-2">M 和 N 是 OP_1 到 OP_16 之間的操作碼</p>
   </div>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <h4 class="font-semibold text-[var(--text-primary)] mb-3">scriptSig 格式（花費時）</h4>
-    <pre class="text-sm overflow-x-auto font-mono bg-[var(--bg-primary)] p-3 rounded">
+    <pre
+      class="text-sm overflow-x-auto font-mono bg-[var(--bg-primary)] p-3 rounded">
 OP_0 &lt;sig1&gt; &lt;sig2&gt; ... &lt;sigM&gt;</pre>
     <p class="text-xs text-[var(--text-tertiary)] mt-2">
       OP_0 是由於 OP_CHECKMULTISIG 的一個 bug，會消耗一個額外的堆疊元素
@@ -100,8 +102,11 @@ OP_0 &lt;sig1&gt; &lt;sig2&gt; ... &lt;sigM&gt;</pre>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">範例：2-of-3 多簽</h3>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-    <pre class="text-sm overflow-x-auto font-mono">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <pre
+      class="text-sm overflow-x-auto font-mono">
 scriptPubKey:
 OP_2
 &lt;pubkey_A&gt;
@@ -157,9 +162,7 @@ OP_0
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 P2SH 的關係</h2>
 
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    BIP-11 定義的裸多簽有幾個缺點：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">BIP-11 定義的裸多簽有幾個缺點：</p>
 
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li>• <strong>地址長</strong>：所有公鑰都在輸出中，無法用傳統地址表示</li>
@@ -168,8 +171,8 @@ OP_0
   </ul>
 
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    BIP-16（P2SH）解決了這些問題，允許將多簽腳本哈希為簡短地址。
-    現代多簽通常使用 P2SH 或 P2WSH 而非裸多簽。
+    BIP-16（P2SH）解決了這些問題，允許將多簽腳本哈希為簡短地址。 現代多簽通常使用 P2SH 或 P2WSH
+    而非裸多簽。
   </p>
 
   <div class="not-prose mb-8 grid md:grid-cols-2 gap-4">
@@ -192,7 +195,9 @@ OP_0
   <div class="not-prose mb-8 space-y-3">
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-mono font-medium text-[var(--text-primary)]">2-of-3</span>
-      <span class="text-sm text-[var(--text-secondary)] ml-2">— 最常見，適合個人安全儲存和小型團隊</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2"
+        >— 最常見，適合個人安全儲存和小型團隊</span
+      >
     </div>
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-mono font-medium text-[var(--text-primary)]">3-of-5</span>
@@ -210,22 +215,27 @@ OP_0
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    BIP-11 建立了多重簽名交易的基礎標準。雖然現代應用更多使用 P2SH 或 P2WSH 包裝的多簽，
-    但 BIP-11 定義的 OP_CHECKMULTISIG 操作碼仍然是所有多簽實現的核心。
+    BIP-11 建立了多重簽名交易的基礎標準。雖然現代應用更多使用 P2SH 或 P2WSH 包裝的多簽， 但 BIP-11
+    定義的 OP_CHECKMULTISIG 操作碼仍然是所有多簽實現的核心。
   </p>
 
-  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
     <ul class="text-sm text-[var(--text-secondary)] space-y-1">
       <li>
-        <a href="https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+        <a
+          href="https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-bitcoin-500 hover:underline"
+        >
           BIP-11 完整規格
         </a>
       </li>
       <li>
-        <a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline">
-          BIP-16: P2SH
-        </a>
+        <a href="/bips/bip-0016" class="text-bitcoin-500 hover:underline"> BIP-16: P2SH </a>
       </li>
       <li>
         <a href="/learn/intermediate/multisig" class="text-bitcoin-500 hover:underline">

@@ -18,8 +18,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是洋蔥路由？</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
     洋蔥路由（Onion Routing）是閃電網路保護支付隱私的核心機制。
-    它確保每個中間節點只知道自己的「前一跳」和「後一跳」，
-    無法得知完整的支付路徑、發送方或接收方。
+    它確保每個中間節點只知道自己的「前一跳」和「後一跳」， 無法得知完整的支付路徑、發送方或接收方。
   </p>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
@@ -31,8 +30,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">洋蔥封包結構</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`洋蔥封包 (1366 bytes)：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`洋蔥封包 (1366 bytes)：
 
 ┌────────────────────────────────────────────────┐
 │ version (1 byte): 0x00                         │
@@ -54,8 +56,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     發送方使用 Sphinx 混合格式加密，每一跳使用不同的共享密鑰：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`加密過程：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`加密過程：
 
 1. 生成會話私鑰 (session_key)
 2. 對每一跳計算共享密鑰：
@@ -82,8 +87,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">每跳 Payload</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`TLV Payload 格式（現代格式）：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`TLV Payload 格式（現代格式）：
 
 hop_payload:
 ├── amt_to_forward (type 2): 轉發金額 (毫聰)
@@ -115,8 +123,11 @@ hop_payload:
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解密與轉發</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`節點處理洋蔥封包：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`節點處理洋蔥封包：
 
 1. 從封包提取 public_key
 2. 計算共享密鑰：
@@ -158,9 +169,7 @@ new_pubkey = old_pubkey * SHA256(shared_secret)`}</pre>
     </div>
     <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
       <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">金額隱私</h4>
-      <p class="text-sm text-[var(--text-secondary)]">
-        只知道自己這一跳的轉發金額，不知道總金額。
-      </p>
+      <p class="text-sm text-[var(--text-secondary)]">只知道自己這一跳的轉發金額，不知道總金額。</p>
     </div>
   </div>
 
@@ -169,8 +178,11 @@ new_pubkey = old_pubkey * SHA256(shared_secret)`}</pre>
     當支付失敗時，錯誤需要安全地回報給發送方：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`錯誤封包結構：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錯誤封包結構：
 
 failure_packet:
 ├── hmac (32 bytes): 完整性驗證
@@ -191,8 +203,11 @@ Alice 嘗試用每一跳的密鑰解密：
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見錯誤碼</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`節點產生的錯誤：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`節點產生的錯誤：
 0x400F: temporary_node_failure
 0x4010: permanent_node_failure
 0x4011: required_node_feature_missing
@@ -220,8 +235,11 @@ Alice 嘗試用每一跳的密鑰解密：
     Route Blinding 進一步增強接收方隱私，隱藏最後幾跳：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`盲化路徑結構：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`盲化路徑結構：
 
 接收方 Carol 創建盲化路徑：
 1. 選擇引入節點 (introduction node)
@@ -246,8 +264,11 @@ Alice 嘗試用每一跳的密鑰解密：
     Trampoline 允許輕客戶端外包路由計算：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`Trampoline 路由：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Trampoline 路由：
 
 傳統路由：
 Alice → B → C → D → E → Carol
@@ -285,7 +306,10 @@ Alice → [Trampoline1] → [Trampoline2] → Carol
   <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
     <p class="text-sm text-[var(--text-secondary)]">
       <strong class="text-[var(--text-primary)]">下一步：</strong>
-      了解 <a href="/tech/lightning/bolt-invoice" class="text-yellow-600 dark:text-yellow-400 hover:underline">發票格式</a>
+      了解 <a
+        href="/tech/lightning/bolt-invoice"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">發票格式</a
+      >
       如何編碼支付請求資訊。
     </p>
   </div>

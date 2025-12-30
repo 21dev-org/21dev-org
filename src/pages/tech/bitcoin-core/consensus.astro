@@ -36,23 +36,25 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">挖礦過程</h3>
   <div class="not-prose mb-6 space-y-3">
-    {[
-      { step: '1', title: '收集交易', desc: '從 mempool 選擇交易，構建候選區塊' },
-      { step: '2', title: '構建區塊頭', desc: '包含前區塊雜湊、Merkle 根、時間戳等' },
-      { step: '3', title: '嘗試 nonce', desc: '不斷改變 nonce 值，計算區塊頭雜湊' },
-      { step: '4', title: '檢查結果', desc: '如果雜湊 < 目標值，找到有效區塊；否則繼續' },
-      { step: '5', title: '廣播區塊', desc: '找到有效區塊後，立即廣播到網路' },
-    ].map((item) => (
-      <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold text-sm">
-          {item.step}
+    {
+      [
+        { step: '1', title: '收集交易', desc: '從 mempool 選擇交易，構建候選區塊' },
+        { step: '2', title: '構建區塊頭', desc: '包含前區塊雜湊、Merkle 根、時間戳等' },
+        { step: '3', title: '嘗試 nonce', desc: '不斷改變 nonce 值，計算區塊頭雜湊' },
+        { step: '4', title: '檢查結果', desc: '如果雜湊 < 目標值，找到有效區塊；否則繼續' },
+        { step: '5', title: '廣播區塊', desc: '找到有效區塊後，立即廣播到網路' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-bitcoin-500 text-white flex items-center justify-center font-bold text-sm">
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
         </div>
-        <div>
-          <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
-          <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
-        </div>
-      </div>
-    ))}
+      ))
+    }
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">雜湊函數特性</h3>
@@ -66,26 +68,37 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500 font-bold">•</span>
-      <span><strong class="text-[var(--text-primary)]">雪崩效應</strong>：輸入微小變化導致輸出完全不同</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">雪崩效應</strong
+        >：輸入微小變化導致輸出完全不同</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500 font-bold">•</span>
-      <span><strong class="text-[var(--text-primary)]">確定性</strong>：相同輸入永遠產生相同輸出</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">確定性</strong>：相同輸入永遠產生相同輸出</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-bitcoin-500 font-bold">•</span>
-      <span><strong class="text-[var(--text-primary)]">抗碰撞</strong>：找到兩個相同雜湊的輸入極其困難</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">抗碰撞</strong
+        >：找到兩個相同雜湊的輸入極其困難</span
+      >
     </li>
   </ul>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">難度調整</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    比特幣設計為平均每 10 分鐘產生一個區塊。為了維持這個節奏，
-    網路每 2016 個區塊（約兩週）自動調整一次難度。
+    比特幣設計為平均每 10 分鐘產生一個區塊。為了維持這個節奏， 網路每 2016
+    個區塊（約兩週）自動調整一次難度。
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`# 難度調整公式
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`# 難度調整公式
 新難度 = 舊難度 × (實際時間 / 目標時間)
 
 # 目標時間
@@ -113,7 +126,10 @@ if 調整係數 < 0.25: 調整係數 = 0.25`}</pre>
   </p>
 
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="比特幣最長鏈規則處理方式">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="比特幣最長鏈規則處理方式"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">情況</th>
@@ -141,8 +157,7 @@ if 調整係數 < 0.25: 調整係數 = 0.25`}</pre>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">臨時分叉</h3>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    當兩個礦工幾乎同時找到有效區塊時，網路會暫時分裂。
-    這是正常現象，通常在 1-2 個區塊後自動解決。
+    當兩個礦工幾乎同時找到有效區塊時，網路會暫時分裂。 這是正常現象，通常在 1-2 個區塊後自動解決。
   </p>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">軟分叉 (Soft Fork)</h3>
@@ -158,7 +173,10 @@ if 調整係數 < 0.25: 調整係數 = 0.25`}</pre>
   </p>
 
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden" aria-label="比特幣軟分叉與硬分叉比較">
+    <table
+      class="w-full text-sm border border-[var(--border-default)] rounded-lg overflow-hidden"
+      aria-label="比特幣軟分叉與硬分叉比較"
+    >
       <thead class="bg-[var(--bg-secondary)]">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-[var(--text-primary)]">特性</th>
@@ -192,9 +210,7 @@ if 調整係數 < 0.25: 調整係數 = 0.25`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">共識規則類型</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    Bitcoin Core 實現了多層共識規則：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">Bitcoin Core 實現了多層共識規則：</p>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">
     <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
@@ -222,8 +238,8 @@ if 調整係數 < 0.25: 調整係數 = 0.25`}</pre>
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li>
-      <a href="/bips/bip-0009" class="text-bitcoin-500 hover:underline">BIP-9</a>：
-      Version bits 軟分叉激活機制
+      <a href="/bips/bip-0009" class="text-bitcoin-500 hover:underline">BIP-9</a>： Version bits
+      軟分叉激活機制
     </li>
     <li>
       <a href="/bips/bip-0008" class="text-bitcoin-500 hover:underline">BIP-8</a>：

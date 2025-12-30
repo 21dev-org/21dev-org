@@ -1,13 +1,13 @@
 ---
-title: "Taproot 升級完整解析"
+title: 'Taproot 升級完整解析'
 date: 2024-10-10
-duration: "28:45"
-platform: "youtube"
-embedId: "1gRCVLgkyAE"
-speaker: "Bitcoin Magazine"
-topics: ["Taproot", "Schnorr", "隱私"]
-description: "全面解析比特幣 Taproot 升級，包括 Schnorr 簽章、MAST 和腳本路徑支付。"
-language: "en"
+duration: '28:45'
+platform: 'youtube'
+embedId: '1gRCVLgkyAE'
+speaker: 'Bitcoin Magazine'
+topics: ['Taproot', 'Schnorr', '隱私']
+description: '全面解析比特幣 Taproot 升級，包括 Schnorr 簽章、MAST 和腳本路徑支付。'
+language: 'en'
 ---
 
 ## 影片介紹

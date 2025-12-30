@@ -1,12 +1,12 @@
 ---
-title: "Bitcoin Taipei 2025"
+title: 'Bitcoin Taipei 2025'
 date: 2025-03-15
 endDate: 2025-03-16
-location: "台北"
-type: "conference"
-url: "https://bitcoin.taipei"
-description: "台灣最大的比特幣年度盛會，匯聚全球比特幣開發者、研究者與愛好者，探討最新技術發展與生態趨勢。"
-tags: ["比特幣", "會議", "台灣"]
+location: '台北'
+type: 'conference'
+url: 'https://bitcoin.taipei'
+description: '台灣最大的比特幣年度盛會，匯聚全球比特幣開發者、研究者與愛好者，探討最新技術發展與生態趨勢。'
+tags: ['比特幣', '會議', '台灣']
 ---
 
 ## 活動介紹

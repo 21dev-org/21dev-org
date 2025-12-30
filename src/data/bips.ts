@@ -446,26 +446,26 @@ export const bips: BIP[] = [
 
 // Helper function to get a BIP by number
 export function getBipByNumber(number: number): BIP | undefined {
-  return bips.find(bip => bip.number === number);
+  return bips.find((bip) => bip.number === number);
 }
 
 // Helper function to get BIPs by status
 export function getBipsByStatus(status: BIP['status']): BIP[] {
-  return bips.filter(bip => bip.status === status);
+  return bips.filter((bip) => bip.status === status);
 }
 
 // Helper function to get BIPs by type
 export function getBipsByType(type: BIP['type']): BIP[] {
-  return bips.filter(bip => bip.type === type);
+  return bips.filter((bip) => bip.type === type);
 }
 
 // Status display variants for UI
 export const statusVariants: Record<string, 'success' | 'bitcoin' | 'default' | 'warning'> = {
-  'Final': 'success',
-  'Active': 'bitcoin',
-  'Proposed': 'default',
-  'Draft': 'default',
-  'Replaced': 'warning',
-  'Rejected': 'warning',
-  'Withdrawn': 'warning',
+  Final: 'success',
+  Active: 'bitcoin',
+  Proposed: 'default',
+  Draft: 'default',
+  Replaced: 'warning',
+  Rejected: 'warning',
+  Withdrawn: 'warning',
 };

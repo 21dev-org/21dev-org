@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-66: 嚴格 DER 簽章"
   description="強制要求比特幣交易使用嚴格的 DER 編碼簽章格式，修復潛在安全漏洞。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-66' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-66' }]}
   tags={['Standards Track', 'Final']}
   author="Pieter Wuille"
   date={new Date('2015-01-10')}
   prevPage={{ title: 'BIP-65: CLTV', href: '/bips/bip-0065' }}
   nextPage={{ title: 'BIP-68: 相對時間鎖', href: '/bips/bip-0068' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -39,8 +38,8 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">摘要</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    BIP-66 引入了一個新的共識規則，要求所有 ECDSA 簽章必須嚴格遵守 DER（Distinguished Encoding Rules）編碼格式。
-    這修復了 OpenSSL 實現中的潛在安全漏洞，並確保所有節點對簽章驗證有一致的行為。
+    BIP-66 引入了一個新的共識規則，要求所有 ECDSA 簽章必須嚴格遵守 DER（Distinguished Encoding
+    Rules）編碼格式。 這修復了 OpenSSL 實現中的潛在安全漏洞，並確保所有節點對簽章驗證有一致的行為。
   </p>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">背景</h2>
@@ -65,8 +64,11 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">簽章結構</h3>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-    <pre class="text-sm overflow-x-auto font-mono">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <pre
+      class="text-sm overflow-x-auto font-mono">
 ECDSA 簽章 DER 格式：
 ┌──────────────────────────────────────────────────────┐
 │ 0x30 [total-len] 0x02 [r-len] [r] 0x02 [s-len] [s]   │
@@ -92,19 +94,27 @@ ECDSA 簽章 DER 格式：
   <div class="not-prose mb-8 space-y-3">
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-medium text-[var(--text-primary)]">1. 正確的標記</span>
-      <span class="text-sm text-[var(--text-secondary)] ml-2">— 必須以 0x30 開頭，r 和 s 必須以 0x02 開頭</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2"
+        >— 必須以 0x30 開頭，r 和 s 必須以 0x02 開頭</span
+      >
     </div>
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-medium text-[var(--text-primary)]">2. 正確的長度</span>
-      <span class="text-sm text-[var(--text-secondary)] ml-2">— 長度欄位必須準確反映實際資料長度</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2"
+        >— 長度欄位必須準確反映實際資料長度</span
+      >
     </div>
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-medium text-[var(--text-primary)]">3. 最小編碼</span>
-      <span class="text-sm text-[var(--text-secondary)] ml-2">— r 和 s 不能有多餘的前導零（除非最高位是 1）</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2"
+        >— r 和 s 不能有多餘的前導零（除非最高位是 1）</span
+      >
     </div>
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-medium text-[var(--text-primary)]">4. 正數表示</span>
-      <span class="text-sm text-[var(--text-secondary)] ml-2">— 如果 r 或 s 的最高位是 1，必須加 0x00 前綴避免被解讀為負數</span>
+      <span class="text-sm text-[var(--text-secondary)] ml-2"
+        >— 如果 r 或 s 的最高位是 1，必須加 0x00 前綴避免被解讀為負數</span
+      >
     </div>
     <div class="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
       <span class="font-medium text-[var(--text-primary)]">5. 非零值</span>
@@ -114,8 +124,11 @@ ECDSA 簽章 DER 格式：
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">合法簽章範例</h3>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-    <pre class="text-sm overflow-x-auto font-mono">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <pre
+      class="text-sm overflow-x-auto font-mono">
 合法簽章（71 bytes）：
 30 44                          // SEQUENCE, 長度 68
    02 20                       // INTEGER, 長度 32
@@ -202,20 +215,31 @@ ECDSA 簽章 DER 格式：
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     BIP-66 是一個重要的安全性改進，確保所有節點對簽章驗證有相同的行為。
-    雖然對終端使用者透明，但它消除了一類潛在的共識失敗風險，
-    是比特幣協議穩健性的重要保障。
+    雖然對終端使用者透明，但它消除了一類潛在的共識失敗風險， 是比特幣協議穩健性的重要保障。
   </p>
 
-  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
     <ul class="text-sm text-[var(--text-secondary)] space-y-1">
       <li>
-        <a href="https://github.com/bitcoin/bips/blob/master/bip-0066.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+        <a
+          href="https://github.com/bitcoin/bips/blob/master/bip-0066.mediawiki"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-bitcoin-500 hover:underline"
+        >
           BIP-66 完整規格
         </a>
       </li>
       <li>
-        <a href="https://github.com/bitcoin-core/secp256k1" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+        <a
+          href="https://github.com/bitcoin-core/secp256k1"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-bitcoin-500 hover:underline"
+        >
           libsecp256k1
         </a>
       </li>

@@ -6,17 +6,16 @@ import Tag from '@/components/ui/Tag.astro';
 <ArticleLayout
   title="BIP-158: 緊湊區塊過濾器"
   description="定義緊湊區塊過濾器的格式和構建方式，使用 Golomb-Rice 編碼壓縮資料。"
-  breadcrumbs={[
-    { label: 'BIPs', href: '/bips/' },
-    { label: 'BIP-158' },
-  ]}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: 'BIP-158' }]}
   tags={['Standards Track', 'Draft']}
   author="Olaoluwa Osuntokun, Alex Akselrod"
   date={new Date('2017-05-24')}
   prevPage={{ title: 'BIP-157: 輕客戶端過濾器', href: '/bips/bip-0157' }}
   nextPage={{ title: 'BIP-173: Bech32', href: '/bips/bip-0173' }}
 >
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
       <div>
         <span class="text-[var(--text-tertiary)]">BIP 編號</span>
@@ -70,16 +69,16 @@ import Tag from '@/components/ui/Tag.astro';
     BIP-158 目前定義了一種過濾器類型：
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <h4 class="font-semibold text-[var(--text-primary)] mb-3">Basic Filter（類型 0x00）</h4>
     <p class="text-sm text-[var(--text-secondary)] mb-3">包含：</p>
     <ul class="text-sm text-[var(--text-secondary)] space-y-1">
       <li>• 區塊中所有交易輸出的 scriptPubKey</li>
       <li>• 區塊中所有交易輸入花費的 scriptPubKey（不含 coinbase）</li>
     </ul>
-    <p class="text-sm text-[var(--text-tertiary)] mt-3">
-      這足以讓錢包發現與自己地址相關的交易。
-    </p>
+    <p class="text-sm text-[var(--text-tertiary)] mt-3">這足以讓錢包發現與自己地址相關的交易。</p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Golomb-Rice 編碼</h2>
@@ -90,8 +89,11 @@ import Tag from '@/components/ui/Tag.astro';
     Golomb-Rice 編碼是一種變長編碼，對於某些數值分布可以達到接近最優的壓縮率：
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-    <pre class="text-sm overflow-x-auto font-mono">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <pre
+      class="text-sm overflow-x-auto font-mono">
 給定參數 P（2 的冪次），對數值 x 編碼：
 
 1. 計算商 q = x / P
@@ -108,8 +110,11 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">過濾器構建</h3>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-    <pre class="text-sm overflow-x-auto font-mono">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <pre
+      class="text-sm overflow-x-auto font-mono">
 構建過濾器的步驟：
 
 1. 收集元素
@@ -122,7 +127,7 @@ import Tag from '@/components/ui/Tag.astro';
 
 3. 縮放到目標範圍
    F = N * M  // N = 元素數量，M = 假陽性參數
-   scaled = [(h * F) >> 64 for h in hashes]
+   scaled = [(h * F) &gt;&gt; 64 for h in hashes]
 
 4. 排序並計算差值
    sorted = sort(scaled)
@@ -165,13 +170,16 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢過濾器</h2>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-    <pre class="text-sm overflow-x-auto font-mono">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <pre
+      class="text-sm overflow-x-auto font-mono">
 查詢過濾器的步驟：
 
 1. 計算查詢元素的哈希和縮放值
    query_hash = SipHash(key, query_script)
-   query_scaled = (query_hash * N * M) >> 64
+   query_scaled = (query_hash * N * M) &gt;&gt; 64
 
 2. 解碼過濾器，重建排序後的值集合
    values = decode_filter(filter_data)
@@ -187,20 +195,24 @@ import Tag from '@/components/ui/Tag.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器大小</h2>
 
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    過濾器比完整區塊小得多：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">過濾器比完整區塊小得多：</p>
 
   <div class="not-prose mb-8 grid md:grid-cols-3 gap-4">
-    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center">
+    <div
+      class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center"
+    >
       <p class="text-2xl font-bold text-bitcoin-500">~15 KB</p>
       <p class="text-sm text-[var(--text-secondary)]">典型區塊過濾器大小</p>
     </div>
-    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center">
+    <div
+      class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center"
+    >
       <p class="text-2xl font-bold text-[var(--text-primary)]">~1.5 MB</p>
       <p class="text-sm text-[var(--text-secondary)]">典型區塊大小</p>
     </div>
-    <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center">
+    <div
+      class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-center"
+    >
       <p class="text-2xl font-bold text-green-500">~1%</p>
       <p class="text-sm text-[var(--text-secondary)]">過濾器/區塊比例</p>
     </div>
@@ -209,7 +221,10 @@ import Tag from '@/components/ui/Tag.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Bloom Filter 比較</h2>
 
   <div class="not-prose mb-8 overflow-x-auto">
-    <table class="w-full text-sm border-collapse" aria-label="BIP-37 Bloom Filter 與 BIP-158 GCS 比較">
+    <table
+      class="w-full text-sm border-collapse"
+      aria-label="BIP-37 Bloom Filter 與 BIP-158 GCS 比較"
+    >
       <thead>
         <tr class="border-b border-[var(--border-default)]">
           <th scope="col" class="text-left p-3 text-[var(--text-primary)]">特性</th>
@@ -257,24 +272,30 @@ import Tag from '@/components/ui/Tag.astro';
         客戶端會漏掉相關交易。解決方案：從多個獨立節點獲取並比較。
       </li>
       <li>
-        <strong>過濾器頭鏈</strong>：使用過濾器頭鏈可以檢測篡改，
-        但不能防止所有節點串通。
+        <strong>過濾器頭鏈</strong>：使用過濾器頭鏈可以檢測篡改， 但不能防止所有節點串通。
       </li>
     </ul>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">總結</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    BIP-158 定義了一種高效的區塊過濾器格式，使用 Golomb-Rice 編碼達到接近最優的壓縮率。
-    結合 BIP-157 的 P2P 協議，為輕客戶端提供了隱私優先的同步方案。
+    BIP-158 定義了一種高效的區塊過濾器格式，使用 Golomb-Rice 編碼達到接近最優的壓縮率。 結合 BIP-157
+    的 P2P 協議，為輕客戶端提供了隱私優先的同步方案。
     雖然需要下載更多資料，但換來的是更好的隱私保護。
   </p>
 
-  <div class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <h4 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h4>
     <ul class="text-sm text-[var(--text-secondary)] space-y-1">
       <li>
-        <a href="https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki" target="_blank" rel="noopener noreferrer" class="text-bitcoin-500 hover:underline">
+        <a
+          href="https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-bitcoin-500 hover:underline"
+        >
           BIP-158 完整規格
         </a>
       </li>

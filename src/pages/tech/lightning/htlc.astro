@@ -25,8 +25,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
     <p class="text-sm text-yellow-700 dark:text-yellow-400">
       <strong>核心概念：</strong>
-      HTLC 結合了哈希鎖（只有知道原像才能解鎖）和時間鎖（超時後資金返還），
-      實現了無需信任中間人的多跳支付。
+      HTLC 結合了哈希鎖（只有知道原像才能解鎖）和時間鎖（超時後資金返還）， 實現了無需信任中間人的多跳支付。
     </p>
   </div>
 
@@ -55,8 +54,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 腳本結構</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`HTLC 腳本（簡化版）：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 腳本（簡化版）：
 
 OP_IF
     # 成功路徑：接收方提供原像
@@ -78,8 +80,11 @@ OP_ENDIF
     假設 Alice 想付款給 Carol，但她們沒有直接通道，需要通過 Bob 轉發：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`支付路徑：Alice ──→ Bob ──→ Carol
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`支付路徑：Alice ──→ Bob ──→ Carol
 
 步驟 1：Carol 生成秘密和哈希
 ┌─────────────────────────────────────────┐
@@ -120,8 +125,11 @@ OP_ENDIF
     每一跳的時間鎖必須遞減，確保中間節點有足夠時間取回資金：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`時間鎖設計：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`時間鎖設計：
 
 Alice → Bob → Carol → Dave
 
@@ -142,8 +150,7 @@ cltv_expiry_delta = 40 blocks（約 6.7 小時）
   <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
     <p class="text-sm text-red-700 dark:text-red-400">
       <strong>安全警告：</strong>
-      如果時間鎖設計不當，中間節點可能來不及取回資金。
-      這就是為什麼節點軟體會自動計算安全的 CLTV delta。
+      如果時間鎖設計不當，中間節點可能來不及取回資金。 這就是為什麼節點軟體會自動計算安全的 CLTV delta。
     </p>
   </div>
 
@@ -152,8 +159,11 @@ cltv_expiry_delta = 40 blocks（約 6.7 小時）
     每個待處理的 HTLC 都會在承諾交易中創建一個額外的輸出：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`承諾交易結構（含 HTLC）：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`承諾交易結構（含 HTLC）：
 
 輸入：
   funding_tx:0 (多簽)
@@ -190,8 +200,11 @@ HTLC 輸出腳本：
     當需要在鏈上解決 HTLC 時，使用二級交易：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`HTLC 二級交易類型：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 二級交易類型：
 
 1. HTLC-success transaction
    - 用於：接收方知道原像
@@ -211,8 +224,11 @@ HTLC 輸出腳本：
     傳統 HTLC 使用相同的 payment_hash，這有隱私問題：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]">{`隱私問題：
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`隱私問題：
 
 Alice → Bob → Carol → Dave
   H1      H1     H1
@@ -233,8 +249,8 @@ Alice → Bob → Carol → Dave
     <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
       <h4 class="font-semibold text-[var(--text-primary)] mb-2">中間節點能偷走資金嗎？</h4>
       <p class="text-sm text-[var(--text-secondary)]">
-        不能。Bob 只有在向 Carol 支付後才能從 Alice 取得資金。
-        如果 Bob 不轉發，Alice 的 HTLC 會超時返還。
+        不能。Bob 只有在向 Carol 支付後才能從 Alice 取得資金。 如果 Bob 不轉發，Alice 的 HTLC
+        會超時返還。
       </p>
     </div>
     <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
@@ -263,7 +279,10 @@ Alice → Bob → Carol → Dave
   <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
     <p class="text-sm text-[var(--text-secondary)]">
       <strong class="text-[var(--text-primary)]">下一步：</strong>
-      了解 <a href="/tech/lightning/commitment-tx" class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+      了解 <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a
+      >
       的完整結構和撤銷機制。
     </p>
   </div>

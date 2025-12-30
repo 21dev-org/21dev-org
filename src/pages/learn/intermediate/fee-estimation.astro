@@ -17,27 +17,28 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 >
   <h2 id="fee-basics">手續費基礎</h2>
   <p>
-    比特幣交易手續費不是按金額計算，而是按交易的「虛擬位元組」(vBytes) 大小計算。
-    礦工優先處理每 vByte 費率較高的交易。
+    比特幣交易手續費不是按金額計算，而是按交易的「虛擬位元組」(vBytes) 大小計算。 礦工優先處理每
+    vByte 費率較高的交易。
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-3">手續費公式</p>
     <p class="font-mono text-lg text-bitcoin-500 mb-2">
       手續費 = 交易大小 (vBytes) × 費率 (sat/vB)
     </p>
-    <p class="text-sm text-[var(--text-tertiary)]">
-      例如：250 vBytes × 10 sat/vB = 2,500 sats
-    </p>
+    <p class="text-sm text-[var(--text-tertiary)]">例如：250 vBytes × 10 sat/vB = 2,500 sats</p>
   </div>
 
   <h2 id="vbytes">虛擬位元組 (vBytes)</h2>
-  <p>
-    SegWit 引入了「權重」概念。witness 數據享有 75% 折扣。
-  </p>
+  <p>SegWit 引入了「權重」概念。witness 數據享有 75% 折扣。</p>
 
   <div class="not-prose mb-6 overflow-x-auto">
-    <table class="w-full text-sm" aria-label="SegWit 數據類型權重：基礎數據與 Witness 數據的權重差異">
+    <table
+      class="w-full text-sm"
+      aria-label="SegWit 數據類型權重：基礎數據與 Witness 數據的權重差異"
+    >
       <thead>
         <tr class="border-b border-[var(--border-default)]">
           <th scope="col" class="text-left py-2 text-[var(--text-primary)]">數據類型</th>
@@ -60,7 +61,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </table>
   </div>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm"
+  >
     <p class="text-[var(--text-tertiary)] mb-2"># vBytes 計算</p>
     <p class="text-[var(--text-secondary)]">vBytes = weight / 4</p>
     <p class="text-[var(--text-tertiary)] mt-2 mb-2"># 區塊限制</p>
@@ -68,9 +71,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h2 id="transaction-size">交易大小估算</h2>
-  <p>
-    不同地址類型的交易大小差異很大：
-  </p>
+  <p>不同地址類型的交易大小差異很大：</p>
 
   <div class="not-prose mb-6 overflow-x-auto">
     <table class="w-full text-sm" aria-label="不同地址類型的交易輸入大小和相對成本比較">
@@ -113,11 +114,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h2 id="mempool">記憶池 (Mempool)</h2>
-  <p>
-    未確認的交易在記憶池中等待被打包。礦工從記憶池中選擇費率最高的交易來填滿區塊。
-  </p>
+  <p>未確認的交易在記憶池中等待被打包。礦工從記憶池中選擇費率最高的交易來填滿區塊。</p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
     <p class="font-semibold text-[var(--text-primary)] mb-3">記憶池狀態對費率的影響</p>
     <div class="grid md:grid-cols-3 gap-4 text-sm">
       <div>
@@ -139,20 +140,19 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3 id="historical-analysis">1. 歷史區塊分析</h3>
   <p>
-    分析最近幾個區塊中被確認的交易費率，推斷當前需要的費率。
-    Bitcoin Core 使用這種方法提供 <code>estimatesmartfee</code> RPC。
+    分析最近幾個區塊中被確認的交易費率，推斷當前需要的費率。 Bitcoin Core 使用這種方法提供 <code
+      >estimatesmartfee</code
+    > RPC。
   </p>
 
   <h3 id="mempool-analysis">2. 記憶池分析</h3>
   <p>
-    直接分析當前記憶池中的交易，按費率排序，估算需要多高的費率才能在下一個區塊被確認。
-    mempool.space 使用這種方法。
+    直接分析當前記憶池中的交易，按費率排序，估算需要多高的費率才能在下一個區塊被確認。 mempool.space
+    使用這種方法。
   </p>
 
   <h3 id="confirmation-target">3. 確認時間目標</h3>
-  <p>
-    根據希望在多少個區塊內確認，動態調整費率建議：
-  </p>
+  <p>根據希望在多少個區塊內確認，動態調整費率建議：</p>
   <ul>
     <li><strong>下一個區塊</strong>：最高費率，緊急交易</li>
     <li><strong>1 小時內</strong>：中等費率（約 6 個區塊）</li>
@@ -186,8 +186,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <div class="not-prose mb-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
     <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
-      <strong>延伸閱讀：</strong> 了解 <a href="/learn/intermediate/rbf-cpfp" class="underline">RBF 和 CPFP</a> 交易加速技術，
-      以及 <a href="/bips/bip-0125" class="underline">BIP-125 RBF</a> 標準。
+      <strong>延伸閱讀：</strong> 了解 <a href="/learn/intermediate/rbf-cpfp" class="underline"
+        >RBF 和 CPFP</a
+      > 交易加速技術， 以及 <a href="/bips/bip-0125" class="underline">BIP-125 RBF</a> 標準。
     </p>
   </div>
 </ArticleLayout>
