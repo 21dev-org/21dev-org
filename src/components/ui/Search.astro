@@ -1,0 +1,332 @@
+---
+/**
+ * Search - Full-text search powered by Pagefind
+ * Opens a modal dialog with search input and results.
+ */
+---
+
+<!-- Search trigger button -->
+<button
+  id="search-button"
+  type="button"
+  class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] border border-[var(--border-default)] transition-colors"
+  aria-label="搜尋"
+>
+  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+  <span class="hidden sm:inline">搜尋</span>
+  <kbd class="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono bg-[var(--bg-primary)] rounded border border-[var(--border-default)]">
+    <span class="text-xs">⌘</span>K
+  </kbd>
+</button>
+
+<!-- Search modal backdrop -->
+<div
+  id="search-backdrop"
+  class="fixed inset-0 z-50 bg-black/50 opacity-0 pointer-events-none transition-opacity duration-200"
+  aria-hidden="true"
+></div>
+
+<!-- Search modal -->
+<div
+  id="search-modal"
+  class="fixed inset-x-4 top-[10vh] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-50 opacity-0 pointer-events-none scale-95 transition-all duration-200"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="search-title"
+>
+  <div class="bg-[var(--bg-primary)] rounded-xl shadow-2xl border border-[var(--border-default)] overflow-hidden">
+    <!-- Search header -->
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-default)]">
+      <svg class="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <input
+        id="search-input"
+        type="search"
+        class="flex-1 bg-transparent text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none text-lg"
+        placeholder="搜尋文章、BIP、技術文件..."
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button
+        id="search-close"
+        type="button"
+        class="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
+        aria-label="關閉搜尋"
+      >
+        <kbd class="px-1.5 py-0.5 text-xs font-mono bg-[var(--bg-secondary)] rounded border border-[var(--border-default)]">ESC</kbd>
+      </button>
+    </div>
+
+    <!-- Search results -->
+    <div id="search-results" class="max-h-[60vh] overflow-y-auto">
+      <!-- Initial state -->
+      <div id="search-initial" class="px-4 py-8 text-center text-[var(--text-tertiary)]">
+        <p>輸入關鍵字開始搜尋</p>
+      </div>
+
+      <!-- Loading state -->
+      <div id="search-loading" class="hidden px-4 py-8 text-center text-[var(--text-tertiary)]">
+        <div class="inline-block w-6 h-6 border-2 border-[var(--border-default)] border-t-bitcoin-500 rounded-full animate-spin"></div>
+        <p class="mt-2">搜尋中...</p>
+      </div>
+
+      <!-- No results state -->
+      <div id="search-empty" class="hidden px-4 py-8 text-center text-[var(--text-tertiary)]">
+        <p>找不到相關結果</p>
+        <p class="text-sm mt-1">試試其他關鍵字</p>
+      </div>
+
+      <!-- Results list -->
+      <ul id="search-list" class="hidden divide-y divide-[var(--border-default)]">
+        <!-- Results will be inserted here -->
+      </ul>
+    </div>
+
+    <!-- Search footer -->
+    <div class="px-4 py-2 border-t border-[var(--border-default)] bg-[var(--bg-secondary)] text-xs text-[var(--text-tertiary)] flex items-center justify-between">
+      <span>由 Pagefind 提供搜尋</span>
+      <div class="flex items-center gap-3">
+        <span class="flex items-center gap-1">
+          <kbd class="px-1 py-0.5 bg-[var(--bg-primary)] rounded border border-[var(--border-default)]">↑</kbd>
+          <kbd class="px-1 py-0.5 bg-[var(--bg-primary)] rounded border border-[var(--border-default)]">↓</kbd>
+          選擇
+        </span>
+        <span class="flex items-center gap-1">
+          <kbd class="px-1 py-0.5 bg-[var(--bg-primary)] rounded border border-[var(--border-default)]">↵</kbd>
+          開啟
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let pagefind: any = null;
+  let selectedIndex = -1;
+
+  async function loadPagefind() {
+    if (pagefind) return pagefind;
+    try {
+      // Use variable to prevent Vite from analyzing this import
+      const pagefindPath = '/pagefind/pagefind.js';
+      pagefind = await import(/* @vite-ignore */ pagefindPath);
+      await pagefind.init();
+      return pagefind;
+    } catch (e) {
+      console.error('Failed to load Pagefind:', e);
+      return null;
+    }
+  }
+
+  function initSearch() {
+    const button = document.getElementById('search-button');
+    const backdrop = document.getElementById('search-backdrop');
+    const modal = document.getElementById('search-modal');
+    const closeBtn = document.getElementById('search-close');
+    const input = document.getElementById('search-input') as HTMLInputElement | null;
+    const results = document.getElementById('search-results');
+    const initialState = document.getElementById('search-initial');
+    const loadingState = document.getElementById('search-loading');
+    const emptyState = document.getElementById('search-empty');
+    const resultsList = document.getElementById('search-list');
+
+    if (!button || !backdrop || !modal || !closeBtn || !input || !results || !initialState || !loadingState || !emptyState || !resultsList) return;
+
+    // Store references to avoid null checks in closures
+    const bd = backdrop;
+    const md = modal;
+    const inp = input;
+    const init = initialState;
+    const load = loadingState;
+    const empty = emptyState;
+    const list = resultsList;
+
+    let isOpen = false;
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    function openModal() {
+      isOpen = true;
+      bd.classList.remove('opacity-0', 'pointer-events-none');
+      bd.classList.add('opacity-100');
+      md.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+      md.classList.add('opacity-100', 'scale-100');
+      document.body.style.overflow = 'hidden';
+      inp.focus();
+      loadPagefind();
+    }
+
+    function closeModal() {
+      isOpen = false;
+      bd.classList.add('opacity-0', 'pointer-events-none');
+      bd.classList.remove('opacity-100');
+      md.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+      md.classList.remove('opacity-100', 'scale-100');
+      document.body.style.overflow = '';
+      inp.value = '';
+      showInitial();
+      selectedIndex = -1;
+    }
+
+    function showInitial() {
+      init.classList.remove('hidden');
+      load.classList.add('hidden');
+      empty.classList.add('hidden');
+      list.classList.add('hidden');
+    }
+
+    function showLoading() {
+      init.classList.add('hidden');
+      load.classList.remove('hidden');
+      empty.classList.add('hidden');
+      list.classList.add('hidden');
+    }
+
+    function showEmpty() {
+      init.classList.add('hidden');
+      load.classList.add('hidden');
+      empty.classList.remove('hidden');
+      list.classList.add('hidden');
+    }
+
+    function showResults() {
+      init.classList.add('hidden');
+      load.classList.add('hidden');
+      empty.classList.add('hidden');
+      list.classList.remove('hidden');
+    }
+
+    async function performSearch(query: string) {
+      if (!query.trim()) {
+        showInitial();
+        return;
+      }
+
+      showLoading();
+      const pf = await loadPagefind();
+      if (!pf) {
+        showEmpty();
+        return;
+      }
+
+      const search = await pf.search(query);
+      if (search.results.length === 0) {
+        showEmpty();
+        return;
+      }
+
+      // Load result data
+      const resultsData = await Promise.all(
+        search.results.slice(0, 10).map((r: any) => r.data())
+      );
+
+      // Render results
+      list.innerHTML = resultsData.map((result: any, index: number) => `
+        <li>
+          <a
+            href="${result.url}"
+            class="search-result block px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors ${index === selectedIndex ? 'bg-[var(--bg-secondary)]' : ''}"
+            data-index="${index}"
+          >
+            <div class="font-medium text-[var(--text-primary)]">${result.meta?.title || 'Untitled'}</div>
+            <div class="text-sm text-[var(--text-secondary)] line-clamp-2 mt-1">${result.excerpt}</div>
+          </a>
+        </li>
+      `).join('');
+
+      showResults();
+      selectedIndex = -1;
+    }
+
+    function updateSelection() {
+      const items = list.querySelectorAll('.search-result');
+      items.forEach((item, index) => {
+        if (index === selectedIndex) {
+          item.classList.add('bg-[var(--bg-secondary)]');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.classList.remove('bg-[var(--bg-secondary)]');
+        }
+      });
+    }
+
+    // Event listeners
+    button.addEventListener('click', openModal);
+    bd.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Open with Cmd/Ctrl + K
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (isOpen) {
+          closeModal();
+        } else {
+          openModal();
+        }
+      }
+
+      // Close with Escape
+      if (e.key === 'Escape' && isOpen) {
+        closeModal();
+      }
+
+      // Navigate results with arrow keys
+      if (isOpen && !list.classList.contains('hidden')) {
+        const items = list.querySelectorAll('.search-result');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+          updateSelection();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          updateSelection();
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+          e.preventDefault();
+          const selectedItem = items[selectedIndex] as HTMLAnchorElement;
+          if (selectedItem) {
+            closeModal();
+            window.location.href = selectedItem.href;
+          }
+        }
+      }
+    });
+
+    // Search input handler with debounce
+    inp.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        performSearch(inp.value);
+      }, 200);
+    });
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', initSearch);
+  // Re-initialize on Astro page transitions
+  document.addEventListener('astro:page-load', initSearch);
+</script>
+
+<style is:global>
+  /* Highlight search matches */
+  .search-result mark {
+    background-color: rgba(247, 147, 26, 0.3);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+
+  /* Line clamp for excerpts */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
