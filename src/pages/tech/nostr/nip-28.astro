@@ -1,0 +1,534 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-28 公開聊天"
+  description="Nostr 公開聊天頻道標準，實現去中心化的群組聊天室功能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-28 公開聊天' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-25/',
+    title: 'NIP-25 反應',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-30/',
+    title: 'NIP-30 自訂表情',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-28 定義了 Nostr 的公開聊天頻道標準，類似於 IRC 頻道或 Discord 公開伺服器。
+    任何人都可以建立頻道、發送訊息、回覆討論。頻道是完全公開的，
+    所有訊息都儲存在中繼器上。
+  </p>
+
+  <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg my-6">
+    <p class="text-blue-700 dark:text-blue-300 font-medium mb-2">去中心化聊天</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      與傳統聊天室不同，Nostr 頻道沒有中央伺服器。頻道由創建者的事件定義，
+      訊息分散在多個中繼器上，任何人都可以參與。
+    </p>
+  </div>
+
+  <h2 id="event-kinds">事件類型</h2>
+  <p>NIP-28 保留了 kind 40-44 用於公開聊天：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">名稱</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">40</td>
+          <td class="border border-[var(--border-default)] p-3">頻道建立</td>
+          <td class="border border-[var(--border-default)] p-3">建立新的聊天頻道</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">41</td>
+          <td class="border border-[var(--border-default)] p-3">頻道中繼資料</td>
+          <td class="border border-[var(--border-default)] p-3">更新頻道資訊</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">42</td>
+          <td class="border border-[var(--border-default)] p-3">頻道訊息</td>
+          <td class="border border-[var(--border-default)] p-3">在頻道中發送訊息</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">43</td>
+          <td class="border border-[var(--border-default)] p-3">隱藏訊息</td>
+          <td class="border border-[var(--border-default)] p-3">隱藏特定訊息（個人）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">44</td>
+          <td class="border border-[var(--border-default)] p-3">靜音用戶</td>
+          <td class="border border-[var(--border-default)] p-3">靜音特定用戶（個人）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="channel-creation">建立頻道 (Kind 40)</h2>
+  <p>
+    Kind 40 事件用於建立新頻道。頻道 ID 就是這個事件的 ID。
+    內容是 JSON 格式的頻道中繼資料。
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 40,
+  "content": "{\"name\":\"Nostr 開發者\",\"about\":\"討論 Nostr 開發相關話題\",\"picture\":\"https://example.com/channel.png\"}",
+  "tags": [
+    ["t", "nostr"],
+    ["t", "development"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>中繼資料欄位</h3>
+  <ul>
+    <li><code>name</code> - 頻道名稱</li>
+    <li><code>about</code> - 頻道描述</li>
+    <li><code>picture</code> - 頻道圖片 URL</li>
+    <li><code>relays</code> - 建議的中繼器列表（選填）</li>
+  </ul>
+
+  <h2 id="channel-metadata">更新頻道資訊 (Kind 41)</h2>
+  <p>
+    頻道創建者可以發布 kind 41 事件來更新頻道資訊。
+    客戶端應該只接受來自頻道創建者的 kind 41 事件。
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 41,
+  "content": "{\"name\":\"Nostr 開發者（官方）\",\"about\":\"更新後的描述\"}",
+  "tags": [
+    ["e", "<頻道ID>", "<中繼器>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
+    <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">權限控制</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      客戶端應該忽略非頻道創建者發布的 kind 41 事件。
+      只有最新的 kind 41 事件會被使用。
+    </p>
+  </div>
+
+  <h2 id="channel-message">發送訊息 (Kind 42)</h2>
+  <p>
+    Kind 42 事件用於在頻道中發送訊息。使用 NIP-10 標記的 <code>e</code> 標籤
+    來標識頻道和回覆關係。
+  </p>
+
+  <h3>發送新訊息</h3>
+  <pre><code class="language-json">{`{
+  "kind": 42,
+  "content": "大家好！這是我的第一則頻道訊息",
+  "tags": [
+    ["e", "<頻道ID>", "<中繼器>", "root"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>回覆訊息</h3>
+  <pre><code class="language-json">{`{
+  "kind": 42,
+  "content": "歡迎！有什麼問題都可以問",
+  "tags": [
+    ["e", "<頻道ID>", "<中繼器>", "root"],
+    ["e", "<回覆的訊息ID>", "<中繼器>", "reply"],
+    ["p", "<被回覆者公鑰>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="moderation">管理功能</h2>
+
+  <h3>隱藏訊息 (Kind 43)</h3>
+  <p>
+    用戶可以發布 kind 43 事件來隱藏特定訊息。這是個人設定，
+    只影響發布者自己看到的內容。
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 43,
+  "content": "{\"reason\":\"垃圾訊息\"}",
+  "tags": [
+    ["e", "<要隱藏的訊息ID>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>靜音用戶 (Kind 44)</h3>
+  <p>
+    用戶可以發布 kind 44 事件來靜音特定用戶。
+    該用戶在頻道中的所有訊息都會被隱藏。
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 44,
+  "content": "{\"reason\":\"騷擾行為\"}",
+  "tags": [
+    ["p", "<要靜音的用戶公鑰>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立頻道</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+
+interface ChannelMetadata {
+  name: string;
+  about?: string;
+  picture?: string;
+  relays?: string[];
+}
+
+// 建立新頻道
+function createChannel(
+  privateKey: Uint8Array,
+  metadata: ChannelMetadata,
+  tags?: string[]
+) {
+  const content = JSON.stringify({
+    name: metadata.name,
+    about: metadata.about || '',
+    picture: metadata.picture || '',
+    ...(metadata.relays && { relays: metadata.relays }),
+  });
+
+  const eventTags = tags || [];
+
+  return finalizeEvent({
+    kind: 40,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: eventTags,
+    content,
+  }, privateKey);
+}
+
+// 使用範例
+const channel = createChannel(
+  privateKey,
+  {
+    name: 'Bitcoin 討論區',
+    about: '討論比特幣技術和市場',
+    picture: 'https://example.com/btc.png',
+  },
+  [['t', 'bitcoin'], ['t', 'crypto']]
+);
+
+// channel.id 就是頻道 ID`}</code></pre>
+
+  <h3>更新頻道資訊</h3>
+  <pre><code class="language-typescript">{`// 更新頻道中繼資料（只有創建者可以）
+function updateChannelMetadata(
+  privateKey: Uint8Array,
+  channelId: string,
+  relay: string,
+  metadata: Partial<ChannelMetadata>
+) {
+  return finalizeEvent({
+    kind: 41,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [['e', channelId, relay]],
+    content: JSON.stringify(metadata),
+  }, privateKey);
+}`}</code></pre>
+
+  <h3>發送頻道訊息</h3>
+  <pre><code class="language-typescript">{`interface MessageOptions {
+  channelId: string;
+  relay: string;
+  content: string;
+  replyTo?: {
+    eventId: string;
+    pubkey: string;
+  };
+}
+
+// 發送頻道訊息
+function sendChannelMessage(
+  privateKey: Uint8Array,
+  options: MessageOptions
+) {
+  const tags: string[][] = [
+    ['e', options.channelId, options.relay, 'root'],
+  ];
+
+  // 如果是回覆
+  if (options.replyTo) {
+    tags.push(['e', options.replyTo.eventId, options.relay, 'reply']);
+    tags.push(['p', options.replyTo.pubkey]);
+  }
+
+  return finalizeEvent({
+    kind: 42,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options.content,
+  }, privateKey);
+}
+
+// 發送新訊息
+const message = sendChannelMessage(privateKey, {
+  channelId: 'abc123...',
+  relay: 'wss://relay.example.com',
+  content: '大家好！',
+});
+
+// 回覆訊息
+const reply = sendChannelMessage(privateKey, {
+  channelId: 'abc123...',
+  relay: 'wss://relay.example.com',
+  content: '歡迎加入！',
+  replyTo: {
+    eventId: 'def456...',
+    pubkey: 'ghi789...',
+  },
+});`}</code></pre>
+
+  <h3>隱藏和靜音</h3>
+  <pre><code class="language-typescript">{`// 隱藏特定訊息
+function hideMessage(
+  privateKey: Uint8Array,
+  messageId: string,
+  reason?: string
+) {
+  return finalizeEvent({
+    kind: 43,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [['e', messageId]],
+    content: reason ? JSON.stringify({ reason }) : '',
+  }, privateKey);
+}
+
+// 靜音用戶
+function muteUser(
+  privateKey: Uint8Array,
+  userPubkey: string,
+  reason?: string
+) {
+  return finalizeEvent({
+    kind: 44,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [['p', userPubkey]],
+    content: reason ? JSON.stringify({ reason }) : '',
+  }, privateKey);
+}`}</code></pre>
+
+  <h2 id="querying">查詢頻道</h2>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢所有頻道
+async function getAllChannels() {
+  return await pool.querySync(relays, {
+    kinds: [40],
+  });
+}
+
+// 查詢特定頻道的資訊
+async function getChannelInfo(channelId: string) {
+  // 取得頻道建立事件
+  const createEvent = await pool.get(relays, {
+    ids: [channelId],
+  });
+
+  if (!createEvent) return null;
+
+  // 取得最新的中繼資料更新
+  const metadataEvents = await pool.querySync(relays, {
+    kinds: [41],
+    '#e': [channelId],
+    authors: [createEvent.pubkey], // 只接受創建者的更新
+  });
+
+  // 使用最新的中繼資料
+  const latestMetadata = metadataEvents
+    .sort((a, b) => b.created_at - a.created_at)[0];
+
+  const metadata = latestMetadata
+    ? JSON.parse(latestMetadata.content)
+    : JSON.parse(createEvent.content);
+
+  return {
+    id: channelId,
+    creator: createEvent.pubkey,
+    createdAt: createEvent.created_at,
+    ...metadata,
+  };
+}
+
+// 查詢頻道訊息
+async function getChannelMessages(
+  channelId: string,
+  limit: number = 50,
+  since?: number
+) {
+  return await pool.querySync(relays, {
+    kinds: [42],
+    '#e': [channelId],
+    limit,
+    since,
+  });
+}
+
+// 訂閱頻道即時訊息
+function subscribeToChannel(
+  channelId: string,
+  onMessage: (event: Event) => void
+) {
+  return pool.subscribeMany(
+    relays,
+    [{ kinds: [42], '#e': [channelId] }],
+    {
+      onevent: onMessage,
+    }
+  );
+}`}</code></pre>
+
+  <h2 id="filtering">過濾隱藏內容</h2>
+  <pre><code class="language-typescript">{`// 取得用戶的隱藏和靜音列表
+async function getUserFilters(userPubkey: string) {
+  const [hideEvents, muteEvents] = await Promise.all([
+    pool.querySync(relays, {
+      kinds: [43],
+      authors: [userPubkey],
+    }),
+    pool.querySync(relays, {
+      kinds: [44],
+      authors: [userPubkey],
+    }),
+  ]);
+
+  // 提取隱藏的訊息 ID
+  const hiddenMessages = new Set(
+    hideEvents.flatMap(e =>
+      e.tags.filter(t => t[0] === 'e').map(t => t[1])
+    )
+  );
+
+  // 提取靜音的用戶
+  const mutedUsers = new Set(
+    muteEvents.flatMap(e =>
+      e.tags.filter(t => t[0] === 'p').map(t => t[1])
+    )
+  );
+
+  return { hiddenMessages, mutedUsers };
+}
+
+// 過濾訊息
+function filterMessages(
+  messages: Event[],
+  filters: { hiddenMessages: Set<string>; mutedUsers: Set<string> }
+) {
+  return messages.filter(msg =>
+    !filters.hiddenMessages.has(msg.id) &&
+    !filters.mutedUsers.has(msg.pubkey)
+  );
+}`}</code></pre>
+
+  <h2 id="threading">訊息串結構</h2>
+  <pre><code class="language-typescript">{`interface ThreadedMessage {
+  event: Event;
+  replies: ThreadedMessage[];
+}
+
+// 建構訊息串
+function buildMessageThreads(messages: Event[]): ThreadedMessage[] {
+  const messageMap = new Map<string, ThreadedMessage>();
+  const rootMessages: ThreadedMessage[] = [];
+
+  // 建立所有訊息的映射
+  for (const msg of messages) {
+    messageMap.set(msg.id, { event: msg, replies: [] });
+  }
+
+  // 建立父子關係
+  for (const msg of messages) {
+    const threaded = messageMap.get(msg.id)!;
+    const replyTag = msg.tags.find(t => t[0] === 'e' && t[3] === 'reply');
+
+    if (replyTag) {
+      const parentId = replyTag[1];
+      const parent = messageMap.get(parentId);
+      if (parent) {
+        parent.replies.push(threaded);
+      } else {
+        // 父訊息不存在，視為根訊息
+        rootMessages.push(threaded);
+      }
+    } else {
+      // 沒有 reply 標籤，是根訊息
+      rootMessages.push(threaded);
+    }
+  }
+
+  // 按時間排序
+  const sortByTime = (a: ThreadedMessage, b: ThreadedMessage) =>
+    a.event.created_at - b.event.created_at;
+
+  rootMessages.sort(sortByTime);
+  for (const msg of messageMap.values()) {
+    msg.replies.sort(sortByTime);
+  }
+
+  return rootMessages;
+}`}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>頻道發現</strong>：使用 <code>t</code> 標籤添加分類，方便搜尋</li>
+    <li><strong>中繼器選擇</strong>：在頻道中繼資料中建議特定中繼器</li>
+    <li><strong>訊息限制</strong>：載入訊息時設定合理的 limit</li>
+    <li><strong>本地快取</strong>：快取隱藏和靜音列表以提升效能</li>
+    <li><strong>驗證創建者</strong>：只接受頻道創建者的 kind 41 更新</li>
+  </ul>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>完全公開</strong>：所有訊息都是公開的，沒有隱私保護</li>
+    <li><strong>無刪除</strong>：訊息一旦發布就無法真正刪除</li>
+    <li><strong>客戶端過濾</strong>：隱藏和靜音只在客戶端生效</li>
+    <li><strong>無權限系統</strong>：任何人都可以發言，沒有管理員概念</li>
+  </ul>
+
+  <div class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg my-6">
+    <p class="text-purple-700 dark:text-purple-300 font-medium mb-2">私密群組</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      如果需要私密群組功能，請參考 NIP-29（基於中繼器的群組）或
+      NIP-17（私密訊息），它們提供更好的隱私保護。
+    </p>
+  </div>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-10/">NIP-10</a> - 回覆與標記（訊息串結構）</li>
+    <li><a href="/tech/nostr/nip-17/">NIP-17</a> - 私密訊息</li>
+    <li><a href="/tech/nostr/nip-30/">NIP-30</a> - 自訂表情（可用於頻道訊息）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/28.md" target="_blank" rel="noopener">NIP-28 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
