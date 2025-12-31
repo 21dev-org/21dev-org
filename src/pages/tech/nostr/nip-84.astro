@@ -1,0 +1,763 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import { defined } from '@/utils/types';
+---
+
+<ArticleLayout
+  title="NIP-84: 精選標記"
+  subtitle="Highlights - 標記、引用與註解內容"
+  difficulty="beginner"
+  readingTime={8}
+  tags={['Nostr', 'NIP-84', '標記', 'highlights', 'annotation']}
+  prevPage={defined({ href: '/tech/nostr/nip-75', label: 'NIP-75 Zap 目標' })}
+  nextPage={defined({ href: '/tech/nostr/nip-90', label: 'NIP-90 資料販賣機' })}
+>
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mb-8 flex-wrap">
+    <a href="/" class="hover:text-[var(--text-secondary)] transition-colors">首頁</a>
+    <span>/</span>
+    <a href="/tech" class="hover:text-[var(--text-secondary)] transition-colors">技術</a>
+    <span>/</span>
+    <a href="/tech/nostr" class="hover:text-[var(--text-secondary)] transition-colors">Nostr</a>
+    <span>/</span>
+    <span class="text-[var(--text-primary)]">NIP-84</span>
+  </nav>
+
+  <!-- Introduction -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">概述</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-84 定義了精選標記（Highlights）事件，讓用戶可以標記和引用文章中的精彩段落。
+      這類似於 Medium 的文字標記功能或 Kindle 的劃線功能，讓讀者可以保存和分享有價值的內容片段。
+    </p>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-purple-400">核心概念：</strong>
+        精選標記使用 kind 9802，將標記的文字存放在 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">content</code> 欄位，
+        並透過 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">a</code>、<code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">e</code> 或
+        <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">r</code> 標籤引用來源。
+      </p>
+    </div>
+  </section>
+
+  <!-- Event Structure -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">事件結構</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      精選標記事件使用 kind 9802：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">欄位/標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">必要</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">kind</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">9802</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">content</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標記的文字內容</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">a / e / r</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">來源引用（擇一）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">p</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">原作者（含角色）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">context</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">周圍上下文</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">comment</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">引用評論</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Source References -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">來源引用</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      精選標記可以引用三種類型的來源：
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-purple-400 font-mono">a</span> 可定址事件
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          引用 NIP-23 長文等可定址事件
+        </p>
+        <code class="text-xs mt-2 block text-gray-400">30023:pubkey:slug</code>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-blue-400 font-mono">e</span> 一般事件
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          引用一般貼文或其他事件
+        </p>
+        <code class="text-xs mt-2 block text-gray-400">event-id</code>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-green-400 font-mono">r</span> 外部 URL
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          引用網頁文章或外部內容
+        </p>
+        <code class="text-xs mt-2 block text-gray-400">https://...</code>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-blue-400">最佳實踐：</strong>
+        引用外部 URL 時，客戶端應清理追蹤參數和無用資訊，保持 URL 簡潔。
+      </p>
+    </div>
+  </section>
+
+  <!-- Author Attribution -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">作者歸屬</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      可以透過 p 標籤標記原作者，特別適用於引用非 Nostr 內容時：
+    </p>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`["p", "<author-pubkey>", "<relay-url>", "author"]
+["p", "<editor-pubkey>", "<relay-url>", "editor"]`}</code></pre>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">author</h4>
+        <p class="text-sm text-[var(--text-secondary)]">原始內容的作者</p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">editor</h4>
+        <p class="text-sm text-[var(--text-secondary)]">內容的編輯者</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Examples -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">使用範例</h2>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">標記 Nostr 長文</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9802,
+  "tags": [
+    ["a", "30023:<author-pubkey>:my-article-slug", "wss://relay.example.com"],
+    ["p", "<author-pubkey>", "wss://relay.example.com", "author"]
+  ],
+  "content": "比特幣的核心創新在於解決了數位貨幣的雙重支付問題，而無需依賴中央機構。"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">標記一般貼文</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9802,
+  "tags": [
+    ["e", "<event-id>", "wss://relay.example.com"],
+    ["p", "<author-pubkey>", "", "author"]
+  ],
+  "content": "Nostr 的簡單性是它最大的優勢"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">標記外部網頁</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9802,
+  "tags": [
+    ["r", "https://bitcoin.org/bitcoin.pdf"]
+  ],
+  "content": "A purely peer-to-peer version of electronic cash would allow online payments to be sent directly from one party to another without going through a financial institution."
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">帶上下文的標記</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9802,
+  "tags": [
+    ["a", "30023:<pubkey>:nostr-guide", "wss://relay.example.com"],
+    ["p", "<pubkey>", "", "author"],
+    ["context", "在討論 Nostr 協議的設計理念時，作者提到了一個重要觀點："]
+  ],
+  "content": "簡單性是 Nostr 最大的特色，核心協議只需幾百行代碼就能實現。"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">引用評論（Quote Highlight）</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9802,
+  "tags": [
+    ["e", "<event-id>", "wss://relay.example.com"],
+    ["p", "<author-pubkey>", "", "author"],
+    ["comment", "這段話完美說明了為什麼我們需要去中心化的社交網路"]
+  ],
+  "content": "在傳統社交平台上，你的帳號、你的關注者、你的內容都不屬於你。"
+}`}</code></pre>
+  </section>
+
+  <!-- TypeScript Implementation -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">TypeScript 實作</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+type AuthorRole = 'author' | 'editor'
+
+interface HighlightSource {
+  type: 'event' | 'address' | 'url'
+  value: string
+  relay?: string
+}
+
+interface Author {
+  pubkey: string
+  relay?: string
+  role: AuthorRole
+}
+
+interface HighlightOptions {
+  content: string
+  source: HighlightSource
+  authors?: Author[]
+  context?: string
+  comment?: string
+}
+
+// 創建精選標記事件
+function createHighlight(
+  options: HighlightOptions,
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = []
+
+  // 添加來源引用
+  switch (options.source.type) {
+    case 'event':
+      tags.push(['e', options.source.value, options.source.relay || ''])
+      break
+    case 'address':
+      tags.push(['a', options.source.value, options.source.relay || ''])
+      break
+    case 'url':
+      tags.push(['r', cleanUrl(options.source.value)])
+      break
+  }
+
+  // 添加作者
+  if (options.authors) {
+    for (const author of options.authors) {
+      tags.push(['p', author.pubkey, author.relay || '', author.role])
+    }
+  }
+
+  // 添加上下文
+  if (options.context) {
+    tags.push(['context', options.context])
+  }
+
+  // 添加評論
+  if (options.comment) {
+    tags.push(['comment', options.comment])
+  }
+
+  const event = {
+    kind: 9802,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options.content,
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 清理 URL（移除追蹤參數）
+function cleanUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    // 移除常見追蹤參數
+    const trackingParams = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
+      'fbclid', 'gclid', 'ref', 'source'
+    ]
+    trackingParams.forEach(param => parsed.searchParams.delete(param))
+    return parsed.toString()
+  } catch {
+    return url
+  }
+}
+
+// 標記 Nostr 長文
+function highlightArticle(
+  authorPubkey: string,
+  articleSlug: string,
+  highlightedText: string,
+  relay: string,
+  secretKey: Uint8Array,
+  options?: { context?: string; comment?: string }
+): object {
+  return createHighlight({
+    content: highlightedText,
+    source: {
+      type: 'address',
+      value: \`30023:\${authorPubkey}:\${articleSlug}\`,
+      relay,
+    },
+    authors: [{ pubkey: authorPubkey, relay, role: 'author' }],
+    context: options?.context,
+    comment: options?.comment,
+  }, secretKey)
+}
+
+// 標記一般貼文
+function highlightNote(
+  eventId: string,
+  authorPubkey: string,
+  highlightedText: string,
+  relay: string,
+  secretKey: Uint8Array
+): object {
+  return createHighlight({
+    content: highlightedText,
+    source: {
+      type: 'event',
+      value: eventId,
+      relay,
+    },
+    authors: [{ pubkey: authorPubkey, role: 'author' }],
+  }, secretKey)
+}
+
+// 標記外部網頁
+function highlightWebpage(
+  url: string,
+  highlightedText: string,
+  secretKey: Uint8Array,
+  options?: { context?: string; comment?: string }
+): object {
+  return createHighlight({
+    content: highlightedText,
+    source: {
+      type: 'url',
+      value: url,
+    },
+    context: options?.context,
+    comment: options?.comment,
+  }, secretKey)
+}
+
+// 使用範例
+const sk = generateSecretKey()
+const pk = getPublicKey(sk)
+
+// 標記長文中的精彩段落
+const articleHighlight = highlightArticle(
+  'author-pubkey-here',
+  'intro-to-nostr',
+  'Nostr 是一個簡單、開放的去中心化社交協議。',
+  'wss://relay.example.com',
+  sk,
+  {
+    context: '在介紹 Nostr 的基本概念時：',
+    comment: '這句話完美總結了 Nostr 的核心價值'
+  }
+)
+
+// 標記外部文章
+const webHighlight = highlightWebpage(
+  'https://bitcoin.org/bitcoin.pdf?utm_source=twitter',
+  'A purely peer-to-peer version of electronic cash',
+  sk,
+  { comment: '比特幣白皮書的開篇就點明了核心概念' }
+)
+
+console.log('Article highlight:', articleHighlight)
+console.log('Web highlight:', webHighlight)`}</code></pre>
+  </section>
+
+  <!-- Query Highlights -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">查詢精選標記</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { SimplePool } from 'nostr-tools'
+
+const pool = new SimplePool()
+const relays = ['wss://relay.example.com']
+
+// 查詢用戶的所有精選標記
+async function getUserHighlights(pubkey: string) {
+  const highlights = await pool.querySync(relays, {
+    kinds: [9802],
+    authors: [pubkey],
+  })
+  return highlights
+}
+
+// 查詢特定文章的所有精選標記
+async function getArticleHighlights(authorPubkey: string, slug: string) {
+  const aTag = \`30023:\${authorPubkey}:\${slug}\`
+  const highlights = await pool.querySync(relays, {
+    kinds: [9802],
+    '#a': [aTag],
+  })
+  return highlights
+}
+
+// 查詢特定事件的精選標記
+async function getEventHighlights(eventId: string) {
+  const highlights = await pool.querySync(relays, {
+    kinds: [9802],
+    '#e': [eventId],
+  })
+  return highlights
+}
+
+// 查詢特定 URL 的精選標記
+async function getUrlHighlights(url: string) {
+  const highlights = await pool.querySync(relays, {
+    kinds: [9802],
+    '#r': [url],
+  })
+  return highlights
+}
+
+// 解析精選標記
+function parseHighlight(event: any) {
+  const getTag = (name: string) =>
+    event.tags.find((t: string[]) => t[0] === name)
+
+  // 判斷來源類型
+  let sourceType: 'event' | 'address' | 'url' | null = null
+  let sourceValue: string | null = null
+  let sourceRelay: string | undefined
+
+  const eTag = getTag('e')
+  const aTag = getTag('a')
+  const rTag = getTag('r')
+
+  if (eTag) {
+    sourceType = 'event'
+    sourceValue = eTag[1]
+    sourceRelay = eTag[2]
+  } else if (aTag) {
+    sourceType = 'address'
+    sourceValue = aTag[1]
+    sourceRelay = aTag[2]
+  } else if (rTag) {
+    sourceType = 'url'
+    sourceValue = rTag[1]
+  }
+
+  // 解析作者
+  const authors = event.tags
+    .filter((t: string[]) => t[0] === 'p')
+    .map((t: string[]) => ({
+      pubkey: t[1],
+      relay: t[2] || undefined,
+      role: t[3] || 'author',
+    }))
+
+  const contextTag = getTag('context')
+  const commentTag = getTag('comment')
+
+  return {
+    id: event.id,
+    pubkey: event.pubkey,
+    content: event.content,
+    source: sourceType ? {
+      type: sourceType,
+      value: sourceValue,
+      relay: sourceRelay,
+    } : null,
+    authors,
+    context: contextTag?.[1],
+    comment: commentTag?.[1],
+    createdAt: event.created_at,
+  }
+}
+
+// 獲取用戶最近的精選
+const myHighlights = await getUserHighlights('my-pubkey')
+console.log('我的精選:', myHighlights.map(h => parseHighlight(h)))`}</code></pre>
+  </section>
+
+  <!-- React Component -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">React 元件範例</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { useState } from 'react'
+
+interface Highlight {
+  content: string
+  context?: string
+  comment?: string
+  source: {
+    type: 'event' | 'address' | 'url'
+    value: string
+  }
+  authors: { pubkey: string; role: string }[]
+  createdAt: number
+}
+
+function HighlightCard({ highlight }: { highlight: Highlight }) {
+  return (
+    <div className="rounded-xl bg-gray-800 border border-gray-700 overflow-hidden">
+      <div className="p-4">
+        {/* 上下文 */}
+        {highlight.context && (
+          <p className="text-sm text-gray-500 mb-2 italic">
+            {highlight.context}
+          </p>
+        )}
+
+        {/* 標記內容 */}
+        <blockquote className="border-l-4 border-purple-500 pl-4 py-2">
+          <p className="text-white text-lg leading-relaxed">
+            "{highlight.content}"
+          </p>
+        </blockquote>
+
+        {/* 評論 */}
+        {highlight.comment && (
+          <div className="mt-4 p-3 bg-gray-700/50 rounded-lg">
+            <p className="text-gray-300 text-sm">
+              💬 {highlight.comment}
+            </p>
+          </div>
+        )}
+
+        {/* 來源與作者 */}
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center gap-2">
+            {highlight.source.type === 'url' ? (
+              <a
+                href={highlight.source.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-purple-400 truncate max-w-xs"
+              >
+                🔗 {new URL(highlight.source.value).hostname}
+              </a>
+            ) : (
+              <span>📝 Nostr 內容</span>
+            )}
+          </div>
+          <span>
+            {new Date(highlight.createdAt * 1000).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 文字選取標記元件
+function TextHighlighter({
+  onHighlight
+}: {
+  onHighlight: (text: string, context: string) => void
+}) {
+  const [selectedText, setSelectedText] = useState('')
+
+  const handleMouseUp = () => {
+    const selection = window.getSelection()
+    if (selection && selection.toString().trim()) {
+      const text = selection.toString().trim()
+
+      // 獲取上下文（前後 50 個字元）
+      const range = selection.getRangeAt(0)
+      const container = range.commonAncestorContainer
+      const fullText = container.textContent || ''
+      const startIndex = Math.max(0, fullText.indexOf(text) - 50)
+      const endIndex = Math.min(fullText.length, fullText.indexOf(text) + text.length + 50)
+      const context = fullText.slice(startIndex, endIndex)
+
+      setSelectedText(text)
+    }
+  }
+
+  const handleHighlight = () => {
+    if (selectedText) {
+      onHighlight(selectedText, '')
+      setSelectedText('')
+      window.getSelection()?.removeAllRanges()
+    }
+  }
+
+  return (
+    <div>
+      <div onMouseUp={handleMouseUp}>
+        {/* 文章內容放這裡 */}
+      </div>
+
+      {selectedText && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white
+                        px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+          <span className="text-sm truncate max-w-xs">
+            "{selectedText.slice(0, 30)}..."
+          </span>
+          <button
+            onClick={handleHighlight}
+            className="px-3 py-1 bg-white/20 rounded-full hover:bg-white/30"
+          >
+            ✨ 標記
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}`}</code></pre>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">應用場景</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📚 閱讀筆記</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          閱讀長文時標記重點段落，建立個人知識庫。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">💬 引用分享</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          引用精彩段落並加上評論，分享給關注者。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🔖 書籤功能</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          比單純書籤更有價值，保存具體內容片段。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📰 內容策展</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          策展優質內容，建立主題精選集。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎓 學習工具</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          標記學習材料中的重點，方便複習。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🌐 網頁標記</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          標記任何網頁內容，不限於 Nostr 原生內容。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Best Practices -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">最佳實踐</h2>
+    <div class="space-y-4">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 清理 URL 追蹤參數</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          引用外部 URL 時，移除 utm_* 等追蹤參數，保持 URL 簡潔。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 添加作者歸屬</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 p 標籤標記原作者，特別是引用非 Nostr 內容時。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 提供上下文</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 context 標籤提供周圍內容，幫助讀者理解標記的意義。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 引用評論的特殊處理</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 comment 標籤時，客戶端應將其渲染為引用貼文，避免在時間線上產生重複內容。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related NIPs -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">相關 NIP</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <a
+        href="/tech/nostr/nip-23"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-23 長文內容</h4>
+        <p class="text-sm text-[var(--text-secondary)]">常見的標記來源</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-94"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-94 檔案中繼資料</h4>
+        <p class="text-sm text-[var(--text-secondary)]">音訊/視訊標記可能無文字內容</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-51"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-51 列表</h4>
+        <p class="text-sm text-[var(--text-secondary)]">可將精選組織成列表</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-18"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-18 轉發</h4>
+        <p class="text-sm text-[var(--text-secondary)]">引用評論類似轉發貼文</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">總結</h2>
+    <div class="p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        NIP-84 精選標記讓用戶可以保存和分享內容中的精彩片段。無論是 Nostr 原生內容還是外部網頁，
+        都可以輕鬆標記並加上評論。這為內容消費和知識管理提供了強大的工具。
+      </p>
+      <div class="grid md:grid-cols-4 gap-4 text-center">
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-purple-400">Kind 9802</div>
+          <div class="text-sm text-[var(--text-secondary)]">精選標記</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-blue-400">3 種</div>
+          <div class="text-sm text-[var(--text-secondary)]">來源類型</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-green-400">context</div>
+          <div class="text-sm text-[var(--text-secondary)]">上下文標籤</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-orange-400">comment</div>
+          <div class="text-sm text-[var(--text-secondary)]">引用評論</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
