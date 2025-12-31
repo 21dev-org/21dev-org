@@ -7,6 +7,7 @@ import Tag from '@/components/ui/Tag.astro';
 import Button from '@/components/ui/Button.astro';
 import TableOfContents from '@/components/ui/TableOfContents.astro';
 import MobileTOC from '@/components/ui/MobileTOC.astro';
+import { generateBreadcrumbSchema, generateTechArticleSchema } from '@/utils/schema';
 
 interface BreadcrumbItem {
   label: string;
@@ -54,9 +55,37 @@ const difficultyVariants = {
   intermediate: 'bitcoin' as const,
   advanced: 'warning' as const,
 };
+
+// Generate structured data schemas
+const currentUrl = Astro.url.pathname;
+
+const breadcrumbSchema = generateBreadcrumbSchema(
+  breadcrumbs.map((item) => ({
+    name: item.label,
+    url: item.href,
+  }))
+);
+
+const proficiencyMap = {
+  beginner: 'Beginner' as const,
+  intermediate: 'Intermediate' as const,
+  advanced: 'Advanced' as const,
+};
+
+const techArticleSchema = generateTechArticleSchema({
+  title,
+  description: description || '',
+  url: currentUrl,
+  proficiencyLevel: difficulty ? proficiencyMap[difficulty] : undefined,
+  keywords: tags,
+  author,
+  datePublished: date?.toISOString(),
+});
+
+const schemas = [breadcrumbSchema, techArticleSchema];
 ---
 
-<BaseLayout title={title} description={description} ogImage={ogImage}>
+<BaseLayout title={title} description={description} ogImage={ogImage} schemas={schemas}>
   <Header />
   <main id="main-content">
     <article class="py-16 md:py-24">

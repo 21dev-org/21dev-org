@@ -63,6 +63,10 @@ export default [
         HTMLInputElement: 'readonly',
         HTMLAnchorElement: 'readonly',
         IntersectionObserver: 'readonly',
+        // Web APIs
+        Response: 'readonly',
+        Request: 'readonly',
+        URL: 'readonly',
         // Google Analytics
         dataLayer: 'writable',
         gtag: 'writable',

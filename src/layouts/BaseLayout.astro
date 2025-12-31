@@ -14,12 +14,15 @@ interface JsonLdArticle {
   author?: string;
 }
 
+type JsonLdSchema = Record<string, unknown>;
+
 interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
   noIndex?: boolean;
   article?: JsonLdArticle;
+  schemas?: JsonLdSchema[];
 }
 
 const {
@@ -28,6 +31,7 @@ const {
   ogImage = siteConfig.ogImage,
   noIndex = false,
   article,
+  schemas = [],
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, siteConfig.url);
@@ -132,12 +136,20 @@ const articleSchema = article
     <meta name="apple-mobile-web-app-title" content={siteConfig.name} />
     <meta name="mobile-web-app-capable" content="yes" />
 
+    <!-- Language Alternates -->
+    <link rel="alternate" hreflang="zh-Hant" href={canonicalURL} />
+    <link rel="alternate" hreflang="zh" href={canonicalURL} />
+    <link rel="alternate" hreflang="x-default" href={canonicalURL} />
+
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={article ? 'article' : 'website'} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={new URL(ogImage, siteConfig.url)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={`${title} - ${siteConfig.name}`} />
     <meta property="og:locale" content="zh_TW" />
     <meta property="og:site_name" content={siteConfig.name} />
 
@@ -178,6 +190,14 @@ const articleSchema = article
         <script is:inline type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
       )
     }
+    {
+      schemas.map((schema) => (
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+      ))
+    }
+
+    <!-- AI/LLM Discovery -->
+    <link rel="author" href="/llms.txt" />
 
     <!-- Theme initialization (prevent flash) -->
     <script is:inline>
