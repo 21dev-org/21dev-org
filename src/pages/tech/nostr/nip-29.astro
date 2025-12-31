@@ -1,0 +1,636 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-29 中繼器群組"
+  description="Nostr 基於中繼器的群組標準，實現私密或封閉的群組聊天功能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-29 中繼器群組' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-28/',
+    title: 'NIP-28 公開聊天',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-30/',
+    title: 'NIP-30 自訂表情',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-29 定義了基於中繼器的群組標準，與 NIP-28 的公開頻道不同，
+    NIP-29 群組可以限制寫入權限給特定成員，並可選擇性地設為私密（只有成員可讀）。
+    群組由中繼器管理，提供完整的成員管理和權限控制。
+  </p>
+
+  <div class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg my-6">
+    <p class="text-purple-700 dark:text-purple-300 font-medium mb-2">中繼器託管</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      NIP-29 群組依賴特定中繼器來執行權限控制。中繼器負責驗證成員身份、
+      處理管理操作，並簽署群組中繼資料。
+    </p>
+  </div>
+
+  <h2 id="group-id">群組識別</h2>
+  <p>
+    群組使用 <code>&lt;host&gt;'&lt;group-id&gt;</code> 格式識別：
+  </p>
+
+  <pre><code class="language-text">{`groups.nostr.com'bitcoin-dev
+relay.example.com'my-group-123
+nos.lol'_`}</code></pre>
+
+  <ul>
+    <li><code>host</code> - 託管中繼器的域名</li>
+    <li><code>group-id</code> - 群組 ID，只能包含 <code>a-z0-9-_</code></li>
+    <li><code>_</code> - 特殊 ID，表示中繼器的預設討論區</li>
+  </ul>
+
+  <h2 id="event-kinds">事件類型</h2>
+
+  <h3>管理事件 (9000-9020)</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">動作</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9000</td>
+          <td class="border border-[var(--border-default)] p-3">put-user</td>
+          <td class="border border-[var(--border-default)] p-3">添加用戶或更新角色</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9001</td>
+          <td class="border border-[var(--border-default)] p-3">remove-user</td>
+          <td class="border border-[var(--border-default)] p-3">移除用戶</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9002</td>
+          <td class="border border-[var(--border-default)] p-3">edit-metadata</td>
+          <td class="border border-[var(--border-default)] p-3">編輯群組資訊</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9005</td>
+          <td class="border border-[var(--border-default)] p-3">delete-event</td>
+          <td class="border border-[var(--border-default)] p-3">刪除事件</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9007</td>
+          <td class="border border-[var(--border-default)] p-3">create-group</td>
+          <td class="border border-[var(--border-default)] p-3">建立群組</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9008</td>
+          <td class="border border-[var(--border-default)] p-3">delete-group</td>
+          <td class="border border-[var(--border-default)] p-3">刪除群組</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9009</td>
+          <td class="border border-[var(--border-default)] p-3">create-invite</td>
+          <td class="border border-[var(--border-default)] p-3">建立邀請碼</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>用戶事件 (9021-9022)</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">動作</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9021</td>
+          <td class="border border-[var(--border-default)] p-3">join-request</td>
+          <td class="border border-[var(--border-default)] p-3">請求加入群組</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">9022</td>
+          <td class="border border-[var(--border-default)] p-3">leave-request</td>
+          <td class="border border-[var(--border-default)] p-3">請求離開群組</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>群組中繼資料 (39000-39003)</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">內容</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">簽名者</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">39000</td>
+          <td class="border border-[var(--border-default)] p-3">群組資訊</td>
+          <td class="border border-[var(--border-default)] p-3">中繼器</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">39001</td>
+          <td class="border border-[var(--border-default)] p-3">管理員列表</td>
+          <td class="border border-[var(--border-default)] p-3">中繼器</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">39002</td>
+          <td class="border border-[var(--border-default)] p-3">成員列表</td>
+          <td class="border border-[var(--border-default)] p-3">中繼器</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">39003</td>
+          <td class="border border-[var(--border-default)] p-3">角色定義</td>
+          <td class="border border-[var(--border-default)] p-3">中繼器</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="access-control">存取控制</h2>
+  <p>群組可以設定不同的存取級別：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">標籤</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">效果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">private</td>
+          <td class="border border-[var(--border-default)] p-3">只有成員可以讀取訊息</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">closed</td>
+          <td class="border border-[var(--border-default)] p-3">忽略加入請求（需要邀請碼）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">restricted</td>
+          <td class="border border-[var(--border-default)] p-3">只有成員可以寫入</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">hidden</td>
+          <td class="border border-[var(--border-default)] p-3">非成員無法看到群組資訊</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="tagging">標籤要求</h2>
+  <p>所有群組內容都需要 <code>h</code> 標籤標識群組：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 9,
+  "content": "群組訊息內容",
+  "tags": [
+    ["h", "<group-id>"],
+    ["previous", "<prev-event-id-prefix>", "<prev-event-id-prefix>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <p>
+    <code>previous</code> 標籤引用前 50 個事件中的事件 ID 前綴（最多 8 字元），
+    用於建立時間線順序，防止延遲發布攻擊。
+  </p>
+
+  <h2 id="group-metadata">群組中繼資料 (Kind 39000)</h2>
+  <pre><code class="language-json">{`{
+  "kind": 39000,
+  "pubkey": "<relay-pubkey>",
+  "content": "",
+  "tags": [
+    ["d", "<group-id>"],
+    ["name", "Bitcoin 開發者"],
+    ["picture", "https://example.com/group.png"],
+    ["about", "討論比特幣開發相關話題"],
+    ["private"],
+    ["closed"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="admin-list">管理員列表 (Kind 39001)</h2>
+  <pre><code class="language-json">{`{
+  "kind": 39001,
+  "pubkey": "<relay-pubkey>",
+  "content": "",
+  "tags": [
+    ["d", "<group-id>"],
+    ["p", "<admin1-pubkey>", "owner"],
+    ["p", "<admin2-pubkey>", "moderator"],
+    ["p", "<admin3-pubkey>", "moderator"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>請求加入群組</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+
+// 請求加入群組
+function requestJoinGroup(
+  privateKey: Uint8Array,
+  groupId: string,
+  reason?: string,
+  inviteCode?: string
+) {
+  const tags: string[][] = [['h', groupId]];
+
+  if (inviteCode) {
+    tags.push(['code', inviteCode]);
+  }
+
+  return finalizeEvent({
+    kind: 9021,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: reason || '',
+  }, privateKey);
+}
+
+// 請求離開群組
+function requestLeaveGroup(
+  privateKey: Uint8Array,
+  groupId: string
+) {
+  return finalizeEvent({
+    kind: 9022,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [['h', groupId]],
+    content: '',
+  }, privateKey);
+}`}</code></pre>
+
+  <h3>發送群組訊息</h3>
+  <pre><code class="language-typescript">{`// 發送群組訊息
+function sendGroupMessage(
+  privateKey: Uint8Array,
+  groupId: string,
+  content: string,
+  previousEvents: string[] = []
+) {
+  const tags: string[][] = [['h', groupId]];
+
+  // 添加 previous 標籤（取前 8 字元）
+  if (previousEvents.length > 0) {
+    const prefixes = previousEvents
+      .slice(0, 5)
+      .map(id => id.slice(0, 8));
+    tags.push(['previous', ...prefixes]);
+  }
+
+  return finalizeEvent({
+    kind: 9, // 群組聊天訊息
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content,
+  }, privateKey);
+}`}</code></pre>
+
+  <h3>管理操作（需要管理員權限）</h3>
+  <pre><code class="language-typescript">{`// 添加用戶到群組
+function addUserToGroup(
+  adminPrivateKey: Uint8Array,
+  groupId: string,
+  userPubkey: string,
+  roles: string[] = []
+) {
+  const tags: string[][] = [
+    ['h', groupId],
+    ['p', userPubkey, ...roles],
+  ];
+
+  return finalizeEvent({
+    kind: 9000, // put-user
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  }, adminPrivateKey);
+}
+
+// 移除用戶
+function removeUserFromGroup(
+  adminPrivateKey: Uint8Array,
+  groupId: string,
+  userPubkey: string
+) {
+  return finalizeEvent({
+    kind: 9001, // remove-user
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['h', groupId],
+      ['p', userPubkey],
+    ],
+    content: '',
+  }, adminPrivateKey);
+}
+
+// 更新群組資訊
+function editGroupMetadata(
+  adminPrivateKey: Uint8Array,
+  groupId: string,
+  metadata: {
+    name?: string;
+    about?: string;
+    picture?: string;
+    private?: boolean;
+    closed?: boolean;
+  }
+) {
+  const tags: string[][] = [['h', groupId]];
+
+  if (metadata.name) tags.push(['name', metadata.name]);
+  if (metadata.about) tags.push(['about', metadata.about]);
+  if (metadata.picture) tags.push(['picture', metadata.picture]);
+  if (metadata.private) tags.push(['private']);
+  if (metadata.closed) tags.push(['closed']);
+
+  return finalizeEvent({
+    kind: 9002, // edit-metadata
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  }, adminPrivateKey);
+}
+
+// 刪除訊息
+function deleteGroupMessage(
+  adminPrivateKey: Uint8Array,
+  groupId: string,
+  eventId: string
+) {
+  return finalizeEvent({
+    kind: 9005, // delete-event
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['h', groupId],
+      ['e', eventId],
+    ],
+    content: '',
+  }, adminPrivateKey);
+}
+
+// 建立邀請碼
+function createInvite(
+  adminPrivateKey: Uint8Array,
+  groupId: string
+) {
+  return finalizeEvent({
+    kind: 9009, // create-invite
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [['h', groupId]],
+    content: '',
+  }, adminPrivateKey);
+}`}</code></pre>
+
+  <h2 id="querying">查詢群組</h2>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+// 取得群組資訊
+async function getGroupInfo(
+  pool: SimplePool,
+  relayUrl: string,
+  groupId: string
+) {
+  const [metadata, admins, members] = await Promise.all([
+    pool.get([relayUrl], {
+      kinds: [39000],
+      '#d': [groupId],
+    }),
+    pool.get([relayUrl], {
+      kinds: [39001],
+      '#d': [groupId],
+    }),
+    pool.get([relayUrl], {
+      kinds: [39002],
+      '#d': [groupId],
+    }),
+  ]);
+
+  if (!metadata) return null;
+
+  // 解析群組資訊
+  const getTag = (event: Event, name: string) =>
+    event.tags.find(t => t[0] === name)?.[1];
+
+  const hasTag = (event: Event, name: string) =>
+    event.tags.some(t => t[0] === name);
+
+  return {
+    id: groupId,
+    name: getTag(metadata, 'name'),
+    about: getTag(metadata, 'about'),
+    picture: getTag(metadata, 'picture'),
+    isPrivate: hasTag(metadata, 'private'),
+    isClosed: hasTag(metadata, 'closed'),
+    isRestricted: hasTag(metadata, 'restricted'),
+    isHidden: hasTag(metadata, 'hidden'),
+    admins: admins?.tags
+      .filter(t => t[0] === 'p')
+      .map(t => ({ pubkey: t[1], role: t[2] })) || [],
+    members: members?.tags
+      .filter(t => t[0] === 'p')
+      .map(t => t[1]) || [],
+  };
+}
+
+// 取得群組訊息
+async function getGroupMessages(
+  pool: SimplePool,
+  relayUrl: string,
+  groupId: string,
+  limit: number = 50
+) {
+  return await pool.querySync([relayUrl], {
+    kinds: [9], // 群組聊天訊息
+    '#h': [groupId],
+    limit,
+  });
+}
+
+// 訂閱群組即時訊息
+function subscribeToGroup(
+  pool: SimplePool,
+  relayUrl: string,
+  groupId: string,
+  onMessage: (event: Event) => void
+) {
+  return pool.subscribeMany(
+    [relayUrl],
+    [{ kinds: [9], '#h': [groupId] }],
+    { onevent: onMessage }
+  );
+}`}</code></pre>
+
+  <h2 id="membership-check">檢查成員身份</h2>
+  <pre><code class="language-typescript">{`// 檢查用戶是否為群組成員
+async function checkMembership(
+  pool: SimplePool,
+  relayUrl: string,
+  groupId: string,
+  userPubkey: string
+): Promise<{ isMember: boolean; isAdmin: boolean; roles: string[] }> {
+  // 檢查管理員列表
+  const admins = await pool.get([relayUrl], {
+    kinds: [39001],
+    '#d': [groupId],
+  });
+
+  if (admins) {
+    const adminTag = admins.tags.find(
+      t => t[0] === 'p' && t[1] === userPubkey
+    );
+    if (adminTag) {
+      return {
+        isMember: true,
+        isAdmin: true,
+        roles: adminTag.slice(2),
+      };
+    }
+  }
+
+  // 檢查成員列表
+  const members = await pool.get([relayUrl], {
+    kinds: [39002],
+    '#d': [groupId],
+  });
+
+  if (members) {
+    const memberTag = members.tags.find(
+      t => t[0] === 'p' && t[1] === userPubkey
+    );
+    if (memberTag) {
+      return {
+        isMember: true,
+        isAdmin: false,
+        roles: [],
+      };
+    }
+  }
+
+  // 檢查最近的 put-user 事件
+  const putUserEvents = await pool.querySync([relayUrl], {
+    kinds: [9000],
+    '#h': [groupId],
+    '#p': [userPubkey],
+    limit: 1,
+  });
+
+  if (putUserEvents.length > 0) {
+    const roles = putUserEvents[0].tags
+      .find(t => t[0] === 'p' && t[1] === userPubkey)
+      ?.slice(2) || [];
+
+    return {
+      isMember: true,
+      isAdmin: roles.includes('admin') || roles.includes('owner'),
+      roles,
+    };
+  }
+
+  return { isMember: false, isAdmin: false, roles: [] };
+}`}</code></pre>
+
+  <h2 id="unmanaged-groups">非託管群組</h2>
+  <p>
+    非託管群組可以在任何支援 NIP-29 的中繼器上使用，不需要特殊設定。
+    所有用戶都被視為成員，依賴中繼器的一般審核機制。
+  </p>
+
+  <pre><code class="language-typescript">{`// 在任何中繼器上使用非託管群組
+const unmanagedGroupId = 'bitcoin-chat';
+
+// 直接發送訊息（無需加入）
+const message = sendGroupMessage(
+  privateKey,
+  unmanagedGroupId,
+  '大家好！'
+);
+
+// 發布到任何中繼器
+await pool.publish(relays, message);`}</code></pre>
+
+  <h2 id="relay-responsibilities">中繼器職責</h2>
+  <ul>
+    <li><strong>簽署中繼資料</strong>：群組資訊由中繼器簽名</li>
+    <li><strong>驗證權限</strong>：檢查管理操作的授權</li>
+    <li><strong>執行存取控制</strong>：根據群組設定限制讀寫</li>
+    <li><strong>驗證 previous 標籤</strong>：防止延遲發布攻擊</li>
+    <li><strong>處理加入/離開請求</strong>：管理成員資格</li>
+  </ul>
+
+  <h2 id="vs-nip28">NIP-29 vs NIP-28</h2>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">特性</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">NIP-28</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">NIP-29</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">存取控制</td>
+          <td class="border border-[var(--border-default)] p-3">完全公開</td>
+          <td class="border border-[var(--border-default)] p-3">可設定私密/封閉</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">成員管理</td>
+          <td class="border border-[var(--border-default)] p-3">無</td>
+          <td class="border border-[var(--border-default)] p-3">完整成員/角色系統</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">管理員</td>
+          <td class="border border-[var(--border-default)] p-3">僅創建者</td>
+          <td class="border border-[var(--border-default)] p-3">多層級角色</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">中繼器依賴</td>
+          <td class="border border-[var(--border-default)] p-3">任意中繼器</td>
+          <td class="border border-[var(--border-default)] p-3">需支援 NIP-29</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">邀請系統</td>
+          <td class="border border-[var(--border-default)] p-3">無</td>
+          <td class="border border-[var(--border-default)] p-3">有</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-28/">NIP-28</a> - 公開聊天（無權限控制）</li>
+    <li><a href="/tech/nostr/nip-17/">NIP-17</a> - 私密訊息</li>
+    <li><a href="/tech/nostr/nip-42/">NIP-42</a> - 中繼器認證</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/29.md" target="_blank" rel="noopener">NIP-29 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
