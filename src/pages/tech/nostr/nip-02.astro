@@ -1,0 +1,448 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-02 聯絡人列表"
+  description="深入了解 Nostr 的聯絡人列表標準，使用 kind 3 事件儲存和分享關注列表。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-02 聯絡人列表' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-01 基本協議', href: '/tech/nostr/nip-01' }}
+  nextPage={{ title: 'NIP-04 加密私訊', href: '/tech/nostr/nip-04' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-02？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-02 定義了 Nostr 的聯絡人列表（關注列表）標準。用戶使用 kind 3 事件
+    來儲存他們關注的人的公鑰列表。這個列表是可替換的，新的 kind 3 事件
+    會取代舊的，讓用戶可以隨時更新關注名單。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心功能：</strong>
+      聯絡人列表是 Nostr 社交圖譜的基礎，決定了你的動態時報顯示哪些人的內容，
+      也讓其他用戶可以發現你關注的人。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 3,
+  "content": "",
+  "tags": [
+    ["p", "<pubkey-1>", "<relay-url>", "<petname>"],
+    ["p", "<pubkey-2>", "<relay-url>", "<petname>"],
+    ["p", "<pubkey-3>", "<relay-url>", "<petname>"],
+    ...
+  ],
+  "pubkey": "<你的公鑰>",
+  "created_at": 1704067200,
+  "id": "...",
+  "sig": "..."
+}
+
+// 實際範例
+{
+  "kind": 3,
+  "content": "",
+  "tags": [
+    ["p", "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d", "wss://relay.damus.io", "fiatjaf"],
+    ["p", "82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2", "wss://nos.lol", "jack"],
+    ["p", "npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m", "", ""]
+  ],
+  "pubkey": "...",
+  "created_at": 1704067200,
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤格式</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">位置</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">內容</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">必須</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">[0]</td>
+          <td class="py-3 px-4">"p"</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4">標籤類型（pubkey）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">[1]</td>
+          <td class="py-3 px-4">公鑰</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4">關注者的 32-byte 十六進位公鑰</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">[2]</td>
+          <td class="py-3 px-4">中繼器 URL</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">可以找到此用戶的中繼器</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">[3]</td>
+          <td class="py-3 px-4">暱稱</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">本地暱稱（petname）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">可替換事件</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Kind 3 是「可替換事件」（Replaceable Event），這意味著：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 可替換事件的特性：
+// 1. 同一用戶只保留最新的 kind 3 事件
+// 2. 新事件會完全取代舊事件
+// 3. 中繼器根據 created_at 判斷新舊
+
+// 例如：用戶原本關注 3 個人
+Event A (created_at: 1000):
+  tags: [["p", "alice"], ["p", "bob"], ["p", "carol"]]
+
+// 用戶新增一個關注，發布新事件
+Event B (created_at: 2000):
+  tags: [["p", "alice"], ["p", "bob"], ["p", "carol"], ["p", "dave"]]
+
+// Event B 會取代 Event A
+// 注意：必須包含所有關注者，不是增量更新！`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>重要：</strong>
+      更新關注列表時，必須發布包含<strong>所有</strong>關注者的新事件。
+      如果只發布部分列表，其他人會被取消關注！
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">取得關注列表</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function getFollowList(relay, pubkey) {
+  return new Promise((resolve) => {
+    let contactList = null
+
+    const sub = relay.subscribe([{
+      kinds: [3],
+      authors: [pubkey],
+      limit: 1  // 只需要最新的一個
+    }])
+
+    sub.on('event', (event) => {
+      // 如果已有事件，比較時間戳
+      if (!contactList || event.created_at > contactList.created_at) {
+        contactList = event
+      }
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+
+      if (!contactList) {
+        resolve({ follows: [], relayHints: {} })
+        return
+      }
+
+      // 解析關注列表
+      const follows = []
+      const relayHints = {}
+
+      for (const tag of contactList.tags) {
+        if (tag[0] === 'p') {
+          const [, pubkey, relay, petname] = tag
+          follows.push({
+            pubkey,
+            relay: relay || null,
+            petname: petname || null
+          })
+
+          if (relay) {
+            relayHints[pubkey] = relay
+          }
+        }
+      }
+
+      resolve({ follows, relayHints, event: contactList })
+    })
+  })
+}
+
+// 使用
+const { follows, relayHints } = await getFollowList(relay, myPubkey)
+console.log(\`關注了 \${follows.length} 個人\`)
+follows.forEach(f => {
+  console.log(\`- \${f.petname || f.pubkey.slice(0, 8)}\`)
+})`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">更新關注列表</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function updateFollowList(relay, currentFollows, action, targetPubkey, options = {}) {
+  // action: 'add' | 'remove'
+  let newFollows = [...currentFollows]
+
+  if (action === 'add') {
+    // 檢查是否已關注
+    if (newFollows.some(f => f.pubkey === targetPubkey)) {
+      console.log('已經關注了')
+      return null
+    }
+
+    newFollows.push({
+      pubkey: targetPubkey,
+      relay: options.relay || null,
+      petname: options.petname || null
+    })
+  } else if (action === 'remove') {
+    newFollows = newFollows.filter(f => f.pubkey !== targetPubkey)
+  }
+
+  // 建立新的 kind 3 事件
+  const event = {
+    kind: 3,
+    content: '',  // 通常留空，但可以存放其他資料
+    created_at: Math.floor(Date.now() / 1000),
+    tags: newFollows.map(f => {
+      const tag = ['p', f.pubkey]
+      if (f.relay) tag.push(f.relay)
+      else tag.push('')
+      if (f.petname) tag.push(f.petname)
+      return tag
+    })
+  }
+
+  // 簽名並發布
+  const signedEvent = await window.nostr.signEvent(event)
+  await relay.publish(signedEvent)
+
+  console.log(\`關注列表已更新，現在關注 \${newFollows.length} 人\`)
+  return signedEvent
+}
+
+// 關注某人
+await updateFollowList(relay, currentFollows, 'add', 'abc123...', {
+  relay: 'wss://relay.example.com',
+  petname: 'Alice'
+})
+
+// 取消關注
+await updateFollowList(relay, currentFollows, 'remove', 'abc123...')`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">取得關注者的動態</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function getFollowingFeed(relay, myPubkey, limit = 50) {
+  // 1. 先取得關注列表
+  const { follows, relayHints } = await getFollowList(relay, myPubkey)
+
+  if (follows.length === 0) {
+    console.log('還沒有關注任何人')
+    return []
+  }
+
+  // 2. 取得關注者的公鑰列表
+  const followPubkeys = follows.map(f => f.pubkey)
+
+  // 3. 查詢他們的貼文
+  return new Promise((resolve) => {
+    const posts = []
+
+    const sub = relay.subscribe([{
+      kinds: [1],  // 一般貼文
+      authors: followPubkeys,
+      limit: limit
+    }])
+
+    sub.on('event', (event) => {
+      posts.push(event)
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      // 按時間排序
+      posts.sort((a, b) => b.created_at - a.created_at)
+      resolve(posts)
+    })
+  })
+}
+
+// 使用
+const feed = await getFollowingFeed(relay, myPubkey, 100)
+console.log(\`取得 \${feed.length} 則動態\`)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">檢查關注關係</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function checkFollowRelationship(relay, userA, userB) {
+  const [aFollows, bFollows] = await Promise.all([
+    getFollowList(relay, userA),
+    getFollowList(relay, userB)
+  ])
+
+  const aFollowsB = aFollows.follows.some(f => f.pubkey === userB)
+  const bFollowsA = bFollows.follows.some(f => f.pubkey === userA)
+
+  return {
+    aFollowsB,
+    bFollowsA,
+    mutualFollow: aFollowsB && bFollowsA
+  }
+}
+
+// 使用
+const relation = await checkFollowRelationship(relay, myPubkey, otherPubkey)
+if (relation.mutualFollow) {
+  console.log('互相關注！')
+} else if (relation.aFollowsB) {
+  console.log('你關注了對方')
+} else if (relation.bFollowsA) {
+  console.log('對方關注了你')
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Petname 系統</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Petname（暱稱）讓用戶可以為關注的人設定本地名稱：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// Petname 的用途：
+// 1. 為公鑰設定易記的名稱
+// 2. 本地覆蓋用戶的 profile name
+// 3. 防止冒充（用自己的命名）
+
+// 範例：你設定的 petname
+["p", "abc123...", "wss://relay.example.com", "我的好友小明"]
+
+// 即使對方的 profile 名稱是 "Bitcoin Maximalist"
+// 在你的客戶端中會顯示 "我的好友小明"
+
+// 這提供了一層防詐騙保護
+// 即使有人冒充你朋友，你仍會看到正確的 petname`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器提示</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    中繼器 URL 欄位是「社交圖譜路由」的基礎：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 中繼器提示的用途：
+// 1. 告訴客戶端在哪裡可以找到這個用戶的內容
+// 2. 實現去中心化的用戶發現
+// 3. 減少對單一中繼器的依賴
+
+// 使用中繼器提示
+async function fetchUserContent(pubkey, relayHint) {
+  // 如果有提示，優先使用提示的中繼器
+  const relayUrl = relayHint || 'wss://relay.damus.io'
+
+  const relay = await connectToRelay(relayUrl)
+  const events = await queryUserEvents(relay, pubkey)
+
+  return events
+}
+
+// 結合 NIP-65 可以獲得更準確的中繼器資訊`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Content 欄位</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    雖然 NIP-02 的 content 通常留空，但有些客戶端會用它來儲存額外資訊：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 有些客戶端在 content 中儲存中繼器偏好設定
+{
+  "kind": 3,
+  "content": JSON.stringify({
+    "wss://relay.damus.io": { "read": true, "write": true },
+    "wss://nos.lol": { "read": true, "write": false }
+  }),
+  "tags": [...]
+}
+
+// 注意：這種用法已被 NIP-65 取代
+// 現代客戶端應該使用 kind 10002 來儲存中繼器列表`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">建議做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 更新前先讀取現有列表</li>
+        <li>• 提供中繼器提示改善發現</li>
+        <li>• 使用 petname 防止冒充</li>
+        <li>• 發布到多個中繼器備份</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">避免問題</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 不要遺漏現有關注者</li>
+        <li>• 避免頻繁更新（合併操作）</li>
+        <li>• 不要在 content 存關鍵資料</li>
+        <li>• 處理大型列表時注意效能</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與其他 NIP 的關係</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">關係</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">NIP-01</td>
+          <td class="py-3 px-4">基礎事件格式</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">NIP-65</td>
+          <td class="py-3 px-4">現代的中繼器列表標準（取代 content 中的中繼器）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">NIP-51</td>
+          <td class="py-3 px-4">更多列表類型（靜音、書籤等）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      NIP-02 是 Nostr 最早的 NIP 之一，幾乎所有客戶端都支援。
+      它是建立社交網路的基礎，讓用戶可以追蹤喜歡的人的內容。
+    </p>
+  </div>
+</ArticleLayout>
