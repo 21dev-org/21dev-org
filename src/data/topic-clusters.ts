@@ -178,10 +178,11 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-17/', title: 'NIP-17 私密訊息', type: 'tech' },
       { href: '/tech/nostr/nip-18/', title: 'NIP-18 轉發', type: 'tech' },
       { href: '/tech/nostr/nip-21/', title: 'NIP-21 nostr: URI', type: 'tech' },
+      { href: '/tech/nostr/nip-30/', title: 'NIP-30 自訂表情', type: 'tech' },
       { href: '/tech/nostr/nip-36/', title: 'NIP-36 敏感內容', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-02', 'NIP-13', 'NIP-17', 'NIP-18', 'NIP-21', 'NIP-36', 'NIP-40', 'NIP-42', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-47', 'NIP-50', 'NIP-51', 'NIP-58', 'NIP-59', 'NIP-65', 'NIP-94', 'NIP-96', 'NIP-98', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', 'Wallet Connect', 'NWC', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋', '檔案上傳', '媒體', 'HTTP認證', 'Bearer', 'blurhash', 'imeta', '閃電網路錢包', '中繼器認證', 'AUTH', '聯絡人', '關注', 'petname', 'kind 3', '列表', '靜音', '書籤', '置頂', '徽章', 'badge', '成就', 'gift wrap', '禮物包裝', 'seal', '密封', '隱私', 'PoW', '工作量證明', 'nonce', '難度', 'expiration', '過期', '時間戳', 'repost', '轉發', '引用', 'NSFW', '敏感內容', 'content-warning', '私密訊息', 'private DM', 'rumor', 'nostr: URI', 'njump'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-02', 'NIP-13', 'NIP-17', 'NIP-18', 'NIP-21', 'NIP-30', 'NIP-36', 'NIP-40', 'NIP-42', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-47', 'NIP-50', 'NIP-51', 'NIP-58', 'NIP-59', 'NIP-65', 'NIP-94', 'NIP-96', 'NIP-98', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', 'Wallet Connect', 'NWC', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋', '檔案上傳', '媒體', 'HTTP認證', 'Bearer', 'blurhash', 'imeta', '閃電網路錢包', '中繼器認證', 'AUTH', '聯絡人', '關注', 'petname', 'kind 3', '列表', '靜音', '書籤', '置頂', '徽章', 'badge', '成就', 'gift wrap', '禮物包裝', 'seal', '密封', '隱私', 'PoW', '工作量證明', 'nonce', '難度', 'expiration', '過期', '時間戳', 'repost', '轉發', '引用', 'NSFW', '敏感內容', 'content-warning', '私密訊息', 'private DM', 'rumor', 'nostr: URI', 'njump', '自訂表情', 'custom emoji', 'shortcode'],
   },
 ];
 

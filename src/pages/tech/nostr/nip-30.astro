@@ -1,0 +1,449 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-30 自訂表情"
+  description="Nostr 自訂表情符號標準，讓用戶可以在貼文和反應中使用自訂圖片表情。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-30 自訂表情' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-25/',
+    title: 'NIP-25 反應',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-36/',
+    title: 'NIP-36 敏感內容',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-30 定義了 Nostr 的自訂表情符號標準，讓用戶可以使用圖片作為表情符號。
+    與 Discord 或 Slack 的自訂表情類似，用戶可以在內容中使用 <code>:shortcode:</code>
+    格式引用自訂表情，客戶端會將其渲染為對應的圖片。
+  </p>
+
+  <div class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg my-6">
+    <p class="text-purple-700 dark:text-purple-300 font-medium mb-2">使用場景</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      自訂表情可用於個人資料、貼文內容和反應。社群可以建立專屬的表情包，
+      增加互動的趣味性和個性化。
+    </p>
+  </div>
+
+  <h2 id="supported-events">支援的事件類型</h2>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">類型</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">表情位置</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">0</td>
+          <td class="border border-[var(--border-default)] p-3">個人資料</td>
+          <td class="border border-[var(--border-default)] p-3"><code>name</code> 和 <code>about</code> 欄位</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">1</td>
+          <td class="border border-[var(--border-default)] p-3">文字貼文</td>
+          <td class="border border-[var(--border-default)] p-3"><code>content</code> 欄位</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">7</td>
+          <td class="border border-[var(--border-default)] p-3">反應</td>
+          <td class="border border-[var(--border-default)] p-3"><code>content</code> 欄位</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">30315</td>
+          <td class="border border-[var(--border-default)] p-3">用戶狀態</td>
+          <td class="border border-[var(--border-default)] p-3"><code>content</code> 欄位</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="emoji-tag">表情標籤格式</h2>
+  <p>
+    自訂表情使用 <code>emoji</code> 標籤定義：
+  </p>
+
+  <pre><code class="language-json">{`["emoji", "<shortcode>", "<image-url>"]`}</code></pre>
+
+  <ul>
+    <li><code>shortcode</code> - 表情代碼，只能包含字母、數字和底線</li>
+    <li><code>image-url</code> - 表情圖片的 URL</li>
+  </ul>
+
+  <h3>命名規則</h3>
+  <ul>
+    <li>只能使用 <strong>a-z、A-Z、0-9、_</strong></li>
+    <li>不能包含空格或特殊字符</li>
+    <li>建議使用小寫以保持一致性</li>
+  </ul>
+
+  <pre><code class="language-json">{`// ✓ 正確
+["emoji", "pepe_happy", "https://example.com/pepe_happy.gif"]
+["emoji", "bitcoin", "https://example.com/btc.png"]
+["emoji", "nostr_logo", "https://example.com/nostr.svg"]
+
+// ✗ 錯誤
+["emoji", "pepe-happy", "..."]   // 包含連字號
+["emoji", "pepe happy", "..."]   // 包含空格
+["emoji", "🚀", "..."]           // 使用 Unicode 表情`}</code></pre>
+
+  <h2 id="usage">使用方式</h2>
+  <p>
+    在內容中使用 <code>:shortcode:</code> 格式引用表情：
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 1,
+  "content": "今天心情超好 :pepe_happy: 來點比特幣 :bitcoin:",
+  "tags": [
+    ["emoji", "pepe_happy", "https://example.com/pepe_happy.gif"],
+    ["emoji", "bitcoin", "https://example.com/btc.png"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="examples">事件範例</h2>
+
+  <h3>個人資料 (Kind 0)</h3>
+  <pre><code class="language-json">{`{
+  "kind": 0,
+  "content": "{\"name\":\"Alice :nostr:\",\"about\":\"Nostr 愛好者 :bitcoin: :lightning:\"}",
+  "tags": [
+    ["emoji", "nostr", "https://example.com/nostr.png"],
+    ["emoji", "bitcoin", "https://example.com/btc.png"],
+    ["emoji", "lightning", "https://example.com/ln.png"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>貼文 (Kind 1)</h3>
+  <pre><code class="language-json">{`{
+  "kind": 1,
+  "content": "剛剛完成了新功能！:ship_it: :party_parrot:",
+  "tags": [
+    ["emoji", "ship_it", "https://example.com/ship.gif"],
+    ["emoji", "party_parrot", "https://example.com/parrot.gif"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>自訂表情反應 (Kind 7)</h3>
+  <pre><code class="language-json">{`{
+  "kind": 7,
+  "content": ":pepe_love:",
+  "tags": [
+    ["e", "<event-id>", "<relay>"],
+    ["p", "<author-pubkey>"],
+    ["emoji", "pepe_love", "https://example.com/pepe_love.png"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立帶表情的事件</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+
+interface CustomEmoji {
+  shortcode: string;
+  url: string;
+}
+
+// 驗證 shortcode 格式
+function isValidShortcode(shortcode: string): boolean {
+  return /^[a-zA-Z0-9_]+$/.test(shortcode);
+}
+
+// 建立帶自訂表情的貼文
+function createPostWithEmojis(
+  privateKey: Uint8Array,
+  content: string,
+  emojis: CustomEmoji[]
+) {
+  // 驗證所有 shortcode
+  for (const emoji of emojis) {
+    if (!isValidShortcode(emoji.shortcode)) {
+      throw new Error(\`Invalid shortcode: \${emoji.shortcode}\`);
+    }
+  }
+
+  const emojiTags = emojis.map(e => ['emoji', e.shortcode, e.url]);
+
+  return finalizeEvent({
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: emojiTags,
+    content,
+  }, privateKey);
+}
+
+// 使用範例
+const post = createPostWithEmojis(
+  privateKey,
+  '新年快樂！:fireworks: :party:',
+  [
+    { shortcode: 'fireworks', url: 'https://example.com/fireworks.gif' },
+    { shortcode: 'party', url: 'https://example.com/party.png' },
+  ]
+);`}</code></pre>
+
+  <h3>建立自訂表情反應</h3>
+  <pre><code class="language-typescript">{`// 使用自訂表情反應
+function createCustomEmojiReaction(
+  privateKey: Uint8Array,
+  targetEventId: string,
+  targetAuthorPubkey: string,
+  emoji: CustomEmoji,
+  relay?: string
+) {
+  if (!isValidShortcode(emoji.shortcode)) {
+    throw new Error(\`Invalid shortcode: \${emoji.shortcode}\`);
+  }
+
+  const tags: string[][] = [
+    ['e', targetEventId, relay || ''],
+    ['p', targetAuthorPubkey],
+    ['emoji', emoji.shortcode, emoji.url],
+  ];
+
+  return finalizeEvent({
+    kind: 7,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: \`:\${emoji.shortcode}:\`,
+  }, privateKey);
+}
+
+// 使用範例
+const reaction = createCustomEmojiReaction(
+  privateKey,
+  'abc123...',
+  'def456...',
+  { shortcode: 'pepe_thumbs_up', url: 'https://example.com/pepe_up.gif' }
+);`}</code></pre>
+
+  <h3>解析並渲染表情</h3>
+  <pre><code class="language-typescript">{`interface EmojiMap {
+  [shortcode: string]: string;
+}
+
+// 從事件標籤提取表情映射
+function extractEmojis(tags: string[][]): EmojiMap {
+  const emojiMap: EmojiMap = {};
+
+  for (const tag of tags) {
+    if (tag[0] === 'emoji' && tag[1] && tag[2]) {
+      emojiMap[tag[1]] = tag[2];
+    }
+  }
+
+  return emojiMap;
+}
+
+// 將內容中的 :shortcode: 替換為圖片
+function renderEmojis(content: string, emojiMap: EmojiMap): string {
+  return content.replace(/:([a-zA-Z0-9_]+):/g, (match, shortcode) => {
+    const url = emojiMap[shortcode];
+    if (url) {
+      return \`<img src="\${url}" alt=":\${shortcode}:" class="custom-emoji" />\`;
+    }
+    return match; // 沒有對應的表情，保持原樣
+  });
+}
+
+// 使用範例
+const event = {
+  content: '太棒了 :party: :fire:',
+  tags: [
+    ['emoji', 'party', 'https://example.com/party.gif'],
+    ['emoji', 'fire', 'https://example.com/fire.gif'],
+  ],
+};
+
+const emojiMap = extractEmojis(event.tags);
+const rendered = renderEmojis(event.content, emojiMap);
+// 太棒了 <img src="https://example.com/party.gif" ... /> <img src="https://example.com/fire.gif" ... />`}</code></pre>
+
+  <h2 id="react-component">React 組件範例</h2>
+  <pre><code class="language-tsx">{`interface CustomEmojiProps {
+  shortcode: string;
+  url: string;
+}
+
+function CustomEmoji({ shortcode, url }: CustomEmojiProps) {
+  return (
+    <img
+      src={url}
+      alt={\`:\${shortcode}:\`}
+      title={\`:\${shortcode}:\`}
+      className="inline-block h-5 w-5 align-text-bottom"
+      loading="lazy"
+    />
+  );
+}
+
+interface EmojifiedTextProps {
+  content: string;
+  emojis: EmojiMap;
+}
+
+function EmojifiedText({ content, emojis }: EmojifiedTextProps) {
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  const regex = /:([a-zA-Z0-9_]+):/g;
+  let match;
+
+  while ((match = regex.exec(content)) !== null) {
+    // 添加表情前的文字
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+
+    const shortcode = match[1];
+    const url = emojis[shortcode];
+
+    if (url) {
+      parts.push(
+        <CustomEmoji
+          key={\`\${shortcode}-\${match.index}\`}
+          shortcode={shortcode}
+          url={url}
+        />
+      );
+    } else {
+      // 沒有找到對應的表情
+      parts.push(match[0]);
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  // 添加剩餘的文字
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
+}
+
+// 使用範例
+<EmojifiedText
+  content="恭喜 :party: 太厲害了 :fire:"
+  emojis={{
+    party: 'https://example.com/party.gif',
+    fire: 'https://example.com/fire.gif',
+  }}
+/>`}</code></pre>
+
+  <h2 id="emoji-packs">表情包</h2>
+  <p>
+    社群可以建立並分享表情包。常見的做法是將表情圖片託管在穩定的伺服器上，
+    並提供 shortcode 列表供用戶使用。
+  </p>
+
+  <pre><code class="language-typescript">{`// 表情包定義
+interface EmojiPack {
+  name: string;
+  author: string;
+  emojis: CustomEmoji[];
+}
+
+const pepePack: EmojiPack = {
+  name: 'Pepe Pack',
+  author: 'npub1...',
+  emojis: [
+    { shortcode: 'pepe_happy', url: 'https://cdn.example.com/pepe/happy.gif' },
+    { shortcode: 'pepe_sad', url: 'https://cdn.example.com/pepe/sad.gif' },
+    { shortcode: 'pepe_angry', url: 'https://cdn.example.com/pepe/angry.gif' },
+    { shortcode: 'pepe_love', url: 'https://cdn.example.com/pepe/love.gif' },
+    { shortcode: 'pepe_think', url: 'https://cdn.example.com/pepe/think.gif' },
+  ],
+};
+
+// 使用表情包建立貼文
+function createPostWithPack(
+  privateKey: Uint8Array,
+  content: string,
+  pack: EmojiPack
+) {
+  // 只包含內容中實際使用的表情
+  const usedEmojis = pack.emojis.filter(emoji =>
+    content.includes(\`:\${emoji.shortcode}:\`)
+  );
+
+  return createPostWithEmojis(privateKey, content, usedEmojis);
+}`}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>圖片大小</strong>：建議 64x64 或 128x128 像素</li>
+    <li><strong>檔案格式</strong>：支援 PNG、GIF、WebP、SVG</li>
+    <li><strong>動態表情</strong>：GIF 和 WebP 支援動畫</li>
+    <li><strong>穩定託管</strong>：使用可靠的 CDN 託管表情圖片</li>
+    <li><strong>只包含使用的</strong>：不要在標籤中包含未使用的表情</li>
+    <li><strong>CSS 樣式</strong>：確保表情在行內正確顯示</li>
+  </ul>
+
+  <h3>CSS 樣式建議</h3>
+  <pre><code class="language-css">{`.custom-emoji {
+  display: inline-block;
+  height: 1.2em;
+  width: 1.2em;
+  vertical-align: text-bottom;
+  object-fit: contain;
+}
+
+/* 較大的表情 */
+.custom-emoji-lg {
+  height: 2em;
+  width: 2em;
+}
+
+/* 反應中的表情 */
+.reaction-emoji {
+  height: 1.5em;
+  width: 1.5em;
+}`}</code></pre>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>圖片載入</strong>：使用 lazy loading 避免影響效能</li>
+    <li><strong>fallback</strong>：無法載入圖片時顯示 :shortcode:</li>
+    <li><strong>無障礙</strong>：使用 alt 屬性提供文字描述</li>
+    <li><strong>XSS 防護</strong>：確保 URL 經過驗證和清理</li>
+  </ul>
+
+  <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
+    <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">安全提醒</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      表情圖片 URL 由用戶提供，可能指向惡意內容。
+      客戶端應該驗證 URL 格式，並考慮使用內容安全策略（CSP）。
+    </p>
+  </div>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-25/">NIP-25</a> - 反應（自訂表情反應）</li>
+    <li><a href="/tech/nostr/nip-94/">NIP-94</a> - 檔案中繼資料</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/30.md" target="_blank" rel="noopener">NIP-30 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
