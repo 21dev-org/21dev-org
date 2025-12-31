@@ -1,0 +1,673 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-90 資料販賣機"
+  description="Nostr 資料販賣機 (DVM) 標準，實現去中心化的 AI 計算和服務市場。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-90 資料販賣機' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-65/',
+    title: 'NIP-65 中繼器列表',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-94/',
+    title: 'NIP-94 檔案中繼資料',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-90 定義了「資料販賣機」（Data Vending Machines, DVM）標準，
+    建立一個去中心化的計算服務市場。客戶發布任務請求，服務提供者競爭完成任務並獲得報酬。
+    這是 Nostr 上的「Money in, data out」模式。
+  </p>
+
+  <div class="p-4 bg-green-500/10 border border-green-500/30 rounded-lg my-6">
+    <p class="text-green-700 dark:text-green-300 font-medium mb-2">AI 計算市場</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      DVM 常用於 AI 相關服務：文字翻譯、圖片生成、語音轉文字、內容摘要等。
+      服務提供者可以運行 GPU 或 API 來處理任務並收取費用。
+    </p>
+  </div>
+
+  <h2 id="event-kinds">事件類型</h2>
+  <p>NIP-90 保留了 kind 5000-7000：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind 範圍</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">類型</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5000-5999</td>
+          <td class="border border-[var(--border-default)] p-3">任務請求</td>
+          <td class="border border-[var(--border-default)] p-3">客戶發布的任務</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">6000-6999</td>
+          <td class="border border-[var(--border-default)] p-3">任務結果</td>
+          <td class="border border-[var(--border-default)] p-3">服務者返回的結果（kind = 請求 + 1000）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">7000</td>
+          <td class="border border-[var(--border-default)] p-3">任務回饋</td>
+          <td class="border border-[var(--border-default)] p-3">狀態更新、報價、錯誤</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>常見任務類型</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">任務類型</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5000</td>
+          <td class="border border-[var(--border-default)] p-3">文字生成</td>
+          <td class="border border-[var(--border-default)] p-3">LLM 文字生成</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5001</td>
+          <td class="border border-[var(--border-default)] p-3">文字轉語音</td>
+          <td class="border border-[var(--border-default)] p-3">TTS 語音合成</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5002</td>
+          <td class="border border-[var(--border-default)] p-3">翻譯</td>
+          <td class="border border-[var(--border-default)] p-3">多語言翻譯</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5003</td>
+          <td class="border border-[var(--border-default)] p-3">語音轉文字</td>
+          <td class="border border-[var(--border-default)] p-3">STT 語音識別</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5100</td>
+          <td class="border border-[var(--border-default)] p-3">圖片生成</td>
+          <td class="border border-[var(--border-default)] p-3">AI 繪圖</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">5250</td>
+          <td class="border border-[var(--border-default)] p-3">內容摘要</td>
+          <td class="border border-[var(--border-default)] p-3">文章/影片摘要</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="job-request">任務請求 (Kind 5xxx)</h2>
+  <pre><code class="language-json">{`{
+  "kind": 5002,
+  "content": "",
+  "tags": [
+    ["i", "Hello, how are you?", "text"],
+    ["param", "language", "zh-TW"],
+    ["output", "text/plain"],
+    ["relays", "wss://relay.damus.io", "wss://nos.lol"],
+    ["bid", "1000"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>標籤說明</h3>
+  <ul>
+    <li><code>i</code> - 輸入資料（可多個）</li>
+    <li><code>param</code> - 任務參數</li>
+    <li><code>output</code> - 期望的輸出格式</li>
+    <li><code>relays</code> - 監聽結果的中繼器</li>
+    <li><code>bid</code> - 願意支付的最高金額（毫聰）</li>
+    <li><code>p</code> - 指定服務提供者（選填）</li>
+  </ul>
+
+  <h3>輸入類型</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">類型</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">格式</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">text</td>
+          <td class="border border-[var(--border-default)] p-3"><code>["i", "內容", "text"]</code></td>
+          <td class="border border-[var(--border-default)] p-3">直接文字輸入</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">url</td>
+          <td class="border border-[var(--border-default)] p-3"><code>["i", "https://...", "url"]</code></td>
+          <td class="border border-[var(--border-default)] p-3">遠端資源 URL</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">event</td>
+          <td class="border border-[var(--border-default)] p-3"><code>["i", "&lt;event-id&gt;", "event", "&lt;relay&gt;"]</code></td>
+          <td class="border border-[var(--border-default)] p-3">Nostr 事件</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">job</td>
+          <td class="border border-[var(--border-default)] p-3"><code>["i", "&lt;job-id&gt;", "job"]</code></td>
+          <td class="border border-[var(--border-default)] p-3">前一個任務的輸出</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="job-result">任務結果 (Kind 6xxx)</h2>
+  <pre><code class="language-json">{`{
+  "kind": 6002,
+  "pubkey": "<service-provider-pubkey>",
+  "content": "你好，你好嗎？",
+  "tags": [
+    ["request", "<原始請求JSON>"],
+    ["e", "<job-request-id>", "<relay-hint>"],
+    ["p", "<customer-pubkey>"],
+    ["amount", "500", "<bolt11-invoice>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="job-feedback">任務回饋 (Kind 7000)</h2>
+  <p>服務提供者用來更新任務狀態：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 7000,
+  "content": "",
+  "tags": [
+    ["status", "processing", "正在處理中..."],
+    ["e", "<job-request-id>", "<relay-hint>"],
+    ["p", "<customer-pubkey>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h3>狀態類型</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">狀態</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-yellow-600">payment-required</td>
+          <td class="border border-[var(--border-default)] p-3">需要先付款才能繼續</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-blue-600">processing</td>
+          <td class="border border-[var(--border-default)] p-3">任務正在處理中</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-green-600">success</td>
+          <td class="border border-[var(--border-default)] p-3">任務完成</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-orange-600">partial</td>
+          <td class="border border-[var(--border-default)] p-3">部分結果（可能含預覽）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-red-600">error</td>
+          <td class="border border-[var(--border-default)] p-3">處理失敗</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="payment-flow">付款流程</h2>
+  <div class="space-y-4 my-6">
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">1</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">客戶發布請求</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        包含 <code>bid</code> 標籤表示願意支付的金額
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">2</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">服務者回應報價</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        發布 kind 7000 帶 <code>payment-required</code> 狀態和 BOLT11 發票
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">3</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">客戶付款</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        支付 BOLT11 發票或 Zap 任務事件
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">4</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">服務者交付結果</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        發布 kind 6xxx 結果事件
+      </p>
+    </div>
+  </div>
+
+  <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
+    <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">風險模式</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      服務提供者可自行決定風險模式：先付款後交付、先交付後收款、
+      或根據客戶信譽決定。這是一個自由市場。
+    </p>
+  </div>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>發布任務請求（客戶端）</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+
+interface JobRequest {
+  kind: number;
+  inputs: Array<{
+    data: string;
+    type: 'text' | 'url' | 'event' | 'job';
+    relay?: string;
+    marker?: string;
+  }>;
+  params?: Record<string, string>;
+  output?: string;
+  bid?: number;
+  serviceProvider?: string;
+}
+
+// 建立任務請求
+function createJobRequest(
+  privateKey: Uint8Array,
+  job: JobRequest,
+  relays: string[]
+) {
+  const tags: string[][] = [];
+
+  // 添加輸入
+  for (const input of job.inputs) {
+    const tag = ['i', input.data, input.type];
+    if (input.relay) tag.push(input.relay);
+    if (input.marker) tag.push(input.marker);
+    tags.push(tag);
+  }
+
+  // 添加參數
+  if (job.params) {
+    for (const [key, value] of Object.entries(job.params)) {
+      tags.push(['param', key, value]);
+    }
+  }
+
+  // 添加輸出格式
+  if (job.output) {
+    tags.push(['output', job.output]);
+  }
+
+  // 添加中繼器
+  tags.push(['relays', ...relays]);
+
+  // 添加出價
+  if (job.bid) {
+    tags.push(['bid', job.bid.toString()]);
+  }
+
+  // 指定服務提供者
+  if (job.serviceProvider) {
+    tags.push(['p', job.serviceProvider]);
+  }
+
+  return finalizeEvent({
+    kind: job.kind,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  }, privateKey);
+}
+
+// 翻譯請求範例
+const translateJob = createJobRequest(
+  privateKey,
+  {
+    kind: 5002,
+    inputs: [
+      { data: 'Hello, how are you today?', type: 'text' },
+    ],
+    params: {
+      language: 'zh-TW',
+    },
+    output: 'text/plain',
+    bid: 1000, // 1000 毫聰
+  },
+  ['wss://relay.damus.io']
+);
+
+// 圖片生成請求範例
+const imageJob = createJobRequest(
+  privateKey,
+  {
+    kind: 5100,
+    inputs: [
+      { data: 'A cute cat sitting on a rainbow', type: 'text' },
+    ],
+    params: {
+      size: '1024x1024',
+      style: 'anime',
+    },
+    output: 'image/png',
+    bid: 5000,
+  },
+  ['wss://relay.damus.io']
+);`}</code></pre>
+
+  <h3>監聽任務結果</h3>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+
+interface JobResult {
+  status: 'processing' | 'success' | 'error' | 'payment-required' | 'partial';
+  content?: string;
+  amount?: number;
+  bolt11?: string;
+  error?: string;
+}
+
+// 監聽任務回應
+function subscribeToJobResults(
+  jobRequestId: string,
+  relays: string[],
+  onResult: (result: JobResult) => void,
+  onFeedback: (feedback: JobResult) => void
+) {
+  // 監聽結果和回饋
+  return pool.subscribeMany(
+    relays,
+    [
+      { kinds: [6000, 6001, 6002, 6003, 6100, 6250], '#e': [jobRequestId] },
+      { kinds: [7000], '#e': [jobRequestId] },
+    ],
+    {
+      onevent: (event) => {
+        if (event.kind === 7000) {
+          // 任務回饋
+          const statusTag = event.tags.find(t => t[0] === 'status');
+          const amountTag = event.tags.find(t => t[0] === 'amount');
+
+          onFeedback({
+            status: statusTag?.[1] as any || 'processing',
+            content: event.content || statusTag?.[2],
+            amount: amountTag ? parseInt(amountTag[1]) : undefined,
+            bolt11: amountTag?.[2],
+          });
+        } else {
+          // 任務結果
+          const amountTag = event.tags.find(t => t[0] === 'amount');
+
+          onResult({
+            status: 'success',
+            content: event.content,
+            amount: amountTag ? parseInt(amountTag[1]) : undefined,
+            bolt11: amountTag?.[2],
+          });
+        }
+      },
+    }
+  );
+}
+
+// 使用範例
+const sub = subscribeToJobResults(
+  jobRequestId,
+  ['wss://relay.damus.io'],
+  (result) => {
+    console.log('任務完成:', result.content);
+    if (result.bolt11) {
+      console.log('請付款:', result.bolt11);
+    }
+  },
+  (feedback) => {
+    if (feedback.status === 'payment-required') {
+      console.log('需要付款:', feedback.bolt11);
+    } else if (feedback.status === 'processing') {
+      console.log('處理中:', feedback.content);
+    } else if (feedback.status === 'error') {
+      console.log('錯誤:', feedback.content);
+    }
+  }
+);`}</code></pre>
+
+  <h3>處理任務（服務提供者）</h3>
+  <pre><code class="language-typescript">{`// 服務提供者：監聽任務請求
+function startDVMService(
+  servicePrivateKey: Uint8Array,
+  supportedKinds: number[],
+  relays: string[],
+  processJob: (job: Event) => Promise<string>
+) {
+  const servicePubkey = getPublicKey(servicePrivateKey);
+
+  return pool.subscribeMany(
+    relays,
+    [{ kinds: supportedKinds }],
+    {
+      onevent: async (jobRequest) => {
+        try {
+          // 發送處理中狀態
+          const processingFeedback = finalizeEvent({
+            kind: 7000,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [
+              ['status', 'processing', '正在處理您的請求...'],
+              ['e', jobRequest.id],
+              ['p', jobRequest.pubkey],
+            ],
+            content: '',
+          }, servicePrivateKey);
+
+          await pool.publish(relays, processingFeedback);
+
+          // 處理任務
+          const result = await processJob(jobRequest);
+
+          // 發送結果
+          const resultKind = jobRequest.kind + 1000;
+          const jobResult = finalizeEvent({
+            kind: resultKind,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [
+              ['request', JSON.stringify(jobRequest)],
+              ['e', jobRequest.id],
+              ['p', jobRequest.pubkey],
+              ['amount', '500'], // 收費 500 毫聰
+            ],
+            content: result,
+          }, servicePrivateKey);
+
+          await pool.publish(relays, jobResult);
+
+        } catch (error) {
+          // 發送錯誤狀態
+          const errorFeedback = finalizeEvent({
+            kind: 7000,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [
+              ['status', 'error', error.message],
+              ['e', jobRequest.id],
+              ['p', jobRequest.pubkey],
+            ],
+            content: '',
+          }, servicePrivateKey);
+
+          await pool.publish(relays, errorFeedback);
+        }
+      },
+    }
+  );
+}
+
+// 啟動翻譯服務
+startDVMService(
+  servicePrivateKey,
+  [5002], // 翻譯任務
+  ['wss://relay.damus.io'],
+  async (job) => {
+    const input = job.tags.find(t => t[0] === 'i')?.[1];
+    const lang = job.tags.find(t => t[0] === 'param' && t[1] === 'language')?.[2];
+
+    // 呼叫翻譯 API
+    const translated = await translateAPI(input, lang);
+    return translated;
+  }
+);`}</code></pre>
+
+  <h2 id="job-chaining">任務串接</h2>
+  <p>
+    可以將前一個任務的輸出作為下一個任務的輸入，實現複雜的工作流程：
+  </p>
+
+  <pre><code class="language-typescript">{`// 範例：播客轉錄 → 摘要 → 翻譯
+
+// 1. 語音轉文字
+const transcribeJob = createJobRequest(privateKey, {
+  kind: 5003,
+  inputs: [{ data: 'https://example.com/podcast.mp3', type: 'url' }],
+  output: 'text/plain',
+}, relays);
+
+// 發布並等待結果...
+const transcribeJobId = transcribeJob.id;
+
+// 2. 摘要（使用前一個任務的輸出）
+const summarizeJob = createJobRequest(privateKey, {
+  kind: 5250,
+  inputs: [{ data: transcribeJobId, type: 'job' }],
+  params: { length: 'short' },
+  output: 'text/plain',
+}, relays);
+
+// 3. 翻譯摘要
+const translateJob = createJobRequest(privateKey, {
+  kind: 5002,
+  inputs: [{ data: summarizeJob.id, type: 'job' }],
+  params: { language: 'zh-TW' },
+  output: 'text/plain',
+}, relays);`}</code></pre>
+
+  <h2 id="encryption">加密請求</h2>
+  <p>敏感資料可以使用 NIP-04 加密：</p>
+
+  <pre><code class="language-typescript">{`import * as nip04 from 'nostr-tools/nip04';
+
+// 建立加密的任務請求
+async function createEncryptedJobRequest(
+  privateKey: Uint8Array,
+  serviceProviderPubkey: string,
+  job: JobRequest,
+  relays: string[]
+) {
+  // 加密輸入資料
+  const encryptedContent = await nip04.encrypt(
+    privateKey,
+    serviceProviderPubkey,
+    JSON.stringify({
+      inputs: job.inputs,
+      params: job.params,
+    })
+  );
+
+  const tags: string[][] = [
+    ['p', serviceProviderPubkey],
+    ['encrypted'],
+    ['relays', ...relays],
+  ];
+
+  if (job.output) tags.push(['output', job.output]);
+  if (job.bid) tags.push(['bid', job.bid.toString()]);
+
+  return finalizeEvent({
+    kind: job.kind,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: encryptedContent,
+  }, privateKey);
+}`}</code></pre>
+
+  <h2 id="service-discovery">服務發現</h2>
+  <p>服務提供者可以使用 NIP-89 發布能力：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 31990,
+  "content": "{\"name\":\"AI 翻譯服務\",\"about\":\"支援 50+ 語言\"}",
+  "tags": [
+    ["d", "translation-service"],
+    ["k", "5002"],
+    ["t", "translation"],
+    ["t", "ai"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="cancellation">取消任務</h2>
+  <pre><code class="language-typescript">{`// 取消任務請求
+function cancelJob(
+  privateKey: Uint8Array,
+  jobRequestId: string
+) {
+  return finalizeEvent({
+    kind: 5, // NIP-09 刪除事件
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [['e', jobRequestId]],
+    content: 'Job cancelled',
+  }, privateKey);
+}`}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>合理出價</strong>：根據任務複雜度設定 bid</li>
+    <li><strong>監控狀態</strong>：訂閱 kind 7000 追蹤進度</li>
+    <li><strong>處理超時</strong>：設定合理的等待時間</li>
+    <li><strong>驗證結果</strong>：確認結果來自可信的服務者</li>
+    <li><strong>加密敏感資料</strong>：使用 encrypted 標籤保護隱私</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-04/">NIP-04</a> - 加密（用於加密請求）</li>
+    <li><a href="/tech/nostr/nip-57/">NIP-57</a> - Zaps（用於付款）</li>
+    <li><a href="/tech/nostr/nip-09/">NIP-09</a> - 事件刪除（用於取消）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/90.md" target="_blank" rel="noopener">NIP-90 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+    <li><a href="https://vendata.io" target="_blank" rel="noopener">Vendata - DVM 市場</a></li>
+  </ul>
+</ArticleLayout>
