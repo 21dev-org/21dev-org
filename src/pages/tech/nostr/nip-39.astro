@@ -1,0 +1,464 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-39: 外部身份驗證"
+  description="在 Nostr 個人資料中連結並驗證外部平台身份"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-39 定義了一種在 Nostr 個人資料（kind 0）中聲明並驗證外部平台身份的方法。
+    用戶可以將 GitHub、Twitter、Mastodon、Telegram 等帳號連結到 Nostr 身份，
+    並提供可驗證的證明讓其他人確認這些帳號確實屬於同一人。
+  </p>
+
+  <h2 id="tag-format">標籤格式</h2>
+  <p>
+    NIP-39 在 kind 0 事件中引入了 <code>i</code> 標籤，每個標籤包含兩個參數：
+  </p>
+
+  <pre><code class="language-json">["i", "平台:身份", "證明"]</code></pre>
+
+  <table>
+    <thead>
+      <tr>
+        <th>參數</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>平台:身份</td>
+        <td>平台名稱與用戶名以 <code>:</code> 連接</td>
+        <td><code>github:satoshi</code></td>
+      </tr>
+      <tr>
+        <td>證明</td>
+        <td>指向所有權驗證的字串或物件</td>
+        <td>Gist ID、Tweet ID 等</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="not-prose my-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <p class="text-sm text-blue-800 dark:text-blue-200">
+      <strong>命名規範：</strong>平台名稱只能包含 <code>a-z</code>、<code>0-9</code> 和 <code>._-/</code> 字元，
+      不能包含冒號。身份應該正規化為小寫。
+    </p>
+  </div>
+
+  <h2 id="profile-example">個人資料範例</h2>
+  <pre><code class="language-json">{
+  "kind": 0,
+  "content": "{\"name\":\"satoshi\",\"about\":\"Bitcoin creator\",\"picture\":\"...\"}",
+  "tags": [
+    ["i", "github:satoshi", "abc123def456"],
+    ["i", "twitter:sataboroshi", "1234567890123456789"],
+    ["i", "mastodon:bitcoinhackers.org/@satoshi", "109876543210"],
+    ["i", "telegram:123456789", "bitcoin_channel/42"]
+  ]
+}</code></pre>
+
+  <h2 id="supported-platforms">支援平台</h2>
+
+  <h3 id="github">GitHub</h3>
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>身份格式</strong></td>
+        <td>GitHub 用戶名</td>
+      </tr>
+      <tr>
+        <td><strong>證明格式</strong></td>
+        <td>Gist ID</td>
+      </tr>
+      <tr>
+        <td><strong>驗證位置</strong></td>
+        <td><code>https://gist.github.com/&lt;username&gt;/&lt;gist-id&gt;</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Gist 內容必須包含驗證 Nostr 公鑰所有權的文字：</p>
+  <pre><code class="language-text">Verifying my Nostr public key: npub1xxx...
+
+This gist proves I control both this GitHub account and the Nostr key above.</code></pre>
+
+  <p>標籤範例：</p>
+  <pre><code class="language-json">["i", "github:satoshi", "abc123def456789"]</code></pre>
+
+  <h3 id="twitter">Twitter / X</h3>
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>身份格式</strong></td>
+        <td>Twitter 用戶名</td>
+      </tr>
+      <tr>
+        <td><strong>證明格式</strong></td>
+        <td>Tweet ID</td>
+      </tr>
+      <tr>
+        <td><strong>驗證位置</strong></td>
+        <td><code>https://twitter.com/&lt;username&gt;/status/&lt;tweet-id&gt;</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>推文必須包含 npub 編碼的公鑰：</p>
+  <pre><code class="language-text">Verifying my Nostr identity: npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq...</code></pre>
+
+  <p>標籤範例：</p>
+  <pre><code class="language-json">["i", "twitter:jack", "1234567890123456789"]</code></pre>
+
+  <h3 id="mastodon">Mastodon</h3>
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>身份格式</strong></td>
+        <td><code>&lt;instance&gt;/@&lt;username&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>證明格式</strong></td>
+        <td>貼文 ID</td>
+      </tr>
+      <tr>
+        <td><strong>驗證位置</strong></td>
+        <td><code>https://&lt;instance&gt;/@&lt;username&gt;/&lt;post-id&gt;</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>標籤範例：</p>
+  <pre><code class="language-json">["i", "mastodon:bitcoinhackers.org/@satoshi", "109876543210987654"]</code></pre>
+
+  <h3 id="telegram">Telegram</h3>
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>身份格式</strong></td>
+        <td>Telegram 用戶 ID（數字）</td>
+      </tr>
+      <tr>
+        <td><strong>證明格式</strong></td>
+        <td><code>&lt;channel-or-group&gt;/&lt;message-id&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>驗證位置</strong></td>
+        <td><code>https://t.me/&lt;channel-or-group&gt;/&lt;message-id&gt;</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>證明必須是公開頻道或群組中的訊息，該用戶發布的訊息包含其 npub：</p>
+  <pre><code class="language-json">["i", "telegram:123456789", "bitcoin_channel/42"]</code></pre>
+
+  <h2 id="verification-flow">驗證流程</h2>
+  <ol>
+    <li><strong>用戶在外部平台發布證明</strong>：在 GitHub Gist、Twitter 推文等平台發布包含 npub 的驗證訊息</li>
+    <li><strong>用戶更新 Nostr 個人資料</strong>：在 kind 0 事件中添加 <code>i</code> 標籤</li>
+    <li><strong>客戶端抓取證明</strong>：根據標籤中的平台和證明 ID 構建 URL</li>
+    <li><strong>客戶端驗證</strong>：檢查證明內容是否包含正確的 npub</li>
+    <li><strong>顯示驗證狀態</strong>：向其他用戶展示已驗證的外部身份</li>
+  </ol>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立帶有外部身份的個人資料</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
+
+interface ExternalIdentity {
+  platform: 'github' | 'twitter' | 'mastodon' | 'telegram' | string;
+  identity: string;
+  proof: string;
+}
+
+interface ProfileWithIdentities {
+  name?: string;
+  about?: string;
+  picture?: string;
+  nip05?: string;
+  lud16?: string;
+  identities: ExternalIdentity[];
+}
+
+function createProfileEvent(
+  profile: ProfileWithIdentities,
+  secretKey: Uint8Array
+) {
+  const { identities, ...metadata } = profile;
+
+  // 建立 i 標籤
+  const iTags = identities.map((id) => [
+    'i',
+    `${id.platform}:${id.identity.toLowerCase()}`,
+    id.proof,
+  ]);
+
+  const event = {
+    kind: 0,
+    content: JSON.stringify(metadata),
+    tags: iTags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const sk = generateSecretKey();
+const pk = getPublicKey(sk);
+const npub = nip19.npubEncode(pk);
+
+console.log('在外部平台發布此驗證訊息：');
+console.log(`Verifying my Nostr identity: ${npub}`);
+
+const profileEvent = createProfileEvent(
+  {
+    name: 'Satoshi',
+    about: 'Building the future',
+    picture: 'https://example.com/avatar.jpg',
+    nip05: 'satoshi@example.com',
+    identities: [
+      {
+        platform: 'github',
+        identity: 'satoshi',
+        proof: 'abc123def456',
+      },
+      {
+        platform: 'twitter',
+        identity: 'satoshi',
+        proof: '1234567890123456789',
+      },
+    ],
+  },
+  sk
+);
+
+console.log(profileEvent);</code></pre>
+
+  <h3>解析外部身份</h3>
+  <pre><code class="language-typescript">interface ParsedIdentity {
+  platform: string;
+  identity: string;
+  proof: string;
+  verificationUrl: string;
+}
+
+function parseExternalIdentities(event: any): ParsedIdentity[] {
+  if (event.kind !== 0) {
+    return [];
+  }
+
+  const iTags = event.tags.filter((t: string[]) => t[0] === 'i');
+
+  return iTags.map((tag: string[]) => {
+    const [platform, identity] = tag[1].split(':');
+    const proof = tag[2];
+
+    return {
+      platform,
+      identity,
+      proof,
+      verificationUrl: buildVerificationUrl(platform, identity, proof),
+    };
+  });
+}
+
+function buildVerificationUrl(
+  platform: string,
+  identity: string,
+  proof: string
+): string {
+  switch (platform) {
+    case 'github':
+      return `https://gist.github.com/${identity}/${proof}`;
+
+    case 'twitter':
+      return `https://twitter.com/${identity}/status/${proof}`;
+
+    case 'mastodon':
+      // identity 格式為 instance/@username
+      return `https://${identity}/${proof}`;
+
+    case 'telegram':
+      // proof 格式為 channel/message-id
+      return `https://t.me/${proof}`;
+
+    default:
+      return '';
+  }
+}
+
+// 使用範例
+const identities = parseExternalIdentities(profileEvent);
+identities.forEach((id) => {
+  console.log(`${id.platform}: ${id.identity}`);
+  console.log(`驗證連結: ${id.verificationUrl}`);
+});</code></pre>
+
+  <h3>驗證外部身份</h3>
+  <pre><code class="language-typescript">import { nip19 } from 'nostr-tools';
+
+interface VerificationResult {
+  platform: string;
+  identity: string;
+  verified: boolean;
+  error?: string;
+}
+
+async function verifyIdentity(
+  identity: ParsedIdentity,
+  expectedPubkey: string
+): Promise&lt;VerificationResult&gt; {
+  const expectedNpub = nip19.npubEncode(expectedPubkey);
+
+  try {
+    // 抓取驗證內容
+    const response = await fetch(identity.verificationUrl);
+
+    if (!response.ok) {
+      return {
+        platform: identity.platform,
+        identity: identity.identity,
+        verified: false,
+        error: `無法取得驗證內容: ${response.status}`,
+      };
+    }
+
+    const content = await response.text();
+
+    // 檢查內容是否包含 npub
+    const verified = content.includes(expectedNpub);
+
+    return {
+      platform: identity.platform,
+      identity: identity.identity,
+      verified,
+      error: verified ? undefined : '驗證內容中未找到正確的 npub',
+    };
+  } catch (error) {
+    return {
+      platform: identity.platform,
+      identity: identity.identity,
+      verified: false,
+      error: `驗證失敗: ${error}`,
+    };
+  }
+}
+
+// 批次驗證所有身份
+async function verifyAllIdentities(
+  event: any
+): Promise&lt;VerificationResult[]&gt; {
+  const identities = parseExternalIdentities(event);
+
+  const results = await Promise.all(
+    identities.map((id) => verifyIdentity(id, event.pubkey))
+  );
+
+  return results;
+}</code></pre>
+
+  <h3>客戶端 UI 元件範例</h3>
+  <pre><code class="language-typescript">// React 元件範例
+interface IdentityBadgeProps {
+  identity: ParsedIdentity;
+  verified: boolean;
+}
+
+function IdentityBadge({ identity, verified }: IdentityBadgeProps) {
+  const platformIcons: Record&lt;string, string&gt; = {
+    github: '🐙',
+    twitter: '🐦',
+    mastodon: '🐘',
+    telegram: '✈️',
+  };
+
+  const icon = platformIcons[identity.platform] || '🔗';
+
+  return (
+    &lt;a
+      href={identity.verificationUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`identity-badge ${verified ? 'verified' : 'unverified'}`}
+    &gt;
+      &lt;span className="icon"&gt;{icon}&lt;/span&gt;
+      &lt;span className="platform"&gt;{identity.platform}&lt;/span&gt;
+      &lt;span className="identity"&gt;{identity.identity}&lt;/span&gt;
+      {verified && &lt;span className="check"&gt;✓&lt;/span&gt;}
+    &lt;/a&gt;
+  );
+}</code></pre>
+
+  <h2 id="custom-platforms">自訂平台</h2>
+  <p>
+    NIP-39 允許添加任何平台，只要遵循命名規範。以下是一些可能的自訂平台範例：
+  </p>
+
+  <pre><code class="language-json">{
+  "tags": [
+    ["i", "youtube:@channelname", "video-id"],
+    ["i", "linkedin:username", "post-id"],
+    ["i", "reddit:u/username", "post-id"],
+    ["i", "keybase:username", "proof-id"],
+    ["i", "dns:example.com", "TXT-record-hash"]
+  ]
+}</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <ul>
+    <li><strong>證明可能失效</strong>：用戶可能刪除 Gist 或推文，客戶端應處理驗證失敗的情況</li>
+    <li><strong>平台 API 限制</strong>：直接抓取可能受到速率限制，考慮使用快取</li>
+    <li><strong>偽造風險</strong>：惡意用戶可能聲稱他人的帳號，務必驗證證明內容</li>
+    <li><strong>隱私考量</strong>：連結身份會降低匿名性，用戶應謹慎選擇要公開的帳號</li>
+  </ul>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>身份驗證</h3>
+  <ul>
+    <li>證明你是某個知名 GitHub 開發者</li>
+    <li>連結你的 Twitter 帳號增加可信度</li>
+    <li>從其他社群平台遷移時保持身份連續性</li>
+  </ul>
+
+  <h3>社群信任</h3>
+  <ul>
+    <li>讓追隨者確認你是真正的帳號</li>
+    <li>在 Nostr 上建立與現有網路身份的連結</li>
+    <li>減少冒充攻擊的風險</li>
+  </ul>
+
+  <h3>跨平台發現</h3>
+  <ul>
+    <li>讓其他平台的追隨者找到你的 Nostr 帳號</li>
+    <li>建立統一的線上身份</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>保持證明有效</strong>：不要刪除用於驗證的 Gist 或推文</li>
+    <li><strong>正規化身份</strong>：使用小寫字母避免重複聲明</li>
+    <li><strong>定期驗證</strong>：客戶端應該定期重新驗證外部身份</li>
+    <li><strong>顯示驗證狀態</strong>：清楚區分已驗證和未驗證的身份</li>
+    <li><strong>處理失敗</strong>：優雅地處理驗證失敗的情況</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - kind 0 個人資料事件</li>
+    <li><a href="/tech/nostr/nip-05">NIP-05</a>：域名驗證 - 另一種身份驗證方式</li>
+    <li><a href="/tech/nostr/nip-19">NIP-19</a>：bech32 編碼 - npub 格式</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/39.md" target="_blank" rel="noopener noreferrer">NIP-39 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
