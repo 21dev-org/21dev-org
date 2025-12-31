@@ -1,0 +1,577 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-17 私密訊息"
+  description="Nostr 私密直接訊息標準，使用 NIP-44 加密和 NIP-59 禮物包裝實現完整的中繼資料保護。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-17 私密訊息' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-13/',
+    title: 'NIP-13 工作量證明',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-18/',
+    title: 'NIP-18 轉發',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-17 定義了 Nostr 的私密直接訊息標準，取代了舊的 NIP-04。
+    它結合 NIP-44 加密和 NIP-59 禮物包裝機制，不僅加密訊息內容，
+    還隱藏發送者身份、接收者身份和發送時間等中繼資料。
+  </p>
+
+  <div class="p-4 bg-green-500/10 border border-green-500/30 rounded-lg my-6">
+    <p class="text-green-700 dark:text-green-300 font-medium mb-2">推薦使用</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      NIP-17 是 NIP-04 的安全替代方案。新的客戶端應該優先實現 NIP-17，
+      它提供更強的隱私保護和更現代的加密機制。
+    </p>
+  </div>
+
+  <h2 id="kinds">事件類型</h2>
+  <p>NIP-17 使用以下事件類型：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">名稱</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">14</td>
+          <td class="border border-[var(--border-default)] p-3">聊天訊息</td>
+          <td class="border border-[var(--border-default)] p-3">文字私訊內容（未簽名）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">15</td>
+          <td class="border border-[var(--border-default)] p-3">檔案訊息</td>
+          <td class="border border-[var(--border-default)] p-3">加密檔案傳輸</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">13</td>
+          <td class="border border-[var(--border-default)] p-3">密封 (Seal)</td>
+          <td class="border border-[var(--border-default)] p-3">加密的內部訊息</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">1059</td>
+          <td class="border border-[var(--border-default)] p-3">禮物包裝</td>
+          <td class="border border-[var(--border-default)] p-3">外層加密封裝</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">10050</td>
+          <td class="border border-[var(--border-default)] p-3">DM 中繼器列表</td>
+          <td class="border border-[var(--border-default)] p-3">用戶接收私訊的中繼器</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="vs-nip04">NIP-17 vs NIP-04</h2>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">特性</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">NIP-04</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">NIP-17</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">內容加密</td>
+          <td class="border border-[var(--border-default)] p-3 text-yellow-600">AES-CBC</td>
+          <td class="border border-[var(--border-default)] p-3 text-green-600">NIP-44 (XChaCha20)</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">發送者隱私</td>
+          <td class="border border-[var(--border-default)] p-3 text-red-500">公開可見</td>
+          <td class="border border-[var(--border-default)] p-3 text-green-600">完全隱藏</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">接收者隱私</td>
+          <td class="border border-[var(--border-default)] p-3 text-red-500">公開可見</td>
+          <td class="border border-[var(--border-default)] p-3 text-yellow-600">p 標籤可見</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">時間戳</td>
+          <td class="border border-[var(--border-default)] p-3 text-red-500">真實時間</td>
+          <td class="border border-[var(--border-default)] p-3 text-green-600">隨機化（±2天）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">可否認性</td>
+          <td class="border border-[var(--border-default)] p-3 text-red-500">無</td>
+          <td class="border border-[var(--border-default)] p-3 text-green-600">有（未簽名訊息）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">群組訊息</td>
+          <td class="border border-[var(--border-default)] p-3 text-red-500">不支援</td>
+          <td class="border border-[var(--border-default)] p-3 text-green-600">支援（≤100 人）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="message-structure">訊息結構</h2>
+
+  <h3>Kind 14 聊天訊息</h3>
+  <p>
+    Kind 14 是內部的聊天訊息，它是「未簽名」的事件（稱為 Rumor），
+    這提供了可否認性——接收者無法向第三方證明訊息確實來自發送者。
+  </p>
+
+  <pre><code class="language-json">{`{
+  "pubkey": "<發送者公鑰>",
+  "created_at": 1234567890,
+  "kind": 14,
+  "tags": [
+    ["p", "<接收者公鑰>"],
+    ["p", "<接收者2公鑰>"],
+    ["e", "<回覆的訊息ID>", "<中繼器>", "reply"],
+    ["subject", "對話主題"]
+  ],
+  "content": "這是私密訊息內容"
+}`}</code></pre>
+
+  <h3>標籤說明</h3>
+  <ul>
+    <li><code>p</code> - 接收者公鑰，可多個（群組訊息）</li>
+    <li><code>e</code> - 回覆的訊息 ID（可選）</li>
+    <li><code>subject</code> - 對話主題（可選）</li>
+  </ul>
+
+  <h3>Kind 15 檔案訊息</h3>
+  <p>用於傳輸加密檔案：</p>
+
+  <pre><code class="language-json">{`{
+  "pubkey": "<發送者公鑰>",
+  "created_at": 1234567890,
+  "kind": 15,
+  "tags": [
+    ["p", "<接收者公鑰>"],
+    ["file", "<加密檔案URL>", "<加密算法>", "<解密金鑰>"],
+    ["m", "image/jpeg"],
+    ["x", "<原始檔案SHA-256>"],
+    ["ox", "<加密檔案SHA-256>"],
+    ["dim", "1920x1080"],
+    ["blurhash", "<模糊雜湊>"],
+    ["thumb", "<縮圖URL>"]
+  ],
+  "content": ""
+}`}</code></pre>
+
+  <h2 id="encryption-layers">加密層次</h2>
+  <p>NIP-17 使用三層結構來保護隱私：</p>
+
+  <div class="space-y-4 my-6">
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">1</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">Rumor（謠言）</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        未簽名的 kind 14/15 事件，包含實際訊息內容。
+        沒有 <code>id</code> 和 <code>sig</code> 欄位，提供可否認性。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">2</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">Seal（密封）- Kind 13</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        由發送者簽名，內容是 NIP-44 加密的 Rumor。
+        時間戳隨機化，無標籤洩露資訊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">3</span>
+        <h4 class="font-semibold text-[var(--text-primary)]">Gift Wrap（禮物包裝）- Kind 1059</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] ml-11">
+        由隨機一次性密鑰簽名，內容是 NIP-44 加密的 Seal。
+        只有 <code>p</code> 標籤暴露接收者。
+      </p>
+    </div>
+  </div>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>發送私訊</h3>
+  <pre><code class="language-typescript">{`import {
+  finalizeEvent,
+  getPublicKey,
+  generateSecretKey
+} from 'nostr-tools';
+import * as nip44 from 'nostr-tools/nip44';
+
+interface Rumor {
+  pubkey: string;
+  created_at: number;
+  kind: number;
+  tags: string[][];
+  content: string;
+}
+
+// 建立未簽名的 Rumor
+function createRumor(
+  senderPubkey: string,
+  recipients: string[],
+  content: string,
+  replyTo?: string
+): Rumor {
+  const tags: string[][] = recipients.map(p => ['p', p]);
+
+  if (replyTo) {
+    tags.push(['e', replyTo, '', 'reply']);
+  }
+
+  return {
+    pubkey: senderPubkey,
+    created_at: Math.floor(Date.now() / 1000),
+    kind: 14,
+    tags,
+    content,
+  };
+}
+
+// 建立 Seal（密封）
+function createSeal(
+  senderPrivateKey: Uint8Array,
+  recipientPubkey: string,
+  rumor: Rumor
+) {
+  // NIP-44 加密 Rumor
+  const conversationKey = nip44.getConversationKey(
+    senderPrivateKey,
+    recipientPubkey
+  );
+  const encryptedRumor = nip44.encrypt(
+    JSON.stringify(rumor),
+    conversationKey
+  );
+
+  // 隨機化時間戳（±2天）
+  const randomOffset = Math.floor(Math.random() * 172800) - 86400;
+  const randomTime = Math.floor(Date.now() / 1000) + randomOffset;
+
+  return finalizeEvent({
+    kind: 13,
+    created_at: randomTime,
+    tags: [],
+    content: encryptedRumor,
+  }, senderPrivateKey);
+}
+
+// 建立 Gift Wrap（禮物包裝）
+function createGiftWrap(
+  recipientPubkey: string,
+  seal: Event
+) {
+  // 產生一次性隨機密鑰
+  const ephemeralKey = generateSecretKey();
+
+  // NIP-44 加密 Seal
+  const conversationKey = nip44.getConversationKey(
+    ephemeralKey,
+    recipientPubkey
+  );
+  const encryptedSeal = nip44.encrypt(
+    JSON.stringify(seal),
+    conversationKey
+  );
+
+  // 隨機化時間戳
+  const randomOffset = Math.floor(Math.random() * 172800) - 86400;
+  const randomTime = Math.floor(Date.now() / 1000) + randomOffset;
+
+  return finalizeEvent({
+    kind: 1059,
+    created_at: randomTime,
+    tags: [['p', recipientPubkey]],
+    content: encryptedSeal,
+  }, ephemeralKey);
+}
+
+// 完整發送流程
+async function sendPrivateMessage(
+  senderPrivateKey: Uint8Array,
+  recipients: string[],
+  content: string
+) {
+  const senderPubkey = getPublicKey(senderPrivateKey);
+
+  // 1. 建立 Rumor
+  const rumor = createRumor(senderPubkey, recipients, content);
+
+  // 2. 對每個接收者分別包裝
+  const giftWraps = recipients.map(recipient => {
+    const seal = createSeal(senderPrivateKey, recipient, rumor);
+    return createGiftWrap(recipient, seal);
+  });
+
+  return giftWraps;
+}`}</code></pre>
+
+  <h3>接收私訊</h3>
+  <pre><code class="language-typescript">{`import { verifyEvent } from 'nostr-tools';
+import * as nip44 from 'nostr-tools/nip44';
+
+interface DecryptedMessage {
+  sender: string;
+  recipients: string[];
+  content: string;
+  createdAt: number;
+  replyTo?: string;
+}
+
+// 解開禮物包裝
+function unwrapGiftWrap(
+  recipientPrivateKey: Uint8Array,
+  giftWrap: Event
+): DecryptedMessage {
+  const recipientPubkey = getPublicKey(recipientPrivateKey);
+
+  // 驗證這是發給我的
+  const pTag = giftWrap.tags.find(t => t[0] === 'p');
+  if (!pTag || pTag[1] !== recipientPubkey) {
+    throw new Error('This message is not for me');
+  }
+
+  // 1. 解密 Gift Wrap → Seal
+  const wrapConversationKey = nip44.getConversationKey(
+    recipientPrivateKey,
+    giftWrap.pubkey // 一次性公鑰
+  );
+  const sealJson = nip44.decrypt(giftWrap.content, wrapConversationKey);
+  const seal = JSON.parse(sealJson);
+
+  // 2. 驗證 Seal 簽名
+  if (!verifyEvent(seal)) {
+    throw new Error('Invalid seal signature');
+  }
+
+  // 3. 解密 Seal → Rumor
+  const sealConversationKey = nip44.getConversationKey(
+    recipientPrivateKey,
+    seal.pubkey // 發送者公鑰
+  );
+  const rumorJson = nip44.decrypt(seal.content, sealConversationKey);
+  const rumor = JSON.parse(rumorJson);
+
+  // 4. 驗證 Rumor 的發送者與 Seal 一致
+  if (rumor.pubkey !== seal.pubkey) {
+    throw new Error('Sender pubkey mismatch');
+  }
+
+  // 5. 提取資訊
+  const recipients = rumor.tags
+    .filter((t: string[]) => t[0] === 'p')
+    .map((t: string[]) => t[1]);
+
+  const replyTag = rumor.tags.find(
+    (t: string[]) => t[0] === 'e' && t[3] === 'reply'
+  );
+
+  return {
+    sender: seal.pubkey,
+    recipients,
+    content: rumor.content,
+    createdAt: rumor.created_at,
+    replyTo: replyTag?.[1],
+  };
+}`}</code></pre>
+
+  <h2 id="dm-relays">私訊中繼器 (Kind 10050)</h2>
+  <p>
+    用戶應該發布 kind 10050 事件，指定接收私訊的中繼器：
+  </p>
+
+  <pre><code class="language-typescript">{`// 發布私訊中繼器列表
+function publishDMRelays(
+  privateKey: Uint8Array,
+  relays: string[]
+) {
+  const event = finalizeEvent({
+    kind: 10050,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: relays.map(r => ['relay', r]),
+    content: '',
+  }, privateKey);
+
+  return event;
+}
+
+// 查詢用戶的私訊中繼器
+async function getDMRelays(
+  pool: SimplePool,
+  pubkey: string,
+  defaultRelays: string[]
+): Promise<string[]> {
+  const event = await pool.get(defaultRelays, {
+    kinds: [10050],
+    authors: [pubkey],
+  });
+
+  if (!event) return defaultRelays;
+
+  return event.tags
+    .filter(t => t[0] === 'relay')
+    .map(t => t[1]);
+}`}</code></pre>
+
+  <h2 id="chat-rooms">聊天室識別</h2>
+  <p>
+    聊天室由發送者公鑰加上所有 <code>p</code> 標籤的組合來識別。
+    添加或移除參與者會建立新的聊天室。
+  </p>
+
+  <pre><code class="language-typescript">{`// 計算聊天室 ID
+function getChatRoomId(
+  participants: string[]
+): string {
+  // 排序參與者公鑰以確保一致性
+  const sorted = [...participants].sort();
+  return sorted.join(',');
+}
+
+// 根據訊息取得聊天室
+function getChatRoomFromMessage(
+  message: DecryptedMessage
+): string {
+  const allParticipants = [
+    message.sender,
+    ...message.recipients
+  ];
+  return getChatRoomId(allParticipants);
+}`}</code></pre>
+
+  <h2 id="querying">查詢私訊</h2>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+
+// 查詢我的私訊
+async function getMyMessages(
+  myPrivateKey: Uint8Array,
+  relays: string[],
+  since?: number
+) {
+  const myPubkey = getPublicKey(myPrivateKey);
+
+  // 查詢發給我的 Gift Wrap
+  const giftWraps = await pool.querySync(relays, {
+    kinds: [1059],
+    '#p': [myPubkey],
+    since,
+  });
+
+  // 解密所有訊息
+  const messages: DecryptedMessage[] = [];
+
+  for (const wrap of giftWraps) {
+    try {
+      const message = unwrapGiftWrap(myPrivateKey, wrap);
+      messages.push(message);
+    } catch (e) {
+      // 忽略無法解密的訊息
+      console.error('Failed to decrypt:', e);
+    }
+  }
+
+  // 按時間排序
+  return messages.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// 訂閱即時私訊
+function subscribeToMessages(
+  myPrivateKey: Uint8Array,
+  relays: string[],
+  onMessage: (message: DecryptedMessage) => void
+) {
+  const myPubkey = getPublicKey(myPrivateKey);
+
+  return pool.subscribeMany(
+    relays,
+    [{ kinds: [1059], '#p': [myPubkey] }],
+    {
+      onevent: (wrap) => {
+        try {
+          const message = unwrapGiftWrap(myPrivateKey, wrap);
+          onMessage(message);
+        } catch (e) {
+          console.error('Failed to decrypt:', e);
+        }
+      },
+    }
+  );
+}`}</code></pre>
+
+  <h2 id="relay-protection">中繼器保護</h2>
+  <p>
+    支援 NIP-42 認證的中繼器可以只向 <code>p</code> 標籤中的用戶提供 kind 1059 事件，
+    進一步保護隱私：
+  </p>
+
+  <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg my-6">
+    <p class="text-blue-700 dark:text-blue-300 font-medium mb-2">中繼器建議</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      中繼器可以要求 NIP-42 認證後才提供 kind 1059 事件。
+      這樣只有訊息的實際接收者才能查詢到自己的私訊。
+    </p>
+  </div>
+
+  <h2 id="security">安全注意事項</h2>
+  <ul>
+    <li><strong>時間戳隨機化</strong>：必須在 ±2 天範圍內隨機化，防止時序分析</li>
+    <li><strong>一次性密鑰</strong>：每個 Gift Wrap 必須使用新的隨機密鑰</li>
+    <li><strong>獨立包裝</strong>：發給多人時，每人需要獨立的 Gift Wrap</li>
+    <li><strong>驗證簽名</strong>：解密後必須驗證 Seal 的簽名</li>
+    <li><strong>公鑰匹配</strong>：確認 Rumor 的 pubkey 與 Seal 的簽名者一致</li>
+    <li><strong>群組限制</strong>：群組成員不應超過 100 人，否則效率太低</li>
+  </ul>
+
+  <h2 id="limitations">限制</h2>
+  <ul>
+    <li><strong>效率</strong>：每個接收者需要獨立的加密事件，大群組不實用</li>
+    <li><strong>無前向保密</strong>：私鑰洩露會暴露所有過去的訊息</li>
+    <li><strong>接收者可見</strong>：Gift Wrap 的 <code>p</code> 標籤暴露接收者</li>
+    <li><strong>儲存空間</strong>：三層結構增加了事件大小</li>
+  </ul>
+
+  <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
+    <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">注意</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      對於需要前向保密（Forward Secrecy）的高度敏感通訊，
+      考慮使用支援 PFS 的專用協議。NIP-17 適合一般私訊需求。
+    </p>
+  </div>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-04/">NIP-04</a> - 加密直接訊息（舊版，不建議使用）</li>
+    <li><a href="/tech/nostr/nip-44/">NIP-44</a> - 加密訊息 v2（NIP-17 使用的加密）</li>
+    <li><a href="/tech/nostr/nip-59/">NIP-59</a> - 禮物包裝（NIP-17 的基礎機制）</li>
+    <li><a href="/tech/nostr/nip-42/">NIP-42</a> - 中繼器認證</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/17.md" target="_blank" rel="noopener">NIP-17 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/59.md" target="_blank" rel="noopener">NIP-59 禮物包裝規範</a></li>
+  </ul>
+</ArticleLayout>
