@@ -1,0 +1,453 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-21 nostr: URI"
+  description="Nostr URI 協議標準，定義 nostr: 連結格式，實現跨客戶端的連結互通。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-21 nostr: URI' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-19/',
+    title: 'NIP-19 bech32 編碼',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-23/',
+    title: 'NIP-23 長文內容',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-21 定義了 <code>nostr:</code> URI 協議，讓 Nostr 實體可以在網頁、應用程式和
+    作業系統之間無縫連結。當用戶點擊 <code>nostr:</code> 連結時，
+    作業系統會自動開啟已註冊的 Nostr 客戶端來處理。
+  </p>
+
+  <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg my-6">
+    <p class="text-blue-700 dark:text-blue-300 font-medium mb-2">跨平台互通</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      就像 <code>mailto:</code> 連結開啟郵件客戶端，<code>nostr:</code> 連結
+      會開啟用戶偏好的 Nostr 應用程式，實現去中心化的連結體驗。
+    </p>
+  </div>
+
+  <h2 id="format">URI 格式</h2>
+  <p>
+    <code>nostr:</code> URI 由協議前綴加上 NIP-19 編碼組成：
+  </p>
+
+  <pre><code class="language-text">{`nostr:<NIP-19 編碼>`}</code></pre>
+
+  <h3>支援的編碼類型</h3>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">前綴</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-green-600">npub</td>
+          <td class="border border-[var(--border-default)] p-3">公鑰</td>
+          <td class="border border-[var(--border-default)] p-3">連結到用戶資料</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-purple-600">nprofile</td>
+          <td class="border border-[var(--border-default)] p-3">公鑰 + 中繼器</td>
+          <td class="border border-[var(--border-default)] p-3">更可靠的用戶連結</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-blue-600">note</td>
+          <td class="border border-[var(--border-default)] p-3">事件 ID</td>
+          <td class="border border-[var(--border-default)] p-3">連結到貼文</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-orange-600">nevent</td>
+          <td class="border border-[var(--border-default)] p-3">事件 ID + 中繼資料</td>
+          <td class="border border-[var(--border-default)] p-3">更可靠的事件連結</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono text-cyan-600">naddr</td>
+          <td class="border border-[var(--border-default)] p-3">可替換事件地址</td>
+          <td class="border border-[var(--border-default)] p-3">文章、列表等</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg my-6">
+    <p class="text-red-700 dark:text-red-300 font-medium mb-2">安全注意</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      <code>nsec</code>（私鑰）不應該用於 nostr: URI。
+      私鑰絕對不應該出現在連結中。
+    </p>
+  </div>
+
+  <h2 id="examples">URI 範例</h2>
+
+  <h3>用戶連結</h3>
+  <pre><code class="language-text">{`# 簡單公鑰連結
+nostr:npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
+
+# 帶中繼器資訊（推薦）
+nostr:nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p`}</code></pre>
+
+  <h3>事件連結</h3>
+  <pre><code class="language-text">{`# 簡單事件 ID 連結
+nostr:note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc
+
+# 帶中繼器和作者資訊（推薦）
+nostr:nevent1qqst8cujky046negxgwwm5ynqwn53t8aqjr6afd8g59nfqwxpdhylpcpzamhxue69uhhyetvv9ujuetd9ehx7um5wge5wqhh5...`}</code></pre>
+
+  <h3>可替換事件連結</h3>
+  <pre><code class="language-text">{`# 長文章連結
+nostr:naddr1qqxnzdesxqmnxvpexqunzvpcqy28wumn8ghj7un9d3shjtnyv9kh2uewd9hj7qg4waehxw309ahx7um5wghx6at5d9h8jampd3kx2apwvdhk6...`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立 nostr: URI</h3>
+  <pre><code class="language-typescript">{`import { nip19 } from 'nostr-tools';
+
+// 建立用戶連結
+function createUserUri(pubkey: string, relays?: string[]): string {
+  if (relays && relays.length > 0) {
+    const nprofile = nip19.nprofileEncode({ pubkey, relays });
+    return \`nostr:\${nprofile}\`;
+  }
+  const npub = nip19.npubEncode(pubkey);
+  return \`nostr:\${npub}\`;
+}
+
+// 建立事件連結
+function createEventUri(
+  id: string,
+  relays?: string[],
+  author?: string
+): string {
+  if (relays || author) {
+    const nevent = nip19.neventEncode({
+      id,
+      relays: relays || [],
+      author,
+    });
+    return \`nostr:\${nevent}\`;
+  }
+  const note = nip19.noteEncode(id);
+  return \`nostr:\${note}\`;
+}
+
+// 建立可替換事件連結
+function createAddressUri(
+  kind: number,
+  pubkey: string,
+  identifier: string,
+  relays?: string[]
+): string {
+  const naddr = nip19.naddrEncode({
+    kind,
+    pubkey,
+    identifier,
+    relays: relays || [],
+  });
+  return \`nostr:\${naddr}\`;
+}
+
+// 使用範例
+const userUri = createUserUri(
+  '3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d',
+  ['wss://relay.damus.io', 'wss://nos.lol']
+);
+// nostr:nprofile1...
+
+const eventUri = createEventUri(
+  'e0b0f76c...',
+  ['wss://relay.example.com'],
+  '3bf0c63f...'
+);
+// nostr:nevent1...
+
+const articleUri = createAddressUri(
+  30023, // long-form content
+  '3bf0c63f...',
+  'my-article-slug',
+  ['wss://relay.example.com']
+);
+// nostr:naddr1...`}</code></pre>
+
+  <h3>解析 nostr: URI</h3>
+  <pre><code class="language-typescript">{`import { nip19 } from 'nostr-tools';
+
+interface ParsedNostrUri {
+  type: 'npub' | 'nprofile' | 'note' | 'nevent' | 'naddr';
+  data: any;
+}
+
+function parseNostrUri(uri: string): ParsedNostrUri | null {
+  // 驗證 URI 格式
+  if (!uri.startsWith('nostr:')) {
+    return null;
+  }
+
+  // 移除協議前綴
+  const encoded = uri.slice(6);
+
+  try {
+    const decoded = nip19.decode(encoded);
+
+    // 拒絕私鑰
+    if (decoded.type === 'nsec') {
+      throw new Error('nsec is not allowed in URIs');
+    }
+
+    return decoded as ParsedNostrUri;
+  } catch (e) {
+    console.error('Invalid nostr URI:', e);
+    return null;
+  }
+}
+
+// 處理不同類型
+function handleNostrUri(uri: string) {
+  const parsed = parseNostrUri(uri);
+  if (!parsed) return;
+
+  switch (parsed.type) {
+    case 'npub':
+      // 打開用戶資料頁面
+      openProfile(parsed.data);
+      break;
+
+    case 'nprofile':
+      // 使用指定的中繼器打開用戶資料
+      openProfile(parsed.data.pubkey, parsed.data.relays);
+      break;
+
+    case 'note':
+      // 打開事件/貼文
+      openEvent(parsed.data);
+      break;
+
+    case 'nevent':
+      // 使用指定的中繼器打開事件
+      openEvent(parsed.data.id, parsed.data.relays, parsed.data.author);
+      break;
+
+    case 'naddr':
+      // 打開可替換事件
+      openAddress(
+        parsed.data.kind,
+        parsed.data.pubkey,
+        parsed.data.identifier,
+        parsed.data.relays
+      );
+      break;
+  }
+}`}</code></pre>
+
+  <h2 id="web-integration">網頁整合</h2>
+  <p>
+    在 HTML 中使用 <code>&lt;link&gt;</code> 標籤關聯網頁內容與 Nostr 實體：
+  </p>
+
+  <h3>關聯作者</h3>
+  <pre><code class="language-html">{`<!-- 網頁作者的 Nostr 身份 -->
+<link rel="author" href="nostr:npub1..." />
+
+<!-- 或使用 nprofile 包含中繼器 -->
+<link rel="author" href="nostr:nprofile1..." />`}</code></pre>
+
+  <h3>關聯內容</h3>
+  <pre><code class="language-html">{`<!-- 這篇文章也發布在 Nostr 上 -->
+<link rel="alternate" href="nostr:nevent1..." />
+
+<!-- 長文章使用 naddr -->
+<link rel="alternate" href="nostr:naddr1..." />`}</code></pre>
+
+  <h3>身份驗證</h3>
+  <pre><code class="language-html">{`<!-- 證明網站擁有者的 Nostr 身份 -->
+<link rel="me" href="nostr:npub1..." />`}</code></pre>
+
+  <h2 id="html-links">HTML 連結</h2>
+  <p>在網頁中建立可點擊的 Nostr 連結：</p>
+
+  <pre><code class="language-html">{`<!-- 連結到用戶資料 -->
+<a href="nostr:npub1sn0wdenkukak0d9dfczzeacvhkrgz92ak56egt7vdgzn8pv2wfqqhrjdv9">
+  @fiatjaf
+</a>
+
+<!-- 連結到貼文 -->
+<a href="nostr:note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc">
+  查看這則貼文
+</a>
+
+<!-- 帶有 fallback 的連結 -->
+<a href="nostr:nevent1..."
+   onclick="if(!confirm('這將開啟您的 Nostr 客戶端')) return false;">
+  在 Nostr 上查看
+</a>`}</code></pre>
+
+  <h2 id="app-registration">應用程式註冊</h2>
+  <p>
+    客戶端應用程式需要向作業系統註冊為 <code>nostr:</code> 協議處理器：
+  </p>
+
+  <h3>網頁應用</h3>
+  <pre><code class="language-javascript">{`// 註冊為協議處理器（需要 HTTPS）
+if ('registerProtocolHandler' in navigator) {
+  navigator.registerProtocolHandler(
+    'web+nostr',  // 注意：標準要求 web+ 前綴
+    'https://your-client.com/open?uri=%s',
+    'Your Nostr Client'
+  );
+}
+
+// 處理傳入的 URI
+const url = new URL(window.location.href);
+const nostrUri = url.searchParams.get('uri');
+if (nostrUri) {
+  handleNostrUri(nostrUri);
+}`}</code></pre>
+
+  <h3>桌面應用（macOS Info.plist）</h3>
+  <pre><code class="language-xml">{`<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>Nostr Protocol</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>nostr</string>
+    </array>
+  </dict>
+</array>`}</code></pre>
+
+  <h3>Android（AndroidManifest.xml）</h3>
+  <pre><code class="language-xml">{`<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="nostr" />
+</intent-filter>`}</code></pre>
+
+  <h2 id="react-component">React 組件範例</h2>
+  <pre><code class="language-tsx">{`import { nip19 } from 'nostr-tools';
+
+interface NostrLinkProps {
+  uri: string;
+  children?: React.ReactNode;
+  fallbackUrl?: string;
+}
+
+function NostrLink({ uri, children, fallbackUrl }: NostrLinkProps) {
+  const parsed = parseNostrUri(uri);
+
+  // 生成顯示文字
+  const displayText = children || (() => {
+    if (!parsed) return uri;
+
+    switch (parsed.type) {
+      case 'npub':
+      case 'nprofile':
+        const pubkey = parsed.type === 'npub'
+          ? parsed.data
+          : parsed.data.pubkey;
+        return \`@\${pubkey.slice(0, 8)}...\`;
+
+      case 'note':
+      case 'nevent':
+        const id = parsed.type === 'note'
+          ? parsed.data
+          : parsed.data.id;
+        return \`note:\${id.slice(0, 8)}...\`;
+
+      case 'naddr':
+        return parsed.data.identifier || 'article';
+
+      default:
+        return uri;
+    }
+  })();
+
+  const handleClick = (e: React.MouseEvent) => {
+    // 嘗試開啟 nostr: URI
+    window.location.href = uri;
+
+    // 如果沒有處理器，fallback 到網頁版
+    if (fallbackUrl) {
+      setTimeout(() => {
+        window.location.href = fallbackUrl;
+      }, 500);
+    }
+  };
+
+  return (
+    <a
+      href={uri}
+      onClick={handleClick}
+      className="text-purple-600 hover:underline"
+    >
+      {displayText}
+    </a>
+  );
+}
+
+// 使用範例
+<NostrLink
+  uri="nostr:npub1..."
+  fallbackUrl="https://njump.me/npub1..."
+>
+  @fiatjaf
+</NostrLink>`}</code></pre>
+
+  <h2 id="njump">網頁閘道器</h2>
+  <p>
+    對於沒有安裝 Nostr 客戶端的用戶，可以使用網頁閘道器來顯示內容：
+  </p>
+
+  <ul>
+    <li><a href="https://njump.me" target="_blank" rel="noopener">njump.me</a> - 通用 Nostr 網頁閘道器</li>
+    <li><a href="https://snort.social" target="_blank" rel="noopener">snort.social</a> - 社交客戶端</li>
+    <li><a href="https://primal.net" target="_blank" rel="noopener">primal.net</a> - 社交客戶端</li>
+  </ul>
+
+  <pre><code class="language-typescript">{`// 將 nostr: URI 轉換為網頁閘道器連結
+function toWebUrl(nostrUri: string): string {
+  const encoded = nostrUri.replace('nostr:', '');
+  return \`https://njump.me/\${encoded}\`;
+}
+
+// 範例
+toWebUrl('nostr:npub1...')
+// https://njump.me/npub1...`}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>優先使用 nprofile/nevent</strong>：包含中繼器資訊，確保內容可發現</li>
+    <li><strong>提供 fallback</strong>：為沒有 Nostr 客戶端的用戶提供網頁版連結</li>
+    <li><strong>驗證輸入</strong>：解析 URI 時要處理錯誤情況</li>
+    <li><strong>拒絕 nsec</strong>：永遠不要在 URI 中包含私鑰</li>
+    <li><strong>顯示友善</strong>：將冗長的編碼轉換為可讀的顯示文字</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-19/">NIP-19</a> - bech32 編碼（npub、note、nevent 等）</li>
+    <li><a href="/tech/nostr/nip-05/">NIP-05</a> - 域名驗證（另一種身份標識方式）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/21.md" target="_blank" rel="noopener">NIP-21 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+    <li><a href="https://njump.me" target="_blank" rel="noopener">njump.me 網頁閘道器</a></li>
+  </ul>
+</ArticleLayout>
