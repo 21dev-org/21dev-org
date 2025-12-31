@@ -1,0 +1,408 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-51 列表"
+  description="Nostr 列表機制，用於管理靜音、置頂、書籤等多種列表類型。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-51 列表' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-50/',
+    title: 'NIP-50 搜尋',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-57/',
+    title: 'NIP-57 Zaps',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-51 定義了一套標準化的列表機制，讓使用者可以管理各種類型的列表：靜音名單、置頂筆記、書籤收藏等。
+    這些列表使用特定的 kind 編號，支援公開和私密兩種模式。
+  </p>
+
+  <h2 id="list-types">列表類型</h2>
+  <p>NIP-51 定義了多種列表類型，每種使用不同的 kind 編號：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">名稱</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">用途</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">可參數化</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">10000</td>
+          <td class="border border-[var(--border-default)] p-3">Mute list</td>
+          <td class="border border-[var(--border-default)] p-3">靜音用戶、關鍵字</td>
+          <td class="border border-[var(--border-default)] p-3">否</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">10001</td>
+          <td class="border border-[var(--border-default)] p-3">Pin list</td>
+          <td class="border border-[var(--border-default)] p-3">置頂筆記</td>
+          <td class="border border-[var(--border-default)] p-3">否</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">10003</td>
+          <td class="border border-[var(--border-default)] p-3">Bookmark list</td>
+          <td class="border border-[var(--border-default)] p-3">書籤收藏</td>
+          <td class="border border-[var(--border-default)] p-3">否</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">10004</td>
+          <td class="border border-[var(--border-default)] p-3">Communities list</td>
+          <td class="border border-[var(--border-default)] p-3">加入的社群</td>
+          <td class="border border-[var(--border-default)] p-3">否</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">10005</td>
+          <td class="border border-[var(--border-default)] p-3">Public chats list</td>
+          <td class="border border-[var(--border-default)] p-3">公開聊天室</td>
+          <td class="border border-[var(--border-default)] p-3">否</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">30000</td>
+          <td class="border border-[var(--border-default)] p-3">People sets</td>
+          <td class="border border-[var(--border-default)] p-3">分類用戶列表</td>
+          <td class="border border-[var(--border-default)] p-3">是</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">30001</td>
+          <td class="border border-[var(--border-default)] p-3">Bookmark sets</td>
+          <td class="border border-[var(--border-default)] p-3">分類書籤</td>
+          <td class="border border-[var(--border-default)] p-3">是</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">30003</td>
+          <td class="border border-[var(--border-default)] p-3">Emoji sets</td>
+          <td class="border border-[var(--border-default)] p-3">自訂表情包</td>
+          <td class="border border-[var(--border-default)] p-3">是</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="mute-list">靜音列表 (Kind 10000)</h2>
+  <p>
+    靜音列表用於隱藏特定用戶、關鍵字或筆記。客戶端應遵守此列表，過濾相關內容。
+  </p>
+
+  <h3>事件結構</h3>
+  <pre><code class="language-json">{`{
+  "kind": 10000,
+  "tags": [
+    ["p", "<被靜音用戶的公鑰>"],
+    ["p", "<另一個被靜音用戶>"],
+    ["t", "spam"],
+    ["word", "討厭的關鍵字"],
+    ["e", "<被靜音的筆記 ID>"]
+  ],
+  "content": "<加密的私密靜音列表>",
+  ...
+}`}</code></pre>
+
+  <h3>支援的標籤</h3>
+  <ul>
+    <li><code>p</code> - 靜音用戶公鑰</li>
+    <li><code>e</code> - 靜音特定筆記</li>
+    <li><code>t</code> - 靜音 hashtag</li>
+    <li><code>word</code> - 靜音關鍵字</li>
+  </ul>
+
+  <h3>TypeScript 範例</h3>
+  <pre><code class="language-typescript">{`import { getPublicKey, finalizeEvent } from 'nostr-tools';
+import { encrypt } from 'nostr-tools/nip04';
+
+// 建立靜音列表
+async function createMuteList(
+  privateKey: Uint8Array,
+  publicMutes: string[],
+  privateMutes: string[]
+) {
+  const pubkey = getPublicKey(privateKey);
+
+  // 公開的靜音標籤
+  const tags = publicMutes.map(pk => ['p', pk]);
+
+  // 私密的靜音列表（加密儲存）
+  const privateContent = JSON.stringify(
+    privateMutes.map(pk => ['p', pk])
+  );
+  const encryptedContent = await encrypt(
+    privateKey,
+    pubkey,
+    privateContent
+  );
+
+  const event = {
+    kind: 10000,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: encryptedContent,
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 使用範例
+const muteEvent = await createMuteList(
+  privateKey,
+  ['<公開靜音的公鑰>'],
+  ['<私密靜音的公鑰>']
+);`}</code></pre>
+
+  <h2 id="pin-list">置頂列表 (Kind 10001)</h2>
+  <p>置頂列表讓用戶可以標記重要的筆記，客戶端可以將這些筆記顯示在個人檔案頂部。</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 10001,
+  "tags": [
+    ["e", "<置頂筆記的事件 ID>", "<中繼器 URL>"],
+    ["e", "<另一個置頂筆記>", "<中繼器 URL>"]
+  ],
+  "content": "",
+  ...
+}`}</code></pre>
+
+  <h3>TypeScript 範例</h3>
+  <pre><code class="language-typescript">{`// 建立置頂列表
+function createPinList(privateKey: Uint8Array, pinnedNotes: {id: string, relay: string}[]) {
+  const tags = pinnedNotes.map(note => ['e', note.id, note.relay]);
+
+  const event = {
+    kind: 10001,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 使用範例
+const pinEvent = createPinList(privateKey, [
+  { id: 'abc123...', relay: 'wss://relay.damus.io' },
+  { id: 'def456...', relay: 'wss://nos.lol' },
+]);`}</code></pre>
+
+  <h2 id="bookmark-list">書籤列表 (Kind 10003)</h2>
+  <p>書籤列表用於收藏感興趣的筆記，類似於社交媒體的「儲存」功能。</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 10003,
+  "tags": [
+    ["e", "<書籤筆記 ID>", "<中繼器 URL>"],
+    ["a", "30023:<作者公鑰>:<文章 d-tag>", "<中繼器 URL>"],
+    ["t", "bitcoin"],
+    ["r", "https://example.com/article"]
+  ],
+  "content": "<加密的私密書籤>",
+  ...
+}`}</code></pre>
+
+  <h3>支援的標籤</h3>
+  <ul>
+    <li><code>e</code> - 書籤筆記 ID</li>
+    <li><code>a</code> - 書籤可替換事件（如長文）</li>
+    <li><code>t</code> - 書籤 hashtag</li>
+    <li><code>r</code> - 書籤外部 URL</li>
+  </ul>
+
+  <h2 id="parameterized-lists">可參數化列表</h2>
+  <p>
+    Kind 30000-30003 是可參數化（parameterized）列表，使用 <code>d</code> 標籤區分不同的列表實例。
+    這讓用戶可以建立多個同類型的列表。
+  </p>
+
+  <h3>人物集合 (Kind 30000)</h3>
+  <pre><code class="language-json">{`{
+  "kind": 30000,
+  "tags": [
+    ["d", "bitcoiners"],
+    ["p", "<用戶公鑰1>"],
+    ["p", "<用戶公鑰2>"],
+    ["p", "<用戶公鑰3>"]
+  ],
+  "content": "比特幣開發者們",
+  ...
+}`}</code></pre>
+
+  <h3>書籤集合 (Kind 30001)</h3>
+  <pre><code class="language-json">{`{
+  "kind": 30001,
+  "tags": [
+    ["d", "programming-articles"],
+    ["e", "<筆記 ID>", "<中繼器>"],
+    ["a", "30023:<pubkey>:<identifier>", "<中繼器>"]
+  ],
+  "content": "程式設計文章收藏",
+  ...
+}`}</code></pre>
+
+  <h3>表情集合 (Kind 30003)</h3>
+  <pre><code class="language-json">{`{
+  "kind": 30003,
+  "tags": [
+    ["d", "my-emojis"],
+    ["emoji", "sats", "https://example.com/sats.png"],
+    ["emoji", "bitcoin", "https://example.com/bitcoin.gif"],
+    ["emoji", "ln", "https://example.com/lightning.png"]
+  ],
+  "content": "我的自訂表情包",
+  ...
+}`}</code></pre>
+
+  <h2 id="private-entries">私密條目</h2>
+  <p>
+    列表可以同時包含公開和私密的條目。私密條目使用 NIP-04 加密後儲存在 <code>content</code> 欄位中。
+  </p>
+
+  <pre><code class="language-typescript">{`import { encrypt, decrypt } from 'nostr-tools/nip04';
+
+// 解密私密列表內容
+async function decryptPrivateEntries(
+  event: Event,
+  privateKey: Uint8Array
+) {
+  if (!event.content) return [];
+
+  try {
+    const decrypted = await decrypt(
+      privateKey,
+      event.pubkey,
+      event.content
+    );
+    return JSON.parse(decrypted);
+  } catch {
+    return [];
+  }
+}
+
+// 合併公開與私密標籤
+async function getAllTags(event: Event, privateKey: Uint8Array) {
+  const publicTags = event.tags;
+  const privateTags = await decryptPrivateEntries(event, privateKey);
+  return [...publicTags, ...privateTags];
+}`}</code></pre>
+
+  <h2 id="querying-lists">查詢列表</h2>
+
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢用戶的靜音列表
+async function getMuteList(pubkey: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [10000],
+    authors: [pubkey],
+    limit: 1,
+  });
+
+  return events[0] || null;
+}
+
+// 查詢用戶的所有書籤集合
+async function getBookmarkSets(pubkey: string) {
+  return await pool.querySync(relays, {
+    kinds: [30001],
+    authors: [pubkey],
+  });
+}
+
+// 查詢特定的人物集合
+async function getPeopleSet(pubkey: string, setName: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [30000],
+    authors: [pubkey],
+    '#d': [setName],
+    limit: 1,
+  });
+
+  return events[0] || null;
+}`}</code></pre>
+
+  <h2 id="updating-lists">更新列表</h2>
+  <p>
+    列表使用可替換事件機制。同一 kind 和 <code>d</code> 標籤的新事件會替換舊事件。
+    更新時需要發布包含完整列表的新事件。
+  </p>
+
+  <pre><code class="language-typescript">{`// 新增項目到書籤列表
+async function addBookmark(
+  privateKey: Uint8Array,
+  currentEvent: Event | null,
+  newNoteId: string,
+  relay: string
+) {
+  // 取得現有的 e 標籤
+  const existingTags = currentEvent?.tags.filter(t => t[0] === 'e') || [];
+
+  // 新增新書籤
+  const tags = [
+    ...existingTags,
+    ['e', newNoteId, relay],
+  ];
+
+  const event = {
+    kind: 10003,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: currentEvent?.content || '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 從列表移除項目
+function removeFromList(
+  currentEvent: Event,
+  tagType: string,
+  valueToRemove: string
+) {
+  const filteredTags = currentEvent.tags.filter(
+    t => !(t[0] === tagType && t[1] === valueToRemove)
+  );
+
+  return {
+    ...currentEvent,
+    tags: filteredTags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+}`}</code></pre>
+
+  <h2 id="client-implementation">客戶端實作建議</h2>
+  <ul>
+    <li><strong>靜音列表</strong>：啟動時載入，用於過濾時間軸、通知和搜尋結果</li>
+    <li><strong>置頂列表</strong>：在個人檔案頁面頂部顯示置頂筆記</li>
+    <li><strong>書籤列表</strong>：提供書籤管理介面，支援分類整理</li>
+    <li><strong>私密條目</strong>：解密後在本地快取，避免頻繁解密</li>
+    <li><strong>列表同步</strong>：監聽列表更新事件，保持即時同步</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-02/">NIP-02</a> - 聯絡人列表（關注列表）</li>
+    <li><a href="/tech/nostr/nip-04/">NIP-04</a> - 加密直接訊息（用於私密條目）</li>
+    <li><a href="/tech/nostr/nip-23/">NIP-23</a> - 長文內容（可書籤的事件類型）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/51.md" target="_blank" rel="noopener">NIP-51 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
