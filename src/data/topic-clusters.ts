@@ -154,10 +154,11 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-23/', title: 'NIP-23 長文內容', type: 'tech' },
       { href: '/tech/nostr/relays/', title: '中繼器', type: 'tech' },
       { href: '/tech/nostr/nip-05/', title: 'NIP-05 域名驗證', type: 'tech' },
+      { href: '/tech/nostr/nip-44/', title: 'NIP-44 加密訊息 v2', type: 'tech' },
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', '加密'],
   },
 ];
 

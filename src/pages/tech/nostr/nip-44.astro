@@ -1,0 +1,336 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-44 加密訊息 v2"
+  description="深入了解 Nostr 的改進加密標準，XChaCha20-Poly1305 和更安全的密鑰派生。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-44 加密訊息 v2' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'NIP-05 域名驗證', href: '/tech/nostr/nip-05' }}
+  nextPage={{ title: 'NIP-57 Zaps', href: '/tech/nostr/nip-57' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-44？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-44 定義了 Nostr 的改進加密標準，解決了 NIP-04 的多個安全問題。
+    它使用 XChaCha20-Poly1305 認證加密、HKDF 密鑰派生，並提供版本控制和固定長度填充。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>推薦使用：</strong>
+      NIP-44 是 NIP-04 的安全替代方案。新的客戶端應該優先實現 NIP-44，
+      並逐步淘汰對 NIP-04 的支持。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-44 vs NIP-04</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-04</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-44</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">加密算法</td>
+          <td class="py-3 px-4 text-yellow-600">AES-256-CBC</td>
+          <td class="py-3 px-4 text-green-600">XChaCha20-Poly1305</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">認證加密 (AEAD)</td>
+          <td class="py-3 px-4 text-red-500">無</td>
+          <td class="py-3 px-4 text-green-600">有</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">密鑰派生</td>
+          <td class="py-3 px-4 text-yellow-600">直接使用 ECDH 共享點</td>
+          <td class="py-3 px-4 text-green-600">HKDF-SHA256</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">填充方式</td>
+          <td class="py-3 px-4 text-yellow-600">PKCS7（洩露長度）</td>
+          <td class="py-3 px-4 text-green-600">固定長度填充</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">版本控制</td>
+          <td class="py-3 px-4 text-red-500">無</td>
+          <td class="py-3 px-4 text-green-600">有</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Nonce 長度</td>
+          <td class="py-3 px-4">16 bytes (IV)</td>
+          <td class="py-3 px-4">24 bytes</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密流程</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    {
+      [
+        { step: '1', title: 'ECDH 密鑰交換', desc: 'shared_point = secp256k1_ecdh(私鑰_A, 公鑰_B)' },
+        { step: '2', title: 'HKDF 密鑰派生', desc: 'conversation_key = hkdf_sha256(shared_point, "nip44-v2")' },
+        { step: '3', title: '生成 Nonce', desc: '生成 24 bytes 隨機 nonce' },
+        { step: '4', title: '填充訊息', desc: '將訊息填充到預定義長度（隱藏實際長度）' },
+        { step: '5', title: 'XChaCha20-Poly1305', desc: '使用 conversation_key 和 nonce 加密，生成密文和認證標籤' },
+        { step: '6', title: '組合輸出', desc: 'version(1) || nonce(24) || ciphertext || tag(16)' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)] font-mono">{item.desc}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰派生 (HKDF)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-44 使用 HKDF-SHA256 從 ECDH 共享點派生對話密鑰：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// ECDH 計算共享點
+const sharedX = secp256k1.getSharedSecret(privateKey, publicKey).slice(1, 33)
+
+// HKDF 密鑰派生
+// 1. Extract: 從共享點提取偽隨機密鑰
+const prk = hkdf.extract(sha256, sharedX, salt)
+
+// 2. Expand: 擴展為對話密鑰
+const conversationKey = hkdf.expand(sha256, prk, "nip44-v2", 32)
+
+// conversationKey 用於所有該對話的加密/解密`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">填充機制</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-44 使用固定長度填充來隱藏訊息的實際長度：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 填充長度表（預定義的固定長度）
+const PADDING_SIZES = [
+  32, 64, 128, 256, 512, 1024, 2048, 4096,
+  8192, 16384, 32768, 65536
+]
+
+function calcPaddedLen(unpaddedLen) {
+  // 找到大於訊息長度的最小填充長度
+  for (const size of PADDING_SIZES) {
+    if (unpaddedLen <= size) return size
+  }
+  throw new Error('Message too long')
+}
+
+// 填充格式：[2 bytes 長度][訊息][零填充]
+function pad(message) {
+  const len = message.length
+  const paddedLen = calcPaddedLen(len + 2) // +2 for length prefix
+  const padded = new Uint8Array(paddedLen)
+
+  // 寫入長度（big-endian）
+  padded[0] = (len >> 8) & 0xff
+  padded[1] = len & 0xff
+
+  // 寫入訊息
+  padded.set(message, 2)
+
+  return padded
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">XChaCha20-Poly1305</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-44 使用 XChaCha20-Poly1305 進行認證加密：
+  </p>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">元件</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">XChaCha20</td>
+          <td class="py-3 px-4">串流加密，24-byte nonce，防止 nonce 重用</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">Poly1305</td>
+          <td class="py-3 px-4">訊息認證碼（MAC），確保完整性</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">AEAD</td>
+          <td class="py-3 px-4">認證加密，同時提供機密性和完整性</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">加密</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { xchacha20poly1305 } from '@noble/ciphers/chacha'
+import { hkdf } from '@noble/hashes/hkdf'
+import { sha256 } from '@noble/hashes/sha256'
+import * as secp256k1 from '@noble/secp256k1'
+
+function encrypt(privateKey, recipientPubkey, message) {
+  // 1. ECDH 計算共享點
+  const sharedX = secp256k1.getSharedSecret(
+    privateKey,
+    recipientPubkey
+  ).slice(1, 33)
+
+  // 2. HKDF 派生對話密鑰
+  const conversationKey = hkdf(
+    sha256,
+    sharedX,
+    new Uint8Array(32), // salt
+    'nip44-v2',
+    32
+  )
+
+  // 3. 生成隨機 nonce
+  const nonce = crypto.getRandomValues(new Uint8Array(24))
+
+  // 4. 填充訊息
+  const padded = pad(new TextEncoder().encode(message))
+
+  // 5. XChaCha20-Poly1305 加密
+  const cipher = xchacha20poly1305(conversationKey, nonce)
+  const ciphertext = cipher.encrypt(padded)
+
+  // 6. 組合輸出：version || nonce || ciphertext
+  const result = new Uint8Array(1 + 24 + ciphertext.length)
+  result[0] = 2  // version 2
+  result.set(nonce, 1)
+  result.set(ciphertext, 25)
+
+  return base64.encode(result)
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解密</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function decrypt(privateKey, senderPubkey, payload) {
+  const data = base64.decode(payload)
+
+  // 1. 解析版本
+  const version = data[0]
+  if (version !== 2) throw new Error('Unsupported version')
+
+  // 2. 提取 nonce 和密文
+  const nonce = data.slice(1, 25)
+  const ciphertext = data.slice(25)
+
+  // 3. ECDH 計算共享點
+  const sharedX = secp256k1.getSharedSecret(
+    privateKey,
+    senderPubkey
+  ).slice(1, 33)
+
+  // 4. HKDF 派生對話密鑰
+  const conversationKey = hkdf(
+    sha256,
+    sharedX,
+    new Uint8Array(32),
+    'nip44-v2',
+    32
+  )
+
+  // 5. XChaCha20-Poly1305 解密
+  const cipher = xchacha20poly1305(conversationKey, nonce)
+  const padded = cipher.decrypt(ciphertext)
+
+  // 6. 移除填充
+  return unpad(padded)
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全改進</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">認證加密</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Poly1305 MAC 確保密文未被竄改，防止 padding oracle 和 bit-flipping 攻擊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">密鑰隔離</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        HKDF 密鑰派生將 ECDH 共享點轉換為專用密鑰，提供更好的密鑰分離。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">長度隱藏</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        固定長度填充隱藏訊息的實際長度，防止基於長度的流量分析。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">版本控制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        內建版本欄位允許未來升級加密方案而保持向後兼容。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// NIP-44 加密可用於多種事件類型
+
+// Kind 4: 私訊（建議使用 NIP-44 而非 NIP-04）
+// Kind 1059: Gift Wrap（用於隱藏元數據）
+// 其他需要加密的自定義事件類型
+
+// 範例：使用 NIP-44 加密的私訊
+{
+  "kind": 4,
+  "content": "<NIP-44 加密的內容>",
+  "tags": [
+    ["p", "<接收者公鑰>"]
+  ],
+  ...
+}`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>實作建議：</strong>
+      使用經過審計的加密庫如 @noble/ciphers 和 @noble/hashes。
+      不要自己實現加密算法。測試向量可在 NIP-44 規範中找到。
+    </p>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong>
+      NIP-44 仍然沒有前向保密（Forward Secrecy）。如果長期私鑰洩露，
+      過去的所有訊息都可能被解密。對於高度敏感的通訊，
+      考慮使用支持 PFS 的協議。
+    </p>
+  </div>
+</ArticleLayout>
