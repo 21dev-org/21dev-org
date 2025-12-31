@@ -1,0 +1,328 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-10 回覆與標記"
+  description="深入了解 Nostr 的對話串結構，回覆、標記和事件引用機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-10 回覆與標記' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'NIP-07 瀏覽器擴充', href: '/tech/nostr/nip-07' }}
+  nextPage={{ title: 'NIP-19 bech32 編碼', href: '/tech/nostr/nip-19' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-10？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-10 定義了 Nostr 中對話串（threading）的結構，規範如何在事件中標記回覆、
+    引用和提及。這讓客戶端可以正確顯示對話脈絡和通知相關用戶。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>核心概念：</strong>
+      NIP-10 使用 "e" 標籤引用事件、"p" 標籤標記用戶，並通過 marker 區分
+      根事件（root）、回覆對象（reply）和一般引用（mention）。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤類型</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">格式</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-blue-500">"e"</td>
+          <td class="py-3 px-4">引用事件</td>
+          <td class="py-3 px-4 font-mono text-xs">["e", "&lt;event-id&gt;", "&lt;relay&gt;", "&lt;marker&gt;"]</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">"p"</td>
+          <td class="py-3 px-4">標記用戶</td>
+          <td class="py-3 px-4 font-mono text-xs">["p", "&lt;pubkey&gt;", "&lt;relay&gt;"]</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件引用 Marker</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Marker</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">數量</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-green-500">"root"</td>
+          <td class="py-3 px-4">對話串的起始事件（原始貼文）</td>
+          <td class="py-3 px-4">最多 1 個</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-blue-500">"reply"</td>
+          <td class="py-3 px-4">直接回覆的目標事件</td>
+          <td class="py-3 px-4">最多 1 個</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-yellow-500">"mention"</td>
+          <td class="py-3 px-4">一般引用（不是回覆）</td>
+          <td class="py-3 px-4">任意數量</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">對話串結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`# 對話串範例
+
+原始貼文 (A)
+├── 回覆 (B) - reply: A, root: A
+│   ├── 回覆 (C) - reply: B, root: A
+│   └── 回覆 (D) - reply: B, root: A
+└── 回覆 (E) - reply: A, root: A
+    └── 回覆 (F) - reply: E, root: A
+
+# 所有回覆都保留 root 指向原始貼文
+# reply 指向直接回覆的對象`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">原始貼文</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "id": "aaa...",
+  "kind": 1,
+  "content": "這是一篇原始貼文",
+  "tags": []  // 原始貼文沒有 e 標籤
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">直接回覆</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "id": "bbb...",
+  "kind": 1,
+  "content": "這是對原始貼文的回覆",
+  "tags": [
+    ["e", "aaa...", "wss://relay.com", "root"],
+    ["e", "aaa...", "wss://relay.com", "reply"],
+    ["p", "<原作者pubkey>", "wss://relay.com"]
+  ]
+}
+
+// 當 root 和 reply 相同時，表示直接回覆原始貼文`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">巢狀回覆</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "id": "ccc...",
+  "kind": 1,
+  "content": "這是對回覆的回覆",
+  "tags": [
+    ["e", "aaa...", "wss://relay.com", "root"],   // 原始貼文
+    ["e", "bbb...", "wss://relay.com", "reply"],  // 回覆對象
+    ["p", "<原作者pubkey>"],
+    ["p", "<回覆者pubkey>"]
+  ]
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">引用（不是回覆）</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "id": "ddd...",
+  "kind": 1,
+  "content": "看看這篇有趣的貼文：nostr:nevent1...",
+  "tags": [
+    ["e", "aaa...", "wss://relay.com", "mention"]
+  ]
+}
+
+// mention 表示引用但不是回覆
+// 不會出現在原貼文的回覆串中`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">用戶標記</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 1,
+  "content": "嗨 nostr:npub1abc... 你好嗎？",
+  "tags": [
+    ["p", "abc...", "wss://relay.com"]
+  ]
+}
+
+// "p" 標籤用於：
+// 1. 回覆時標記原作者
+// 2. 在內容中 @ 提及用戶
+// 3. 讓被標記的用戶收到通知`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">建立回覆事件</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function createReply(originalEvent, replyContent, relay) {
+  // 找出 root 事件
+  const rootTag = originalEvent.tags.find(
+    t => t[0] === 'e' && t[3] === 'root'
+  )
+  const rootId = rootTag ? rootTag[1] : originalEvent.id
+
+  // 建立回覆事件
+  const reply = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    content: replyContent,
+    tags: [
+      ['e', rootId, relay, 'root'],
+      ['e', originalEvent.id, relay, 'reply'],
+      ['p', originalEvent.pubkey, relay]
+    ]
+  }
+
+  // 加入原對話串中提及的用戶
+  originalEvent.tags
+    .filter(t => t[0] === 'p')
+    .forEach(t => {
+      if (!reply.tags.some(rt => rt[1] === t[1])) {
+        reply.tags.push(['p', t[1], t[2] || ''])
+      }
+    })
+
+  return reply
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解析對話串</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function parseThread(event) {
+  const eTags = event.tags.filter(t => t[0] === 'e')
+  const pTags = event.tags.filter(t => t[0] === 'p')
+
+  // 使用 marker 解析
+  const root = eTags.find(t => t[3] === 'root')
+  const reply = eTags.find(t => t[3] === 'reply')
+  const mentions = eTags.filter(t => t[3] === 'mention')
+
+  return {
+    rootId: root?.[1] || null,
+    replyToId: reply?.[1] || null,
+    mentionedEvents: mentions.map(t => t[1]),
+    mentionedUsers: pTags.map(t => t[1]),
+    isReply: !!(root || reply),
+    isTopLevel: !root && !reply
+  }
+}
+
+// 使用
+const thread = parseThread(event)
+if (thread.isReply) {
+  console.log('回覆至:', thread.replyToId)
+  console.log('對話串根:', thread.rootId)
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢對話串</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢特定貼文的所有回覆
+["REQ", "replies", {
+  "kinds": [1],
+  "#e": ["<event-id>"]
+}]
+
+// 查詢整個對話串（所有引用 root 的事件）
+["REQ", "thread", {
+  "kinds": [1],
+  "#e": ["<root-event-id>"]
+}]
+
+// 查詢標記我的事件（通知）
+["REQ", "mentions", {
+  "kinds": [1],
+  "#p": ["<my-pubkey>"]
+}]`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">舊版格式（位置型）</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    舊版 NIP-10 使用位置來區分 root 和 reply，現已不推薦：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 舊版格式（不推薦）
+{
+  "tags": [
+    ["e", "root-id"],   // 第一個 = root
+    ["e", "reply-id"]   // 最後一個 = reply
+  ]
+}
+
+// 新版格式（推薦）
+{
+  "tags": [
+    ["e", "root-id", "", "root"],
+    ["e", "reply-id", "", "reply"]
+  ]
+}`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>相容性：</strong>
+      客戶端應該能解析兩種格式。發送時使用新版 marker 格式，
+      接收時先檢查 marker，沒有則回退到位置型解析。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">應該做</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 使用 marker 明確標記類型</li>
+        <li>• 回覆時包含 root 和 reply</li>
+        <li>• 標記被回覆的用戶</li>
+        <li>• 提供中繼器提示</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">避免</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 只用位置型格式</li>
+        <li>• 省略 root 標籤</li>
+        <li>• 混淆 reply 和 mention</li>
+        <li>• 忘記標記用戶</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      正確使用 NIP-10 可以讓你的貼文在所有客戶端正確顯示對話脈絡，
+      並確保相關用戶收到通知。
+    </p>
+  </div>
+</ArticleLayout>

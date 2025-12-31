@@ -1,0 +1,323 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-25 反應"
+  description="深入了解 Nostr 的反應系統，按讚、表情符號反應和反應統計。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-25 反應' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-23 長文內容', href: '/tech/nostr/nip-23' }}
+  nextPage={{ title: 'NIP-44 加密訊息 v2', href: '/tech/nostr/nip-44' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-25？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-25 定義了 Nostr 中的反應（Reactions）機制，讓用戶可以對事件表達
+    喜歡、不喜歡或使用表情符號反應。反應是 kind 7 事件，透過標籤引用目標事件。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>核心概念：</strong>
+      反應使用 content 欄位表達反應類型："+" 表示喜歡，"-" 表示不喜歡，
+      或任何表情符號如 "👍"、"❤️"、"🔥"。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 7,
+  "content": "+",                    // 或 "-" 或表情符號
+  "tags": [
+    ["e", "<event-id>", "<relay>"],  // 被反應的事件
+    ["p", "<event-author-pubkey>"]   // 事件作者
+  ],
+  "created_at": 1234567890,
+  "pubkey": "<reactor-pubkey>",
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">反應類型</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Content</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">含義</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-green-500 text-xl">+</td>
+          <td class="py-3 px-4">喜歡 / 按讚</td>
+          <td class="py-3 px-4">正面反應，通常顯示為愛心或讚</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-red-500 text-xl">-</td>
+          <td class="py-3 px-4">不喜歡</td>
+          <td class="py-3 px-4">負面反應，部分客戶端可能不顯示</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 text-xl">👍 ❤️ 🔥 😂 😢</td>
+          <td class="py-3 px-4">表情反應</td>
+          <td class="py-3 px-4">任何 Unicode 表情符號</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">:custom:</td>
+          <td class="py-3 px-4">自訂表情</td>
+          <td class="py-3 px-4">需配合 emoji 標籤使用</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">按讚</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 7,
+  "content": "+",
+  "tags": [
+    ["e", "abc123...", "wss://relay.damus.io"],
+    ["p", "def456..."]
+  ]
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">表情反應</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 7,
+  "content": "🔥",
+  "tags": [
+    ["e", "abc123...", "wss://relay.damus.io"],
+    ["p", "def456..."]
+  ]
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">自訂表情</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 7,
+  "content": ":sats:",
+  "tags": [
+    ["e", "abc123..."],
+    ["p", "def456..."],
+    ["emoji", "sats", "https://example.com/sats.png"]
+  ]
+}
+
+// emoji 標籤格式：["emoji", "shortcode", "image-url"]`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發送反應</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function sendReaction(targetEvent, reaction = '+') {
+  const event = {
+    kind: 7,
+    created_at: Math.floor(Date.now() / 1000),
+    content: reaction,
+    tags: [
+      ['e', targetEvent.id, 'wss://relay.damus.io'],
+      ['p', targetEvent.pubkey]
+    ]
+  }
+
+  // 簽名並發送
+  const signedEvent = await window.nostr.signEvent(event)
+  relay.send(JSON.stringify(['EVENT', signedEvent]))
+
+  return signedEvent
+}
+
+// 使用
+await sendReaction(somePost, '❤️')  // 愛心反應
+await sendReaction(somePost, '+')   // 按讚
+await sendReaction(somePost, '🚀')  // 火箭反應`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">查詢反應</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢特定事件的所有反應
+["REQ", "reactions", {
+  "kinds": [7],
+  "#e": ["<event-id>"]
+}]
+
+// 查詢我收到的所有反應
+["REQ", "my-reactions", {
+  "kinds": [7],
+  "#p": ["<my-pubkey>"]
+}]
+
+// 查詢特定用戶發出的反應
+["REQ", "user-reactions", {
+  "kinds": [7],
+  "authors": ["<user-pubkey>"]
+}]`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">統計反應</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function countReactions(reactions) {
+  const counts = {
+    likes: 0,      // + 反應
+    dislikes: 0,   // - 反應
+    emojis: {}     // 其他表情
+  }
+
+  for (const r of reactions) {
+    if (r.content === '+') {
+      counts.likes++
+    } else if (r.content === '-') {
+      counts.dislikes++
+    } else {
+      counts.emojis[r.content] = (counts.emojis[r.content] || 0) + 1
+    }
+  }
+
+  return counts
+}
+
+// 結果範例
+// {
+//   likes: 42,
+//   dislikes: 2,
+//   emojis: { '🔥': 10, '❤️': 8, '😂': 5 }
+// }`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">反應到其他事件類型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-25 可以對任何事件類型反應，不只是貼文：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 反應到長文 (kind 30023)
+{
+  "kind": 7,
+  "content": "👏",
+  "tags": [
+    ["e", "<article-event-id>"],
+    ["p", "<author-pubkey>"],
+    ["a", "30023:<author>:<d-tag>", "wss://relay.com"]
+  ]
+}
+
+// "a" 標籤用於可替換事件，確保反應指向正確的內容`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UI 設計考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    {
+      [
+        {
+          title: '反應選擇器',
+          desc: '提供快速按讚按鈕和表情選擇器',
+          example: '👍 ❤️ 😂 😢 😡 🔥',
+        },
+        {
+          title: '反應計數',
+          desc: '顯示每種反應的數量',
+          example: '❤️ 42  🔥 15  😂 8',
+        },
+        {
+          title: '反應列表',
+          desc: '點擊可查看誰給了反應',
+          example: 'Alice, Bob 和其他 40 人',
+        },
+        {
+          title: '我的反應',
+          desc: '高亮顯示用戶自己的反應',
+          example: '已按讚（點擊取消）',
+        },
+      ].map((item) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{item.title}</h4>
+          <p class="text-sm text-[var(--text-secondary)] mb-2">{item.desc}</p>
+          <code class="text-xs bg-black/10 dark:bg-white/10 px-2 py-1 rounded">
+            {item.example}
+          </code>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">刪除反應</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用 kind 5（刪除事件）來撤回反應：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 5,
+  "content": "取消反應",
+  "tags": [
+    ["e", "<reaction-event-id>"]  // 要刪除的反應事件
+  ]
+}
+
+// 注意：中繼器可能不會立即刪除
+// 客戶端應該檢查 kind 5 事件來過濾已刪除的反應`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Zaps 的關係</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-25 反應</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-57 Zaps</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">類型</td>
+          <td class="py-3 px-4">社交互動</td>
+          <td class="py-3 px-4">金錢打賞</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">成本</td>
+          <td class="py-3 px-4">免費</td>
+          <td class="py-3 px-4">比特幣（聰）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Kind</td>
+          <td class="py-3 px-4">7</td>
+          <td class="py-3 px-4">9735</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">用途</td>
+          <td class="py-3 px-4">表達情感</td>
+          <td class="py-3 px-4">經濟支持</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      許多客戶端將 "+" 反應顯示為愛心圖示。如果你想支持更多表情反應，
+      確保你的 UI 可以正確渲染各種 Unicode 表情符號。
+    </p>
+  </div>
+</ArticleLayout>
