@@ -1,0 +1,546 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-34: Git 相關事件"
+  description="在 Nostr 上進行 Git 程式碼協作、議題討論和補丁提交"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-34 定義了一系列用於 Git 協作的 Nostr 事件類型。開發者可以在 Nostr 上
+    建立程式碼倉庫、提交補丁、開設議題，實現去中心化的程式碼協作，
+    無需依賴 GitHub 等中心化平台。
+  </p>
+
+  <h2 id="event-kinds">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>30617</code></td>
+        <td>倉庫公告 (Repository)</td>
+        <td>可定址</td>
+      </tr>
+      <tr>
+        <td><code>1617</code></td>
+        <td>補丁 (Patches)</td>
+        <td>一般</td>
+      </tr>
+      <tr>
+        <td><code>1621</code></td>
+        <td>議題 (Issues)</td>
+        <td>一般</td>
+      </tr>
+      <tr>
+        <td><code>1622</code></td>
+        <td>回覆 (Reply)</td>
+        <td>一般</td>
+      </tr>
+      <tr>
+        <td><code>1630-1633</code></td>
+        <td>狀態 (Status)</td>
+        <td>一般</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="repository">倉庫公告 (Kind 30617)</h2>
+
+  <p>倉庫公告事件宣布一個 Git 倉庫的存在，包含基本資訊和可選的克隆 URL。</p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>倉庫識別符</td>
+        <td><code>["d", "my-project"]</code></td>
+      </tr>
+      <tr>
+        <td><code>name</code></td>
+        <td>倉庫名稱</td>
+        <td><code>["name", "My Project"]</code></td>
+      </tr>
+      <tr>
+        <td><code>description</code></td>
+        <td>倉庫描述</td>
+        <td><code>["description", "一個很棒的專案"]</code></td>
+      </tr>
+      <tr>
+        <td><code>clone</code></td>
+        <td>克隆 URL</td>
+        <td><code>["clone", "https://git.example.com/repo.git"]</code></td>
+      </tr>
+      <tr>
+        <td><code>web</code></td>
+        <td>網頁瀏覽 URL</td>
+        <td><code>["web", "https://git.example.com/repo"]</code></td>
+      </tr>
+      <tr>
+        <td><code>relays</code></td>
+        <td>相關中繼器</td>
+        <td><code>["relays", "wss://relay1.com", "wss://relay2.com"]</code></td>
+      </tr>
+      <tr>
+        <td><code>maintainers</code></td>
+        <td>維護者公鑰</td>
+        <td><code>["maintainers", "pubkey1", "pubkey2"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>範例</h3>
+  <pre><code class="language-json">{
+  "kind": 30617,
+  "content": "",
+  "tags": [
+    ["d", "nostr-client"],
+    ["name", "Nostr 客戶端"],
+    ["description", "一個開源的 Nostr 客戶端應用"],
+    ["clone", "https://github.com/example/nostr-client.git"],
+    ["web", "https://github.com/example/nostr-client"],
+    ["relays", "wss://relay.damus.io", "wss://nos.lol"],
+    ["maintainers", "npub1xxx...", "npub1yyy..."],
+    ["t", "nostr"],
+    ["t", "typescript"]
+  ]
+}</code></pre>
+
+  <h2 id="patches">補丁 (Kind 1617)</h2>
+
+  <p>補丁事件包含要合併到倉庫的程式碼變更，類似 Pull Request。</p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>a</code></td>
+        <td>目標倉庫的事件座標</td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>倉庫維護者公鑰</td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>主題標籤</td>
+      </tr>
+      <tr>
+        <td><code>commit</code></td>
+        <td>提交資訊</td>
+      </tr>
+      <tr>
+        <td><code>parent-commit</code></td>
+        <td>基於的父提交</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Content 格式</h3>
+  <p>Content 包含標準的 Git patch 格式：</p>
+  <pre><code class="language-diff">From abc123 Mon Sep 17 00:00:00 2001
+From: Author &lt;author@example.com&gt;
+Date: Mon, 1 Jan 2024 12:00:00 +0800
+Subject: [PATCH] 修復登入問題
+
+修復了用戶無法登入的問題
+
+---
+ src/auth.ts | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/src/auth.ts b/src/auth.ts
+index abc123..def456 100644
+--- a/src/auth.ts
++++ b/src/auth.ts
+@@ -10,7 +10,7 @@
+-  const token = getToken();
++  const token = await getToken();
+</code></pre>
+
+  <h2 id="issues">議題 (Kind 1621)</h2>
+
+  <p>議題事件用於報告 bug、提出功能請求或進行討論。</p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>a</code></td>
+        <td>目標倉庫的事件座標</td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>倉庫維護者公鑰</td>
+      </tr>
+      <tr>
+        <td><code>subject</code></td>
+        <td>議題標題</td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>標籤（bug、feature 等）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>範例</h3>
+  <pre><code class="language-json">{
+  "kind": 1621,
+  "content": "## 問題描述\n\n在 iOS 上無法正常顯示圖片\n\n## 重現步驟\n\n1. 打開應用\n2. 瀏覽到圖片貼文\n3. 圖片無法載入\n\n## 預期行為\n\n圖片應該正常顯示",
+  "tags": [
+    ["a", "30617:pubkey:nostr-client", "wss://relay.example.com"],
+    ["p", "maintainer-pubkey"],
+    ["subject", "iOS 圖片無法顯示"],
+    ["t", "bug"],
+    ["t", "ios"]
+  ]
+}</code></pre>
+
+  <h2 id="status">狀態事件 (Kind 1630-1633)</h2>
+
+  <p>用於標記補丁或議題的狀態：</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>狀態</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>1630</code></td>
+        <td>Open</td>
+        <td>開啟/待處理</td>
+      </tr>
+      <tr>
+        <td><code>1631</code></td>
+        <td>Applied/Closed</td>
+        <td>已合併/已關閉</td>
+      </tr>
+      <tr>
+        <td><code>1632</code></td>
+        <td>Closed</td>
+        <td>已關閉（未合併）</td>
+      </tr>
+      <tr>
+        <td><code>1633</code></td>
+        <td>Draft</td>
+        <td>草稿</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立倉庫公告</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+interface Repository {
+  id: string;
+  name: string;
+  description?: string;
+  cloneUrls?: string[];
+  webUrl?: string;
+  relays?: string[];
+  maintainers?: string[];
+  tags?: string[];
+}
+
+function createRepositoryEvent(
+  repo: Repository,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['d', repo.id],
+    ['name', repo.name],
+  ];
+
+  if (repo.description) {
+    tags.push(['description', repo.description]);
+  }
+
+  repo.cloneUrls?.forEach((url) => {
+    tags.push(['clone', url]);
+  });
+
+  if (repo.webUrl) {
+    tags.push(['web', repo.webUrl]);
+  }
+
+  if (repo.relays && repo.relays.length > 0) {
+    tags.push(['relays', ...repo.relays]);
+  }
+
+  if (repo.maintainers && repo.maintainers.length > 0) {
+    tags.push(['maintainers', ...repo.maintainers]);
+  }
+
+  repo.tags?.forEach((tag) => {
+    tags.push(['t', tag]);
+  });
+
+  const event = {
+    kind: 30617,
+    content: '',
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const repoEvent = createRepositoryEvent(
+  {
+    id: 'my-nostr-app',
+    name: 'My Nostr App',
+    description: '一個去中心化的社交應用',
+    cloneUrls: ['https://github.com/user/my-nostr-app.git'],
+    webUrl: 'https://github.com/user/my-nostr-app',
+    relays: ['wss://relay.damus.io'],
+    maintainers: ['npub1...'],
+    tags: ['nostr', 'typescript', 'react'],
+  },
+  secretKey
+);</code></pre>
+
+  <h3>建立議題</h3>
+  <pre><code class="language-typescript">interface Issue {
+  repoCoordinate: string; // "30617:pubkey:repo-id"
+  repoRelay?: string;
+  maintainerPubkey: string;
+  subject: string;
+  content: string;
+  labels?: string[];
+}
+
+function createIssueEvent(
+  issue: Issue,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['a', issue.repoCoordinate, issue.repoRelay || ''],
+    ['p', issue.maintainerPubkey],
+    ['subject', issue.subject],
+  ];
+
+  issue.labels?.forEach((label) => {
+    tags.push(['t', label]);
+  });
+
+  const event = {
+    kind: 1621,
+    content: issue.content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const issueEvent = createIssueEvent(
+  {
+    repoCoordinate: '30617:abc123:my-nostr-app',
+    repoRelay: 'wss://relay.damus.io',
+    maintainerPubkey: 'maintainer-pubkey',
+    subject: '新增深色模式支援',
+    content: '## 功能請求\n\n希望能新增深色模式，保護眼睛。',
+    labels: ['feature', 'ui'],
+  },
+  secretKey
+);</code></pre>
+
+  <h3>建立補丁</h3>
+  <pre><code class="language-typescript">interface Patch {
+  repoCoordinate: string;
+  repoRelay?: string;
+  maintainerPubkey: string;
+  patchContent: string; // Git patch 格式
+  commit?: string;
+  parentCommit?: string;
+  subject?: string;
+}
+
+function createPatchEvent(
+  patch: Patch,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['a', patch.repoCoordinate, patch.repoRelay || ''],
+    ['p', patch.maintainerPubkey],
+  ];
+
+  if (patch.commit) {
+    tags.push(['commit', patch.commit]);
+  }
+
+  if (patch.parentCommit) {
+    tags.push(['parent-commit', patch.parentCommit]);
+  }
+
+  if (patch.subject) {
+    tags.push(['subject', patch.subject]);
+  }
+
+  const event = {
+    kind: 1617,
+    content: patch.patchContent,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}</code></pre>
+
+  <h3>更新狀態</h3>
+  <pre><code class="language-typescript">type StatusKind = 1630 | 1631 | 1632 | 1633;
+
+interface StatusUpdate {
+  targetEventId: string;
+  kind: StatusKind;
+  reason?: string;
+}
+
+function createStatusEvent(
+  status: StatusUpdate,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['e', status.targetEventId],
+  ];
+
+  const event = {
+    kind: status.kind,
+    content: status.reason || '',
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：關閉議題
+const closeStatus = createStatusEvent(
+  {
+    targetEventId: 'issue-event-id',
+    kind: 1631,
+    reason: '已在 commit abc123 中修復',
+  },
+  secretKey
+);</code></pre>
+
+  <h3>查詢倉庫相關事件</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+async function getRepositoryActivity(
+  pool: SimplePool,
+  relays: string[],
+  repoCoordinate: string
+) {
+  // 查詢議題
+  const issues = await pool.querySync(relays, {
+    kinds: [1621],
+    '#a': [repoCoordinate],
+  });
+
+  // 查詢補丁
+  const patches = await pool.querySync(relays, {
+    kinds: [1617],
+    '#a': [repoCoordinate],
+  });
+
+  // 查詢狀態更新
+  const issueIds = issues.map((i) => i.id);
+  const patchIds = patches.map((p) => p.id);
+  const allIds = [...issueIds, ...patchIds];
+
+  const statuses = await pool.querySync(relays, {
+    kinds: [1630, 1631, 1632, 1633],
+    '#e': allIds,
+  });
+
+  return {
+    issues,
+    patches,
+    statuses,
+  };
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>去中心化程式碼協作</h3>
+  <ul>
+    <li>在 Nostr 上宣布開源專案</li>
+    <li>接收社群貢獻的補丁</li>
+    <li>討論功能和 bug</li>
+  </ul>
+
+  <h3>抗審查的程式碼托管</h3>
+  <ul>
+    <li>不依賴 GitHub 等中心化平台</li>
+    <li>程式碼相關討論不會被刪除</li>
+    <li>全球開發者協作</li>
+  </ul>
+
+  <h3>整合 Git 工作流程</h3>
+  <ul>
+    <li>透過 Nostr 發送和接收補丁</li>
+    <li>程式碼審查和討論</li>
+    <li>追蹤議題狀態</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>完整的倉庫資訊</strong>：提供克隆 URL 和網頁連結</li>
+    <li><strong>標準補丁格式</strong>：使用 git format-patch 產生的格式</li>
+    <li><strong>清晰的議題描述</strong>：包含重現步驟和預期行為</li>
+    <li><strong>及時更新狀態</strong>：合併或關閉時更新狀態事件</li>
+    <li><strong>標籤分類</strong>：使用標籤幫助分類和搜尋</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-10">NIP-10</a>：回覆與標記 - 對話串結構</li>
+    <li><a href="/tech/nostr/nip-22">NIP-22</a>：評論 - 結構化評論</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/34.md" target="_blank" rel="noopener noreferrer">NIP-34 規範</a></li>
+    <li><a href="https://gitworkshop.dev/" target="_blank" rel="noopener noreferrer">Git Workshop</a> - Nostr Git 客戶端</li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
