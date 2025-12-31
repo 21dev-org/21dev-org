@@ -1,0 +1,411 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-58 徽章"
+  description="Nostr 徽章系統，用於頒發和展示成就、認證與身份標識。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-58 徽章' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-57/',
+    title: 'NIP-57 Zaps',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-65/',
+    title: 'NIP-65 中繼器列表',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-58 定義了 Nostr 的徽章系統，讓用戶和組織可以創建、頒發和展示徽章。
+    徽章可用於表彰成就、認證身份或標識社群成員。這套機制由三個事件類型組成：
+    徽章定義、徽章頒發和個人徽章展示。
+  </p>
+
+  <h2 id="event-types">事件類型</h2>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">名稱</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">30009</td>
+          <td class="border border-[var(--border-default)] p-3">Badge Definition</td>
+          <td class="border border-[var(--border-default)] p-3">定義徽章的名稱、描述、圖片</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">8</td>
+          <td class="border border-[var(--border-default)] p-3">Badge Award</td>
+          <td class="border border-[var(--border-default)] p-3">頒發徽章給用戶</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">30008</td>
+          <td class="border border-[var(--border-default)] p-3">Profile Badges</td>
+          <td class="border border-[var(--border-default)] p-3">用戶展示已接受的徽章</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="badge-definition">徽章定義 (Kind 30009)</h2>
+  <p>
+    徽章定義是一個可替換事件，使用 <code>d</code> 標籤作為唯一識別符。
+    任何人都可以創建徽章，但徽章的價值取決於頒發者的聲譽。
+  </p>
+
+  <h3>事件結構</h3>
+  <pre><code class="language-json">{`{
+  "kind": 30009,
+  "tags": [
+    ["d", "bitcoin-developer"],
+    ["name", "Bitcoin 開發者"],
+    ["description", "對 Bitcoin Core 有貢獻的開發者"],
+    ["image", "https://example.com/badges/btc-dev.png", "1024x1024"],
+    ["thumb", "https://example.com/badges/btc-dev-thumb.png", "256x256"]
+  ],
+  "content": "",
+  "pubkey": "<頒發者公鑰>",
+  ...
+}`}</code></pre>
+
+  <h3>標籤說明</h3>
+  <ul>
+    <li><code>d</code> - 徽章識別符（必需），用於組成 naddr</li>
+    <li><code>name</code> - 徽章名稱（必需）</li>
+    <li><code>description</code> - 徽章描述</li>
+    <li><code>image</code> - 徽章圖片 URL，可選擇加上尺寸</li>
+    <li><code>thumb</code> - 縮圖 URL，用於列表顯示</li>
+  </ul>
+
+  <h3>TypeScript 範例</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
+
+// 創建徽章定義
+function createBadgeDefinition(
+  privateKey: Uint8Array,
+  badge: {
+    id: string;
+    name: string;
+    description: string;
+    image: string;
+    thumb?: string;
+  }
+) {
+  const tags: string[][] = [
+    ['d', badge.id],
+    ['name', badge.name],
+    ['description', badge.description],
+    ['image', badge.image],
+  ];
+
+  if (badge.thumb) {
+    tags.push(['thumb', badge.thumb]);
+  }
+
+  const event = {
+    kind: 30009,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 使用範例
+const badgeDef = createBadgeDefinition(privateKey, {
+  id: 'early-adopter',
+  name: '早期採用者',
+  description: '2024 年之前加入的用戶',
+  image: 'https://example.com/early-adopter.png',
+  thumb: 'https://example.com/early-adopter-thumb.png',
+});`}</code></pre>
+
+  <h2 id="badge-award">徽章頒發 (Kind 8)</h2>
+  <p>
+    徽章頒發事件將特定徽章授予一個或多個用戶。只有徽章定義的創建者才能頒發該徽章。
+  </p>
+
+  <h3>事件結構</h3>
+  <pre><code class="language-json">{`{
+  "kind": 8,
+  "tags": [
+    ["a", "30009:<頒發者公鑰>:bitcoin-developer"],
+    ["p", "<獲獎用戶1公鑰>", "wss://relay.example.com"],
+    ["p", "<獲獎用戶2公鑰>", "wss://relay.example.com"]
+  ],
+  "content": "",
+  "pubkey": "<頒發者公鑰>",
+  ...
+}`}</code></pre>
+
+  <h3>標籤說明</h3>
+  <ul>
+    <li><code>a</code> - 指向徽章定義的地址標籤（必需）</li>
+    <li><code>p</code> - 獲獎用戶的公鑰，可包含多個</li>
+  </ul>
+
+  <h3>TypeScript 範例</h3>
+  <pre><code class="language-typescript">{`// 頒發徽章
+function awardBadge(
+  privateKey: Uint8Array,
+  badgeId: string,
+  recipients: { pubkey: string; relay?: string }[]
+) {
+  const issuerPubkey = getPublicKey(privateKey);
+
+  const tags: string[][] = [
+    ['a', \`30009:\${issuerPubkey}:\${badgeId}\`],
+  ];
+
+  for (const recipient of recipients) {
+    if (recipient.relay) {
+      tags.push(['p', recipient.pubkey, recipient.relay]);
+    } else {
+      tags.push(['p', recipient.pubkey]);
+    }
+  }
+
+  const event = {
+    kind: 8,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 頒發徽章給多個用戶
+const awardEvent = awardBadge(privateKey, 'early-adopter', [
+  { pubkey: 'abc123...', relay: 'wss://relay.damus.io' },
+  { pubkey: 'def456...', relay: 'wss://nos.lol' },
+]);`}</code></pre>
+
+  <h2 id="profile-badges">個人徽章展示 (Kind 30008)</h2>
+  <p>
+    用戶可以選擇在個人檔案中展示哪些已獲得的徽章。這是一個可替換事件，
+    使用 <code>d</code> 標籤值為 <code>profile_badges</code>。
+  </p>
+
+  <h3>事件結構</h3>
+  <pre><code class="language-json">{`{
+  "kind": 30008,
+  "tags": [
+    ["d", "profile_badges"],
+    ["a", "30009:<頒發者1>:bitcoin-developer"],
+    ["e", "<對應的頒發事件 ID>", "wss://relay.example.com"],
+    ["a", "30009:<頒發者2>:early-adopter"],
+    ["e", "<對應的頒發事件 ID>", "wss://relay.example.com"]
+  ],
+  "content": "",
+  ...
+}`}</code></pre>
+
+  <h3>重要規則</h3>
+  <ul>
+    <li><code>a</code> 和 <code>e</code> 標籤必須成對出現</li>
+    <li><code>a</code> 指向徽章定義，<code>e</code> 指向頒發事件</li>
+    <li>順序決定顯示優先級（越前面越重要）</li>
+    <li>客戶端應驗證頒發事件確實包含該用戶</li>
+  </ul>
+
+  <h3>TypeScript 範例</h3>
+  <pre><code class="language-typescript">{`// 設定個人展示的徽章
+function setProfileBadges(
+  privateKey: Uint8Array,
+  badges: { badgeAddr: string; awardEventId: string; relay: string }[]
+) {
+  const tags: string[][] = [['d', 'profile_badges']];
+
+  for (const badge of badges) {
+    tags.push(['a', badge.badgeAddr]);
+    tags.push(['e', badge.awardEventId, badge.relay]);
+  }
+
+  const event = {
+    kind: 30008,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 使用範例
+const profileBadges = setProfileBadges(privateKey, [
+  {
+    badgeAddr: '30009:abc123...:bitcoin-developer',
+    awardEventId: 'event123...',
+    relay: 'wss://relay.damus.io',
+  },
+  {
+    badgeAddr: '30009:def456...:early-adopter',
+    awardEventId: 'event456...',
+    relay: 'wss://nos.lol',
+  },
+]);`}</code></pre>
+
+  <h2 id="querying">查詢徽章</h2>
+
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢某人創建的所有徽章定義
+async function getBadgeDefinitions(issuerPubkey: string) {
+  return await pool.querySync(relays, {
+    kinds: [30009],
+    authors: [issuerPubkey],
+  });
+}
+
+// 查詢某人獲得的所有徽章頒發
+async function getReceivedAwards(userPubkey: string) {
+  return await pool.querySync(relays, {
+    kinds: [8],
+    '#p': [userPubkey],
+  });
+}
+
+// 查詢用戶的個人徽章展示
+async function getProfileBadges(userPubkey: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [30008],
+    authors: [userPubkey],
+    '#d': ['profile_badges'],
+    limit: 1,
+  });
+
+  return events[0] || null;
+}
+
+// 驗證徽章頒發是否有效
+async function validateBadgeAward(
+  userPubkey: string,
+  badgeAddr: string,
+  awardEventId: string
+) {
+  // 1. 取得頒發事件
+  const awardEvents = await pool.querySync(relays, {
+    ids: [awardEventId],
+    kinds: [8],
+  });
+
+  if (awardEvents.length === 0) return false;
+
+  const award = awardEvents[0];
+
+  // 2. 檢查頒發事件是否包含該用戶
+  const hasUser = award.tags.some(
+    t => t[0] === 'p' && t[1] === userPubkey
+  );
+  if (!hasUser) return false;
+
+  // 3. 檢查頒發事件是否指向正確的徽章
+  const hasBadge = award.tags.some(
+    t => t[0] === 'a' && t[1] === badgeAddr
+  );
+  if (!hasBadge) return false;
+
+  // 4. 檢查頒發者是否是徽章創建者
+  const [, issuerFromAddr] = badgeAddr.split(':');
+  return award.pubkey === issuerFromAddr;
+}`}</code></pre>
+
+  <h2 id="display-flow">完整顯示流程</h2>
+  <p>客戶端展示用戶徽章的建議流程：</p>
+
+  <ol>
+    <li>查詢用戶的 <code>kind:30008</code>（profile_badges）事件</li>
+    <li>解析所有 <code>a</code> 和 <code>e</code> 標籤對</li>
+    <li>對每個徽章，驗證頒發事件的有效性</li>
+    <li>查詢徽章定義取得名稱和圖片</li>
+    <li>按順序顯示已驗證的徽章</li>
+  </ol>
+
+  <pre><code class="language-typescript">{`// 完整的徽章載入流程
+async function loadUserBadges(userPubkey: string) {
+  // 1. 取得用戶的個人徽章設定
+  const profileBadges = await getProfileBadges(userPubkey);
+  if (!profileBadges) return [];
+
+  const badges = [];
+  const tags = profileBadges.tags;
+
+  // 2. 解析 a/e 標籤對
+  for (let i = 0; i < tags.length - 1; i++) {
+    if (tags[i][0] === 'a' && tags[i + 1][0] === 'e') {
+      const badgeAddr = tags[i][1];
+      const awardEventId = tags[i + 1][1];
+
+      // 3. 驗證頒發
+      const isValid = await validateBadgeAward(
+        userPubkey,
+        badgeAddr,
+        awardEventId
+      );
+
+      if (isValid) {
+        // 4. 取得徽章定義
+        const [kind, issuer, identifier] = badgeAddr.split(':');
+        const defs = await pool.querySync(relays, {
+          kinds: [30009],
+          authors: [issuer],
+          '#d': [identifier],
+          limit: 1,
+        });
+
+        if (defs.length > 0) {
+          const def = defs[0];
+          badges.push({
+            id: identifier,
+            name: def.tags.find(t => t[0] === 'name')?.[1],
+            image: def.tags.find(t => t[0] === 'image')?.[1],
+            thumb: def.tags.find(t => t[0] === 'thumb')?.[1],
+            issuer,
+          });
+        }
+      }
+    }
+  }
+
+  return badges;
+}`}</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+  <ul>
+    <li><strong>社群認證</strong>：驗證用戶是特定組織的成員</li>
+    <li><strong>成就系統</strong>：標記用戶達成的里程碑</li>
+    <li><strong>技能認證</strong>：證明用戶具備特定技能或資格</li>
+    <li><strong>活動紀念</strong>：記錄用戶參與過的活動</li>
+    <li><strong>早期採用者</strong>：標識平台的早期支持者</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-19/">NIP-19</a> - bech32 編碼（naddr 用於徽章地址）</li>
+    <li><a href="/tech/nostr/nip-51/">NIP-51</a> - 列表（類似的可替換事件模式）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/58.md" target="_blank" rel="noopener">NIP-58 規範原文</a></li>
+    <li><a href="https://badges.page/" target="_blank" rel="noopener">badges.page - Nostr 徽章瀏覽器</a></li>
+  </ul>
+</ArticleLayout>
