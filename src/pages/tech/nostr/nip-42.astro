@@ -1,0 +1,473 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-42 中繼器認證"
+  description="深入了解 Nostr 中繼器的客戶端認證機制，使用簽名事件驗證用戶身份。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-42 中繼器認證' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-25 反應', href: '/tech/nostr/nip-25' }}
+  nextPage={{ title: 'NIP-44 加密訊息 v2', href: '/tech/nostr/nip-44' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-42？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-42 定義了客戶端向中繼器證明身份的認證機制。中繼器可以要求客戶端
+    簽署一個包含挑戰字串的事件來驗證其 Nostr 身份。這讓中繼器可以實現
+    存取控制、付費訂閱、白名單等功能。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>使用場景：</strong>
+      付費中繼器、私人中繼器、需要身份驗證的進階功能、
+      防止濫用的存取控制等。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">認證流程</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`客戶端                                      中繼器
+   │                                           │
+   │  1. 建立 WebSocket 連線                   │
+   │  ─────────────────────────────────────>   │
+   │                                           │
+   │  2. 發送認證挑戰                           │
+   │  <─────────────────────────────────────   │
+   │     ["AUTH", "<challenge-string>"]        │
+   │                                           │
+   │  3. 簽署認證事件                           │
+   │     kind: 22242                           │
+   │     tags: [["relay", "wss://..."],        │
+   │            ["challenge", "<challenge>"]]  │
+   │                                           │
+   │  4. 發送認證事件                           │
+   │  ─────────────────────────────────────>   │
+   │     ["AUTH", <signed-event>]              │
+   │                                           │
+   │  5. 驗證並回應                             │
+   │  <─────────────────────────────────────   │
+   │     ["OK", "<event-id>", true, ""]        │
+   │                                           │`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息格式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">AUTH 挑戰（中繼器發送）</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 中繼器在需要認證時發送
+["AUTH", "<challenge-string>"]
+
+// challenge-string 是中繼器產生的隨機字串
+// 用於防止重放攻擊
+// 範例
+["AUTH", "a1b2c3d4e5f6g7h8i9j0"]`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">認證事件（客戶端發送）</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 認證事件 (kind 22242)
+{
+  "kind": 22242,
+  "content": "",
+  "tags": [
+    ["relay", "wss://relay.example.com/"],
+    ["challenge", "a1b2c3d4e5f6g7h8i9j0"]
+  ],
+  "pubkey": "<客戶端公鑰>",
+  "created_at": 1704067200,
+  "id": "...",
+  "sig": "..."
+}
+
+// 發送格式
+["AUTH", <signed-event-json>]`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">認證結果</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 成功
+["OK", "<event-id>", true, ""]
+
+// 失敗
+["OK", "<event-id>", false, "auth-required: 需要認證"]
+["OK", "<event-id>", false, "restricted: 沒有存取權限"]
+
+// 常見的 CLOSED 訊息（請求被拒絕）
+["CLOSED", "<subscription-id>", "auth-required: 需要認證才能訂閱"]
+["CLOSED", "<subscription-id>", "restricted: 此內容需要付費訂閱"]`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">客戶端認證處理</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { finalizeEvent } from 'nostr-tools'
+
+class AuthenticatedRelay {
+  constructor(url, signer = window.nostr) {
+    this.url = url
+    this.signer = signer
+    this.ws = null
+    this.authenticated = false
+  }
+
+  connect() {
+    return new Promise((resolve, reject) => {
+      this.ws = new WebSocket(this.url)
+
+      this.ws.onopen = () => {
+        console.log('已連線到', this.url)
+      }
+
+      this.ws.onmessage = async (e) => {
+        const message = JSON.parse(e.data)
+        await this.handleMessage(message, resolve)
+      }
+
+      this.ws.onerror = reject
+    })
+  }
+
+  async handleMessage(message, onReady) {
+    const [type, ...rest] = message
+
+    switch (type) {
+      case 'AUTH':
+        // 收到認證挑戰
+        const challenge = rest[0]
+        await this.authenticate(challenge)
+        break
+
+      case 'OK':
+        const [eventId, success, msg] = rest
+        if (success && !this.authenticated) {
+          this.authenticated = true
+          console.log('認證成功')
+          onReady?.(this)
+        } else if (!success) {
+          console.error('操作失敗:', msg)
+        }
+        break
+
+      case 'CLOSED':
+        const [subId, reason] = rest
+        if (reason.startsWith('auth-required:')) {
+          console.log('需要認證，等待 AUTH 挑戰...')
+        }
+        break
+    }
+  }
+
+  async authenticate(challenge) {
+    console.log('收到認證挑戰:', challenge)
+
+    // 建立認證事件
+    const authEvent = {
+      kind: 22242,
+      content: '',
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['relay', this.url],
+        ['challenge', challenge]
+      ]
+    }
+
+    // 簽名
+    const signedEvent = await this.signer.signEvent(authEvent)
+
+    // 發送認證
+    this.ws.send(JSON.stringify(['AUTH', signedEvent]))
+    console.log('已發送認證事件')
+  }
+
+  // 其他方法...
+  publish(event) {
+    this.ws.send(JSON.stringify(['EVENT', event]))
+  }
+
+  subscribe(filters, handlers) {
+    const subId = Math.random().toString(36).slice(2)
+    this.ws.send(JSON.stringify(['REQ', subId, ...filters]))
+    return subId
+  }
+}
+
+// 使用
+const relay = new AuthenticatedRelay('wss://paid-relay.example.com')
+await relay.connect()
+// 自動處理認證挑戰`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">中繼器端驗證</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { verifyEvent } from 'nostr-tools'
+
+class RelayAuthenticator {
+  constructor(relayUrl) {
+    this.relayUrl = relayUrl
+    this.challenges = new Map()  // challenge -> { created, clientId }
+    this.authenticated = new Map()  // clientId -> pubkey
+  }
+
+  // 產生挑戰
+  createChallenge(clientId) {
+    const challenge = crypto.randomUUID()
+    this.challenges.set(challenge, {
+      created: Date.now(),
+      clientId
+    })
+
+    // 60 秒後過期
+    setTimeout(() => {
+      this.challenges.delete(challenge)
+    }, 60000)
+
+    return challenge
+  }
+
+  // 驗證認證事件
+  validateAuth(clientId, event) {
+    // 1. 驗證事件類型
+    if (event.kind !== 22242) {
+      return { valid: false, error: '錯誤的事件類型' }
+    }
+
+    // 2. 驗證簽名
+    if (!verifyEvent(event)) {
+      return { valid: false, error: '簽名驗證失敗' }
+    }
+
+    // 3. 驗證時間戳（10 分鐘內）
+    const now = Math.floor(Date.now() / 1000)
+    if (Math.abs(now - event.created_at) > 600) {
+      return { valid: false, error: '事件已過期' }
+    }
+
+    // 4. 驗證 relay 標籤
+    const relayTag = event.tags.find(t => t[0] === 'relay')
+    if (!relayTag || relayTag[1] !== this.relayUrl) {
+      return { valid: false, error: 'relay 標籤不匹配' }
+    }
+
+    // 5. 驗證 challenge 標籤
+    const challengeTag = event.tags.find(t => t[0] === 'challenge')
+    if (!challengeTag) {
+      return { valid: false, error: '缺少 challenge 標籤' }
+    }
+
+    const challengeData = this.challenges.get(challengeTag[1])
+    if (!challengeData) {
+      return { valid: false, error: '無效的 challenge' }
+    }
+
+    if (challengeData.clientId !== clientId) {
+      return { valid: false, error: 'challenge 不屬於此連線' }
+    }
+
+    // 6. 驗證通過
+    this.challenges.delete(challengeTag[1])
+    this.authenticated.set(clientId, event.pubkey)
+
+    return { valid: true, pubkey: event.pubkey }
+  }
+
+  // 檢查是否已認證
+  isAuthenticated(clientId) {
+    return this.authenticated.has(clientId)
+  }
+
+  // 取得已認證的公鑰
+  getPubkey(clientId) {
+    return this.authenticated.get(clientId)
+  }
+}
+
+// 使用範例（WebSocket 伺服器）
+wss.on('connection', (ws, req) => {
+  const clientId = req.headers['sec-websocket-key']
+
+  // 發送認證挑戰
+  const challenge = authenticator.createChallenge(clientId)
+  ws.send(JSON.stringify(['AUTH', challenge]))
+
+  ws.on('message', (data) => {
+    const message = JSON.parse(data)
+    const [type, ...rest] = message
+
+    if (type === 'AUTH') {
+      const event = rest[0]
+      const result = authenticator.validateAuth(clientId, event)
+
+      if (result.valid) {
+        ws.send(JSON.stringify(['OK', event.id, true, '']))
+      } else {
+        ws.send(JSON.stringify(['OK', event.id, false, result.error]))
+      }
+    }
+  })
+})`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">何時需要認證</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">連線時</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 私人中繼器</li>
+        <li>• 付費中繼器</li>
+        <li>• 企業內部中繼器</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">特定操作時</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 發布事件</li>
+        <li>• 訂閱私人內容</li>
+        <li>• 存取進階功能</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 NIP-11 整合</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    中繼器可以在 NIP-11 資訊中宣告認證需求：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// NIP-11 relay information
+{
+  "name": "私人中繼器",
+  "description": "僅限成員使用",
+  "supported_nips": [1, 11, 42],
+  "limitation": {
+    "auth_required": true,           // 需要認證
+    "payment_required": false,
+    "restricted_writes": true        // 只有認證用戶可以發布
+  }
+}
+
+// 客戶端可以先查詢 NIP-11 資訊
+// 了解中繼器是否需要認證
+async function checkAuthRequired(relayUrl) {
+  const httpUrl = relayUrl
+    .replace('wss://', 'https://')
+    .replace('ws://', 'http://')
+
+  const response = await fetch(httpUrl, {
+    headers: { 'Accept': 'application/nostr+json' }
+  })
+
+  const info = await response.json()
+  return info.limitation?.auth_required === true
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">安全特性</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 挑戰字串防止重放攻擊</li>
+        <li>• relay 標籤防止跨站認證</li>
+        <li>• 時間戳限制事件有效期</li>
+        <li>• 簽名驗證確保身份真實</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">實作建議</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 使用足夠長的隨機挑戰</li>
+        <li>• 設定挑戰過期時間</li>
+        <li>• 每個連線使用唯一挑戰</li>
+        <li>• 記錄認證失敗嘗試</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見錯誤處理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 處理認證相關錯誤
+function handleAuthError(message) {
+  const [type, id, success, reason] = message
+
+  if (!success && reason) {
+    if (reason.startsWith('auth-required:')) {
+      // 需要認證，等待 AUTH 挑戰
+      console.log('等待認證挑戰...')
+      return 'wait_auth'
+    }
+
+    if (reason.startsWith('restricted:')) {
+      // 沒有權限
+      console.error('存取被拒絕:', reason)
+      return 'no_permission'
+    }
+
+    if (reason.includes('invalid') || reason.includes('expired')) {
+      // 認證失敗
+      console.error('認證失敗:', reason)
+      return 'auth_failed'
+    }
+  }
+
+  return success ? 'success' : 'unknown_error'
+}
+
+// 自動重試認證
+async function connectWithAuth(relayUrl, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const relay = new AuthenticatedRelay(relayUrl)
+      await relay.connect()
+
+      if (relay.authenticated) {
+        return relay
+      }
+    } catch (e) {
+      console.error(\`連線嘗試 \${i + 1} 失敗:\`, e)
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)))
+    }
+  }
+
+  throw new Error('無法連線到中繼器')
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">需要認證的中繼器</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { name: '付費中繼器', desc: '需要訂閱才能使用', example: 'relay.nostr.wine' },
+        { name: '私人中繼器', desc: '僅限邀請成員', example: '企業/社群中繼器' },
+        { name: '垃圾訊息防護', desc: '認證後才能發布', example: '防濫用中繼器' },
+      ].map((type) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{type.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)] mb-2">{type.desc}</p>
+          <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400">
+            {type.example}
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      大多數 Nostr 客戶端會自動處理 NIP-42 認證流程。
+      用戶通常只需要在連接需要認證的中繼器時確認簽名請求。
+    </p>
+  </div>
+</ArticleLayout>
