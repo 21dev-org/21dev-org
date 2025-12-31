@@ -165,9 +165,10 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
       { href: '/tech/nostr/nip-65/', title: 'NIP-65 中繼器列表', type: 'tech' },
       { href: '/tech/nostr/nip-96/', title: 'NIP-96 檔案儲存', type: 'tech' },
+      { href: '/tech/nostr/nip-98/', title: 'NIP-98 HTTP 認證', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-50', 'NIP-65', 'NIP-96', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋', '檔案上傳', '媒體'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-50', 'NIP-65', 'NIP-96', 'NIP-98', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋', '檔案上傳', '媒體', 'HTTP認證', 'Bearer'],
   },
 ];
 

@@ -1,0 +1,497 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-98 HTTP 認證"
+  description="深入了解 Nostr 的 HTTP 認證標準，使用簽名事件作為 Bearer token 進行 API 認證。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-98 HTTP 認證' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-96 檔案儲存', href: '/tech/nostr/nip-96' }}
+  nextPage={{ title: '客戶端開發', href: '/tech/nostr/client-dev' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-98？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-98 定義了使用 Nostr 事件進行 HTTP API 認證的標準。客戶端簽署一個特殊的
+    kind 27235 事件，將其 Base64 編碼後作為 Bearer token 發送。這讓伺服器可以
+    驗證請求來自特定的 Nostr 身份，無需傳統的帳號密碼。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>主要用途：</strong>
+      NIP-98 被廣泛用於 NIP-96 檔案上傳、付費中繼器認證、
+      API 服務存取等需要身份驗證的場景。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">認證事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 27235,
+  "created_at": 1704067200,
+  "tags": [
+    ["u", "https://api.example.com/upload"],   // 目標 URL（必須）
+    ["method", "POST"],                         // HTTP 方法（必須）
+    ["payload", "sha256-hash-of-request-body"] // 請求體雜湊（可選）
+  ],
+  "content": "",
+  "pubkey": "<你的公鑰>",
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤說明</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">必須</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">u</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4">請求的完整 URL（包含路徑和查詢參數）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">method</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4">HTTP 方法（GET、POST、PUT、DELETE 等）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">payload</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">請求體的 SHA-256 雜湊（十六進位）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">認證流程</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`客戶端                                      伺服器
+   │                                           │
+   │  1. 建立 kind 27235 事件                   │
+   │     - 設定 u 標籤為目標 URL                │
+   │     - 設定 method 標籤                     │
+   │     - 可選：計算 payload 雜湊              │
+   │                                           │
+   │  2. 簽署事件                               │
+   │                                           │
+   │  3. Base64 編碼事件 JSON                   │
+   │                                           │
+   │  4. 發送 HTTP 請求                         │
+   │     Authorization: Nostr <base64>    ───> │
+   │                                           │
+   │                        5. 解碼並驗證事件   │
+   │                           - 驗證簽名       │
+   │                           - 檢查 URL 匹配  │
+   │                           - 檢查時間戳     │
+   │                           - 檢查 payload   │
+   │                                           │
+   │  <───────────────────────  6. 回應結果     │
+   │                                           │`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">建立認證標頭</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+async function createNip98AuthHeader(url, method, body = null) {
+  const event = {
+    kind: 27235,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['u', url],
+      ['method', method.toUpperCase()]
+    ],
+    content: ''
+  }
+
+  // 如果有請求體，計算 SHA-256 雜湊
+  if (body) {
+    const hash = await sha256(body)
+    event.tags.push(['payload', hash])
+  }
+
+  // 使用瀏覽器擴充簽名（NIP-07）
+  const signedEvent = await window.nostr.signEvent(event)
+
+  // Base64 編碼
+  const encoded = btoa(JSON.stringify(signedEvent))
+
+  return \`Nostr \${encoded}\`
+}
+
+// SHA-256 雜湊函數
+async function sha256(data) {
+  let buffer
+  if (typeof data === 'string') {
+    buffer = new TextEncoder().encode(data)
+  } else if (data instanceof FormData) {
+    // FormData 需要序列化
+    const text = await new Response(data).text()
+    buffer = new TextEncoder().encode(text)
+  } else {
+    buffer = data
+  }
+
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發送認證請求</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// GET 請求
+async function authenticatedGet(url) {
+  const authHeader = await createNip98AuthHeader(url, 'GET')
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': authHeader
+    }
+  })
+
+  return response.json()
+}
+
+// POST 請求（JSON body）
+async function authenticatedPost(url, data) {
+  const body = JSON.stringify(data)
+  const authHeader = await createNip98AuthHeader(url, 'POST', body)
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': authHeader,
+      'Content-Type': 'application/json'
+    },
+    body: body
+  })
+
+  return response.json()
+}
+
+// POST 請求（FormData，用於檔案上傳）
+async function authenticatedUpload(url, formData) {
+  // 注意：對於 multipart/form-data，payload 雜湊計算較複雜
+  // 部分伺服器可能不要求 payload 標籤
+  const authHeader = await createNip98AuthHeader(url, 'POST')
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': authHeader
+      // 不要手動設定 Content-Type，讓瀏覽器自動處理
+    },
+    body: formData
+  })
+
+  return response.json()
+}
+
+// 使用範例
+const userData = await authenticatedGet('https://api.example.com/me')
+console.log('用戶資料:', userData)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">伺服器端驗證</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { verifyEvent } from 'nostr-tools'
+
+function validateNip98Auth(authHeader, expectedUrl, expectedMethod, bodyHash = null) {
+  // 1. 解析標頭
+  if (!authHeader?.startsWith('Nostr ')) {
+    return { valid: false, error: '無效的 Authorization 標頭格式' }
+  }
+
+  const base64Event = authHeader.slice(6)  // 移除 "Nostr " 前綴
+
+  // 2. 解碼事件
+  let event
+  try {
+    event = JSON.parse(atob(base64Event))
+  } catch (e) {
+    return { valid: false, error: '無效的 Base64 編碼' }
+  }
+
+  // 3. 驗證事件類型
+  if (event.kind !== 27235) {
+    return { valid: false, error: '錯誤的事件類型' }
+  }
+
+  // 4. 驗證簽名
+  if (!verifyEvent(event)) {
+    return { valid: false, error: '簽名驗證失敗' }
+  }
+
+  // 5. 驗證時間戳（60 秒內）
+  const now = Math.floor(Date.now() / 1000)
+  if (Math.abs(now - event.created_at) > 60) {
+    return { valid: false, error: '事件已過期' }
+  }
+
+  // 6. 驗證 URL
+  const urlTag = event.tags.find(t => t[0] === 'u')
+  if (!urlTag || urlTag[1] !== expectedUrl) {
+    return { valid: false, error: 'URL 不匹配' }
+  }
+
+  // 7. 驗證方法
+  const methodTag = event.tags.find(t => t[0] === 'method')
+  if (!methodTag || methodTag[1].toUpperCase() !== expectedMethod.toUpperCase()) {
+    return { valid: false, error: 'HTTP 方法不匹配' }
+  }
+
+  // 8. 驗證 payload（如果提供）
+  if (bodyHash) {
+    const payloadTag = event.tags.find(t => t[0] === 'payload')
+    if (payloadTag && payloadTag[1] !== bodyHash) {
+      return { valid: false, error: 'Payload 雜湊不匹配' }
+    }
+  }
+
+  return {
+    valid: true,
+    pubkey: event.pubkey,
+    event: event
+  }
+}
+
+// Express.js 中間件範例
+function nip98Middleware(req, res, next) {
+  const authHeader = req.headers.authorization
+  const fullUrl = \`\${req.protocol}://\${req.get('host')}\${req.originalUrl}\`
+
+  const result = validateNip98Auth(
+    authHeader,
+    fullUrl,
+    req.method
+  )
+
+  if (!result.valid) {
+    return res.status(401).json({ error: result.error })
+  }
+
+  req.nostrPubkey = result.pubkey
+  next()
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">安全特性</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 簽名確保身份真實性</li>
+        <li>• URL 綁定防止重放到其他端點</li>
+        <li>• 時間戳限制防止重放攻擊</li>
+        <li>• Payload 雜湊防止篡改</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 時間戳視窗不應過長（建議 60 秒）</li>
+        <li>• URL 必須完全匹配（包含查詢參數）</li>
+        <li>• 應該使用 HTTPS 防止中間人攻擊</li>
+        <li>• 考慮實作速率限制</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間戳驗證</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    時間戳驗證是防止重放攻擊的關鍵：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 推薦的時間視窗配置
+const TIME_WINDOW_SECONDS = 60  // 60 秒
+
+function isTimestampValid(eventCreatedAt) {
+  const now = Math.floor(Date.now() / 1000)
+  const diff = Math.abs(now - eventCreatedAt)
+
+  if (diff > TIME_WINDOW_SECONDS) {
+    return false
+  }
+
+  return true
+}
+
+// 為什麼是 60 秒？
+// - 太短：時鐘不同步會導致失敗
+// - 太長：重放攻擊視窗增大
+// - 60 秒是合理的平衡點
+
+// 進階：結合 nonce 防止精確重放
+// 伺服器可以儲存最近看到的事件 ID
+// 拒絕重複的事件 ID`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與其他認證方式比較</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-98</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">JWT</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">API Key</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">身份來源</td>
+          <td class="py-3 px-4">Nostr 密鑰對</td>
+          <td class="py-3 px-4">伺服器簽發</td>
+          <td class="py-3 px-4">伺服器生成</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">去中心化</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4 text-red-600">否</td>
+          <td class="py-3 px-4 text-red-600">否</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">重放防護</td>
+          <td class="py-3 px-4">時間戳 + URL</td>
+          <td class="py-3 px-4">過期時間</td>
+          <td class="py-3 px-4">無</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">跨服務</td>
+          <td class="py-3 px-4 text-green-600">同一身份</td>
+          <td class="py-3 px-4 text-yellow-600">需重新登入</td>
+          <td class="py-3 px-4 text-red-600">各服務獨立</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見使用場景</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { title: 'NIP-96 檔案上傳', desc: '驗證上傳者身份' },
+        { title: '付費中繼器', desc: '訂閱驗證' },
+        { title: 'API 服務', desc: '用戶認證' },
+        { title: '內容管理', desc: '作者權限驗證' },
+        { title: 'Webhook', desc: '來源驗證' },
+        { title: '閃電網路服務', desc: 'LNURL-auth 替代' },
+      ].map((item) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{item.title}</h4>
+          <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">完整範例：認證類別</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`class Nip98Client {
+  constructor(signer = window.nostr) {
+    this.signer = signer
+  }
+
+  async createAuthEvent(url, method, body = null) {
+    const event = {
+      kind: 27235,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['u', url],
+        ['method', method.toUpperCase()]
+      ],
+      content: ''
+    }
+
+    if (body) {
+      const hash = await this.sha256(body)
+      event.tags.push(['payload', hash])
+    }
+
+    return await this.signer.signEvent(event)
+  }
+
+  async sha256(data) {
+    const buffer = typeof data === 'string'
+      ? new TextEncoder().encode(data)
+      : data
+    const hash = await crypto.subtle.digest('SHA-256', buffer)
+    return Array.from(new Uint8Array(hash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+
+  async fetch(url, options = {}) {
+    const method = options.method || 'GET'
+    const body = options.body
+
+    const authEvent = await this.createAuthEvent(url, method, body)
+    const authHeader = \`Nostr \${btoa(JSON.stringify(authEvent))}\`
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': authHeader
+      }
+    })
+  }
+
+  // 便捷方法
+  get(url) {
+    return this.fetch(url)
+  }
+
+  post(url, data) {
+    return this.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+  }
+
+  delete(url) {
+    return this.fetch(url, { method: 'DELETE' })
+  }
+}
+
+// 使用
+const client = new Nip98Client()
+const response = await client.get('https://api.example.com/profile')
+const data = await response.json()`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      NIP-98 認證讓你可以用同一個 Nostr 身份登入多個服務，
+      無需為每個服務建立帳號。這是 Nostr 生態系統「一個身份，處處使用」理念的體現。
+    </p>
+  </div>
+</ArticleLayout>
