@@ -4,29 +4,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
 <ArticleLayout
   title="NIP-23 長文內容"
-  description="深入了解 Nostr 的長文內容規範，Markdown 文章、部落格和可替換事件。"
+  description="深入了解 Nostr 的長文內容標準，使用 kind 30023 發布 Markdown 格式的部落格文章。"
   breadcrumbs={[
     { label: '技術', href: '/tech/' },
     { label: 'Nostr', href: '/tech/nostr/' },
     { label: 'NIP-23 長文內容' },
   ]}
-  difficulty="beginner"
+  difficulty="intermediate"
   readingTime="10 分鐘"
   prevPage={{ title: 'NIP-19 bech32 編碼', href: '/tech/nostr/nip-19' }}
-  nextPage={{ title: 'NIP-05 域名驗證', href: '/tech/nostr/nip-05' }}
+  nextPage={{ title: 'NIP-25 反應', href: '/tech/nostr/nip-25' }}
 >
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-23？</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    NIP-23 定義了 Nostr 中的長文內容格式，適用於部落格文章、教程、新聞等長篇內容。
-    與普通貼文（kind 1）不同，長文使用 kind 30023，支持 Markdown 格式、
-    可被更新替換，並包含豐富的元數據。
+    NIP-23 定義了在 Nostr 上發布長文內容的標準。與普通貼文（kind 1）不同，
+    長文內容使用 kind 30023，支援 Markdown 格式、標題、摘要、封面圖片等中繼資料，
+    適合發布部落格文章、教學文件和深度內容。
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
-    <p class="text-sm text-purple-700 dark:text-purple-400">
-      <strong>特點：</strong>
-      Kind 30023 是「可替換事件」，同一作者使用相同 d 標籤發布的新事件會替換舊事件，
-      讓作者可以更新和修訂文章。
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>可替換事件：</strong>
+      Kind 30023 是「可參數化替換事件」（Parameterized Replaceable Event），
+      同一作者的相同 d-tag 文章會被新版本替換，實現文章更新功能。
     </p>
   </div>
 
@@ -35,18 +35,18 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
     <pre class="text-[var(--text-secondary)]"><code>{`{
   "kind": 30023,
-  "created_at": 1234567890,
-  "content": "# 文章標題\\n\\n這是一篇 Markdown 格式的長文...",
+  "content": "# 文章標題\\n\\n這是文章內容，支援 **Markdown** 格式...",
   "tags": [
     ["d", "my-article-slug"],           // 唯一識別符（必須）
     ["title", "我的文章標題"],           // 標題
-    ["summary", "文章摘要..."],          // 摘要
-    ["image", "https://..."],           // 封面圖片
-    ["published_at", "1234567890"],     // 首次發布時間
-    ["t", "nostr"],                      // 主題標籤
-    ["t", "bitcoin"]
+    ["summary", "這是文章摘要..."],      // 摘要
+    ["image", "https://example.com/cover.jpg"],  // 封面圖片
+    ["published_at", "1704067200"],     // 首次發布時間
+    ["t", "bitcoin"],                   // 標籤（可多個）
+    ["t", "nostr"]
   ],
-  "pubkey": "...",
+  "pubkey": "<作者公鑰>",
+  "created_at": 1704153600,             // 最後更新時間
   "id": "...",
   "sig": "..."
 }`}</code></pre>
@@ -66,177 +66,334 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       <tbody class="text-[var(--text-secondary)]">
         <tr class="border-b border-[var(--border-default)]">
           <td class="py-3 px-4 font-mono">d</td>
-          <td class="py-3 px-4"><span class="text-green-500">是</span></td>
-          <td class="py-3 px-4">唯一識別符，通常是 URL slug</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4">唯一識別符，通常是 URL 友善的 slug</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
           <td class="py-3 px-4 font-mono">title</td>
-          <td class="py-3 px-4"><span class="text-yellow-500">推薦</span></td>
-          <td class="py-3 px-4">文章標題</td>
+          <td class="py-3 px-4 text-yellow-600">建議</td>
+          <td class="py-3 px-4">文章標題，用於列表顯示</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
           <td class="py-3 px-4 font-mono">summary</td>
-          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
-          <td class="py-3 px-4">文章摘要/描述</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">文章摘要，用於預覽</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
           <td class="py-3 px-4 font-mono">image</td>
-          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
           <td class="py-3 px-4">封面圖片 URL</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
           <td class="py-3 px-4 font-mono">published_at</td>
-          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
-          <td class="py-3 px-4">首次發布時間戳</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">首次發布的 Unix 時間戳</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
           <td class="py-3 px-4 font-mono">t</td>
-          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
-          <td class="py-3 px-4">主題標籤（可多個）</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">主題標籤，可以有多個</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">可替換事件機制</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">草稿 vs 發布</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    Kind 30023 是「參數化可替換事件」，遵循以下規則：
+    NIP-23 區分草稿和已發布的文章：
   </p>
 
   <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code># 事件識別
-唯一鍵 = kind:pubkey:d-tag
-
-# 範例
-30023:npub1abc...:my-article-slug
-
-# 替換規則
-- 相同 kind + pubkey + d 標籤 = 同一篇文章
-- 新事件的 created_at 較新 → 替換舊事件
-- 中繼器只保留最新版本</code></pre>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Markdown 內容</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    content 欄位使用標準 Markdown 格式：
-  </p>
-
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code># 一級標題
-
-這是段落文字，支持 **粗體** 和 *斜體*。
-
-## 二級標題
-
-- 列表項目 1
-- 列表項目 2
-
-\`\`\`javascript
-// 程式碼區塊
-console.log('Hello, Nostr!')
-\`\`\`
-
-![圖片描述](https://example.com/image.png)
-
-[連結文字](https://example.com)</code></pre>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">引用長文 (naddr)</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    使用 NIP-19 的 naddr 格式引用長文：
-  </p>
-
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`# naddr 包含的資訊
-- kind: 30023
-- pubkey: 作者公鑰
-- d: 文章識別符
-- relay: 推薦的中繼器
-
-# 範例
-naddr1qvzqqqr4gupzp...
-
-# 解碼後
+    <pre class="text-[var(--text-secondary)]"><code>{`// 草稿（kind 30024）
 {
-  kind: 30023,
-  pubkey: "npub1...",
-  identifier: "my-article-slug",
-  relays: ["wss://relay.damus.io"]
+  "kind": 30024,  // 草稿使用不同的 kind
+  "content": "# 草稿標題\\n\\n還在編輯中...",
+  "tags": [
+    ["d", "draft-article-slug"],
+    ["title", "草稿標題"]
+  ]
+}
+
+// 發布的文章（kind 30023）
+{
+  "kind": 30023,
+  "content": "# 正式標題\\n\\n完成的文章內容...",
+  "tags": [
+    ["d", "article-slug"],
+    ["title", "正式標題"],
+    ["published_at", "1704067200"]
+  ]
 }`}</code></pre>
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢長文</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發布文章</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+function createArticle({
+  title,
+  slug,
+  content,
+  summary,
+  image,
+  tags = []
+}) {
+  const now = Math.floor(Date.now() / 1000)
+
+  const event = {
+    kind: 30023,
+    content: content,  // Markdown 格式
+    created_at: now,
+    tags: [
+      ['d', slug],
+      ['title', title],
+      ['published_at', now.toString()]
+    ]
+  }
+
+  // 添加可選標籤
+  if (summary) {
+    event.tags.push(['summary', summary])
+  }
+  if (image) {
+    event.tags.push(['image', image])
+  }
+  for (const tag of tags) {
+    event.tags.push(['t', tag])
+  }
+
+  return event
+}
+
+// 使用
+const article = createArticle({
+  title: 'Nostr 入門指南',
+  slug: 'nostr-getting-started',
+  content: \`# Nostr 入門指南
+
+## 什麼是 Nostr？
+
+Nostr 是一個去中心化的社交協議...
+
+## 開始使用
+
+1. 首先，你需要一對密鑰...
+2. 然後選擇一個客戶端...
+\`,
+  summary: '學習如何開始使用 Nostr 去中心化社交網路',
+  image: 'https://example.com/nostr-cover.jpg',
+  tags: ['nostr', 'tutorial', 'beginner']
+})
+
+// 簽名並發布
+const signedEvent = await window.nostr.signEvent(article)
+await relay.publish(signedEvent)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">更新文章</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 更新文章：使用相同的 d-tag 發布新版本
+function updateArticle(existingArticle, newContent, newTitle) {
+  const now = Math.floor(Date.now() / 1000)
+
+  // 保留原始發布時間
+  const publishedAt = existingArticle.tags
+    .find(t => t[0] === 'published_at')?.[1] || now.toString()
+
+  const dTag = existingArticle.tags.find(t => t[0] === 'd')?.[1]
+
+  return {
+    kind: 30023,
+    content: newContent,
+    created_at: now,  // 更新時間
+    tags: [
+      ['d', dTag],    // 相同的 d-tag = 替換舊版本
+      ['title', newTitle || existingArticle.tags.find(t => t[0] === 'title')?.[1]],
+      ['published_at', publishedAt],  // 保留原始發布時間
+      // ... 其他標籤
+    ]
+  }
+}
+
+// 使用
+const updatedArticle = updateArticle(
+  existingArticle,
+  '# 更新後的內容\\n\\n這是修改過的版本...',
+  '更新後的標題'
+)
+
+const signed = await window.nostr.signEvent(updatedArticle)
+await relay.publish(signed)
+// 中繼器會用新版本替換舊版本`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">查詢文章</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢某作者的所有文章
+function getArticlesByAuthor(relay, authorPubkey) {
+  return new Promise((resolve) => {
+    const articles = []
+
+    const sub = relay.subscribe([{
+      kinds: [30023],
+      authors: [authorPubkey],
+      limit: 50
+    }])
+
+    sub.on('event', (event) => {
+      articles.push(parseArticle(event))
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      // 按發布時間排序
+      articles.sort((a, b) => b.publishedAt - a.publishedAt)
+      resolve(articles)
+    })
+  })
+}
+
+// 查詢特定文章（by naddr）
+function getArticleByAddress(relay, pubkey, dTag) {
+  return new Promise((resolve) => {
+    const sub = relay.subscribe([{
+      kinds: [30023],
+      authors: [pubkey],
+      '#d': [dTag]
+    }])
+
+    sub.on('event', (event) => {
+      sub.close()
+      resolve(parseArticle(event))
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(null)
+    })
+  })
+}
+
+// 解析文章事件
+function parseArticle(event) {
+  const getTag = (name) => event.tags.find(t => t[0] === name)?.[1]
+  const getTags = (name) => event.tags.filter(t => t[0] === name).map(t => t[1])
+
+  return {
+    id: event.id,
+    pubkey: event.pubkey,
+    slug: getTag('d'),
+    title: getTag('title') || '無標題',
+    summary: getTag('summary'),
+    image: getTag('image'),
+    content: event.content,
+    tags: getTags('t'),
+    publishedAt: parseInt(getTag('published_at') || event.created_at),
+    updatedAt: event.created_at
+  }
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">搜尋文章</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 按標籤搜尋文章
+function getArticlesByTag(relay, tag, limit = 20) {
+  return new Promise((resolve) => {
+    const articles = []
+
+    const sub = relay.subscribe([{
+      kinds: [30023],
+      '#t': [tag],
+      limit: limit
+    }])
+
+    sub.on('event', (event) => {
+      articles.push(parseArticle(event))
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(articles)
+    })
+  })
+}
+
+// 使用 NIP-50 搜尋（如果中繼器支援）
+function searchArticles(relay, query, limit = 20) {
+  return new Promise((resolve) => {
+    const articles = []
+
+    const sub = relay.subscribe([{
+      kinds: [30023],
+      search: query,
+      limit: limit
+    }])
+
+    sub.on('event', (event) => {
+      articles.push(parseArticle(event))
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(articles)
+    })
+  })
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Markdown 支援</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-23 的 content 欄位使用 Markdown 格式，常見語法：
+  </p>
 
   <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`# 查詢特定作者的所有長文
-["REQ", "articles", {
-  "kinds": [30023],
-  "authors": ["<pubkey>"]
-}]
+    <pre class="text-[var(--text-secondary)]"><code>{`# 一級標題
+## 二級標題
+### 三級標題
 
-# 查詢特定文章（使用 d 標籤）
-["REQ", "article", {
-  "kinds": [30023],
-  "authors": ["<pubkey>"],
-  "#d": ["my-article-slug"]
-}]
+**粗體** 和 *斜體*
 
-# 查詢特定主題的文章
-["REQ", "topic", {
-  "kinds": [30023],
-  "#t": ["bitcoin"]
-}]`}</code></pre>
+- 無序列表項目
+- 另一個項目
+
+1. 有序列表
+2. 第二項
+
+[連結文字](https://example.com)
+
+![圖片說明](https://example.com/image.jpg)
+
+\\\`行內代碼\\\`
+
+\\\`\\\`\\\`javascript
+// 代碼區塊
+function hello() {
+  console.log('Hello, Nostr!')
+}
+\\\`\\\`\\\`
+
+> 引用區塊
+
+---
+
+| 表格 | 標題 |
+|------|------|
+| 內容 | 內容 |`}</code></pre>
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Kind 1 的比較</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-23 專用客戶端</h2>
 
-  <div class="not-prose mb-8">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 1（短文）</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 30023（長文）</th>
-        </tr>
-      </thead>
-      <tbody class="text-[var(--text-secondary)]">
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">長度</td>
-          <td class="py-3 px-4">短（類似推文）</td>
-          <td class="py-3 px-4">長（文章、教程）</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">格式</td>
-          <td class="py-3 px-4">純文字</td>
-          <td class="py-3 px-4">Markdown</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">可編輯</td>
-          <td class="py-3 px-4">否（只能刪除重發）</td>
-          <td class="py-3 px-4">是（發布新版本）</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">元數據</td>
-          <td class="py-3 px-4">基本標籤</td>
-          <td class="py-3 px-4">標題、摘要、封面</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">引用格式</td>
-          <td class="py-3 px-4">note / nevent</td>
-          <td class="py-3 px-4">naddr</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支持的客戶端</h2>
-
-  <div class="grid md:grid-cols-3 gap-4 mb-8">
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
     {
       [
-        { name: 'Habla', url: 'https://habla.news', desc: '專注長文的閱讀平台' },
-        { name: 'Yakihonne', url: 'https://yakihonne.com', desc: '部落格和長文平台' },
-        { name: 'Highlighter', url: 'https://highlighter.com', desc: '長文寫作工具' },
+        { name: 'Habla.news', desc: '專業的長文內容平台', url: 'https://habla.news' },
+        { name: 'Yakihonne', desc: '文章與 Curations', url: 'https://yakihonne.com' },
+        { name: 'Blogstack', desc: '部落格發布平台', url: 'https://blogstack.io' },
+        { name: 'Highlighter', desc: '閱讀與標記工具', url: 'https://highlighter.com' },
+        { name: 'Flycat', desc: '支援長文的客戶端', url: 'https://flycat.club' },
+        { name: 'Nostr.build', desc: '媒體與內容託管', url: 'https://nostr.build' },
       ].map((client) => (
         <a
           href={client.url}
@@ -251,27 +408,108 @@ naddr1qvzqqqr4gupzp...
     }
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">草稿功能</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 naddr 分享文章</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    Kind 30024 用於儲存草稿，結構與 30023 相同但不公開：
+    由於 kind 30023 是可替換事件，應該使用 naddr 而非 note 來分享：
   </p>
 
   <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`{
-  "kind": 30024,  // 草稿
-  "tags": [
-    ["d", "draft-my-article"],
-    ["title", "進行中的文章"]
-  ],
-  "content": "# 草稿內容..."
-}`}</code></pre>
+    <pre class="text-[var(--text-secondary)]"><code>{`import { nip19 } from 'nostr-tools'
+
+// 建立文章的 naddr
+const naddr = nip19.naddrEncode({
+  kind: 30023,
+  pubkey: authorPubkey,
+  identifier: 'article-slug',  // d-tag
+  relays: ['wss://relay.example.com']
+})
+
+// 結果類似：naddr1qqxnzdesxqmn...
+// 可以用來分享和引用文章
+
+// 解碼 naddr
+const decoded = nip19.decode(naddr)
+// {
+//   type: 'naddr',
+//   data: {
+//     kind: 30023,
+//     pubkey: '...',
+//     identifier: 'article-slug',
+//     relays: [...]
+//   }
+// }`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 kind 1 的比較</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 1（貼文）</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 30023（長文）</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">用途</td>
+          <td class="py-3 px-4">短訊息、社交貼文</td>
+          <td class="py-3 px-4">部落格文章、長文</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">可替換</td>
+          <td class="py-3 px-4">否（每則獨立）</td>
+          <td class="py-3 px-4">是（同 d-tag 替換）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">格式</td>
+          <td class="py-3 px-4">純文字</td>
+          <td class="py-3 px-4">Markdown</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">中繼資料</td>
+          <td class="py-3 px-4">無</td>
+          <td class="py-3 px-4">標題、摘要、封面等</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">分享方式</td>
+          <td class="py-3 px-4">note / nevent</td>
+          <td class="py-3 px-4">naddr</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">建議做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 使用有意義的 slug 作為 d-tag</li>
+        <li>• 總是提供 title 和 summary</li>
+        <li>• 保留原始 published_at 時間</li>
+        <li>• 使用相關的 t 標籤便於發現</li>
+        <li>• 發布到多個中繼器確保可用性</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">避免做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 不要使用隨機的 d-tag</li>
+        <li>• 不要忽略 Markdown 格式規範</li>
+        <li>• 不要在更新時改變 d-tag</li>
+        <li>• 不要使用過大的圖片 URL</li>
+      </ul>
+    </div>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
-      <strong>最佳實踐：</strong>
-      使用有意義的 d 標籤（如 URL slug），這讓文章更容易被引用和分享。
-      保持 published_at 標籤不變，只更新 created_at，以保留原始發布日期。
+      <strong>提示：</strong>
+      許多 NIP-23 客戶端會自動處理 Markdown 渲染、目錄生成和閱讀時間估算。
+      專注於內容創作，讓客戶端處理呈現細節。
     </p>
   </div>
 </ArticleLayout>
