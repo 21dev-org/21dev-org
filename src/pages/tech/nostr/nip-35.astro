@@ -1,0 +1,453 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-35: Torrents"
+  description="在 Nostr 上分享和發現 BitTorrent 種子"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-35 定義了在 Nostr 上分享 BitTorrent 種子（Torrents）的標準格式。
+    使用者可以發布種子資訊，其他人可以搜尋、訂閱和下載，
+    實現去中心化的種子分享和發現。
+  </p>
+
+  <h2 id="event-kind">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>2003</code></td>
+        <td>種子 (Torrent)</td>
+        <td>一般</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="event-structure">事件結構</h2>
+
+  <h3>Content</h3>
+  <p>
+    事件的 <code>content</code> 欄位包含種子的描述文字，可以使用 Markdown 格式。
+  </p>
+
+  <h3>必要標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>title</code></td>
+        <td>種子標題</td>
+        <td><code>["title", "Ubuntu 24.04 LTS"]</code></td>
+      </tr>
+      <tr>
+        <td><code>x</code></td>
+        <td>Info Hash (v1)</td>
+        <td><code>["x", "abc123..."]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>可選標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>file</code></td>
+        <td>檔案資訊（名稱、大小）</td>
+        <td><code>["file", "ubuntu.iso", "4700000000"]</code></td>
+      </tr>
+      <tr>
+        <td><code>tracker</code></td>
+        <td>Tracker URL</td>
+        <td><code>["tracker", "udp://tracker.example.com:6969"]</code></td>
+      </tr>
+      <tr>
+        <td><code>i</code></td>
+        <td>Info Hash (v2)</td>
+        <td><code>["i", "btih:abc123..."]</code></td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>主題標籤</td>
+        <td><code>["t", "linux"]</code></td>
+      </tr>
+      <tr>
+        <td><code>image</code></td>
+        <td>預覽圖片</td>
+        <td><code>["image", "https://..."]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="magnet-link">Magnet 連結</h2>
+
+  <p>
+    可以從事件的標籤中組合成 Magnet URI：
+  </p>
+
+  <pre><code class="language-text">magnet:?xt=urn:btih:&lt;info-hash&gt;&amp;dn=&lt;title&gt;&amp;tr=&lt;tracker&gt;</code></pre>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>開源軟體種子</h3>
+  <pre><code class="language-json">{
+  "kind": 2003,
+  "content": "Ubuntu 24.04 LTS (Noble Numbat) 官方 ISO 映像檔。\n\n## 特點\n- 長期支援版本（5年支援）\n- GNOME 46 桌面環境\n- Linux 內核 6.8\n\n請從官方來源驗證 SHA256 校驗碼。",
+  "tags": [
+    ["title", "Ubuntu 24.04 LTS Desktop (64-bit)"],
+    ["x", "abc123def456789..."],
+    ["file", "ubuntu-24.04-desktop-amd64.iso", "5748072448"],
+    ["tracker", "udp://tracker.ubuntu.com:6969"],
+    ["tracker", "udp://tracker.opentrackr.org:1337"],
+    ["t", "linux"],
+    ["t", "ubuntu"],
+    ["t", "開源"],
+    ["t", "作業系統"],
+    ["image", "https://ubuntu.com/wp-content/uploads/ubuntu-logo.png"]
+  ]
+}</code></pre>
+
+  <h3>多檔案種子</h3>
+  <pre><code class="language-json">{
+  "kind": 2003,
+  "content": "Bitcoin 核心客戶端 v27.0 所有平台版本。\n\n包含 Windows、macOS、Linux 版本及簽名檔。",
+  "tags": [
+    ["title", "Bitcoin Core v27.0"],
+    ["x", "xyz789..."],
+    ["file", "bitcoin-27.0-win64.zip", "45000000"],
+    ["file", "bitcoin-27.0-x86_64-linux-gnu.tar.gz", "42000000"],
+    ["file", "bitcoin-27.0-osx64.tar.gz", "38000000"],
+    ["file", "SHA256SUMS.asc", "5000"],
+    ["tracker", "udp://tracker.opentrackr.org:1337"],
+    ["t", "bitcoin"],
+    ["t", "軟體"],
+    ["t", "區塊鏈"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>定義類型</h3>
+  <pre><code class="language-typescript">interface TorrentFile {
+  name: string;
+  size: number;
+}
+
+interface Torrent {
+  title: string;
+  description: string;
+  infoHash: string;
+  infoHashV2?: string;
+  files: TorrentFile[];
+  trackers: string[];
+  tags?: string[];
+  image?: string;
+}</code></pre>
+
+  <h3>建立種子事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+function createTorrentEvent(
+  torrent: Torrent,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['title', torrent.title],
+    ['x', torrent.infoHash],
+  ];
+
+  if (torrent.infoHashV2) {
+    tags.push(['i', `btih:${torrent.infoHashV2}`]);
+  }
+
+  torrent.files.forEach((file) => {
+    tags.push(['file', file.name, file.size.toString()]);
+  });
+
+  torrent.trackers.forEach((tracker) => {
+    tags.push(['tracker', tracker]);
+  });
+
+  torrent.tags?.forEach((tag) => {
+    tags.push(['t', tag]);
+  });
+
+  if (torrent.image) {
+    tags.push(['image', torrent.image]);
+  }
+
+  const event = {
+    kind: 2003,
+    content: torrent.description,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const torrentEvent = createTorrentEvent(
+  {
+    title: 'Debian 12 Bookworm',
+    description: 'Debian 12 官方 ISO，穩定版本。',
+    infoHash: 'abc123def456...',
+    files: [
+      { name: 'debian-12-amd64-netinst.iso', size: 600000000 },
+    ],
+    trackers: [
+      'udp://tracker.debian.org:6969',
+      'udp://tracker.opentrackr.org:1337',
+    ],
+    tags: ['linux', 'debian', '開源'],
+  },
+  secretKey
+);</code></pre>
+
+  <h3>解析種子事件</h3>
+  <pre><code class="language-typescript">interface ParsedTorrent {
+  title: string;
+  description: string;
+  infoHash: string;
+  infoHashV2?: string;
+  files: TorrentFile[];
+  trackers: string[];
+  tags: string[];
+  image?: string;
+  magnetUri: string;
+  totalSize: number;
+}
+
+function parseTorrentEvent(event: any): ParsedTorrent | null {
+  if (event.kind !== 2003) return null;
+
+  const getTag = (name: string) => {
+    const tag = event.tags.find((t: string[]) => t[0] === name);
+    return tag?.[1];
+  };
+
+  const getAllTags = (name: string) => {
+    return event.tags
+      .filter((t: string[]) => t[0] === name)
+      .map((t: string[]) => t.slice(1));
+  };
+
+  const title = getTag('title');
+  const infoHash = getTag('x');
+
+  if (!title || !infoHash) return null;
+
+  const files = getAllTags('file').map((f: string[]) => ({
+    name: f[0],
+    size: parseInt(f[1] || '0'),
+  }));
+
+  const trackers = getAllTags('tracker').map((t: string[]) => t[0]);
+  const tags = getAllTags('t').map((t: string[]) => t[0]);
+
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+
+  // 建立 Magnet URI
+  let magnetUri = `magnet:?xt=urn:btih:${infoHash}`;
+  magnetUri += `&dn=${encodeURIComponent(title)}`;
+  trackers.forEach((tracker) => {
+    magnetUri += `&tr=${encodeURIComponent(tracker)}`;
+  });
+
+  const iTag = event.tags.find((t: string[]) => t[0] === 'i');
+  const infoHashV2 = iTag?.[1]?.replace('btih:', '');
+
+  return {
+    title,
+    description: event.content,
+    infoHash,
+    infoHashV2,
+    files,
+    trackers,
+    tags,
+    image: getTag('image'),
+    magnetUri,
+    totalSize,
+  };
+}
+
+// 使用範例
+const torrent = parseTorrentEvent(event);
+if (torrent) {
+  console.log(`標題: ${torrent.title}`);
+  console.log(`大小: ${formatBytes(torrent.totalSize)}`);
+  console.log(`Magnet: ${torrent.magnetUri}`);
+}</code></pre>
+
+  <h3>搜尋種子</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+interface TorrentSearchOptions {
+  tags?: string[];
+  author?: string;
+  limit?: number;
+}
+
+async function searchTorrents(
+  pool: SimplePool,
+  relays: string[],
+  options: TorrentSearchOptions = {}
+): Promise&lt;ParsedTorrent[]&gt; {
+  const filter: any = {
+    kinds: [2003],
+    limit: options.limit || 50,
+  };
+
+  if (options.author) {
+    filter.authors = [options.author];
+  }
+
+  if (options.tags && options.tags.length > 0) {
+    filter['#t'] = options.tags;
+  }
+
+  const events = await pool.querySync(relays, filter);
+
+  return events
+    .map(parseTorrentEvent)
+    .filter((t): t is ParsedTorrent => t !== null)
+    .sort((a, b) => b.totalSize - a.totalSize);
+}
+
+// 使用範例
+const torrents = await searchTorrents(pool, relays, {
+  tags: ['linux', '開源'],
+  limit: 20,
+});</code></pre>
+
+  <h3>格式化工具</h3>
+  <pre><code class="language-typescript">function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${units[i]}`;
+}
+
+function copyMagnetLink(magnetUri: string): void {
+  navigator.clipboard.writeText(magnetUri);
+}</code></pre>
+
+  <h3>React 元件</h3>
+  <pre><code class="language-typescript">interface TorrentCardProps {
+  torrent: ParsedTorrent;
+}
+
+function TorrentCard({ torrent }: TorrentCardProps) {
+  const handleCopyMagnet = () => {
+    navigator.clipboard.writeText(torrent.magnetUri);
+    // 顯示提示
+  };
+
+  return (
+    &lt;div className="torrent-card"&gt;
+      {torrent.image && (
+        &lt;img src={torrent.image} alt={torrent.title} className="preview" /&gt;
+      )}
+      &lt;div className="info"&gt;
+        &lt;h3&gt;{torrent.title}&lt;/h3&gt;
+        &lt;p className="description"&gt;{torrent.description}&lt;/p&gt;
+        &lt;div className="meta"&gt;
+          &lt;span className="size"&gt;{formatBytes(torrent.totalSize)}&lt;/span&gt;
+          &lt;span className="files"&gt;{torrent.files.length} 個檔案&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div className="tags"&gt;
+          {torrent.tags.map((tag) => (
+            &lt;span key={tag} className="tag"&gt;#{tag}&lt;/span&gt;
+          ))}
+        &lt;/div&gt;
+        &lt;div className="actions"&gt;
+          &lt;a href={torrent.magnetUri} className="magnet-btn"&gt;
+            🧲 開啟 Magnet
+          &lt;/a&gt;
+          &lt;button onClick={handleCopyMagnet}&gt;複製連結&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;div className="files-list"&gt;
+          &lt;h4&gt;檔案列表&lt;/h4&gt;
+          {torrent.files.map((file, i) => (
+            &lt;div key={i} className="file"&gt;
+              &lt;span className="name"&gt;{file.name}&lt;/span&gt;
+              &lt;span className="size"&gt;{formatBytes(file.size)}&lt;/span&gt;
+            &lt;/div&gt;
+          ))}
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>開源軟體分發</h3>
+  <ul>
+    <li>Linux 發行版 ISO</li>
+    <li>開源應用程式</li>
+    <li>區塊鏈客戶端</li>
+  </ul>
+
+  <h3>內容創作</h3>
+  <ul>
+    <li>創用 CC 授權內容</li>
+    <li>公共領域作品</li>
+    <li>教育資源</li>
+  </ul>
+
+  <h3>數據集分享</h3>
+  <ul>
+    <li>公開數據集</li>
+    <li>研究資料</li>
+    <li>歷史存檔</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>提供多個 Tracker</strong>：增加下載可用性</li>
+    <li><strong>詳細描述</strong>：說明內容和來源</li>
+    <li><strong>標籤分類</strong>：幫助搜尋和發現</li>
+    <li><strong>提供校驗碼</strong>：在描述中包含 SHA256</li>
+    <li><strong>合法內容</strong>：只分享合法授權的內容</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-94">NIP-94</a>：檔案中繼資料 - 檔案資訊</li>
+    <li><a href="/tech/nostr/nip-96">NIP-96</a>：檔案儲存 - 檔案上傳</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/35.md" target="_blank" rel="noopener noreferrer">NIP-35 規範</a></li>
+    <li><a href="https://www.bittorrent.org/beps/bep_0003.html" target="_blank" rel="noopener noreferrer">BitTorrent 協議</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
