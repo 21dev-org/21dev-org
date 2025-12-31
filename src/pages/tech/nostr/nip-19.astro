@@ -4,263 +4,62 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
 <ArticleLayout
   title="NIP-19 bech32 編碼"
-  description="深入了解 Nostr 的 bech32 編碼實體，npub、nsec、note 和其他標識符格式。"
+  description="深入了解 Nostr 的 bech32 編碼標準，包括 npub、nsec、note、nprofile、nevent、naddr 等實體編碼格式。"
   breadcrumbs={[
     { label: '技術', href: '/tech/' },
     { label: 'Nostr', href: '/tech/nostr/' },
     { label: 'NIP-19 bech32 編碼' },
   ]}
-  difficulty="beginner"
-  readingTime="12 分鐘"
-  prevPage={{ title: 'NIP-04 加密私訊', href: '/tech/nostr/nip-04' }}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'NIP-11 中繼器資訊', href: '/tech/nostr/nip-11' }}
   nextPage={{ title: 'NIP-23 長文內容', href: '/tech/nostr/nip-23' }}
 >
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-19？</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    NIP-19 定義了 Nostr 中使用的 bech32 編碼格式，用於人類可讀的標識符。
-    這些格式讓用戶可以安全地分享公鑰、私鑰、事件 ID 等資訊，
-    同時內建錯誤檢測機制。
+    NIP-19 定義了 Nostr 中各種實體的 bech32 編碼格式。這些格式讓用戶可以方便地分享公鑰、
+    事件 ID 和其他資訊，同時包含校驗碼防止輸入錯誤。所有 NIP-19 編碼都以特定前綴開頭，
+    讓應用程式可以識別其類型。
   </p>
 
-  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
-    <p class="text-sm text-purple-700 dark:text-purple-400">
-      <strong>設計目的：</strong>
-      bech32 編碼不區分大小寫、具有錯誤檢測、前綴明確區分類型，
-      讓用戶一眼就能識別「npub」是公鑰、「nsec」是私鑰。
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>Bech32 優勢：</strong>
+      採用人類可讀的前綴、不區分大小寫、內建錯誤檢測，
+      且不會混淆相似字元（如 0/O、1/l）。
     </p>
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">基本格式</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">基本編碼類型</h2>
 
   <div class="not-prose mb-8">
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
           <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">前綴</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">含義</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">全名</th>
           <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">內容</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
         <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-purple-500">npub</td>
-          <td class="py-3 px-4">公鑰</td>
+          <td class="py-3 px-4 font-mono text-green-600 dark:text-green-400">npub</td>
+          <td class="py-3 px-4">Nostr Public Key</td>
           <td class="py-3 px-4">32 bytes 公鑰</td>
+          <td class="py-3 px-4">分享個人資料</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-red-500">nsec</td>
-          <td class="py-3 px-4">私鑰</td>
+          <td class="py-3 px-4 font-mono text-red-600 dark:text-red-400">nsec</td>
+          <td class="py-3 px-4">Nostr Secret Key</td>
           <td class="py-3 px-4">32 bytes 私鑰</td>
+          <td class="py-3 px-4">備份/導入（勿分享）</td>
         </tr>
         <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-blue-500">note</td>
-          <td class="py-3 px-4">事件 ID</td>
+          <td class="py-3 px-4 font-mono text-blue-600 dark:text-blue-400">note</td>
+          <td class="py-3 px-4">Note ID</td>
           <td class="py-3 px-4">32 bytes 事件 ID</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">範例</h2>
-
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code># 公鑰（hex）
-3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d
-
-# 公鑰（npub）
-npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
-
-# 事件 ID（hex）
-b9f7e1b5af2e5f0c6a8b5c9d3e2f1a0b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f
-
-# 事件 ID（note）
-note1h8lcrkd09enczag29ea5l97rgt3w4u0l4xl2k2wz3w8q7dvn8m8s8d0zyj</code></pre>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">可分享格式（TLV 編碼）</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    NIP-19 還定義了包含額外資訊的可分享格式，使用 TLV（Type-Length-Value）編碼：
-  </p>
-
-  <div class="not-prose mb-8">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">前綴</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">含義</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">包含資訊</th>
-        </tr>
-      </thead>
-      <tbody class="text-[var(--text-secondary)]">
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-purple-500">nprofile</td>
-          <td class="py-3 px-4">個人檔案</td>
-          <td class="py-3 px-4">公鑰 + 推薦中繼器</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-blue-500">nevent</td>
-          <td class="py-3 px-4">事件</td>
-          <td class="py-3 px-4">事件 ID + 中繼器 + 作者</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-green-500">naddr</td>
-          <td class="py-3 px-4">可替換事件</td>
-          <td class="py-3 px-4">kind + 公鑰 + d 標籤 + 中繼器</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4 font-mono text-yellow-500">nrelay</td>
-          <td class="py-3 px-4">中繼器</td>
-          <td class="py-3 px-4">中繼器 URL</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 結構</h2>
-
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code># TLV 類型定義
-0: special (公鑰或事件 ID，取決於前綴)
-1: relay (推薦的中繼器 URL)
-2: author (事件作者公鑰，用於 nevent)
-3: kind (事件類型，用於 naddr)
-
-# nprofile 範例結構
-TLV[
-  (0, 32, &lt;pubkey&gt;),           # 公鑰
-  (1, n, "wss://relay1.com"),   # 中繼器 1
-  (1, n, "wss://relay2.com")    # 中繼器 2
-]
-
-# nevent 範例結構
-TLV[
-  (0, 32, &lt;event_id&gt;),         # 事件 ID
-  (1, n, "wss://relay.com"),    # 發現此事件的中繼器
-  (2, 32, &lt;author_pubkey&gt;)     # 作者公鑰
-]</code></pre>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
-
-  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">編碼公鑰</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`import { bech32 } from '@scure/base'
-
-function hexToNpub(hex) {
-  const data = Buffer.from(hex, 'hex')
-  const words = bech32.toWords(data)
-  return bech32.encode('npub', words, 1000)
-}
-
-// 使用
-const npub = hexToNpub('3bf0c63f...')
-// => npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6`}</code></pre>
-  </div>
-
-  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解碼 npub</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`function npubToHex(npub) {
-  const { prefix, words } = bech32.decode(npub, 1000)
-  if (prefix !== 'npub') throw new Error('Invalid npub')
-  const data = bech32.fromWords(words)
-  return Buffer.from(data).toString('hex')
-}
-
-// 使用
-const hex = npubToHex('npub180cvv07...')
-// => 3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d`}</code></pre>
-  </div>
-
-  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">編碼 nprofile</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`function encodeNprofile(pubkey, relays) {
-  // 構建 TLV
-  let tlv = []
-
-  // 類型 0: 公鑰
-  tlv.push(0, 32, ...Buffer.from(pubkey, 'hex'))
-
-  // 類型 1: 中繼器
-  for (const relay of relays) {
-    const relayBytes = Buffer.from(relay, 'utf8')
-    tlv.push(1, relayBytes.length, ...relayBytes)
-  }
-
-  const words = bech32.toWords(Buffer.from(tlv))
-  return bech32.encode('nprofile', words, 1500)
-}
-
-// 使用
-const nprofile = encodeNprofile(
-  '3bf0c63f...',
-  ['wss://relay.damus.io', 'wss://nos.lol']
-)`}</code></pre>
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
-
-  <div class="grid md:grid-cols-2 gap-4 mb-8">
-    {
-      [
-        {
-          title: '分享個人檔案',
-          desc: '使用 nprofile 分享包含推薦中繼器的個人檔案連結',
-          format: 'nprofile1...',
-        },
-        {
-          title: '分享貼文',
-          desc: '使用 nevent 分享特定貼文，包含可找到它的中繼器',
-          format: 'nevent1...',
-        },
-        {
-          title: '引用長文',
-          desc: '使用 naddr 引用可替換事件如長文、文章',
-          format: 'naddr1...',
-        },
-        {
-          title: '推薦中繼器',
-          desc: '使用 nrelay 分享中繼器連結',
-          format: 'nrelay1...',
-        },
-      ].map((item) => (
-        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
-          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{item.title}</h4>
-          <p class="text-sm text-[var(--text-secondary)] mb-2">{item.desc}</p>
-          <code class="text-xs bg-black/10 dark:bg-white/10 px-2 py-1 rounded">{item.format}</code>
-        </div>
-      ))
-    }
-  </div>
-
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">bech32 vs bech32m</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    NIP-19 使用 bech32（非 bech32m），這是一個重要區別：
-  </p>
-
-  <div class="not-prose mb-8">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">bech32</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">bech32m</th>
-        </tr>
-      </thead>
-      <tbody class="text-[var(--text-secondary)]">
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">用於</td>
-          <td class="py-3 px-4">Nostr、SegWit v0</td>
-          <td class="py-3 px-4">Taproot (SegWit v1+)</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">常數</td>
-          <td class="py-3 px-4">1</td>
-          <td class="py-3 px-4">0x2bc830a3</td>
-        </tr>
-        <tr class="border-b border-[var(--border-default)]">
-          <td class="py-3 px-4">BIP</td>
-          <td class="py-3 px-4">BIP-173</td>
-          <td class="py-3 px-4">BIP-350</td>
+          <td class="py-3 px-4">分享單一貼文</td>
         </tr>
       </tbody>
     </table>
@@ -269,8 +68,291 @@ const nprofile = encodeNprofile(
   <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
     <p class="text-sm text-red-700 dark:text-red-400">
       <strong>安全警告：</strong>
-      永遠不要分享你的 nsec 私鑰！nsec 開頭的字串包含你的私鑰，
-      任何人獲得它都可以完全控制你的 Nostr 身份。
+      nsec 是你的私鑰，絕對不要分享給任何人！
+      如果有人取得你的 nsec，他們可以完全控制你的帳號。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 編碼類型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    進階編碼使用 TLV（Type-Length-Value）格式，可以包含額外的中繼資料：
+  </p>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">前綴</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">包含資訊</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-600 dark:text-purple-400">nprofile</td>
+          <td class="py-3 px-4">公鑰 + 中繼器列表</td>
+          <td class="py-3 px-4">確保能找到用戶</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-orange-600 dark:text-orange-400">nevent</td>
+          <td class="py-3 px-4">事件 ID + 中繼器 + 作者</td>
+          <td class="py-3 px-4">確保能找到事件</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-cyan-600 dark:text-cyan-400">naddr</td>
+          <td class="py-3 px-4">kind + 作者 + d-tag + 中繼器</td>
+          <td class="py-3 px-4">可替換事件地址</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-yellow-600 dark:text-yellow-400">nrelay</td>
+          <td class="py-3 px-4">中繼器 URL</td>
+          <td class="py-3 px-4">分享中繼器</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 欄位類型</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// TLV 類型定義
+0: special    // 主要資料（pubkey 或 event id）
+1: relay      // 中繼器 URL（可多個）
+2: author     // 作者公鑰（用於 nevent）
+3: kind       // 事件類型（用於 naddr）
+
+// nprofile 結構
+{
+  type: 0,  data: <32 bytes pubkey>
+  type: 1,  data: "wss://relay1.example.com"
+  type: 1,  data: "wss://relay2.example.com"
+}
+
+// nevent 結構
+{
+  type: 0,  data: <32 bytes event id>
+  type: 1,  data: "wss://relay.example.com"
+  type: 2,  data: <32 bytes author pubkey>
+}
+
+// naddr 結構（可替換事件）
+{
+  type: 0,  data: "article-slug"        // d-tag
+  type: 1,  data: "wss://relay.example.com"
+  type: 2,  data: <32 bytes author pubkey>
+  type: 3,  data: <4 bytes kind, big-endian>
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">編碼與解碼</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { nip19 } from 'nostr-tools'
+
+// 編碼公鑰為 npub
+const pubkey = '3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d'
+const npub = nip19.npubEncode(pubkey)
+// npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
+
+// 解碼 npub
+const decoded = nip19.decode(npub)
+// { type: 'npub', data: '3bf0c63f...' }
+
+// 編碼事件 ID 為 note
+const eventId = 'e0b0f76c...'
+const note = nip19.noteEncode(eventId)
+
+// 編碼私鑰為 nsec（謹慎處理！）
+const privkey = '...'
+const nsec = nip19.nsecEncode(privkey)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">TLV 編碼</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { nip19 } from 'nostr-tools'
+
+// 建立 nprofile（帶中繼器資訊的用戶資料）
+const nprofile = nip19.nprofileEncode({
+  pubkey: '3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d',
+  relays: [
+    'wss://relay.damus.io',
+    'wss://nos.lol'
+  ]
+})
+
+// 建立 nevent（帶中繼器資訊的事件）
+const nevent = nip19.neventEncode({
+  id: 'e0b0f76c...',
+  relays: ['wss://relay.example.com'],
+  author: '3bf0c63f...'
+})
+
+// 建立 naddr（可替換事件地址）
+const naddr = nip19.naddrEncode({
+  identifier: 'my-article-slug',  // d-tag
+  pubkey: '3bf0c63f...',
+  kind: 30023,  // long-form content
+  relays: ['wss://relay.example.com']
+})
+
+// 解碼任何 NIP-19 字串
+const result = nip19.decode(nprofile)
+// {
+//   type: 'nprofile',
+//   data: {
+//     pubkey: '3bf0c63f...',
+//     relays: ['wss://relay.damus.io', 'wss://nos.lol']
+//   }
+// }`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">通用解碼器</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { nip19 } from 'nostr-tools'
+
+function parseNostrEntity(input) {
+  try {
+    const decoded = nip19.decode(input)
+
+    switch (decoded.type) {
+      case 'npub':
+        return { type: 'user', pubkey: decoded.data }
+
+      case 'nprofile':
+        return {
+          type: 'user',
+          pubkey: decoded.data.pubkey,
+          relays: decoded.data.relays
+        }
+
+      case 'note':
+        return { type: 'event', id: decoded.data }
+
+      case 'nevent':
+        return {
+          type: 'event',
+          id: decoded.data.id,
+          relays: decoded.data.relays,
+          author: decoded.data.author
+        }
+
+      case 'naddr':
+        return {
+          type: 'address',
+          kind: decoded.data.kind,
+          pubkey: decoded.data.pubkey,
+          identifier: decoded.data.identifier,
+          relays: decoded.data.relays
+        }
+
+      case 'nsec':
+        console.warn('處理私鑰！請謹慎！')
+        return { type: 'privkey', data: decoded.data }
+
+      default:
+        return { type: 'unknown', data: decoded }
+    }
+  } catch (e) {
+    return { type: 'invalid', error: e.message }
+  }
+}
+
+// 使用
+const entity = parseNostrEntity('npub1...')
+if (entity.type === 'user') {
+  console.log('公鑰:', entity.pubkey)
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">範例編碼</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// npub 範例（fiatjaf）
+npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
+
+// 對應的 hex 公鑰
+3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d
+
+// nprofile 範例（同一用戶，帶中繼器）
+nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p
+
+// nevent 範例
+nevent1qqst8cujky046negxgwwm5ynqwn53t8aqjr6afd8g59nfqwxpdhylpcpzamhxue69uhhyetvv9ujuetd9ehx7um5wge5wqhh5...
+
+// naddr 範例（長文章）
+naddr1qqxnzdesxqmnxvpexqunzvpcqy28wumn8ghj7un9d3shjtnyv9kh2uewd9hj7qg4waehxw309ahx7um5wghx6at5d9h8jampd3kx2apwvdhk6...`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景對比</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">場景</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">推薦格式</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">原因</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">分享個人資料</td>
+          <td class="py-3 px-4 font-mono">nprofile</td>
+          <td class="py-3 px-4">包含中繼器，更容易找到</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">簡單顯示公鑰</td>
+          <td class="py-3 px-4 font-mono">npub</td>
+          <td class="py-3 px-4">簡短易讀</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">分享貼文連結</td>
+          <td class="py-3 px-4 font-mono">nevent</td>
+          <td class="py-3 px-4">包含中繼器和作者</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">分享文章連結</td>
+          <td class="py-3 px-4 font-mono">naddr</td>
+          <td class="py-3 px-4">可替換事件需要 naddr</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">應用內部使用</td>
+          <td class="py-3 px-4 font-mono">hex</td>
+          <td class="py-3 px-4">無需編碼開銷</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">建議做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 對外分享時使用 nprofile/nevent</li>
+        <li>• 顯示時優先使用 bech32 格式</li>
+        <li>• 解碼時處理所有可能的類型</li>
+        <li>• 驗證編碼的校驗碼</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">避免做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 永遠不要分享 nsec</li>
+        <li>• 不要在日誌中記錄私鑰</li>
+        <li>• 不要假設編碼類型</li>
+        <li>• 不要忽略解碼錯誤</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      大多數 Nostr 客戶端會自動解析貼文中的 NIP-19 編碼並轉換為可點擊的連結。
+      例如輸入 npub1... 會自動變成用戶資料連結。
     </p>
   </div>
 </ArticleLayout>
