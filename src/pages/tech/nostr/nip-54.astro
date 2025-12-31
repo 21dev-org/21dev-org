@@ -1,0 +1,508 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-54: Wiki"
+  description="在 Nostr 上建立去中心化的維基百科式知識庫"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-54 定義了在 Nostr 上建立維基（Wiki）風格內容的標準。使用者可以建立和編輯
+    主題條目，透過社群協作建立去中心化的知識庫。每個條目都是可定址事件，
+    支援版本歷史和多作者貢獻。
+  </p>
+
+  <h2 id="event-kind">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>30818</code></td>
+        <td>Wiki 條目</td>
+        <td>可定址（可替換）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="event-structure">事件結構</h2>
+
+  <h3>Content</h3>
+  <p>
+    條目內容使用 Markdown 格式，支援標題、列表、連結、程式碼區塊等。
+    可使用 <code>nostr:</code> URI 連結到其他 Nostr 內容。
+  </p>
+
+  <h3>必要標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>條目識別符（主題名稱，小寫）</td>
+        <td><code>["d", "bitcoin"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>可選標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>title</code></td>
+        <td>顯示標題</td>
+        <td><code>["title", "Bitcoin"]</code></td>
+      </tr>
+      <tr>
+        <td><code>summary</code></td>
+        <td>簡短摘要</td>
+        <td><code>["summary", "去中心化數位貨幣"]</code></td>
+      </tr>
+      <tr>
+        <td><code>a</code></td>
+        <td>引用其他條目</td>
+        <td><code>["a", "30818:pubkey:lightning-network"]</code></td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>主題標籤</td>
+        <td><code>["t", "cryptocurrency"]</code></td>
+      </tr>
+      <tr>
+        <td><code>published_at</code></td>
+        <td>發布時間戳</td>
+        <td><code>["published_at", "1704067200"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="topic-naming">主題命名規則</h2>
+
+  <p><code>d</code> 標籤的值應遵循以下規則：</p>
+
+  <ul>
+    <li>使用小寫字母</li>
+    <li>空格替換為連字符 <code>-</code></li>
+    <li>移除特殊字符</li>
+    <li>保持簡潔明確</li>
+  </ul>
+
+  <h3>範例</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>主題</th>
+        <th>d 標籤值</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Bitcoin</td>
+        <td><code>bitcoin</code></td>
+      </tr>
+      <tr>
+        <td>Lightning Network</td>
+        <td><code>lightning-network</code></td>
+      </tr>
+      <tr>
+        <td>Nostr Protocol</td>
+        <td><code>nostr-protocol</code></td>
+      </tr>
+      <tr>
+        <td>中本聰</td>
+        <td><code>satoshi-nakamoto</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>基本 Wiki 條目</h3>
+  <pre><code class="language-json">{
+  "kind": 30818,
+  "content": "# Bitcoin\n\nBitcoin 是一種去中心化的數位貨幣，由中本聰於 2008 年提出，2009 年正式上線。\n\n## 特點\n\n- **去中心化**：沒有中央機構控制\n- **有限供應**：總量限制為 2100 萬枚\n- **開源**：任何人都可以審查程式碼\n\n## 相關主題\n\n- [[lightning-network|閃電網路]]\n- [[satoshi-nakamoto|中本聰]]\n\n## 參考資料\n\n- [Bitcoin 白皮書](https://bitcoin.org/bitcoin.pdf)",
+  "tags": [
+    ["d", "bitcoin"],
+    ["title", "Bitcoin"],
+    ["summary", "去中心化的點對點電子現金系統"],
+    ["t", "cryptocurrency"],
+    ["t", "區塊鏈"],
+    ["published_at", "1704067200"]
+  ]
+}</code></pre>
+
+  <h3>引用其他條目</h3>
+  <pre><code class="language-json">{
+  "kind": 30818,
+  "content": "# 閃電網路\n\n閃電網路是建立在 [[bitcoin|Bitcoin]] 之上的二層擴展方案。\n\n## 工作原理\n\n透過支付通道實現快速、低成本的交易...\n\n## 相關技術\n\n- [[htlc|HTLC]]\n- [[payment-channel|支付通道]]",
+  "tags": [
+    ["d", "lightning-network"],
+    ["title", "閃電網路"],
+    ["summary", "Bitcoin 的二層擴展解決方案"],
+    ["a", "30818:author-pubkey:bitcoin", "wss://relay.example.com"],
+    ["a", "30818:author-pubkey:htlc", "wss://relay.example.com"],
+    ["t", "lightning"],
+    ["t", "layer2"]
+  ]
+}</code></pre>
+
+  <h2 id="wikilinks">Wiki 連結語法</h2>
+
+  <p>在內容中可以使用 Wiki 風格的連結語法：</p>
+
+  <pre><code class="language-text">[[topic-name]]           → 連結到同一作者的條目
+[[topic-name|顯示文字]]   → 自訂顯示文字</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立 Wiki 條目</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+interface WikiArticle {
+  topic: string;
+  title: string;
+  content: string;
+  summary?: string;
+  tags?: string[];
+  references?: string[]; // 其他條目的座標
+}
+
+function createWikiEvent(
+  article: WikiArticle,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['d', article.topic],
+    ['title', article.title],
+  ];
+
+  if (article.summary) {
+    tags.push(['summary', article.summary]);
+  }
+
+  article.references?.forEach((ref) => {
+    tags.push(['a', ref]);
+  });
+
+  article.tags?.forEach((tag) => {
+    tags.push(['t', tag]);
+  });
+
+  tags.push(['published_at', Math.floor(Date.now() / 1000).toString()]);
+
+  const event = {
+    kind: 30818,
+    content: article.content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const wikiEvent = createWikiEvent(
+  {
+    topic: 'nostr-protocol',
+    title: 'Nostr 協議',
+    content: '# Nostr\n\nNostr 是一個簡單、開放的去中心化社交協議...',
+    summary: '去中心化社交協議',
+    tags: ['protocol', 'decentralized', 'social'],
+    references: ['30818:pubkey:bitcoin', '30818:pubkey:lightning-network'],
+  },
+  secretKey
+);</code></pre>
+
+  <h3>解析 Wiki 條目</h3>
+  <pre><code class="language-typescript">interface ParsedWikiArticle {
+  topic: string;
+  title: string;
+  content: string;
+  summary?: string;
+  tags: string[];
+  references: string[];
+  publishedAt?: number;
+  author: string;
+}
+
+function parseWikiEvent(event: any): ParsedWikiArticle | null {
+  if (event.kind !== 30818) return null;
+
+  const getTag = (name: string) => {
+    const tag = event.tags.find((t: string[]) => t[0] === name);
+    return tag?.[1];
+  };
+
+  const getAllTags = (name: string) => {
+    return event.tags
+      .filter((t: string[]) => t[0] === name)
+      .map((t: string[]) => t[1]);
+  };
+
+  const topic = getTag('d');
+  if (!topic) return null;
+
+  const publishedAtStr = getTag('published_at');
+
+  return {
+    topic,
+    title: getTag('title') || topic,
+    content: event.content,
+    summary: getTag('summary'),
+    tags: getAllTags('t'),
+    references: getAllTags('a'),
+    publishedAt: publishedAtStr ? parseInt(publishedAtStr) : undefined,
+    author: event.pubkey,
+  };
+}</code></pre>
+
+  <h3>解析 Wiki 連結</h3>
+  <pre><code class="language-typescript">interface WikiLink {
+  topic: string;
+  displayText: string;
+  start: number;
+  end: number;
+}
+
+function parseWikiLinks(content: string): WikiLink[] {
+  const regex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+  const links: WikiLink[] = [];
+
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    links.push({
+      topic: match[1].trim(),
+      displayText: match[2]?.trim() || match[1].trim(),
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+
+  return links;
+}
+
+function renderWikiContent(
+  content: string,
+  authorPubkey: string,
+  onLinkClick?: (topic: string) => void
+): string {
+  const links = parseWikiLinks(content);
+
+  // 從後往前替換，避免位置偏移
+  let result = content;
+  for (let i = links.length - 1; i >= 0; i--) {
+    const link = links[i];
+    const href = `/wiki/${authorPubkey}/${link.topic}`;
+    const replacement = `<a href="${href}" class="wiki-link">${link.displayText}</a>`;
+    result = result.slice(0, link.start) + replacement + result.slice(link.end);
+  }
+
+  return result;
+}</code></pre>
+
+  <h3>搜尋 Wiki 條目</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+interface WikiSearchOptions {
+  topic?: string;
+  author?: string;
+  tags?: string[];
+  limit?: number;
+}
+
+async function searchWikiArticles(
+  pool: SimplePool,
+  relays: string[],
+  options: WikiSearchOptions = {}
+): Promise&lt;ParsedWikiArticle[]&gt; {
+  const filter: any = {
+    kinds: [30818],
+    limit: options.limit || 50,
+  };
+
+  if (options.author) {
+    filter.authors = [options.author];
+  }
+
+  if (options.topic) {
+    filter['#d'] = [options.topic];
+  }
+
+  if (options.tags && options.tags.length > 0) {
+    filter['#t'] = options.tags;
+  }
+
+  const events = await pool.querySync(relays, filter);
+
+  return events
+    .map(parseWikiEvent)
+    .filter((a): a is ParsedWikiArticle => a !== null)
+    .sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+}
+
+// 取得特定條目的所有版本
+async function getArticleVersions(
+  pool: SimplePool,
+  relays: string[],
+  topic: string,
+  author?: string
+): Promise&lt;ParsedWikiArticle[]&gt; {
+  const filter: any = {
+    kinds: [30818],
+    '#d': [topic],
+  };
+
+  if (author) {
+    filter.authors = [author];
+  }
+
+  const events = await pool.querySync(relays, filter);
+
+  return events
+    .map(parseWikiEvent)
+    .filter((a): a is ParsedWikiArticle => a !== null)
+    .sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+}</code></pre>
+
+  <h3>React 元件</h3>
+  <pre><code class="language-typescript">import ReactMarkdown from 'react-markdown';
+
+interface WikiArticleViewProps {
+  article: ParsedWikiArticle;
+  onNavigate?: (topic: string) => void;
+}
+
+function WikiArticleView({ article, onNavigate }: WikiArticleViewProps) {
+  // 處理 Wiki 連結
+  const processedContent = article.content.replace(
+    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+    (_, topic, text) => `[${text || topic}](/wiki/${article.author}/${topic})`
+  );
+
+  return (
+    &lt;article className="wiki-article"&gt;
+      &lt;header&gt;
+        &lt;h1&gt;{article.title}&lt;/h1&gt;
+        {article.summary && (
+          &lt;p className="summary"&gt;{article.summary}&lt;/p&gt;
+        )}
+        &lt;div className="meta"&gt;
+          &lt;span className="author"&gt;作者: {article.author.slice(0, 8)}...&lt;/span&gt;
+          {article.publishedAt && (
+            &lt;span className="date"&gt;
+              {new Date(article.publishedAt * 1000).toLocaleDateString()}
+            &lt;/span&gt;
+          )}
+        &lt;/div&gt;
+        &lt;div className="tags"&gt;
+          {article.tags.map((tag) => (
+            &lt;span key={tag} className="tag"&gt;#{tag}&lt;/span&gt;
+          ))}
+        &lt;/div&gt;
+      &lt;/header&gt;
+      &lt;div className="content"&gt;
+        &lt;ReactMarkdown&gt;{processedContent}&lt;/ReactMarkdown&gt;
+      &lt;/div&gt;
+    &lt;/article&gt;
+  );
+}
+
+function WikiSearch() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState&lt;ParsedWikiArticle[]&gt;([]);
+
+  const handleSearch = async () => {
+    const articles = await searchWikiArticles(pool, relays, {
+      tags: [query.toLowerCase()],
+      limit: 20,
+    });
+    setResults(articles);
+  };
+
+  return (
+    &lt;div className="wiki-search"&gt;
+      &lt;input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="搜尋 Wiki 條目..."
+      /&gt;
+      &lt;button onClick={handleSearch}&gt;搜尋&lt;/button&gt;
+      &lt;div className="results"&gt;
+        {results.map((article) => (
+          &lt;div key={`${article.author}:${article.topic}`} className="result"&gt;
+            &lt;h3&gt;{article.title}&lt;/h3&gt;
+            &lt;p&gt;{article.summary}&lt;/p&gt;
+          &lt;/div&gt;
+        ))}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>社群知識庫</h3>
+  <ul>
+    <li>Bitcoin/加密貨幣百科</li>
+    <li>技術文檔和教程</li>
+    <li>專業領域知識庫</li>
+  </ul>
+
+  <h3>協作編輯</h3>
+  <ul>
+    <li>多人貢獻同一主題</li>
+    <li>版本歷史追蹤</li>
+    <li>分散式知識管理</li>
+  </ul>
+
+  <h3>個人筆記</h3>
+  <ul>
+    <li>個人知識管理系統</li>
+    <li>學習筆記整理</li>
+    <li>研究資料彙整</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>規範命名</strong>：使用一致的主題命名規則</li>
+    <li><strong>充分引用</strong>：使用 Wiki 連結連接相關條目</li>
+    <li><strong>提供摘要</strong>：方便搜尋和預覽</li>
+    <li><strong>版本管理</strong>：重大修改時更新 published_at</li>
+    <li><strong>標籤分類</strong>：使用標籤幫助發現</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-23">NIP-23</a>：長文內容 - 類似格式</li>
+    <li><a href="/tech/nostr/nip-27">NIP-27</a>：文字引用 - nostr: URI</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/54.md" target="_blank" rel="noopener noreferrer">NIP-54 規範</a></li>
+    <li><a href="https://wikifreedia.xyz/" target="_blank" rel="noopener noreferrer">Wikifreedia</a> - Nostr Wiki 客戶端</li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
