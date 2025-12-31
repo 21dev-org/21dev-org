@@ -1,0 +1,652 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import { defined } from '@/utils/types';
+---
+
+<ArticleLayout
+  title="NIP-32: 標籤系統"
+  subtitle="Labeling - 為內容添加結構化分類標籤"
+  difficulty="intermediate"
+  readingTime={12}
+  tags={['Nostr', 'NIP-32', '標籤', 'labeling', 'taxonomy']}
+  prevPage={defined({ href: '/tech/nostr/nip-30', label: 'NIP-30 自訂表情' })}
+  nextPage={defined({ href: '/tech/nostr/nip-36', label: 'NIP-36 敏感內容' })}
+>
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mb-8 flex-wrap">
+    <a href="/" class="hover:text-[var(--text-secondary)] transition-colors">首頁</a>
+    <span>/</span>
+    <a href="/tech" class="hover:text-[var(--text-secondary)] transition-colors">技術</a>
+    <span>/</span>
+    <a href="/tech/nostr" class="hover:text-[var(--text-secondary)] transition-colors">Nostr</a>
+    <span>/</span>
+    <span class="text-[var(--text-primary)]">NIP-32</span>
+  </nav>
+
+  <!-- Introduction -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">概述</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-32 定義了一套標籤系統，允許用戶為事件、人物、中繼器、地址和主題添加結構化的分類標籤。
+      這個系統支援多種命名空間，讓不同的應用場景（如內容審核、分類、評級等）可以使用統一的標籤機制。
+    </p>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-purple-400">核心概念：</strong>
+        標籤系統使用 kind 1985 事件類型，透過 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">L</code>（命名空間）
+        和 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">l</code>（標籤值）標籤對內容進行分類。
+      </p>
+    </div>
+  </section>
+
+  <!-- Label Event Structure -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">標籤事件結構</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      標籤事件使用 kind 1985，包含命名空間和標籤值：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">格式</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">L</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["L", "&lt;namespace&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤命名空間（Label Namespace）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">l</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["l", "&lt;label&gt;", "&lt;namespace&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤值，第三個元素對應 L 標籤</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">e</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["e", "&lt;event-id&gt;", "&lt;relay-hint&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤目標事件</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">p</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["p", "&lt;pubkey&gt;", "&lt;relay-hint&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤目標用戶</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">r</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["r", "&lt;relay-url&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤目標中繼器</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">a</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["a", "&lt;naddr&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤可替換事件地址</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">t</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["t", "&lt;topic&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">標籤主題標籤</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Namespaces -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">命名空間</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      命名空間用於區分不同來源和用途的標籤。建議使用明確的標識符：
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">ugc（用戶生成內容）</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          保留命名空間，用於用戶自定義標籤。當 l 標籤沒有指定命名空間時，默認使用 ugc。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">ISO 標準</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          可使用 ISO 標準作為命名空間，如 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">ISO-639-1</code> 表示語言代碼。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">反向域名標記</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          推薦使用反向域名標記，如 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">com.example.ontology</code>。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2"># 前綴</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          以 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">#</code> 開頭表示標準 Nostr 標籤關聯，如 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">#t</code> 表示主題標籤。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Examples -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">使用範例</h2>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">標記事件語言</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 1985,
+  "tags": [
+    ["L", "ISO-639-1"],
+    ["l", "zh", "ISO-639-1"],
+    ["e", "<event-id>", "wss://relay.example.com"]
+  ],
+  "content": ""
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">內容分類標籤</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 1985,
+  "tags": [
+    ["L", "com.example.content-type"],
+    ["l", "news", "com.example.content-type"],
+    ["l", "technology", "com.example.content-type"],
+    ["e", "<event-id>", "wss://relay.example.com"]
+  ],
+  "content": "這是一篇科技新聞相關的貼文"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">用戶生成標籤（UGC）</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 1985,
+  "tags": [
+    ["L", "ugc"],
+    ["l", "有趣", "ugc"],
+    ["l", "推薦", "ugc"],
+    ["e", "<event-id>", "wss://relay.example.com"]
+  ],
+  "content": ""
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">標記用戶（身份標籤）</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 1985,
+  "tags": [
+    ["L", "com.example.trust"],
+    ["l", "verified", "com.example.trust"],
+    ["p", "<pubkey>", "wss://relay.example.com"]
+  ],
+  "content": "此用戶已通過身份驗證"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">標記中繼器</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 1985,
+  "tags": [
+    ["L", "com.example.relay-type"],
+    ["l", "paid", "com.example.relay-type"],
+    ["l", "fast", "com.example.relay-type"],
+    ["r", "wss://premium.relay.example.com"]
+  ],
+  "content": ""
+}`}</code></pre>
+  </section>
+
+  <!-- Self-Reporting -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">自我標記</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      除了使用 kind 1985 標籤事件外，也可以在其他事件中直接添加 L 和 l 標籤進行自我標記：
+    </p>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`// 自我標記的貼文（kind 1）
+{
+  "kind": 1,
+  "tags": [
+    ["L", "ISO-639-1"],
+    ["l", "en", "ISO-639-1"],
+    ["L", "#t"],
+    ["l", "bitcoin", "#t"],
+    ["t", "bitcoin"]
+  ],
+  "content": "Bitcoin is the future of money!"
+}`}</code></pre>
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-blue-400">注意：</strong>
+        自我標記讓事件發布者可以預先分類自己的內容，方便客戶端過濾和搜尋。
+        <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">#t</code>
+        命名空間表示這個標籤與 t（主題）標籤關聯。
+      </p>
+    </div>
+  </section>
+
+  <!-- TypeScript Implementation -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">TypeScript 實作</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+// 標籤命名空間常量
+const NAMESPACES = {
+  UGC: 'ugc',
+  LANGUAGE: 'ISO-639-1',
+  CONTENT_TYPE: 'com.example.content-type',
+  TRUST: 'com.example.trust',
+} as const
+
+interface LabelTarget {
+  type: 'event' | 'pubkey' | 'relay' | 'address' | 'topic'
+  value: string
+  relayHint?: string
+}
+
+interface LabelData {
+  namespace: string
+  labels: string[]
+  target: LabelTarget
+  content?: string
+}
+
+// 創建標籤事件
+function createLabelEvent(
+  data: LabelData,
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = []
+
+  // 添加命名空間
+  tags.push(['L', data.namespace])
+
+  // 添加標籤值
+  for (const label of data.labels) {
+    tags.push(['l', label, data.namespace])
+  }
+
+  // 添加目標
+  switch (data.target.type) {
+    case 'event':
+      tags.push(['e', data.target.value, data.target.relayHint || ''])
+      break
+    case 'pubkey':
+      tags.push(['p', data.target.value, data.target.relayHint || ''])
+      break
+    case 'relay':
+      tags.push(['r', data.target.value])
+      break
+    case 'address':
+      tags.push(['a', data.target.value])
+      break
+    case 'topic':
+      tags.push(['t', data.target.value])
+      break
+  }
+
+  const event = {
+    kind: 1985,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: data.content || '',
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 標記事件語言
+function labelEventLanguage(
+  eventId: string,
+  languageCode: string,
+  relayHint: string,
+  secretKey: Uint8Array
+): object {
+  return createLabelEvent({
+    namespace: NAMESPACES.LANGUAGE,
+    labels: [languageCode],
+    target: {
+      type: 'event',
+      value: eventId,
+      relayHint,
+    },
+  }, secretKey)
+}
+
+// 標記用戶信任等級
+function labelUserTrust(
+  pubkey: string,
+  trustLevel: string,
+  relayHint: string,
+  secretKey: Uint8Array
+): object {
+  return createLabelEvent({
+    namespace: NAMESPACES.TRUST,
+    labels: [trustLevel],
+    target: {
+      type: 'pubkey',
+      value: pubkey,
+      relayHint,
+    },
+  }, secretKey)
+}
+
+// 用戶生成標籤
+function createUGCLabel(
+  eventId: string,
+  labels: string[],
+  relayHint: string,
+  secretKey: Uint8Array
+): object {
+  return createLabelEvent({
+    namespace: NAMESPACES.UGC,
+    labels,
+    target: {
+      type: 'event',
+      value: eventId,
+      relayHint,
+    },
+  }, secretKey)
+}
+
+// 為自己的貼文添加自我標記
+function createSelfLabeledNote(
+  content: string,
+  language: string,
+  topics: string[],
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = []
+
+  // 語言標籤
+  tags.push(['L', NAMESPACES.LANGUAGE])
+  tags.push(['l', language, NAMESPACES.LANGUAGE])
+
+  // 主題標籤
+  if (topics.length > 0) {
+    tags.push(['L', '#t'])
+    for (const topic of topics) {
+      tags.push(['l', topic, '#t'])
+      tags.push(['t', topic])
+    }
+  }
+
+  const event = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content,
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 使用範例
+const sk = generateSecretKey()
+
+// 標記事件語言為中文
+const languageLabel = labelEventLanguage(
+  'abc123...',
+  'zh',
+  'wss://relay.example.com',
+  sk
+)
+
+// 標記用戶為已驗證
+const trustLabel = labelUserTrust(
+  'pubkey123...',
+  'verified',
+  'wss://relay.example.com',
+  sk
+)
+
+// 用戶生成標籤
+const ugcLabel = createUGCLabel(
+  'event456...',
+  ['有趣', '推薦', '必讀'],
+  'wss://relay.example.com',
+  sk
+)
+
+// 創建帶自我標記的貼文
+const selfLabeledNote = createSelfLabeledNote(
+  'Bitcoin 是未來的貨幣！',
+  'zh',
+  ['bitcoin', 'cryptocurrency'],
+  sk
+)`}</code></pre>
+  </section>
+
+  <!-- Query Labels -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">查詢標籤</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { SimplePool } from 'nostr-tools'
+
+const pool = new SimplePool()
+const relays = ['wss://relay.example.com']
+
+// 查詢特定事件的所有標籤
+async function getLabelsForEvent(eventId: string) {
+  const labels = await pool.querySync(relays, {
+    kinds: [1985],
+    '#e': [eventId],
+  })
+  return labels
+}
+
+// 查詢特定命名空間的標籤
+async function getLabelsByNamespace(namespace: string) {
+  const labels = await pool.querySync(relays, {
+    kinds: [1985],
+    '#L': [namespace],
+  })
+  return labels
+}
+
+// 查詢特定標籤值
+async function getEventsByLabel(label: string, namespace?: string) {
+  const filter: any = {
+    kinds: [1985],
+    '#l': [label],
+  }
+
+  if (namespace) {
+    filter['#L'] = [namespace]
+  }
+
+  const labels = await pool.querySync(relays, filter)
+  return labels
+}
+
+// 查詢某用戶的所有標籤
+async function getLabelsForUser(pubkey: string) {
+  const labels = await pool.querySync(relays, {
+    kinds: [1985],
+    '#p': [pubkey],
+  })
+  return labels
+}
+
+// 查詢中文內容
+async function getChineseContent() {
+  const labels = await pool.querySync(relays, {
+    kinds: [1985],
+    '#L': ['ISO-639-1'],
+    '#l': ['zh'],
+  })
+
+  // 提取被標記的事件 ID
+  const eventIds = labels
+    .flatMap(l => l.tags.filter(t => t[0] === 'e').map(t => t[1]))
+
+  // 獲取實際事件
+  if (eventIds.length > 0) {
+    return await pool.querySync(relays, {
+      ids: eventIds,
+    })
+  }
+
+  return []
+}
+
+// 解析標籤事件
+function parseLabels(event: any): {
+  namespace: string
+  labels: string[]
+  targets: { type: string; value: string }[]
+} {
+  const namespaceTags = event.tags.filter((t: string[]) => t[0] === 'L')
+  const labelTags = event.tags.filter((t: string[]) => t[0] === 'l')
+
+  const namespace = namespaceTags[0]?.[1] || 'ugc'
+  const labels = labelTags.map((t: string[]) => t[1])
+
+  const targets: { type: string; value: string }[] = []
+  for (const tag of event.tags) {
+    if (tag[0] === 'e') targets.push({ type: 'event', value: tag[1] })
+    if (tag[0] === 'p') targets.push({ type: 'pubkey', value: tag[1] })
+    if (tag[0] === 'r') targets.push({ type: 'relay', value: tag[1] })
+    if (tag[0] === 'a') targets.push({ type: 'address', value: tag[1] })
+    if (tag[0] === 't') targets.push({ type: 'topic', value: tag[1] })
+  }
+
+  return { namespace, labels, targets }
+}`}</code></pre>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">應用場景</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🌐 語言標記</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 ISO-639-1 標記內容語言，讓客戶端可以過濾顯示特定語言的內容。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🏷️ 內容分類</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          為貼文添加分類標籤如「新聞」、「教程」、「討論」等，方便內容發現。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">✅ 信任標記</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          標記用戶的信任等級或驗證狀態，建立去中心化的信任網絡。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🛡️ 內容審核</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          結合 NIP-56 舉報系統，審核員可以添加審核結果標籤。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">⭐ 評級系統</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          為內容添加品質評級，如「高品質」、「精選」、「推薦」等。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📊 中繼器分類</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          標記中繼器的特性，如「付費」、「免費」、「快速」、「專業」等。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Best Practices -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">最佳實踐</h2>
+    <div class="space-y-4">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 使用明確的命名空間</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 ISO 標準或反向域名標記，避免命名空間衝突。保持命名空間公開且非專有。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 標籤值保持簡短</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          標籤應該是簡短、有意義的字串。較長的解釋應放在 content 欄位中。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 添加中繼器提示</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 e 和 p 標籤時，應包含中繼器提示以幫助客戶端找到目標。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 單一命名空間原則</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          每個標籤事件應限制在單一命名空間內。如需多個命名空間，創建多個標籤事件。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ l 標籤必須包含命名空間標記</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          當使用 L 標籤時，l 標籤必須包含第三個元素對應 L 標籤的值。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related NIPs -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">相關 NIP</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <a
+        href="/tech/nostr/nip-56"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-56 舉報</h4>
+        <p class="text-sm text-[var(--text-secondary)]">內容舉報機制，可與標籤系統配合使用</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-36"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-36 敏感內容</h4>
+        <p class="text-sm text-[var(--text-secondary)]">內容警告標記</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-09"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-09 事件刪除</h4>
+        <p class="text-sm text-[var(--text-secondary)]">可用於批量刪除和替換標籤</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-01"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-01 基本協議</h4>
+        <p class="text-sm text-[var(--text-secondary)]">事件結構和過濾器基礎</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">總結</h2>
+    <div class="p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        NIP-32 標籤系統提供了一個靈活的機制，讓用戶和應用可以為 Nostr 內容添加結構化的分類資訊。
+        透過命名空間隔離，不同的使用場景可以共存而不會互相干擾。
+      </p>
+      <div class="grid md:grid-cols-3 gap-4 text-center">
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-purple-400">Kind 1985</div>
+          <div class="text-sm text-[var(--text-secondary)]">標籤事件類型</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-blue-400">L + l</div>
+          <div class="text-sm text-[var(--text-secondary)]">命名空間 + 標籤值</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-green-400">5 種</div>
+          <div class="text-sm text-[var(--text-secondary)]">標籤目標類型</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
