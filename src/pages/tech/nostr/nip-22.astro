@@ -1,0 +1,476 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-22: 評論"
+  description="Nostr 結構化評論系統，支援對各類內容進行層級討論"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-22 定義了 kind 1111 評論事件，用於對各種內容類型進行結構化的層級討論。
+    與 NIP-10 的 kind 1 回覆不同，NIP-22 評論專門設計用於對部落格文章、檔案、
+    網站、播客等多種內容類型進行評論，並維護清晰的歸因鏈。
+  </p>
+
+  <div class="not-prose my-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+    <p class="text-sm text-yellow-800 dark:text-yellow-200">
+      <strong>重要：</strong>NIP-22 評論<strong>不能</strong>用於回覆 kind 1 短文。
+      回覆 kind 1 應使用 NIP-10 的標準回覆機制。
+    </p>
+  </div>
+
+  <h2 id="event-structure">事件結構</h2>
+  <p>
+    Kind 1111 評論使用大小寫標籤慣例來區分根範圍和父項目：
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>標籤類型</th>
+        <th>大寫（根範圍）</th>
+        <th>小寫（父項目）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>事件類型</td>
+        <td><code>K</code></td>
+        <td><code>k</code></td>
+      </tr>
+      <tr>
+        <td>事件 ID</td>
+        <td><code>E</code></td>
+        <td><code>e</code></td>
+      </tr>
+      <tr>
+        <td>可定址事件</td>
+        <td><code>A</code></td>
+        <td><code>a</code></td>
+      </tr>
+      <tr>
+        <td>外部識別符</td>
+        <td><code>I</code></td>
+        <td><code>i</code></td>
+      </tr>
+      <tr>
+        <td>作者公鑰</td>
+        <td><code>P</code></td>
+        <td><code>p</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="basic-example">基本範例</h2>
+
+  <h3>對部落格文章的評論（根評論）</h3>
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "這篇文章寫得很好！對 Nostr 的解釋非常清楚。",
+  "tags": [
+    ["K", "30023"],
+    ["A", "30023:&lt;author-pubkey&gt;:my-blog-post", "wss://relay.example.com"],
+    ["P", "&lt;author-pubkey&gt;"],
+    ["k", "30023"],
+    ["a", "30023:&lt;author-pubkey&gt;:my-blog-post", "wss://relay.example.com"],
+    ["p", "&lt;author-pubkey&gt;"]
+  ]
+}</code></pre>
+
+  <h3>對評論的回覆（嵌套評論）</h3>
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "同意！我也覺得寫得很清楚。",
+  "tags": [
+    ["K", "30023"],
+    ["A", "30023:&lt;author-pubkey&gt;:my-blog-post", "wss://relay.example.com"],
+    ["P", "&lt;author-pubkey&gt;"],
+    ["k", "1111"],
+    ["e", "&lt;parent-comment-id&gt;", "wss://relay.example.com"],
+    ["p", "&lt;parent-comment-author&gt;"]
+  ]
+}</code></pre>
+
+  <h2 id="tag-requirements">標籤要求</h2>
+
+  <h3>必要標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>必要性</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>K</code></td>
+        <td>根項目的事件 kind</td>
+        <td>必要</td>
+      </tr>
+      <tr>
+        <td><code>E</code> 或 <code>A</code> 或 <code>I</code></td>
+        <td>根項目的識別符</td>
+        <td>必要（其中之一）</td>
+      </tr>
+      <tr>
+        <td><code>P</code></td>
+        <td>根項目作者的公鑰</td>
+        <td>必要</td>
+      </tr>
+      <tr>
+        <td><code>k</code></td>
+        <td>父項目的事件 kind</td>
+        <td>必要</td>
+      </tr>
+      <tr>
+        <td><code>e</code> 或 <code>a</code> 或 <code>i</code></td>
+        <td>父項目的識別符</td>
+        <td>必要（其中之一）</td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>父項目作者的公鑰</td>
+        <td>必要</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>對部落格文章評論 (kind 30023)</h3>
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "很棒的教學！",
+  "tags": [
+    ["K", "30023"],
+    ["A", "30023:&lt;pubkey&gt;:article-slug", "wss://relay.example.com"],
+    ["P", "&lt;pubkey&gt;"],
+    ["k", "30023"],
+    ["a", "30023:&lt;pubkey&gt;:article-slug", "wss://relay.example.com"],
+    ["p", "&lt;pubkey&gt;"]
+  ]
+}</code></pre>
+
+  <h3>對檔案評論 (NIP-94)</h3>
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "這張照片拍得很美！",
+  "tags": [
+    ["K", "1063"],
+    ["E", "&lt;file-event-id&gt;", "wss://relay.example.com"],
+    ["P", "&lt;uploader-pubkey&gt;"],
+    ["k", "1063"],
+    ["e", "&lt;file-event-id&gt;", "wss://relay.example.com"],
+    ["p", "&lt;uploader-pubkey&gt;"]
+  ]
+}</code></pre>
+
+  <h3>對外部網站評論</h3>
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "這個網站設計得很好！",
+  "tags": [
+    ["K", "0"],
+    ["I", "https://example.com/article"],
+    ["k", "0"],
+    ["i", "https://example.com/article"]
+  ]
+}</code></pre>
+
+  <h3>對播客評論</h3>
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "這集播客內容很精彩！",
+  "tags": [
+    ["K", "0"],
+    ["I", "podcast:guid:abc123"],
+    ["k", "0"],
+    ["i", "podcast:guid:abc123"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立評論</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+
+type CommentTarget =
+  | { type: 'event'; eventId: string; kind: number; pubkey: string; relay?: string }
+  | { type: 'addressable'; kind: number; pubkey: string; identifier: string; relay?: string }
+  | { type: 'external'; identifier: string };
+
+interface CommentOptions {
+  root: CommentTarget;
+  parent?: CommentTarget;  // 如果是回覆評論
+  content: string;
+}
+
+function createComment(options: CommentOptions, secretKey: Uint8Array) {
+  const tags: string[][] = [];
+  const { root, parent, content } = options;
+
+  // 添加根範圍標籤（大寫）
+  if (root.type === 'event') {
+    tags.push(['K', root.kind.toString()]);
+    tags.push(['E', root.eventId, root.relay || '']);
+    tags.push(['P', root.pubkey]);
+  } else if (root.type === 'addressable') {
+    const aTag = `${root.kind}:${root.pubkey}:${root.identifier}`;
+    tags.push(['K', root.kind.toString()]);
+    tags.push(['A', aTag, root.relay || '']);
+    tags.push(['P', root.pubkey]);
+  } else {
+    tags.push(['K', '0']);
+    tags.push(['I', root.identifier]);
+  }
+
+  // 添加父項目標籤（小寫）
+  const actualParent = parent || root;
+
+  if (actualParent.type === 'event') {
+    tags.push(['k', actualParent.kind.toString()]);
+    tags.push(['e', actualParent.eventId, actualParent.relay || '']);
+    tags.push(['p', actualParent.pubkey]);
+  } else if (actualParent.type === 'addressable') {
+    const aTag = `${actualParent.kind}:${actualParent.pubkey}:${actualParent.identifier}`;
+    tags.push(['k', actualParent.kind.toString()]);
+    tags.push(['a', aTag, actualParent.relay || '']);
+    tags.push(['p', actualParent.pubkey]);
+  } else {
+    tags.push(['k', '0']);
+    tags.push(['i', actualParent.identifier]);
+  }
+
+  const event = {
+    kind: 1111,
+    content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：對部落格文章評論
+const sk = generateSecretKey();
+
+const blogComment = createComment(
+  {
+    root: {
+      type: 'addressable',
+      kind: 30023,
+      pubkey: '&lt;blog-author-pubkey&gt;',
+      identifier: 'my-blog-post',
+      relay: 'wss://relay.example.com',
+    },
+    content: '這篇文章寫得很好！',
+  },
+  sk
+);
+
+console.log(blogComment);</code></pre>
+
+  <h3>回覆評論</h3>
+  <pre><code class="language-typescript">// 回覆現有評論
+const replyComment = createComment(
+  {
+    root: {
+      type: 'addressable',
+      kind: 30023,
+      pubkey: '&lt;blog-author-pubkey&gt;',
+      identifier: 'my-blog-post',
+      relay: 'wss://relay.example.com',
+    },
+    parent: {
+      type: 'event',
+      eventId: '&lt;parent-comment-id&gt;',
+      kind: 1111,
+      pubkey: '&lt;parent-comment-author&gt;',
+      relay: 'wss://relay.example.com',
+    },
+    content: '同意你的觀點！',
+  },
+  sk
+);</code></pre>
+
+  <h3>對外部內容評論</h3>
+  <pre><code class="language-typescript">// 對網站評論
+const websiteComment = createComment(
+  {
+    root: {
+      type: 'external',
+      identifier: 'https://example.com/article',
+    },
+    content: '這個網站的資源很有用！',
+  },
+  sk
+);
+
+// 對 YouTube 影片評論
+const youtubeComment = createComment(
+  {
+    root: {
+      type: 'external',
+      identifier: 'youtube:dQw4w9WgXcQ',
+    },
+    content: '經典影片！',
+  },
+  sk
+);</code></pre>
+
+  <h3>查詢評論</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢特定內容的所有評論
+async function getCommentsForContent(
+  targetKind: number,
+  targetIdentifier: string,
+  isAddressable: boolean = false
+) {
+  const filter: any = {
+    kinds: [1111],
+  };
+
+  if (isAddressable) {
+    filter['#A'] = [targetIdentifier];
+  } else {
+    filter['#E'] = [targetIdentifier];
+  }
+  filter['#K'] = [targetKind.toString()];
+
+  const comments = await pool.querySync(relays, filter);
+
+  return comments.sort((a, b) => a.created_at - b.created_at);
+}
+
+// 使用範例：獲取部落格文章的評論
+const articleComments = await getCommentsForContent(
+  30023,
+  '30023:&lt;pubkey&gt;:article-slug',
+  true
+);
+
+console.log(`找到 ${articleComments.length} 則評論`);</code></pre>
+
+  <h3>建立評論樹</h3>
+  <pre><code class="language-typescript">interface CommentNode {
+  event: any;
+  replies: CommentNode[];
+}
+
+function buildCommentTree(comments: any[]): CommentNode[] {
+  const commentMap = new Map&lt;string, CommentNode&gt;();
+  const rootComments: CommentNode[] = [];
+
+  // 建立所有評論節點
+  comments.forEach((comment) => {
+    commentMap.set(comment.id, { event: comment, replies: [] });
+  });
+
+  // 建立樹結構
+  comments.forEach((comment) => {
+    const node = commentMap.get(comment.id)!;
+
+    // 檢查是否是回覆其他評論
+    const parentTag = comment.tags.find(
+      (t: string[]) => t[0] === 'e' && comment.tags.some(
+        (k: string[]) => k[0] === 'k' && k[1] === '1111'
+      )
+    );
+
+    if (parentTag) {
+      const parentNode = commentMap.get(parentTag[1]);
+      if (parentNode) {
+        parentNode.replies.push(node);
+      } else {
+        rootComments.push(node);
+      }
+    } else {
+      rootComments.push(node);
+    }
+  });
+
+  return rootComments;
+}
+
+// 使用範例
+const tree = buildCommentTree(articleComments);
+
+function printTree(nodes: CommentNode[], indent: number = 0) {
+  nodes.forEach((node) => {
+    console.log(' '.repeat(indent) + '- ' + node.event.content.slice(0, 50));
+    printTree(node.replies, indent + 2);
+  });
+}
+
+printTree(tree);</code></pre>
+
+  <h2 id="content-guidelines">內容規範</h2>
+  <ul>
+    <li>評論內容必須是純文字，不支援 Markdown 或其他格式</li>
+    <li>應該簡潔相關，針對被評論的內容</li>
+    <li>大寫標籤（K、E、A、I、P）始終指向根內容</li>
+    <li>小寫標籤（k、e、a、i、p）指向直接父項目</li>
+  </ul>
+
+  <h2 id="vs-nip10">與 NIP-10 的區別</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>NIP-22 (Kind 1111)</th>
+        <th>NIP-10 (Kind 1)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>用途</td>
+        <td>對各類內容評論</td>
+        <td>短文回覆</td>
+      </tr>
+      <tr>
+        <td>根/父區分</td>
+        <td>大小寫標籤</td>
+        <td>reply/root marker</td>
+      </tr>
+      <tr>
+        <td>外部內容</td>
+        <td>支援 (I 標籤)</td>
+        <td>不支援</td>
+      </tr>
+      <tr>
+        <td>回覆 Kind 1</td>
+        <td>不允許</td>
+        <td>標準用法</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>始終包含中繼器提示</strong>：幫助客戶端找到相關內容</li>
+    <li><strong>正確區分大小寫</strong>：大寫指根，小寫指父</li>
+    <li><strong>不要用於 Kind 1</strong>：回覆短文請使用 NIP-10</li>
+    <li><strong>保持內容純文字</strong>：不要使用 Markdown 格式</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-10">NIP-10</a>：回覆與標記 - Kind 1 回覆機制</li>
+    <li><a href="/tech/nostr/nip-23">NIP-23</a>：長文內容 - 可被評論的文章</li>
+    <li><a href="/tech/nostr/nip-72">NIP-72</a>：審核社群 - 使用 Kind 1111</li>
+    <li><a href="/tech/nostr/nip-94">NIP-94</a>：檔案中繼資料 - 可被評論的檔案</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/22.md" target="_blank" rel="noopener noreferrer">NIP-22 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
