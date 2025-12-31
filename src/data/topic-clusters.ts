@@ -161,6 +161,7 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-05/', title: 'NIP-05 域名驗證', type: 'tech' },
       { href: '/tech/nostr/nip-44/', title: 'NIP-44 加密訊息 v2', type: 'tech' },
       { href: '/tech/nostr/nip-46/', title: 'NIP-46 遠端簽名', type: 'tech' },
+      { href: '/tech/nostr/nip-47/', title: 'NIP-47 錢包連接', type: 'tech' },
       { href: '/tech/nostr/nip-50/', title: 'NIP-50 搜尋', type: 'tech' },
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
       { href: '/tech/nostr/nip-65/', title: 'NIP-65 中繼器列表', type: 'tech' },
@@ -169,7 +170,7 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-98/', title: 'NIP-98 HTTP 認證', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-50', 'NIP-65', 'NIP-94', 'NIP-96', 'NIP-98', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋', '檔案上傳', '媒體', 'HTTP認證', 'Bearer', 'blurhash', 'imeta'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-47', 'NIP-50', 'NIP-65', 'NIP-94', 'NIP-96', 'NIP-98', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', 'Wallet Connect', 'NWC', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋', '檔案上傳', '媒體', 'HTTP認證', 'Bearer', 'blurhash', 'imeta', '閃電網路錢包'],
   },
 ];
 

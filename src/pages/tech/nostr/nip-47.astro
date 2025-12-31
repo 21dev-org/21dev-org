@@ -1,0 +1,558 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-47 錢包連接"
+  description="深入了解 Nostr Wallet Connect (NWC)，讓應用程式透過 Nostr 協議控制閃電網路錢包。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-47 錢包連接' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'NIP-46 遠端簽名', href: '/tech/nostr/nip-46' }}
+  nextPage={{ title: 'NIP-50 搜尋', href: '/tech/nostr/nip-50' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-47？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-47 定義了 Nostr Wallet Connect (NWC) 協議，讓應用程式可以透過 Nostr
+    中繼器與閃電網路錢包通訊。應用程式可以請求付款、產生發票、查詢餘額等，
+    而用戶保持對錢包的完全控制權。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心優勢：</strong>
+      NWC 讓用戶可以將任何支援的錢包連接到任何支援的應用程式，
+      無需在每個應用中設定錢包。一次連接，處處使用。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作原理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`錢包 (Wallet Service)              應用程式 (Client)
+        │                                    │
+        │  1. 產生連接 URI                    │
+        │     nostr+walletconnect://...      │
+        │  ─────────────────────────────────>│
+        │                                    │
+        │  2. 掃描 QR Code 或輸入 URI         │
+        │                                    │
+        │  3. 發送加密請求 (kind 23194)       │
+        │  <─────────────────────────────────│
+        │                                    │
+        │  4. 處理請求（付款、產生發票等）     │
+        │                                    │
+        │  5. 發送加密回應 (kind 23195)       │
+        │  ─────────────────────────────────>│
+        │                                    │`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連接 URI 格式</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`nostr+walletconnect://<wallet-pubkey>?
+  relay=wss://relay.example.com&
+  secret=<connection-secret>&
+  lud16=user@wallet.com
+
+// 參數說明：
+// wallet-pubkey: 錢包服務的公鑰
+// relay: 用於通訊的中繼器（可多個）
+// secret: 連接密鑰（用於加密通訊）
+// lud16: 可選的 Lightning Address
+
+// 實際範例
+nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.getalby.com%2Fv1&secret=12345abcde`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件類型</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">名稱</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">發送方</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">23194</td>
+          <td class="py-3 px-4">Request</td>
+          <td class="py-3 px-4">應用程式</td>
+          <td class="py-3 px-4">加密的 RPC 請求</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">23195</td>
+          <td class="py-3 px-4">Response</td>
+          <td class="py-3 px-4">錢包</td>
+          <td class="py-3 px-4">加密的 RPC 回應</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">13194</td>
+          <td class="py-3 px-4">Info</td>
+          <td class="py-3 px-4">錢包</td>
+          <td class="py-3 px-4">錢包資訊（支援的方法）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支援的方法</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">付款相關</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>pay_invoice</li>
+        <li>pay_keysend</li>
+        <li>multi_pay_invoice</li>
+        <li>multi_pay_keysend</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">發票相關</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>make_invoice</li>
+        <li>lookup_invoice</li>
+        <li>list_transactions</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">資訊查詢</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>get_balance</li>
+        <li>get_info</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">進階功能</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>sign_message</li>
+        <li>notifications</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">請求格式</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 請求事件 (kind 23194)
+{
+  "kind": 23194,
+  "content": "<NIP-04 加密的 JSON>",
+  "tags": [
+    ["p", "<錢包公鑰>"]
+  ],
+  "pubkey": "<應用程式公鑰>",
+  ...
+}
+
+// 解密後的 content 格式
+{
+  "method": "pay_invoice",
+  "params": {
+    "invoice": "lnbc100n1p..."
+  }
+}
+
+// pay_invoice 請求
+{
+  "method": "pay_invoice",
+  "params": {
+    "invoice": "lnbc100n1p...",
+    "amount": 1000  // 可選，覆蓋發票金額（毫聰）
+  }
+}
+
+// make_invoice 請求
+{
+  "method": "make_invoice",
+  "params": {
+    "amount": 21000,           // 毫聰
+    "description": "Coffee",
+    "description_hash": "...", // 可選
+    "expiry": 3600             // 可選，秒
+  }
+}
+
+// get_balance 請求
+{
+  "method": "get_balance",
+  "params": {}
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">回應格式</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 回應事件 (kind 23195)
+{
+  "kind": 23195,
+  "content": "<NIP-04 加密的 JSON>",
+  "tags": [
+    ["p", "<應用程式公鑰>"],
+    ["e", "<請求事件 ID>"]
+  ],
+  "pubkey": "<錢包公鑰>",
+  ...
+}
+
+// 成功回應
+{
+  "result_type": "pay_invoice",
+  "result": {
+    "preimage": "abcdef123456..."
+  }
+}
+
+// make_invoice 成功回應
+{
+  "result_type": "make_invoice",
+  "result": {
+    "type": "incoming",
+    "invoice": "lnbc100n1p...",
+    "description": "Coffee",
+    "description_hash": null,
+    "preimage": null,
+    "payment_hash": "abc123...",
+    "amount": 21000,
+    "fees_paid": 0,
+    "created_at": 1704067200,
+    "expires_at": 1704070800,
+    "settled_at": null
+  }
+}
+
+// get_balance 成功回應
+{
+  "result_type": "get_balance",
+  "result": {
+    "balance": 100000000  // 毫聰
+  }
+}
+
+// 錯誤回應
+{
+  "result_type": "pay_invoice",
+  "error": {
+    "code": "INSUFFICIENT_BALANCE",
+    "message": "餘額不足"
+  }
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解析連接 URI</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function parseNwcUri(uri) {
+  // 移除前綴
+  const withoutPrefix = uri.replace('nostr+walletconnect://', '')
+
+  // 分離公鑰和參數
+  const [pubkey, queryString] = withoutPrefix.split('?')
+
+  // 解析參數
+  const params = new URLSearchParams(queryString)
+
+  return {
+    walletPubkey: pubkey,
+    relays: params.getAll('relay').map(decodeURIComponent),
+    secret: params.get('secret'),
+    lud16: params.get('lud16')
+  }
+}
+
+// 使用
+const connection = parseNwcUri(
+  'nostr+walletconnect://abc123...?relay=wss%3A%2F%2Frelay.example.com&secret=xyz'
+)
+console.log(connection.walletPubkey)
+console.log(connection.relays)
+console.log(connection.secret)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">NWC 客戶端類別</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { nip04, generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools'
+
+class NwcClient {
+  constructor(connectionUri) {
+    const parsed = parseNwcUri(connectionUri)
+    this.walletPubkey = parsed.walletPubkey
+    this.relays = parsed.relays
+    this.secret = parsed.secret
+
+    // 從 secret 派生密鑰對
+    this.privateKey = this.derivePrivateKey(parsed.secret)
+    this.publicKey = getPublicKey(this.privateKey)
+  }
+
+  derivePrivateKey(secret) {
+    // 使用 secret 作為種子派生私鑰
+    const encoder = new TextEncoder()
+    const data = encoder.encode(secret)
+    // 簡化示例，實際應使用 HKDF
+    return crypto.subtle.digest('SHA-256', data)
+  }
+
+  async sendRequest(method, params) {
+    // 1. 建立請求內容
+    const content = JSON.stringify({ method, params })
+
+    // 2. 加密內容（NIP-04）
+    const encrypted = await nip04.encrypt(
+      this.privateKey,
+      this.walletPubkey,
+      content
+    )
+
+    // 3. 建立事件
+    const event = finalizeEvent({
+      kind: 23194,
+      content: encrypted,
+      tags: [['p', this.walletPubkey]],
+      created_at: Math.floor(Date.now() / 1000)
+    }, this.privateKey)
+
+    // 4. 發送到中繼器
+    const relay = await this.connectRelay()
+    await relay.publish(event)
+
+    // 5. 等待回應
+    return this.waitForResponse(event.id)
+  }
+
+  async waitForResponse(requestId) {
+    return new Promise((resolve, reject) => {
+      const relay = this.relay
+
+      const sub = relay.subscribe([{
+        kinds: [23195],
+        '#e': [requestId],
+        '#p': [this.publicKey]
+      }])
+
+      const timeout = setTimeout(() => {
+        sub.close()
+        reject(new Error('請求逾時'))
+      }, 30000)
+
+      sub.on('event', async (event) => {
+        clearTimeout(timeout)
+        sub.close()
+
+        // 解密回應
+        const decrypted = await nip04.decrypt(
+          this.privateKey,
+          this.walletPubkey,
+          event.content
+        )
+
+        const response = JSON.parse(decrypted)
+
+        if (response.error) {
+          reject(new Error(response.error.message))
+        } else {
+          resolve(response.result)
+        }
+      })
+    })
+  }
+
+  // 便捷方法
+  async payInvoice(invoice, amount = null) {
+    const params = { invoice }
+    if (amount) params.amount = amount
+    return this.sendRequest('pay_invoice', params)
+  }
+
+  async makeInvoice(amount, description = '') {
+    return this.sendRequest('make_invoice', {
+      amount,
+      description
+    })
+  }
+
+  async getBalance() {
+    return this.sendRequest('get_balance', {})
+  }
+
+  async getInfo() {
+    return this.sendRequest('get_info', {})
+  }
+}
+
+// 使用
+const nwc = new NwcClient('nostr+walletconnect://...')
+const balance = await nwc.getBalance()
+console.log(\`餘額: \${balance.balance / 1000} sats\`)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">使用 @getalby/sdk</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { nwc } from '@getalby/sdk'
+
+// 使用現成的 SDK 更簡單
+const client = new nwc.NWCClient({
+  nostrWalletConnectUrl: 'nostr+walletconnect://...'
+})
+
+// 付款
+const response = await client.payInvoice({
+  invoice: 'lnbc100n1p...'
+})
+console.log('付款成功，preimage:', response.preimage)
+
+// 產生發票
+const invoice = await client.makeInvoice({
+  amount: 21000,  // 毫聰
+  description: '咖啡'
+})
+console.log('發票:', invoice.invoice)
+
+// 查詢餘額
+const balance = await client.getBalance()
+console.log('餘額:', balance.balance, '毫聰')
+
+// 取得錢包資訊
+const info = await client.getInfo()
+console.log('支援的方法:', info.methods)`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支援的錢包</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { name: 'Alby', desc: '瀏覽器擴充錢包', features: '完整 NWC 支援' },
+        { name: 'Mutiny Wallet', desc: '自託管網頁錢包', features: 'NWC 支援' },
+        { name: 'Umbrel', desc: '家用節點', features: 'NWC 應用程式' },
+        { name: 'Start9', desc: '個人伺服器', features: 'NWC 支援' },
+        { name: 'LNbits', desc: '帳戶系統', features: 'NWC 擴充' },
+        { name: 'Coinos', desc: '託管錢包', features: 'NWC 支援' },
+      ].map((wallet) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{wallet.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)] mb-2">{wallet.desc}</p>
+          <span class="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-600 dark:text-green-400">
+            {wallet.features}
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">權限控制</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    錢包可以為每個連接設定權限限制：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 錢包資訊事件 (kind 13194)
+{
+  "kind": 13194,
+  "content": "pay_invoice get_balance get_info make_invoice",
+  "tags": [],
+  "pubkey": "<錢包公鑰>"
+}
+
+// content 列出支援的方法
+// 應用程式應該檢查這個列表
+
+// 常見權限配置範例：
+// 只讀：get_balance get_info list_transactions lookup_invoice
+// 收款：get_balance make_invoice lookup_invoice
+// 完整：pay_invoice make_invoice get_balance get_info ...
+
+// 預算限制（由錢包實作）
+// - 單筆付款上限
+// - 每日/每月付款上限
+// - 總付款上限`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤代碼</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">代碼</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">RATE_LIMITED</td>
+          <td class="py-3 px-4">請求過於頻繁</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">NOT_IMPLEMENTED</td>
+          <td class="py-3 px-4">方法不支援</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">INSUFFICIENT_BALANCE</td>
+          <td class="py-3 px-4">餘額不足</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">QUOTA_EXCEEDED</td>
+          <td class="py-3 px-4">超出預算限制</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">RESTRICTED</td>
+          <td class="py-3 px-4">權限不足</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">UNAUTHORIZED</td>
+          <td class="py-3 px-4">未授權</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">INTERNAL</td>
+          <td class="py-3 px-4">內部錯誤</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">PAYMENT_FAILED</td>
+          <td class="py-3 px-4">付款失敗</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">安全特性</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• NIP-04 端對端加密</li>
+        <li>• 連接特定的密鑰對</li>
+        <li>• 可設定預算限制</li>
+        <li>• 可隨時撤銷連接</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 謹慎分享連接 URI</li>
+        <li>• 設定合理的預算限制</li>
+        <li>• 定期檢查已連接的應用</li>
+        <li>• 不要在不信任的設備上使用</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>延伸閱讀：</strong>
+      NWC 是閃電網路與 Nostr 整合的重要橋樑。搭配 NIP-57 Zaps，
+      可以實現完全去中心化的社交打賞系統。
+    </p>
+  </div>
+</ArticleLayout>
