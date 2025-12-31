@@ -1,0 +1,363 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-36 敏感內容"
+  description="Nostr 敏感內容標記機制，用於標示需要警告的內容。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-36 敏感內容' },
+  ]}
+  difficulty="beginner"
+  readingTime="5 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-25/',
+    title: 'NIP-25 反應',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-40/',
+    title: 'NIP-40 過期時間戳',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-36 定義了敏感內容標記機制，讓發布者可以為可能令人不適的內容添加警告。
+    這類似於其他平台的「內容警告」（Content Warning）或「不適合工作場所」（NSFW）標記。
+    客戶端應該在顯示標記內容前要求用戶確認。
+  </p>
+
+  <h2 id="content-warning-tag">Content-Warning 標籤</h2>
+  <p>
+    使用 <code>content-warning</code> 標籤標記敏感內容，可選擇性地附帶原因說明：
+  </p>
+
+  <pre><code class="language-json">{`["content-warning", "<警告原因>"]`}</code></pre>
+
+  <h3>事件範例</h3>
+  <pre><code class="language-json">{`{
+  "kind": 1,
+  "tags": [
+    ["content-warning", "暴力內容"]
+  ],
+  "content": "這則貼文包含可能令人不適的內容...",
+  ...
+}`}</code></pre>
+
+  <h3>無原因的警告</h3>
+  <p>如果不想說明具體原因，可以留空：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 1,
+  "tags": [
+    ["content-warning", ""]
+  ],
+  "content": "敏感內容...",
+  ...
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立敏感內容事件</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+
+// 建立帶有內容警告的事件
+function createSensitiveEvent(
+  privateKey: Uint8Array,
+  content: string,
+  warningReason?: string
+) {
+  const event = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['content-warning', warningReason || ''],
+    ],
+    content,
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 使用範例
+const nsfwPost = createSensitiveEvent(
+  privateKey,
+  '這是一則包含敏感圖片的貼文...',
+  'NSFW 圖片'
+);
+
+const spoilerPost = createSensitiveEvent(
+  privateKey,
+  '電影結局是...',
+  '劇透警告'
+);
+
+const triggerPost = createSensitiveEvent(
+  privateKey,
+  '討論心理健康議題...',
+  '可能引發不適'
+);`}</code></pre>
+
+  <h3>檢查敏感內容</h3>
+  <pre><code class="language-typescript">{`interface ContentWarning {
+  hasSensitiveContent: boolean;
+  reason: string | null;
+}
+
+// 檢查事件是否有敏感內容標記
+function checkContentWarning(event: Event): ContentWarning {
+  const cwTag = event.tags.find(t => t[0] === 'content-warning');
+
+  if (!cwTag) {
+    return { hasSensitiveContent: false, reason: null };
+  }
+
+  return {
+    hasSensitiveContent: true,
+    reason: cwTag[1] || null,
+  };
+}
+
+// 使用範例
+const { hasSensitiveContent, reason } = checkContentWarning(event);
+
+if (hasSensitiveContent) {
+  console.log(\`此內容已標記為敏感\${reason ? \`: \${reason}\` : ''}\`);
+}`}</code></pre>
+
+  <h3>過濾敏感內容</h3>
+  <pre><code class="language-typescript">{`// 過濾掉所有敏感內容
+function filterSensitiveContent(events: Event[]): Event[] {
+  return events.filter(event => {
+    const { hasSensitiveContent } = checkContentWarning(event);
+    return !hasSensitiveContent;
+  });
+}
+
+// 只保留敏感內容
+function getSensitiveContent(events: Event[]): Event[] {
+  return events.filter(event => {
+    const { hasSensitiveContent } = checkContentWarning(event);
+    return hasSensitiveContent;
+  });
+}
+
+// 按敏感程度分類
+function categorizeContent(events: Event[]): {
+  safe: Event[];
+  sensitive: Event[];
+} {
+  const safe: Event[] = [];
+  const sensitive: Event[] = [];
+
+  for (const event of events) {
+    const { hasSensitiveContent } = checkContentWarning(event);
+    if (hasSensitiveContent) {
+      sensitive.push(event);
+    } else {
+      safe.push(event);
+    }
+  }
+
+  return { safe, sensitive };
+}`}</code></pre>
+
+  <h2 id="ui-display">UI 顯示建議</h2>
+  <p>客戶端應該：</p>
+  <ul>
+    <li>預設隱藏敏感內容</li>
+    <li>顯示警告訊息和原因（如有）</li>
+    <li>提供「顯示內容」按鈕</li>
+    <li>允許用戶設定偏好（總是隱藏、總是顯示等）</li>
+  </ul>
+
+  <pre><code class="language-typescript">{`// React 組件範例
+function SensitiveNote({ event }: { event: Event }) {
+  const [revealed, setRevealed] = useState(false);
+  const { hasSensitiveContent, reason } = checkContentWarning(event);
+
+  // 如果沒有敏感標記，直接顯示
+  if (!hasSensitiveContent) {
+    return <Note event={event} />;
+  }
+
+  // 顯示警告覆蓋層
+  if (!revealed) {
+    return (
+      <div className="sensitive-wrapper">
+        <div className="warning-overlay">
+          <div className="warning-icon">⚠️</div>
+          <div className="warning-text">
+            {reason ? \`敏感內容：\${reason}\` : '此內容已被標記為敏感'}
+          </div>
+          <button
+            onClick={() => setRevealed(true)}
+            className="reveal-button"
+          >
+            顯示內容
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 已確認顯示
+  return (
+    <div className="revealed-sensitive">
+      <div className="sensitive-badge">
+        ⚠️ {reason || '敏感內容'}
+      </div>
+      <Note event={event} />
+      <button
+        onClick={() => setRevealed(false)}
+        className="hide-button"
+      >
+        隱藏
+      </button>
+    </div>
+  );
+}`}</code></pre>
+
+  <h2 id="user-settings">用戶偏好設定</h2>
+  <pre><code class="language-typescript">{`// 用戶敏感內容偏好
+type SensitiveContentPreference =
+  | 'always_hide'      // 總是隱藏
+  | 'show_warning'     // 顯示警告（預設）
+  | 'always_show';     // 總是顯示
+
+interface UserSettings {
+  sensitiveContent: SensitiveContentPreference;
+}
+
+// 根據用戶設定決定顯示方式
+function shouldShowContent(
+  event: Event,
+  settings: UserSettings
+): { show: boolean; showWarning: boolean } {
+  const { hasSensitiveContent } = checkContentWarning(event);
+
+  if (!hasSensitiveContent) {
+    return { show: true, showWarning: false };
+  }
+
+  switch (settings.sensitiveContent) {
+    case 'always_hide':
+      return { show: false, showWarning: false };
+    case 'always_show':
+      return { show: true, showWarning: true };
+    case 'show_warning':
+    default:
+      return { show: false, showWarning: true };
+  }
+}`}</code></pre>
+
+  <h2 id="common-reasons">常見警告原因</h2>
+  <p>一些常用的警告原因標籤：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">原因</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">NSFW</td>
+          <td class="border border-[var(--border-default)] p-3">不適合工作場所的內容</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">nudity</td>
+          <td class="border border-[var(--border-default)] p-3">裸露內容</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">violence</td>
+          <td class="border border-[var(--border-default)] p-3">暴力內容</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">spoiler</td>
+          <td class="border border-[var(--border-default)] p-3">劇透內容</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">sensitive</td>
+          <td class="border border-[var(--border-default)] p-3">一般敏感內容</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="media-content">媒體內容處理</h2>
+  <p>對於包含媒體的敏感內容，建議額外處理：</p>
+
+  <pre><code class="language-typescript">{`// 敏感媒體處理
+function processSensitiveMedia(event: Event): {
+  content: string;
+  mediaUrls: string[];
+  blurMedia: boolean;
+} {
+  const { hasSensitiveContent } = checkContentWarning(event);
+
+  // 提取媒體 URL
+  const mediaUrls = extractMediaUrls(event.content);
+
+  return {
+    content: event.content,
+    mediaUrls,
+    blurMedia: hasSensitiveContent,
+  };
+}
+
+// 在 CSS 中模糊處理
+const styles = \`
+  .blurred-media {
+    filter: blur(20px);
+    transition: filter 0.3s ease;
+  }
+
+  .blurred-media:hover,
+  .blurred-media.revealed {
+    filter: none;
+  }
+\`;`}</code></pre>
+
+  <h2 id="relay-handling">中繼器處理</h2>
+  <p>
+    中繼器可以根據自己的政策處理敏感內容：
+  </p>
+  <ul>
+    <li>接受所有內容（預設）</li>
+    <li>拒絕有敏感標記的內容</li>
+    <li>僅接受有敏感標記的成人內容</li>
+  </ul>
+
+  <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg my-6">
+    <p class="text-blue-700 dark:text-blue-300 font-medium mb-2">最佳實踐</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      發布者應該誠實標記敏感內容，這有助於建立健康的社群環境。
+      客戶端則應尊重這些標記，讓用戶自行決定是否查看。
+    </p>
+  </div>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>自願性</strong>：標記是發布者自願的，無法強制執行</li>
+    <li><strong>主觀性</strong>：「敏感」的定義因人而異</li>
+    <li><strong>回覆內容</strong>：回覆敏感貼文不會自動繼承敏感標記</li>
+    <li><strong>轉發處理</strong>：轉發時應保留原始的敏感標記</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-18/">NIP-18</a> - 轉發（處理敏感內容轉發）</li>
+    <li><a href="/tech/nostr/nip-94/">NIP-94</a> - 檔案中繼資料（媒體標記）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/36.md" target="_blank" rel="noopener">NIP-36 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
