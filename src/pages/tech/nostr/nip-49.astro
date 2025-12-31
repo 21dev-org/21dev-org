@@ -1,0 +1,538 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-49: 私鑰加密"
+  description="使用密碼保護 Nostr 私鑰的標準加密格式"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-49 定義了一種使用密碼加密 secp256k1 私鑰的標準方法。
+    透過結合密碼派生密鑰（scrypt）和認證加密（XChaCha20-Poly1305），
+    用戶可以安全地儲存和傳輸加密後的私鑰，以 <code>ncryptsec</code> 格式編碼。
+  </p>
+
+  <h2 id="format">ncryptsec 格式</h2>
+  <p>
+    加密後的私鑰使用 bech32 編碼，前綴為 <code>ncryptsec</code>：
+  </p>
+
+  <pre><code class="language-text">ncryptsec1qgg9947rlpvqu76pj5ecreduf9jxhselq2nae2kghhvd5g7dgjtcxfqtd67p9m0w57lspw8gsq6yphnm8623nsl8xn9j4jdzz84zm3frztj3z7s35vpzmqf6ksu8r89qk5z2zxfmu5gv8th8wclt0h4p</code></pre>
+
+  <h3>二進制結構（91 位元組）</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>欄位</th>
+        <th>大小</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>版本號</td>
+        <td>1 byte</td>
+        <td>固定為 <code>0x02</code></td>
+      </tr>
+      <tr>
+        <td>LOG_N</td>
+        <td>1 byte</td>
+        <td>scrypt 的記憶體參數（16-22）</td>
+      </tr>
+      <tr>
+        <td>Salt</td>
+        <td>16 bytes</td>
+        <td>隨機鹽值</td>
+      </tr>
+      <tr>
+        <td>Nonce</td>
+        <td>24 bytes</td>
+        <td>XChaCha20 的隨機 nonce</td>
+      </tr>
+      <tr>
+        <td>關聯資料</td>
+        <td>1 byte</td>
+        <td>密鑰安全狀態標記</td>
+      </tr>
+      <tr>
+        <td>密文</td>
+        <td>48 bytes</td>
+        <td>加密後的私鑰（32）+ 認證標籤（16）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="encryption-process">加密流程</h2>
+
+  <h3>1. 密碼正規化</h3>
+  <p>
+    密碼必須正規化為 Unicode NFKC 格式，確保在不同電腦和客戶端上輸入一致：
+  </p>
+  <pre><code class="language-typescript">const normalizedPassword = password.normalize('NFKC');</code></pre>
+
+  <h3>2. 密鑰派生（scrypt）</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>參數</th>
+        <th>值</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Salt</td>
+        <td>16 隨機位元組</td>
+        <td>每次加密隨機生成</td>
+      </tr>
+      <tr>
+        <td>N</td>
+        <td>2^LOG_N</td>
+        <td>記憶體/時間權衡</td>
+      </tr>
+      <tr>
+        <td>r</td>
+        <td>8</td>
+        <td>區塊大小參數</td>
+      </tr>
+      <tr>
+        <td>p</td>
+        <td>1</td>
+        <td>並行參數</td>
+      </tr>
+      <tr>
+        <td>輸出</td>
+        <td>32 bytes</td>
+        <td>對稱加密密鑰</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>LOG_N 參數對照表</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>LOG_N</th>
+        <th>記憶體需求</th>
+        <th>建議用途</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>16</td>
+        <td>64 MiB</td>
+        <td>低端設備</td>
+      </tr>
+      <tr>
+        <td>17</td>
+        <td>128 MiB</td>
+        <td>行動裝置</td>
+      </tr>
+      <tr>
+        <td>18</td>
+        <td>256 MiB</td>
+        <td>一般電腦</td>
+      </tr>
+      <tr>
+        <td>19</td>
+        <td>512 MiB</td>
+        <td>建議預設值</td>
+      </tr>
+      <tr>
+        <td>20</td>
+        <td>1 GiB</td>
+        <td>高安全性</td>
+      </tr>
+      <tr>
+        <td>21</td>
+        <td>2 GiB</td>
+        <td>極高安全性</td>
+      </tr>
+      <tr>
+        <td>22</td>
+        <td>4 GiB</td>
+        <td>最高安全性</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3. 對稱加密（XChaCha20-Poly1305）</h3>
+  <ul>
+    <li><strong>Nonce</strong>：24 隨機位元組</li>
+    <li><strong>關聯資料</strong>：1 位元組的密鑰安全狀態</li>
+    <li><strong>明文</strong>：32 位元組的原始私鑰</li>
+  </ul>
+
+  <h3>關聯資料值</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>值</th>
+        <th>意義</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>0x00</code></td>
+        <td>未知密鑰安全狀態</td>
+      </tr>
+      <tr>
+        <td><code>0x01</code></td>
+        <td>密鑰已知可能洩露</td>
+      </tr>
+      <tr>
+        <td><code>0x02</code></td>
+        <td>密鑰未被洩露（安全）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>安裝依賴</h3>
+  <pre><code class="language-bash">npm install @noble/hashes @noble/ciphers nostr-tools</code></pre>
+
+  <h3>加密私鑰</h3>
+  <pre><code class="language-typescript">import { scrypt } from '@noble/hashes/scrypt';
+import { xchacha20poly1305 } from '@noble/ciphers/chacha';
+import { randomBytes } from '@noble/hashes/utils';
+import { bech32 } from '@scure/base';
+
+interface EncryptOptions {
+  logN?: number;  // 16-22，預設 19
+  keySecurity?: 0x00 | 0x01 | 0x02;  // 預設 0x02
+}
+
+function encryptPrivateKey(
+  privateKey: Uint8Array,
+  password: string,
+  options: EncryptOptions = {}
+): string {
+  const { logN = 19, keySecurity = 0x02 } = options;
+
+  // 1. 正規化密碼
+  const normalizedPassword = password.normalize('NFKC');
+  const passwordBytes = new TextEncoder().encode(normalizedPassword);
+
+  // 2. 生成隨機 salt 和 nonce
+  const salt = randomBytes(16);
+  const nonce = randomBytes(24);
+
+  // 3. 使用 scrypt 派生密鑰
+  const N = Math.pow(2, logN);
+  const key = scrypt(passwordBytes, salt, { N, r: 8, p: 1, dkLen: 32 });
+
+  // 4. 使用 XChaCha20-Poly1305 加密
+  const aad = new Uint8Array([keySecurity]);
+  const cipher = xchacha20poly1305(key, nonce, aad);
+  const ciphertext = cipher.encrypt(privateKey);
+
+  // 5. 組合二進制資料
+  const data = new Uint8Array(91);
+  data[0] = 0x02;  // 版本號
+  data[1] = logN;
+  data.set(salt, 2);
+  data.set(nonce, 18);
+  data[42] = keySecurity;
+  data.set(ciphertext, 43);
+
+  // 6. Bech32 編碼
+  const words = bech32.toWords(data);
+  return bech32.encode('ncryptsec', words, 91 * 2);
+}
+
+// 使用範例
+import { generateSecretKey } from 'nostr-tools';
+
+const sk = generateSecretKey();
+const ncryptsec = encryptPrivateKey(sk, 'my-strong-password');
+console.log('加密後的私鑰:', ncryptsec);</code></pre>
+
+  <h3>解密私鑰</h3>
+  <pre><code class="language-typescript">import { scrypt } from '@noble/hashes/scrypt';
+import { xchacha20poly1305 } from '@noble/ciphers/chacha';
+import { bech32 } from '@scure/base';
+
+interface DecryptResult {
+  privateKey: Uint8Array;
+  keySecurity: number;
+}
+
+function decryptPrivateKey(
+  ncryptsec: string,
+  password: string
+): DecryptResult {
+  // 1. Bech32 解碼
+  const decoded = bech32.decode(ncryptsec, 200);
+  if (decoded.prefix !== 'ncryptsec') {
+    throw new Error('無效的 ncryptsec 格式');
+  }
+
+  const data = bech32.fromWords(decoded.words);
+
+  // 2. 解析各欄位
+  const version = data[0];
+  if (version !== 0x02) {
+    throw new Error(`不支援的版本: ${version}`);
+  }
+
+  const logN = data[1];
+  const salt = data.slice(2, 18);
+  const nonce = data.slice(18, 42);
+  const keySecurity = data[42];
+  const ciphertext = data.slice(43);
+
+  // 3. 正規化密碼並派生密鑰
+  const normalizedPassword = password.normalize('NFKC');
+  const passwordBytes = new TextEncoder().encode(normalizedPassword);
+  const N = Math.pow(2, logN);
+  const key = scrypt(passwordBytes, new Uint8Array(salt), {
+    N,
+    r: 8,
+    p: 1,
+    dkLen: 32,
+  });
+
+  // 4. 解密
+  const aad = new Uint8Array([keySecurity]);
+  const cipher = xchacha20poly1305(
+    new Uint8Array(key),
+    new Uint8Array(nonce),
+    aad
+  );
+
+  try {
+    const privateKey = cipher.decrypt(new Uint8Array(ciphertext));
+    return {
+      privateKey: new Uint8Array(privateKey),
+      keySecurity,
+    };
+  } catch {
+    throw new Error('解密失敗：密碼錯誤或資料損壞');
+  }
+}
+
+// 使用範例
+try {
+  const { privateKey, keySecurity } = decryptPrivateKey(
+    ncryptsec,
+    'my-strong-password'
+  );
+  console.log('解密成功！');
+  console.log('密鑰安全狀態:', keySecurity);
+} catch (error) {
+  console.error('解密失敗:', error);
+}</code></pre>
+
+  <h3>完整的密鑰管理類別</h3>
+  <pre><code class="language-typescript">import { scrypt } from '@noble/hashes/scrypt';
+import { xchacha20poly1305 } from '@noble/ciphers/chacha';
+import { randomBytes, bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import { bech32 } from '@scure/base';
+import { getPublicKey, nip19 } from 'nostr-tools';
+
+class EncryptedKeyManager {
+  private static readonly VERSION = 0x02;
+
+  static encrypt(
+    privateKey: Uint8Array | string,
+    password: string,
+    logN: number = 19
+  ): string {
+    // 處理不同格式的私鑰
+    let keyBytes: Uint8Array;
+    if (typeof privateKey === 'string') {
+      if (privateKey.startsWith('nsec')) {
+        const decoded = nip19.decode(privateKey);
+        keyBytes = decoded.data as Uint8Array;
+      } else {
+        keyBytes = hexToBytes(privateKey);
+      }
+    } else {
+      keyBytes = privateKey;
+    }
+
+    if (keyBytes.length !== 32) {
+      throw new Error('私鑰必須是 32 位元組');
+    }
+
+    const normalizedPassword = password.normalize('NFKC');
+    const passwordBytes = new TextEncoder().encode(normalizedPassword);
+    const salt = randomBytes(16);
+    const nonce = randomBytes(24);
+    const N = Math.pow(2, logN);
+
+    const key = scrypt(passwordBytes, salt, { N, r: 8, p: 1, dkLen: 32 });
+    const keySecurity = 0x02;
+    const aad = new Uint8Array([keySecurity]);
+    const cipher = xchacha20poly1305(key, nonce, aad);
+    const ciphertext = cipher.encrypt(keyBytes);
+
+    const data = new Uint8Array(91);
+    data[0] = this.VERSION;
+    data[1] = logN;
+    data.set(salt, 2);
+    data.set(nonce, 18);
+    data[42] = keySecurity;
+    data.set(ciphertext, 43);
+
+    // 清除敏感資料
+    keyBytes.fill(0);
+    key.fill(0);
+
+    const words = bech32.toWords(data);
+    return bech32.encode('ncryptsec', words, 200);
+  }
+
+  static decrypt(ncryptsec: string, password: string): {
+    privateKey: Uint8Array;
+    privateKeyHex: string;
+    nsec: string;
+    publicKey: string;
+    npub: string;
+    keySecurity: number;
+  } {
+    const decoded = bech32.decode(ncryptsec, 200);
+    if (decoded.prefix !== 'ncryptsec') {
+      throw new Error('無效的 ncryptsec 格式');
+    }
+
+    const data = new Uint8Array(bech32.fromWords(decoded.words));
+
+    if (data[0] !== this.VERSION) {
+      throw new Error(`不支援的版本: ${data[0]}`);
+    }
+
+    const logN = data[1];
+    const salt = data.slice(2, 18);
+    const nonce = data.slice(18, 42);
+    const keySecurity = data[42];
+    const ciphertext = data.slice(43);
+
+    const normalizedPassword = password.normalize('NFKC');
+    const passwordBytes = new TextEncoder().encode(normalizedPassword);
+    const N = Math.pow(2, logN);
+    const key = scrypt(passwordBytes, salt, { N, r: 8, p: 1, dkLen: 32 });
+
+    const aad = new Uint8Array([keySecurity]);
+    const cipher = xchacha20poly1305(key, nonce, aad);
+
+    let privateKey: Uint8Array;
+    try {
+      privateKey = cipher.decrypt(ciphertext);
+    } catch {
+      throw new Error('解密失敗：密碼錯誤');
+    }
+
+    const privateKeyHex = bytesToHex(privateKey);
+    const publicKey = getPublicKey(privateKey);
+
+    // 清除敏感資料
+    key.fill(0);
+
+    return {
+      privateKey,
+      privateKeyHex,
+      nsec: nip19.nsecEncode(privateKey),
+      publicKey,
+      npub: nip19.npubEncode(publicKey),
+      keySecurity,
+    };
+  }
+
+  static changePassword(
+    ncryptsec: string,
+    oldPassword: string,
+    newPassword: string,
+    newLogN?: number
+  ): string {
+    const { privateKey } = this.decrypt(ncryptsec, oldPassword);
+    const result = this.encrypt(privateKey, newPassword, newLogN);
+
+    // 清除敏感資料
+    privateKey.fill(0);
+
+    return result;
+  }
+}
+
+// 使用範例
+import { generateSecretKey } from 'nostr-tools';
+
+const sk = generateSecretKey();
+console.log('原始 nsec:', nip19.nsecEncode(sk));
+
+// 加密
+const encrypted = EncryptedKeyManager.encrypt(sk, 'my-password', 19);
+console.log('ncryptsec:', encrypted);
+
+// 解密
+const decrypted = EncryptedKeyManager.decrypt(encrypted, 'my-password');
+console.log('解密後 nsec:', decrypted.nsec);
+console.log('npub:', decrypted.npub);
+
+// 更改密碼
+const newEncrypted = EncryptedKeyManager.changePassword(
+  encrypted,
+  'my-password',
+  'new-password'
+);
+console.log('新的 ncryptsec:', newEncrypted);</code></pre>
+
+  <h2 id="security">安全考量</h2>
+
+  <div class="not-prose my-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+    <p class="text-sm text-red-800 dark:text-red-200">
+      <strong>重要安全提醒：</strong>
+    </p>
+    <ul class="text-sm text-red-800 dark:text-red-200 mt-2 list-disc list-inside">
+      <li>不要公開發布加密的私鑰，攻擊者可以收集大量加密私鑰進行破解</li>
+      <li>使用強密碼，至少 12 個字元包含大小寫、數字和符號</li>
+      <li>使用完畢後清除記憶體中的密碼和私鑰</li>
+      <li>LOG_N 值越高越安全，但解密時間也越長</li>
+    </ul>
+  </div>
+
+  <h3>為什麼選擇這些演算法？</h3>
+  <ul>
+    <li><strong>scrypt</strong>：最大化記憶體硬度，有效抵抗 GPU/ASIC 暴力破解</li>
+    <li><strong>XChaCha20-Poly1305</strong>：現代密碼學家普遍推薦，被 TLS 1.3 和 OpenSSH 採用</li>
+  </ul>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>私鑰備份</h3>
+  <ul>
+    <li>將加密後的私鑰儲存在密碼管理器中</li>
+    <li>備份到安全的離線儲存</li>
+  </ul>
+
+  <h3>跨裝置傳輸</h3>
+  <ul>
+    <li>安全地將私鑰從一台設備轉移到另一台</li>
+    <li>透過不安全通道傳輸（但不建議公開發布）</li>
+  </ul>
+
+  <h3>多設備同步</h3>
+  <ul>
+    <li>在多台設備間同步加密的私鑰</li>
+    <li>使用相同密碼在各設備解密</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 私鑰和簽名</li>
+    <li><a href="/tech/nostr/nip-06">NIP-06</a>：助記詞派生 - 另一種密鑰備份方式</li>
+    <li><a href="/tech/nostr/nip-19">NIP-19</a>：bech32 編碼 - nsec 格式</li>
+    <li><a href="/tech/nostr/nip-44">NIP-44</a>：加密訊息 - 相關加密技術</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/49.md" target="_blank" rel="noopener noreferrer">NIP-49 規範</a></li>
+    <li><a href="https://github.com/paulmillr/noble-hashes" target="_blank" rel="noopener noreferrer">@noble/hashes</a></li>
+    <li><a href="https://github.com/paulmillr/noble-ciphers" target="_blank" rel="noopener noreferrer">@noble/ciphers</a></li>
+  </ul>
+</ArticleLayout>
