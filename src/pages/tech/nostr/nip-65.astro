@@ -1,0 +1,338 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-65 中繼器列表"
+  description="深入了解 Nostr 的中繼器列表元數據，用於發現用戶使用的中繼器。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-65 中繼器列表' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'NIP-57 Zaps', href: '/tech/nostr/nip-57' }}
+  nextPage={{ title: '中繼器運作', href: '/tech/nostr/relays' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-65？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-65 定義了用戶的中繼器列表元數據（Relay List Metadata），讓其他用戶和客戶端
+    知道應該從哪些中繼器讀取該用戶的事件，以及向哪些中繼器發送給該用戶的事件。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>核心概念：</strong>
+      Kind 10002 事件包含用戶的中繼器偏好，區分「讀取」和「寫入」中繼器，
+      讓 Nostr 網路更有效率地路由訊息。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 10002,
+  "pubkey": "<user-pubkey>",
+  "content": "",
+  "tags": [
+    ["r", "wss://relay1.com"],              // 讀+寫
+    ["r", "wss://relay2.com", "read"],      // 只讀
+    ["r", "wss://relay3.com", "write"]      // 只寫
+  ],
+  "created_at": 1234567890,
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器類型</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標記</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">讀取</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">寫入</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">（無標記）</td>
+          <td class="py-3 px-4 text-green-500">✓</td>
+          <td class="py-3 px-4 text-green-500">✓</td>
+          <td class="py-3 px-4">主要中繼器，用於讀寫</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-blue-500">"read"</td>
+          <td class="py-3 px-4 text-green-500">✓</td>
+          <td class="py-3 px-4 text-red-500">✗</td>
+          <td class="py-3 px-4">從此中繼器讀取他人事件</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">"write"</td>
+          <td class="py-3 px-4 text-red-500">✗</td>
+          <td class="py-3 px-4 text-green-500">✓</td>
+          <td class="py-3 px-4">發布自己的事件到此中繼器</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    {
+      [
+        {
+          title: '找到用戶的貼文',
+          desc: '查看用戶的 write 中繼器，從那裡獲取他們的事件',
+          icon: '📖',
+        },
+        {
+          title: '發送私訊',
+          desc: '發送到用戶的 read 中繼器，確保他們能收到',
+          icon: '✉️',
+        },
+        {
+          title: '回覆貼文',
+          desc: '發送到原作者的 read 中繼器',
+          icon: '💬',
+        },
+        {
+          title: '廣播通知',
+          desc: '使用 write 中繼器發布，讓關注者能找到',
+          icon: '📢',
+        },
+      ].map((item) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <div class="text-2xl mb-2">{item.icon}</div>
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{item.title}</h4>
+          <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發布中繼器列表</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function publishRelayList(relays) {
+  const event = {
+    kind: 10002,
+    created_at: Math.floor(Date.now() / 1000),
+    content: '',
+    tags: relays.map(r => {
+      if (r.type === 'read') return ['r', r.url, 'read']
+      if (r.type === 'write') return ['r', r.url, 'write']
+      return ['r', r.url]  // 讀+寫
+    })
+  }
+
+  const signed = await window.nostr.signEvent(event)
+  // 發送到多個中繼器
+  for (const relay of connectedRelays) {
+    relay.send(JSON.stringify(['EVENT', signed]))
+  }
+
+  return signed
+}
+
+// 使用
+await publishRelayList([
+  { url: 'wss://relay.damus.io' },           // 讀+寫
+  { url: 'wss://nos.lol' },                  // 讀+寫
+  { url: 'wss://relay.snort.social', type: 'read' },
+  { url: 'wss://nostr.wine', type: 'write' }
+])`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">查詢用戶的中繼器列表</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function getUserRelays(pubkey) {
+  return new Promise((resolve) => {
+    const sub = relay.subscribe([{
+      kinds: [10002],
+      authors: [pubkey],
+      limit: 1
+    }])
+
+    let relayList = null
+
+    sub.on('event', (event) => {
+      relayList = parseRelayList(event)
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(relayList)
+    })
+  })
+}
+
+function parseRelayList(event) {
+  const relays = { read: [], write: [] }
+
+  for (const tag of event.tags) {
+    if (tag[0] !== 'r') continue
+
+    const url = tag[1]
+    const type = tag[2]
+
+    if (!type || type === 'write') {
+      relays.write.push(url)
+    }
+    if (!type || type === 'read') {
+      relays.read.push(url)
+    }
+  }
+
+  return relays
+}
+
+// 使用
+const relays = await getUserRelays('npub1...')
+console.log('讀取中繼器:', relays.read)
+console.log('寫入中繼器:', relays.write)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發送事件到用戶的中繼器</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function sendToUser(event, targetPubkey) {
+  // 1. 獲取目標用戶的中繼器列表
+  const userRelays = await getUserRelays(targetPubkey)
+
+  if (!userRelays || userRelays.read.length === 0) {
+    console.log('找不到用戶的中繼器，使用預設')
+    userRelays = { read: DEFAULT_RELAYS }
+  }
+
+  // 2. 連接到用戶的 read 中繼器
+  const connections = await Promise.all(
+    userRelays.read.map(url => connectToRelay(url))
+  )
+
+  // 3. 發送事件
+  for (const relay of connections) {
+    relay.send(JSON.stringify(['EVENT', event]))
+  }
+}
+
+// 發送私訊到用戶的中繼器
+await sendToUser(encryptedDM, recipientPubkey)`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Outbox 模型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-65 實現了「Outbox 模型」，讓訊息路由更有效率：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`# Outbox 模型原理
+
+Alice 的設定：
+  write: [relay1, relay2]  // Alice 發布到這裡
+  read:  [relay3, relay4]  // Alice 從這裡讀取
+
+Bob 想看 Alice 的貼文：
+  → 查詢 Alice 的 kind 10002
+  → 連接到 Alice 的 write 中繼器 (relay1, relay2)
+  → 從那裡獲取 Alice 的事件
+
+Bob 想發私訊給 Alice：
+  → 查詢 Alice 的 kind 10002
+  → 連接到 Alice 的 read 中繼器 (relay3, relay4)
+  → 發送到那裡，Alice 才能收到`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 kind 3 的區別</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 3（關注列表）</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 10002（中繼器列表）</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">主要用途</td>
+          <td class="py-3 px-4">儲存關注的用戶</td>
+          <td class="py-3 px-4">宣告中繼器偏好</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">中繼器資訊</td>
+          <td class="py-3 px-4">附帶在 content（已過時）</td>
+          <td class="py-3 px-4">主要功能，使用標籤</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">讀/寫區分</td>
+          <td class="py-3 px-4">不支援</td>
+          <td class="py-3 px-4">支援</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">推薦使用</td>
+          <td class="py-3 px-4">只用於關注列表</td>
+          <td class="py-3 px-4">用於中繼器設定</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">推薦做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 保持 3-5 個中繼器</li>
+        <li>• 至少有一個讀+寫中繼器</li>
+        <li>• 使用穩定可靠的中繼器</li>
+        <li>• 定期更新列表</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 不要列出太多中繼器</li>
+        <li>• 確保中繼器可訪問</li>
+        <li>• 考慮地理位置分散</li>
+        <li>• 測試 read/write 設定</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢示例</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢單個用戶的中繼器列表
+["REQ", "relay-list", {
+  "kinds": [10002],
+  "authors": ["<pubkey>"],
+  "limit": 1
+}]
+
+// 批量查詢多個用戶的中繼器列表
+["REQ", "relay-lists", {
+  "kinds": [10002],
+  "authors": ["<pubkey1>", "<pubkey2>", "<pubkey3>"]
+}]
+
+// 注意：kind 10002 是可替換事件
+// 只需要最新的一個版本`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>客戶端建議：</strong>
+      實作 NIP-65 可以大幅提升訊息送達率。當用戶關注某人時，
+      查詢他們的中繼器列表，並優先連接到這些中繼器。
+    </p>
+  </div>
+</ArticleLayout>

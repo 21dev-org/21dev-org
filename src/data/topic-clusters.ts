@@ -151,6 +151,7 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/keys/', title: '密鑰管理', type: 'tech' },
       { href: '/tech/nostr/nip-04/', title: 'NIP-04 加密私訊', type: 'tech' },
       { href: '/tech/nostr/nip-07/', title: 'NIP-07 瀏覽器擴充', type: 'tech' },
+      { href: '/tech/nostr/nip-09/', title: 'NIP-09 事件刪除', type: 'tech' },
       { href: '/tech/nostr/nip-10/', title: 'NIP-10 回覆與標記', type: 'tech' },
       { href: '/tech/nostr/nip-19/', title: 'NIP-19 bech32 編碼', type: 'tech' },
       { href: '/tech/nostr/nip-23/', title: 'NIP-23 長文內容', type: 'tech' },
@@ -160,9 +161,10 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-44/', title: 'NIP-44 加密訊息 v2', type: 'tech' },
       { href: '/tech/nostr/nip-46/', title: 'NIP-46 遠端簽名', type: 'tech' },
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
+      { href: '/tech/nostr/nip-65/', title: 'NIP-65 中繼器列表', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-10', 'NIP-25', 'NIP-46', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-25', 'NIP-46', 'NIP-65', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串', '刪除', 'Outbox'],
   },
 ];
 

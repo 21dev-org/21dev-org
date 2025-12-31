@@ -1,0 +1,316 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-09 事件刪除"
+  description="深入了解 Nostr 的事件刪除機制，刪除請求和中繼器處理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-09 事件刪除' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-07 瀏覽器擴充', href: '/tech/nostr/nip-07' }}
+  nextPage={{ title: 'NIP-10 回覆與標記', href: '/tech/nostr/nip-10' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-09？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-09 定義了 Nostr 中的事件刪除機制。用戶可以發布 kind 5 事件來請求刪除
+    自己先前發布的事件。這是一種「刪除請求」而非強制刪除，中繼器可以選擇是否執行。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>重要：</strong>
+      刪除在 Nostr 中不是強制性的。中繼器可能忽略刪除請求，
+      其他用戶可能已經保存了你的事件。發布前請謹慎考慮。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 5,
+  "pubkey": "<author-pubkey>",
+  "content": "刪除原因（可選）",
+  "tags": [
+    ["e", "<event-id-to-delete>"],
+    ["e", "<another-event-id>"],
+    ["a", "<kind>:<pubkey>:<d-tag>"]  // 刪除可替換事件
+  ],
+  "created_at": 1234567890,
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">刪除類型</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">格式</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-blue-500">"e"</td>
+          <td class="py-3 px-4">刪除特定事件</td>
+          <td class="py-3 px-4 font-mono text-xs">["e", "&lt;event-id&gt;"]</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">"a"</td>
+          <td class="py-3 px-4">刪除可替換事件</td>
+          <td class="py-3 px-4 font-mono text-xs">["a", "&lt;kind&gt;:&lt;pubkey&gt;:&lt;d&gt;"]</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">刪除單個事件</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 5,
+  "content": "發錯了",
+  "tags": [
+    ["e", "abc123..."]
+  ]
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">刪除多個事件</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 5,
+  "content": "清理舊貼文",
+  "tags": [
+    ["e", "abc123..."],
+    ["e", "def456..."],
+    ["e", "ghi789..."]
+  ]
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">刪除可替換事件（如長文）</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 5,
+  "content": "撤回文章",
+  "tags": [
+    ["a", "30023:abc123...:my-article-slug"]
+  ]
+}
+
+// "a" 標籤格式：<kind>:<pubkey>:<d-tag>
+// 用於 kind 30000+ 的可替換事件`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發送刪除請求</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function deleteEvent(eventId, reason = '') {
+  const deleteEvent = {
+    kind: 5,
+    created_at: Math.floor(Date.now() / 1000),
+    content: reason,
+    tags: [
+      ['e', eventId]
+    ]
+  }
+
+  // 簽名
+  const signed = await window.nostr.signEvent(deleteEvent)
+
+  // 發送到中繼器
+  relay.send(JSON.stringify(['EVENT', signed]))
+
+  return signed
+}
+
+// 使用
+await deleteEvent('abc123...', '發布錯誤')
+await deleteEvent('def456...')  // 無原因`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">批量刪除</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function deleteEvents(eventIds, reason = '') {
+  const deleteEvent = {
+    kind: 5,
+    created_at: Math.floor(Date.now() / 1000),
+    content: reason,
+    tags: eventIds.map(id => ['e', id])
+  }
+
+  const signed = await window.nostr.signEvent(deleteEvent)
+  relay.send(JSON.stringify(['EVENT', signed]))
+
+  return signed
+}
+
+// 批量刪除
+await deleteEvents([
+  'abc123...',
+  'def456...',
+  'ghi789...'
+], '清理舊內容')`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">檢查事件是否已刪除</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function isDeleted(eventId, authorPubkey) {
+  return new Promise((resolve) => {
+    const sub = relay.subscribe([{
+      kinds: [5],
+      authors: [authorPubkey],
+      '#e': [eventId]
+    }])
+
+    let deleted = false
+
+    sub.on('event', (event) => {
+      // 確認刪除事件是同一作者發的
+      if (event.pubkey === authorPubkey) {
+        deleted = true
+      }
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(deleted)
+    })
+  })
+}
+
+// 使用
+const deleted = await isDeleted('abc123...', 'author-pubkey')
+if (deleted) {
+  console.log('此事件已被作者刪除')
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼器行為</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    {
+      [
+        { behavior: '刪除事件', desc: '中繼器收到 kind 5 後，刪除對應的事件', support: '推薦' },
+        { behavior: '拒絕重發', desc: '已刪除的事件不再接受重新發布', support: '推薦' },
+        { behavior: '保留刪除記錄', desc: '保存 kind 5 事件供客戶端查詢', support: '可選' },
+        { behavior: '忽略刪除', desc: '某些中繼器可能完全忽略刪除請求', support: '允許' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-1">
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.behavior}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
+          <span class={`text-xs px-2 py-1 rounded ${
+            item.support === '推薦' ? 'bg-green-500/20 text-green-600' :
+            item.support === '可選' ? 'bg-yellow-500/20 text-yellow-600' :
+            'bg-gray-500/20 text-gray-600'
+          }`}>
+            {item.support}
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">驗證規則</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function validateDeletion(deleteEvent, targetEvent) {
+  // 1. 必須是 kind 5
+  if (deleteEvent.kind !== 5) return false
+
+  // 2. 刪除者必須是原事件作者
+  if (deleteEvent.pubkey !== targetEvent.pubkey) return false
+
+  // 3. 刪除事件必須引用目標事件
+  const eTags = deleteEvent.tags.filter(t => t[0] === 'e')
+  const hasTarget = eTags.some(t => t[1] === targetEvent.id)
+  if (!hasTarget) return false
+
+  return true
+}
+
+// 注意：只有作者可以刪除自己的事件
+// 其他人的刪除請求應該被忽略`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">客戶端處理</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">應該做</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 查詢時檢查 kind 5 事件</li>
+        <li>• 隱藏已刪除的事件</li>
+        <li>• 顯示「已刪除」提示</li>
+        <li>• 允許用戶刪除自己的內容</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">避免</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 執行他人的刪除請求</li>
+        <li>• 假設刪除一定成功</li>
+        <li>• 永久刪除本地快取</li>
+        <li>• 忽略刪除事件</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢刪除事件</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢特定事件是否被刪除
+["REQ", "check-deleted", {
+  "kinds": [5],
+  "#e": ["<event-id>"]
+}]
+
+// 查詢用戶的所有刪除請求
+["REQ", "user-deletions", {
+  "kinds": [5],
+  "authors": ["<pubkey>"]
+}]
+
+// 查詢特定可替換事件的刪除
+["REQ", "check-addr-deleted", {
+  "kinds": [5],
+  "#a": ["30023:<pubkey>:<d-tag>"]
+}]`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制與考量</h2>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400 mb-3">
+      <strong>刪除不是萬能的：</strong>
+    </p>
+    <ul class="space-y-1 text-sm text-red-700 dark:text-red-400">
+      <li>• 其他用戶可能已保存你的事件</li>
+      <li>• 某些中繼器可能不支援刪除</li>
+      <li>• 刪除前的內容可能已被引用或轉發</li>
+      <li>• 網路快照服務可能保留記錄</li>
+    </ul>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>最佳實踐：</strong>
+      在發布敏感內容前三思。使用刪除功能作為「盡力而為」的補救措施，
+      而非可靠的隱私保護機制。
+    </p>
+  </div>
+</ArticleLayout>
