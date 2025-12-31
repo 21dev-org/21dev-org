@@ -1,0 +1,659 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-71: 影片事件"
+  description="Nostr 影片內容發布標準，支援一般影片與短影音格式"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-71 定義了在 Nostr 上發布影片內容的標準格式。它區分了兩種影片類型：一般影片（kind 21）適合橫向內容，
+    短影音（kind 22）適合直式內容如限時動態或 Reels。這個規範讓 Nostr 能夠支援豐富的影片分享體驗。
+  </p>
+
+  <h2 id="event-kinds">事件類型</h2>
+
+  <h3>Kind 21：一般影片</h3>
+  <p>
+    用於標準影片內容，通常是橫向（16:9）格式的影片，如教學、Vlog、音樂錄影帶等。
+  </p>
+
+  <h3>Kind 22：短影音</h3>
+  <p>
+    用於短影片內容，通常是直式（9:16）格式的影片，類似於 TikTok、Instagram Reels 或 YouTube Shorts。
+  </p>
+
+  <div class="not-prose my-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <p class="text-sm text-blue-800 dark:text-blue-200">
+      <strong>注意：</strong>雖然區分了兩種類型，但沒有技術限制阻止短影音實際上是長的，或一般影片是直式的。
+      這種區分主要是風格上的建議，幫助客戶端決定如何呈現內容。
+    </p>
+  </div>
+
+  <h2 id="event-structure">事件結構</h2>
+
+  <h3>一般影片事件</h3>
+  <pre><code class="language-json">{
+  "kind": 21,
+  "content": "這是一部關於 Nostr 協議的入門教學影片...",
+  "tags": [
+    ["title", "Nostr 新手入門教學"],
+    ["published_at", "1700000000"],
+    ["imeta",
+      "url https://example.com/video.mp4",
+      "m video/mp4",
+      "dim 1920x1080",
+      "duration 600",
+      "bitrate 5000000",
+      "x abc123...",
+      "image https://example.com/thumb.jpg",
+      "fallback https://backup.com/video.mp4"
+    ],
+    ["alt", "Nostr 協議教學影片，說明如何建立帳號和發送訊息"],
+    ["t", "nostr"],
+    ["t", "教學"],
+    ["p", "&lt;講者公鑰&gt;", "wss://relay.example.com", "host"]
+  ]
+}</code></pre>
+
+  <h3>短影音事件</h3>
+  <pre><code class="language-json">{
+  "kind": 22,
+  "content": "快速展示如何使用 Nostr 客戶端 #nostr #web3",
+  "tags": [
+    ["title", "60 秒學會 Nostr"],
+    ["published_at", "1700000000"],
+    ["imeta",
+      "url https://example.com/short.mp4",
+      "m video/mp4",
+      "dim 1080x1920",
+      "duration 60",
+      "bitrate 3000000",
+      "x def456...",
+      "image https://example.com/short-thumb.jpg"
+    ],
+    ["t", "nostr"],
+    ["t", "web3"]
+  ]
+}</code></pre>
+
+  <h2 id="required-tags">必要標籤</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>title</code></td>
+        <td>影片標題</td>
+        <td><code>["title", "我的第一支 Nostr 影片"]</code></td>
+      </tr>
+      <tr>
+        <td><code>content</code></td>
+        <td>事件內容欄位，用於影片描述</td>
+        <td>放在 content 欄位中</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="recommended-tags">建議標籤</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>published_at</code></td>
+        <td>首次發布的 Unix 時間戳</td>
+        <td><code>["published_at", "1700000000"]</code></td>
+      </tr>
+      <tr>
+        <td><code>imeta</code></td>
+        <td>影片元資料，定義影片變體</td>
+        <td>見下方詳細說明</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="imeta-tag">imeta 標籤詳解</h2>
+  <p>
+    <code>imeta</code> 標籤是影片元資料的主要來源，包含多個屬性來描述影片檔案：
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>屬性</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>url</code></td>
+        <td>主要影片來源 URL</td>
+        <td><code>url https://example.com/video.mp4</code></td>
+      </tr>
+      <tr>
+        <td><code>m</code></td>
+        <td>MIME 類型</td>
+        <td><code>m video/mp4</code></td>
+      </tr>
+      <tr>
+        <td><code>dim</code></td>
+        <td>解析度（寬x高）</td>
+        <td><code>dim 1920x1080</code></td>
+      </tr>
+      <tr>
+        <td><code>duration</code></td>
+        <td>影片長度（秒）</td>
+        <td><code>duration 600</code></td>
+      </tr>
+      <tr>
+        <td><code>bitrate</code></td>
+        <td>平均位元率（bits/sec）</td>
+        <td><code>bitrate 5000000</code></td>
+      </tr>
+      <tr>
+        <td><code>x</code></td>
+        <td>檔案雜湊值</td>
+        <td><code>x abc123...</code></td>
+      </tr>
+      <tr>
+        <td><code>image</code></td>
+        <td>預覽縮圖 URL</td>
+        <td><code>image https://example.com/thumb.jpg</code></td>
+      </tr>
+      <tr>
+        <td><code>fallback</code></td>
+        <td>備用影片來源 URL</td>
+        <td><code>fallback https://backup.com/video.mp4</code></td>
+      </tr>
+      <tr>
+        <td><code>service nip96</code></td>
+        <td>參考作者的 NIP-96 伺服器</td>
+        <td><code>service nip96</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="optional-tags">可選標籤</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>alt</code></td>
+        <td>無障礙描述</td>
+        <td><code>["alt", "影片內容的文字描述"]</code></td>
+      </tr>
+      <tr>
+        <td><code>text-track</code></td>
+        <td>WebVTT 字幕/章節檔案</td>
+        <td><code>["text-track", "url", "captions", "zh"]</code></td>
+      </tr>
+      <tr>
+        <td><code>content-warning</code></td>
+        <td>NSFW 內容警告</td>
+        <td><code>["content-warning", "包含成人內容"]</code></td>
+      </tr>
+      <tr>
+        <td><code>segment</code></td>
+        <td>章節標記</td>
+        <td><code>["segment", "0", "60", "介紹", "thumb1.jpg"]</code></td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>主題標籤</td>
+        <td><code>["t", "nostr"]</code></td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>參與者公鑰</td>
+        <td><code>["p", "&lt;pubkey&gt;", "relay", "role"]</code></td>
+      </tr>
+      <tr>
+        <td><code>r</code></td>
+        <td>外部參考連結</td>
+        <td><code>["r", "https://example.com/article"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="text-track">字幕與章節 (text-track)</h2>
+  <p>
+    <code>text-track</code> 標籤用於添加 WebVTT 格式的字幕、旁白或章節資訊：
+  </p>
+
+  <pre><code class="language-json">{
+  "tags": [
+    ["text-track", "https://example.com/captions-zh.vtt", "captions", "zh"],
+    ["text-track", "https://example.com/captions-en.vtt", "captions", "en"],
+    ["text-track", "https://example.com/chapters.vtt", "chapters"]
+  ]
+}</code></pre>
+
+  <p>格式：<code>["text-track", "URL", "類型", "語言代碼（可選）"]</code></p>
+
+  <p>支援的類型：</p>
+  <ul>
+    <li><code>captions</code> - 字幕（包含音效描述）</li>
+    <li><code>subtitles</code> - 純對話字幕</li>
+    <li><code>chapters</code> - 章節標記</li>
+    <li><code>descriptions</code> - 音訊描述</li>
+  </ul>
+
+  <h2 id="segments">影片章節 (segment)</h2>
+  <p>
+    <code>segment</code> 標籤用於定義影片章節，方便觀眾跳轉到特定部分：
+  </p>
+
+  <pre><code class="language-json">{
+  "tags": [
+    ["segment", "0", "120", "開場介紹", "https://example.com/thumb1.jpg"],
+    ["segment", "120", "300", "核心概念", "https://example.com/thumb2.jpg"],
+    ["segment", "300", "480", "實作示範", "https://example.com/thumb3.jpg"],
+    ["segment", "480", "600", "總結與 Q&A", "https://example.com/thumb4.jpg"]
+  ]
+}</code></pre>
+
+  <p>格式：<code>["segment", "開始秒數", "結束秒數", "標題", "縮圖URL"]</code></p>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立影片事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+
+interface VideoMetadata {
+  url: string;
+  mimeType: string;
+  dimensions: { width: number; height: number };
+  duration: number;
+  bitrate?: number;
+  hash?: string;
+  thumbnail?: string;
+  fallbackUrl?: string;
+}
+
+function createVideoEvent(
+  title: string,
+  description: string,
+  metadata: VideoMetadata,
+  isShort: boolean = false,
+  options?: {
+    hashtags?: string[];
+    participants?: Array<{ pubkey: string; relay?: string; role?: string }>;
+    contentWarning?: string;
+    altText?: string;
+    segments?: Array<{
+      start: number;
+      end: number;
+      title: string;
+      thumbnail?: string;
+    }>;
+  }
+) {
+  const kind = isShort ? 22 : 21;
+
+  // 構建 imeta 標籤
+  const imetaParts = [
+    `url ${metadata.url}`,
+    `m ${metadata.mimeType}`,
+    `dim ${metadata.dimensions.width}x${metadata.dimensions.height}`,
+    `duration ${metadata.duration}`,
+  ];
+
+  if (metadata.bitrate) {
+    imetaParts.push(`bitrate ${metadata.bitrate}`);
+  }
+  if (metadata.hash) {
+    imetaParts.push(`x ${metadata.hash}`);
+  }
+  if (metadata.thumbnail) {
+    imetaParts.push(`image ${metadata.thumbnail}`);
+  }
+  if (metadata.fallbackUrl) {
+    imetaParts.push(`fallback ${metadata.fallbackUrl}`);
+  }
+
+  const tags: string[][] = [
+    ['title', title],
+    ['published_at', Math.floor(Date.now() / 1000).toString()],
+    ['imeta', ...imetaParts],
+  ];
+
+  // 添加可選標籤
+  if (options?.altText) {
+    tags.push(['alt', options.altText]);
+  }
+
+  if (options?.contentWarning) {
+    tags.push(['content-warning', options.contentWarning]);
+  }
+
+  if (options?.hashtags) {
+    options.hashtags.forEach(tag => {
+      tags.push(['t', tag]);
+    });
+  }
+
+  if (options?.participants) {
+    options.participants.forEach(p => {
+      const pTag = ['p', p.pubkey];
+      if (p.relay) pTag.push(p.relay);
+      if (p.role) pTag.push(p.role);
+      tags.push(pTag);
+    });
+  }
+
+  if (options?.segments) {
+    options.segments.forEach(seg => {
+      const segTag = [
+        'segment',
+        seg.start.toString(),
+        seg.end.toString(),
+        seg.title,
+      ];
+      if (seg.thumbnail) segTag.push(seg.thumbnail);
+      tags.push(segTag);
+    });
+  }
+
+  return {
+    kind,
+    content: description,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+}
+
+// 使用範例：建立一般影片
+const sk = generateSecretKey();
+const videoEvent = createVideoEvent(
+  'Nostr 完整教學',
+  '這支影片會帶你從零開始學習 Nostr 協議...',
+  {
+    url: 'https://cdn.example.com/video.mp4',
+    mimeType: 'video/mp4',
+    dimensions: { width: 1920, height: 1080 },
+    duration: 1800,
+    bitrate: 5000000,
+    hash: 'abc123def456',
+    thumbnail: 'https://cdn.example.com/thumb.jpg',
+    fallbackUrl: 'https://backup.example.com/video.mp4',
+  },
+  false,
+  {
+    hashtags: ['nostr', '教學', 'web3'],
+    altText: 'Nostr 協議完整教學影片',
+    segments: [
+      { start: 0, end: 120, title: '什麼是 Nostr' },
+      { start: 120, end: 600, title: '建立你的第一個帳號' },
+      { start: 600, end: 1200, title: '發送訊息與互動' },
+      { start: 1200, end: 1800, title: '進階功能與設定' },
+    ],
+  }
+);
+
+const signedEvent = finalizeEvent(videoEvent, sk);
+console.log(signedEvent);</code></pre>
+
+  <h3>建立短影音</h3>
+  <pre><code class="language-typescript">const shortVideoEvent = createVideoEvent(
+  '30 秒學會 Zaps',
+  '快速了解如何在 Nostr 上發送比特幣打賞！ #nostr #bitcoin #zaps',
+  {
+    url: 'https://cdn.example.com/short.mp4',
+    mimeType: 'video/mp4',
+    dimensions: { width: 1080, height: 1920 }, // 直式
+    duration: 30,
+    bitrate: 3000000,
+    thumbnail: 'https://cdn.example.com/short-thumb.jpg',
+  },
+  true, // isShort = true → kind 22
+  {
+    hashtags: ['nostr', 'bitcoin', 'zaps'],
+  }
+);
+
+const signedShort = finalizeEvent(shortVideoEvent, sk);</code></pre>
+
+  <h3>解析影片事件</h3>
+  <pre><code class="language-typescript">interface ParsedVideoEvent {
+  kind: 21 | 22;
+  title: string;
+  description: string;
+  publishedAt: number;
+  metadata: {
+    url: string;
+    mimeType?: string;
+    dimensions?: { width: number; height: number };
+    duration?: number;
+    bitrate?: number;
+    hash?: string;
+    thumbnail?: string;
+    fallbackUrls: string[];
+  };
+  hashtags: string[];
+  participants: Array<{ pubkey: string; relay?: string; role?: string }>;
+  segments: Array<{
+    start: number;
+    end: number;
+    title: string;
+    thumbnail?: string;
+  }>;
+  textTracks: Array<{
+    url: string;
+    type: string;
+    language?: string;
+  }>;
+  contentWarning?: string;
+  altText?: string;
+}
+
+function parseVideoEvent(event: any): ParsedVideoEvent | null {
+  if (event.kind !== 21 && event.kind !== 22) {
+    return null;
+  }
+
+  const getTag = (name: string) =>
+    event.tags.find((t: string[]) => t[0] === name)?.[1];
+
+  const getAllTags = (name: string) =>
+    event.tags.filter((t: string[]) => t[0] === name);
+
+  // 解析 imeta 標籤
+  const imetaTag = event.tags.find((t: string[]) => t[0] === 'imeta');
+  const metadata: ParsedVideoEvent['metadata'] = {
+    url: '',
+    fallbackUrls: [],
+  };
+
+  if (imetaTag) {
+    for (let i = 1; i < imetaTag.length; i++) {
+      const part = imetaTag[i];
+      if (part.startsWith('url ')) {
+        metadata.url = part.slice(4);
+      } else if (part.startsWith('m ')) {
+        metadata.mimeType = part.slice(2);
+      } else if (part.startsWith('dim ')) {
+        const [w, h] = part.slice(4).split('x').map(Number);
+        metadata.dimensions = { width: w, height: h };
+      } else if (part.startsWith('duration ')) {
+        metadata.duration = parseInt(part.slice(9));
+      } else if (part.startsWith('bitrate ')) {
+        metadata.bitrate = parseInt(part.slice(8));
+      } else if (part.startsWith('x ')) {
+        metadata.hash = part.slice(2);
+      } else if (part.startsWith('image ')) {
+        metadata.thumbnail = part.slice(6);
+      } else if (part.startsWith('fallback ')) {
+        metadata.fallbackUrls.push(part.slice(9));
+      }
+    }
+  }
+
+  // 解析參與者
+  const participants = getAllTags('p').map((t: string[]) => ({
+    pubkey: t[1],
+    relay: t[2],
+    role: t[3],
+  }));
+
+  // 解析章節
+  const segments = getAllTags('segment').map((t: string[]) => ({
+    start: parseInt(t[1]),
+    end: parseInt(t[2]),
+    title: t[3],
+    thumbnail: t[4],
+  }));
+
+  // 解析字幕軌道
+  const textTracks = getAllTags('text-track').map((t: string[]) => ({
+    url: t[1],
+    type: t[2],
+    language: t[3],
+  }));
+
+  return {
+    kind: event.kind,
+    title: getTag('title') || '',
+    description: event.content,
+    publishedAt: parseInt(getTag('published_at') || event.created_at),
+    metadata,
+    hashtags: getAllTags('t').map((t: string[]) => t[1]),
+    participants,
+    segments,
+    textTracks,
+    contentWarning: getTag('content-warning'),
+    altText: getTag('alt'),
+  };
+}</code></pre>
+
+  <h2 id="query-examples">查詢範例</h2>
+
+  <h3>查詢所有影片</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢所有類型的影片
+const allVideos = await pool.querySync(relays, {
+  kinds: [21, 22],
+  limit: 50,
+});
+
+// 只查詢一般影片
+const normalVideos = await pool.querySync(relays, {
+  kinds: [21],
+  limit: 50,
+});
+
+// 只查詢短影音
+const shortVideos = await pool.querySync(relays, {
+  kinds: [22],
+  limit: 50,
+});</code></pre>
+
+  <h3>查詢特定用戶的影片</h3>
+  <pre><code class="language-typescript">const userVideos = await pool.querySync(relays, {
+  kinds: [21, 22],
+  authors: ['&lt;user-pubkey&gt;'],
+});</code></pre>
+
+  <h3>查詢特定主題的影片</h3>
+  <pre><code class="language-typescript">const nostrVideos = await pool.querySync(relays, {
+  kinds: [21, 22],
+  '#t': ['nostr'],
+});</code></pre>
+
+  <h2 id="video-player">影片播放器實作建議</h2>
+  <p>
+    客戶端實作影片播放時應考慮以下功能：
+  </p>
+
+  <h3>基本功能</h3>
+  <ul>
+    <li>支援 fallback URL，當主要來源失敗時自動切換</li>
+    <li>顯示預覽縮圖直到用戶點擊播放</li>
+    <li>根據 kind 決定預設播放模式（橫式或直式）</li>
+    <li>顯示影片時長和進度條</li>
+  </ul>
+
+  <h3>進階功能</h3>
+  <ul>
+    <li>支援多語言字幕切換</li>
+    <li>實作章節導航，讓用戶快速跳轉</li>
+    <li>驗證檔案雜湊確保內容完整性</li>
+    <li>遵守內容警告標記，預設模糊處理</li>
+  </ul>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>教學平台</h3>
+  <ul>
+    <li>發布課程影片與章節標記</li>
+    <li>提供多語言字幕</li>
+    <li>結合 NIP-57 實現付費觀看</li>
+  </ul>
+
+  <h3>社群媒體</h3>
+  <ul>
+    <li>短影音分享（kind 22）</li>
+    <li>直式內容的原生支援</li>
+    <li>標籤分類與發現</li>
+  </ul>
+
+  <h3>新聞與媒體</h3>
+  <ul>
+    <li>新聞影片發布</li>
+    <li>完整字幕支援</li>
+    <li>參與者標記（記者、受訪者）</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>提供多個來源</strong>：使用 fallback URL 確保影片可用性</li>
+    <li><strong>加入縮圖</strong>：良好的預覽圖能提高點擊率</li>
+    <li><strong>添加字幕</strong>：提升無障礙性和觸及率</li>
+    <li><strong>使用章節</strong>：幫助觀眾快速找到感興趣的部分</li>
+    <li><strong>正確標記內容</strong>：敏感內容務必加上 content-warning</li>
+    <li><strong>驗證雜湊</strong>：提供檔案雜湊讓客戶端驗證完整性</li>
+    <li><strong>選擇正確的 kind</strong>：橫式長影片用 21，直式短影音用 22</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-94">NIP-94</a>：檔案中繼資料 - imeta 標籤的基礎</li>
+    <li><a href="/tech/nostr/nip-96">NIP-96</a>：檔案儲存 - 影片上傳服務</li>
+    <li><a href="/tech/nostr/nip-36">NIP-36</a>：敏感內容 - 內容警告標記</li>
+    <li><a href="/tech/nostr/nip-53">NIP-53</a>：直播活動 - 即時影片串流</li>
+    <li><a href="/tech/nostr/nip-57">NIP-57</a>：Zaps - 影片打賞</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/71.md" target="_blank" rel="noopener noreferrer">NIP-71 規範</a></li>
+    <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebVTT_API" target="_blank" rel="noopener noreferrer">WebVTT API 文件</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
