@@ -115,6 +115,28 @@ const articleSchema = article
           page_title: document.title,
         });
       });
+
+      // Track external link clicks
+      document.addEventListener('click', function (e) {
+        var link = e.target.closest('a');
+        if (link && link.hostname !== window.location.hostname) {
+          gtag('event', 'external_link_click', {
+            link_url: link.href,
+            link_text: link.textContent?.trim().substring(0, 50),
+          });
+        }
+      });
+
+      // Track CTA button clicks
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-cta]');
+        if (btn) {
+          gtag('event', 'cta_click', {
+            cta_type: btn.dataset.cta,
+            cta_text: btn.textContent?.trim().substring(0, 50),
+          });
+        }
+      });
     </script>
 
     <!-- Icons & PWA -->

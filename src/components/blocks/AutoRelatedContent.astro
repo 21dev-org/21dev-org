@@ -1,0 +1,30 @@
+---
+/**
+ * Auto Related Content Component
+ * Automatically displays related content based on topic clusters
+ */
+import RelatedContent from './RelatedContent.astro';
+import { getRelatedContent } from '@/data/topic-clusters';
+
+interface Props {
+  currentPath?: string;
+  title?: string;
+  limit?: number;
+  class?: string;
+}
+
+const {
+  currentPath = Astro.url.pathname,
+  title = '相關內容',
+  limit = 5,
+  class: className = '',
+} = Astro.props;
+
+// Normalize path (ensure trailing slash consistency)
+const normalizedPath = currentPath.endsWith('/') ? currentPath : `${currentPath}/`;
+
+// Get related content from topic clusters
+const relatedItems = getRelatedContent(normalizedPath, limit);
+---
+
+{relatedItems.length > 0 && <RelatedContent title={title} items={relatedItems} class={className} />}

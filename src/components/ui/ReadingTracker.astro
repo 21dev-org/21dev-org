@@ -1,0 +1,142 @@
+---
+/**
+ * Reading Tracker Component
+ * Tracks reading completion, scroll depth, and time on page
+ * Sends events to Google Analytics for content engagement analysis
+ */
+
+interface Props {
+  articleSelector?: string;
+}
+
+const { articleSelector = 'article' } = Astro.props;
+---
+
+<div id="reading-tracker" data-article-selector={articleSelector}></div>
+
+<script>
+  declare function gtag(...args: unknown[]): void;
+
+  function initReadingTracker() {
+    const tracker = document.getElementById('reading-tracker');
+    if (!tracker) return;
+
+    const articleSelector = tracker.dataset.articleSelector || 'article';
+    const articleElement = document.querySelector(articleSelector) as HTMLElement | null;
+    if (!articleElement) return;
+    const article = articleElement; // TypeScript narrowing for nested functions
+
+    const pagePath = window.location.pathname;
+    let maxScrollDepth = 0;
+    let startTime = Date.now();
+    let hasCompleted = false;
+    let scrollMilestones = [25, 50, 75, 90];
+    let reachedMilestones: number[] = [];
+
+    // Calculate scroll depth percentage
+    function getScrollDepth(): number {
+      const articleRect = article.getBoundingClientRect();
+      const articleTop = window.scrollY + articleRect.top;
+      const articleHeight = articleRect.height;
+      const windowHeight = window.innerHeight;
+      const scrollPosition = window.scrollY;
+
+      const visibleBottom = scrollPosition + windowHeight - articleTop;
+      const percentage = Math.min(100, Math.max(0, (visibleBottom / articleHeight) * 100));
+
+      return Math.round(percentage);
+    }
+
+    // Track scroll events
+    function handleScroll() {
+      const currentDepth = getScrollDepth();
+
+      if (currentDepth > maxScrollDepth) {
+        maxScrollDepth = currentDepth;
+
+        // Check milestones
+        scrollMilestones.forEach((milestone) => {
+          if (currentDepth >= milestone && !reachedMilestones.includes(milestone)) {
+            reachedMilestones.push(milestone);
+
+            // Send GA event for milestone
+            if (typeof gtag === 'function') {
+              gtag('event', 'scroll_depth', {
+                page_path: pagePath,
+                scroll_percentage: milestone,
+              });
+            }
+          }
+        });
+
+        // Track completion (90%+ is considered complete)
+        if (currentDepth >= 90 && !hasCompleted) {
+          hasCompleted = true;
+          const timeSpent = Math.round((Date.now() - startTime) / 1000);
+
+          if (typeof gtag === 'function') {
+            gtag('event', 'article_completed', {
+              page_path: pagePath,
+              time_spent_seconds: timeSpent,
+            });
+          }
+
+          // Update learning progress
+          import('@/utils/learning-progress').then(({ recordPageVisit, recordTimeSpent }) => {
+            recordPageVisit(pagePath);
+            recordTimeSpent(timeSpent);
+          });
+        }
+      }
+    }
+
+    // Throttle scroll handler
+    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+    function throttledScroll() {
+      if (scrollTimeout) return;
+      scrollTimeout = setTimeout(() => {
+        handleScroll();
+        scrollTimeout = null;
+      }, 100);
+    }
+
+    // Track time spent when leaving page
+    function handleBeforeUnload() {
+      const timeSpent = Math.round((Date.now() - startTime) / 1000);
+
+      // Send engagement data
+      if (typeof gtag === 'function') {
+        gtag('event', 'page_engagement', {
+          page_path: pagePath,
+          max_scroll_depth: maxScrollDepth,
+          time_spent_seconds: timeSpent,
+          completed_reading: hasCompleted,
+        });
+      }
+    }
+
+    // Add event listeners
+    window.addEventListener('scroll', throttledScroll, { passive: true });
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Initial check
+    handleScroll();
+
+    // Cleanup on page navigation (View Transitions)
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        window.removeEventListener('scroll', throttledScroll);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        handleBeforeUnload(); // Send final metrics
+      },
+      { once: true }
+    );
+  }
+
+  // Initialize on load
+  initReadingTracker();
+
+  // Re-initialize on page navigation
+  document.addEventListener('astro:after-swap', initReadingTracker);
+</script>
