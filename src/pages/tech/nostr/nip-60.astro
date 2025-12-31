@@ -1,0 +1,473 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-60: Cashu Wallet"
+  description="在 Nostr 上管理 Cashu ecash 錢包"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-60 定義了在 Nostr 上儲存和管理 Cashu ecash 錢包的標準。
+    Cashu 是一種基於 Chaumian ecash 的隱私支付協議，與閃電網路整合。
+    通過 NIP-60，用戶可以在不同客戶端之間同步其 ecash 餘額。
+  </p>
+
+  <h2 id="what-is-cashu">什麼是 Cashu？</h2>
+  <p>
+    Cashu 是一種 ecash 協議：
+  </p>
+  <ul>
+    <li><strong>隱私性</strong>：使用盲簽名技術，造幣廠無法追蹤交易</li>
+    <li><strong>閃電網路整合</strong>：可與閃電網路相互轉換</li>
+    <li><strong>離線支付</strong>：代幣可以離線傳輸</li>
+    <li><strong>託管式</strong>：資金由造幣廠（Mint）託管</li>
+  </ul>
+
+  <h2 id="event-kinds">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>17375</code></td>
+        <td>錢包事件</td>
+        <td>加密可替換</td>
+      </tr>
+      <tr>
+        <td><code>7375</code></td>
+        <td>代幣事件</td>
+        <td>加密一般</td>
+      </tr>
+      <tr>
+        <td><code>7376</code></td>
+        <td>交易歷史</td>
+        <td>加密一般</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="wallet-event">錢包事件 (Kind 17375)</h2>
+  <p>
+    錢包事件儲存錢包的配置和狀態，內容使用 NIP-44 加密。
+  </p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>錢包識別符</td>
+        <td><code>["d", "my-wallet"]</code></td>
+      </tr>
+      <tr>
+        <td><code>mint</code></td>
+        <td>造幣廠 URL</td>
+        <td><code>["mint", "https://mint.example.com"]</code></td>
+      </tr>
+      <tr>
+        <td><code>relay</code></td>
+        <td>代幣中繼器</td>
+        <td><code>["relay", "wss://relay.example.com"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>加密內容結構</h3>
+  <pre><code class="language-json">{
+  "mints": [
+    {
+      "url": "https://mint.example.com",
+      "balance": 1000,
+      "unit": "sat"
+    }
+  ],
+  "proofs": []
+}</code></pre>
+
+  <h2 id="token-event">代幣事件 (Kind 7375)</h2>
+  <p>
+    代幣事件儲存實際的 ecash 代幣，內容使用 NIP-44 加密。
+  </p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>a</code></td>
+        <td>關聯的錢包事件</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>加密內容（Cashu Token V4）</h3>
+  <pre><code class="language-json">{
+  "mint": "https://mint.example.com",
+  "proofs": [
+    {
+      "amount": 1,
+      "id": "009a1f293253e41e",
+      "secret": "...",
+      "C": "..."
+    }
+  ]
+}</code></pre>
+
+  <h2 id="history-event">交易歷史 (Kind 7376)</h2>
+  <p>
+    記錄代幣的交易歷史，包括接收、發送、兌換等操作。
+  </p>
+
+  <h3>加密內容</h3>
+  <pre><code class="language-json">{
+  "direction": "in",
+  "amount": 100,
+  "unit": "sat",
+  "mint": "https://mint.example.com",
+  "created_at": 1700000000,
+  "e": ["7375 事件 ID"]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>錢包類別</h3>
+  <pre><code class="language-typescript">import { nip44 } from 'nostr-tools';
+import { CashuMint, CashuWallet, getEncodedToken } from '@cashu/cashu-ts';
+
+interface WalletState {
+  mints: MintInfo[];
+  proofs: Proof[];
+}
+
+interface MintInfo {
+  url: string;
+  balance: number;
+  unit: string;
+}
+
+interface Proof {
+  amount: number;
+  id: string;
+  secret: string;
+  C: string;
+}
+
+class NostrCashuWallet {
+  private secretKey: Uint8Array;
+  private pubkey: string;
+  private walletId: string;
+  private relays: string[];
+
+  constructor(
+    secretKey: Uint8Array,
+    pubkey: string,
+    walletId: string = 'default',
+    relays: string[] = []
+  ) {
+    this.secretKey = secretKey;
+    this.pubkey = pubkey;
+    this.walletId = walletId;
+    this.relays = relays;
+  }
+
+  // 加密錢包資料
+  private encrypt(data: any): string {
+    const plaintext = JSON.stringify(data);
+    return nip44.encrypt(plaintext, this.secretKey, this.pubkey);
+  }
+
+  // 解密錢包資料
+  private decrypt(ciphertext: string): any {
+    const plaintext = nip44.decrypt(ciphertext, this.secretKey, this.pubkey);
+    return JSON.parse(plaintext);
+  }
+
+  // 建立錢包事件
+  createWalletEvent(state: WalletState, mints: string[]) {
+    const content = this.encrypt(state);
+
+    const tags: string[][] = [['d', this.walletId]];
+
+    mints.forEach((mint) => {
+      tags.push(['mint', mint]);
+    });
+
+    this.relays.forEach((relay) => {
+      tags.push(['relay', relay]);
+    });
+
+    return {
+      kind: 17375,
+      content,
+      tags,
+      created_at: Math.floor(Date.now() / 1000),
+    };
+  }
+
+  // 建立代幣事件
+  createTokenEvent(mint: string, proofs: Proof[]) {
+    const token = {
+      mint,
+      proofs,
+    };
+
+    const content = this.encrypt(token);
+
+    return {
+      kind: 7375,
+      content,
+      tags: [
+        ['a', `17375:${this.pubkey}:${this.walletId}`],
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+  }
+
+  // 建立歷史事件
+  createHistoryEvent(
+    direction: 'in' | 'out',
+    amount: number,
+    mint: string,
+    tokenEventId: string
+  ) {
+    const history = {
+      direction,
+      amount,
+      unit: 'sat',
+      mint,
+      created_at: Math.floor(Date.now() / 1000),
+      e: [tokenEventId],
+    };
+
+    const content = this.encrypt(history);
+
+    return {
+      kind: 7376,
+      content,
+      tags: [
+        ['a', `17375:${this.pubkey}:${this.walletId}`],
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+  }
+}</code></pre>
+
+  <h3>從 Nostr 載入錢包</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+async function loadWallet(
+  pool: SimplePool,
+  relays: string[],
+  secretKey: Uint8Array,
+  pubkey: string,
+  walletId: string = 'default'
+): Promise&lt;WalletState | null&gt; {
+  // 獲取錢包事件
+  const walletEvents = await pool.querySync(relays, {
+    kinds: [17375],
+    authors: [pubkey],
+    '#d': [walletId],
+  });
+
+  if (walletEvents.length === 0) {
+    return null;
+  }
+
+  // 取最新的錢包事件
+  const walletEvent = walletEvents.sort(
+    (a, b) => b.created_at - a.created_at
+  )[0];
+
+  // 解密錢包狀態
+  const wallet = new NostrCashuWallet(secretKey, pubkey, walletId, relays);
+  const state = wallet.decrypt(walletEvent.content);
+
+  // 獲取代幣事件
+  const tokenEvents = await pool.querySync(relays, {
+    kinds: [7375],
+    authors: [pubkey],
+    '#a': [`17375:${pubkey}:${walletId}`],
+  });
+
+  // 解密並合併代幣
+  const allProofs: Proof[] = [];
+  for (const event of tokenEvents) {
+    try {
+      const token = wallet.decrypt(event.content);
+      allProofs.push(...token.proofs);
+    } catch (e) {
+      console.error('Failed to decrypt token:', e);
+    }
+  }
+
+  return {
+    ...state,
+    proofs: allProofs,
+  };
+}</code></pre>
+
+  <h3>接收 Cashu 代幣</h3>
+  <pre><code class="language-typescript">import { getDecodedToken } from '@cashu/cashu-ts';
+
+async function receiveToken(
+  wallet: NostrCashuWallet,
+  pool: SimplePool,
+  relays: string[],
+  cashuToken: string
+) {
+  // 解碼 Cashu 代幣
+  const decoded = getDecodedToken(cashuToken);
+
+  // 驗證並兌換代幣
+  const mint = new CashuMint(decoded.mint);
+  const cashuWallet = new CashuWallet(mint);
+
+  const proofs = await cashuWallet.receive(decoded);
+
+  // 計算總額
+  const amount = proofs.reduce((sum, p) => sum + p.amount, 0);
+
+  // 建立代幣事件
+  const tokenEvent = wallet.createTokenEvent(decoded.mint, proofs);
+
+  // 發布到中繼器
+  await Promise.all(
+    relays.map((relay) =>
+      pool.publish([relay], finalizeEvent(tokenEvent, secretKey))
+    )
+  );
+
+  // 記錄歷史
+  const historyEvent = wallet.createHistoryEvent(
+    'in',
+    amount,
+    decoded.mint,
+    tokenEvent.id
+  );
+
+  await Promise.all(
+    relays.map((relay) =>
+      pool.publish([relay], finalizeEvent(historyEvent, secretKey))
+    )
+  );
+
+  return { amount, proofs };
+}</code></pre>
+
+  <h3>發送 Cashu 代幣</h3>
+  <pre><code class="language-typescript">async function sendToken(
+  wallet: NostrCashuWallet,
+  pool: SimplePool,
+  relays: string[],
+  mintUrl: string,
+  amount: number,
+  proofs: Proof[]
+): Promise&lt;string&gt; {
+  const mint = new CashuMint(mintUrl);
+  const cashuWallet = new CashuWallet(mint);
+
+  // 選擇足夠的代幣
+  const selectedProofs = selectProofs(proofs, amount);
+
+  // 拆分代幣
+  const { send, returnChange } = await cashuWallet.send(
+    amount,
+    selectedProofs
+  );
+
+  // 編碼為 Cashu token
+  const token = getEncodedToken({
+    mint: mintUrl,
+    proofs: send,
+  });
+
+  // 更新錢包（移除已使用的代幣，添加找零）
+  // ... 發布更新的錢包事件
+
+  // 記錄歷史
+  const historyEvent = wallet.createHistoryEvent(
+    'out',
+    amount,
+    mintUrl,
+    'token-event-id'
+  );
+
+  await Promise.all(
+    relays.map((relay) =>
+      pool.publish([relay], finalizeEvent(historyEvent, secretKey))
+    )
+  );
+
+  return token;
+}
+
+function selectProofs(proofs: Proof[], amount: number): Proof[] {
+  // 簡單的代幣選擇演算法
+  const sorted = [...proofs].sort((a, b) => b.amount - a.amount);
+  const selected: Proof[] = [];
+  let total = 0;
+
+  for (const proof of sorted) {
+    if (total >= amount) break;
+    selected.push(proof);
+    total += proof.amount;
+  }
+
+  if (total < amount) {
+    throw new Error('Insufficient balance');
+  }
+
+  return selected;
+}</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <ul>
+    <li><strong>加密儲存</strong>：所有代幣使用 NIP-44 加密</li>
+    <li><strong>造幣廠信任</strong>：Cashu 是託管式的，需要信任造幣廠</li>
+    <li><strong>代幣備份</strong>：確保代幣事件正確發布到多個中繼器</li>
+    <li><strong>雙花防護</strong>：已使用的代幣必須及時標記</li>
+  </ul>
+
+  <h2 id="use-cases">使用場景</h2>
+  <ul>
+    <li><strong>隱私支付</strong>：不可追蹤的小額支付</li>
+    <li><strong>離線轉帳</strong>：無需網路即可轉移代幣</li>
+    <li><strong>跨客戶端同步</strong>：在不同應用間共享餘額</li>
+    <li><strong>NutZaps</strong>：使用 Cashu 進行 Zaps（NIP-61）</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-44">NIP-44</a>：加密訊息 v2 - 內容加密</li>
+    <li><a href="/tech/nostr/nip-61">NIP-61</a>：NutZaps - Cashu Zaps</li>
+    <li><a href="/tech/nostr/nip-57">NIP-57</a>：Zaps - 閃電網路打賞</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/60.md" target="_blank" rel="noopener noreferrer">NIP-60 規範</a></li>
+    <li><a href="https://cashu.space/" target="_blank" rel="noopener noreferrer">Cashu 官網</a></li>
+    <li><a href="https://github.com/cashubtc/cashu-ts" target="_blank" rel="noopener noreferrer">cashu-ts</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>

@@ -1,0 +1,339 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-26: Delegated Event Signing"
+  description="允許其他密鑰代表你簽署事件的委託機制"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-26 定義了一種委託簽名機制，允許一個密鑰（委託者）授權另一個密鑰（被委託者）
+    代表其簽署事件。這對於需要多設備使用、團隊管理或自動化發布等場景非常有用。
+  </p>
+
+  <h2 id="delegation-token">委託令牌</h2>
+  <p>
+    委託通過一個特殊的 <code>delegation</code> 標籤實現，包含委託者公鑰、
+    條件字串和簽名。
+  </p>
+
+  <h3>標籤格式</h3>
+  <pre><code class="language-json">["delegation", "&lt;委託者公鑰&gt;", "&lt;條件字串&gt;", "&lt;簽名&gt;"]</code></pre>
+
+  <table>
+    <thead>
+      <tr>
+        <th>欄位</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>委託者公鑰</td>
+        <td>授權委託的原始公鑰（hex 格式）</td>
+      </tr>
+      <tr>
+        <td>條件字串</td>
+        <td>定義委託的限制條件</td>
+      </tr>
+      <tr>
+        <td>簽名</td>
+        <td>委託者對條件的 Schnorr 簽名</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="conditions">條件字串</h2>
+  <p>
+    條件字串定義了委託的限制，使用 <code>&amp;</code> 連接多個條件：
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>條件</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>kind=&lt;n&gt;</code></td>
+        <td>限制為特定事件類型</td>
+        <td><code>kind=1</code></td>
+      </tr>
+      <tr>
+        <td><code>created_at&lt;&lt;n&gt;</code></td>
+        <td>事件時間戳必須小於 n</td>
+        <td><code>created_at&lt;1700000000</code></td>
+      </tr>
+      <tr>
+        <td><code>created_at&gt;&lt;n&gt;</code></td>
+        <td>事件時間戳必須大於 n</td>
+        <td><code>created_at&gt;1600000000</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>條件範例</h3>
+  <pre><code class="language-text"># 只允許發布 kind 1（短文）
+kind=1
+
+# 只允許在特定時間範圍內發布
+created_at>1640000000&created_at<1700000000
+
+# 只允許發布 kind 1，且有時間限制
+kind=1&created_at>1640000000&created_at<1700000000</code></pre>
+
+  <h2 id="signature">簽名生成</h2>
+  <p>
+    委託簽名是對以下字串的 Schnorr 簽名：
+  </p>
+
+  <pre><code class="language-text">nostr:delegation:&lt;被委託者公鑰&gt;:&lt;條件字串&gt;</code></pre>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>委託事件</h3>
+  <pre><code class="language-json">{
+  "id": "...",
+  "pubkey": "&lt;被委託者公鑰&gt;",
+  "created_at": 1650000000,
+  "kind": 1,
+  "tags": [
+    [
+      "delegation",
+      "&lt;委託者公鑰&gt;",
+      "kind=1&created_at>1640000000&created_at<1700000000",
+      "&lt;委託簽名&gt;"
+    ]
+  ],
+  "content": "這是一條由被委託者代發的訊息",
+  "sig": "&lt;被委託者簽名&gt;"
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立委託令牌</h3>
+  <pre><code class="language-typescript">import { schnorr } from '@noble/curves/secp256k1';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha256';
+
+interface DelegationToken {
+  delegatorPubkey: string;
+  conditions: string;
+  signature: string;
+}
+
+interface DelegationConditions {
+  kind?: number;
+  since?: number;
+  until?: number;
+}
+
+function buildConditionsString(conditions: DelegationConditions): string {
+  const parts: string[] = [];
+
+  if (conditions.kind !== undefined) {
+    parts.push(`kind=${conditions.kind}`);
+  }
+  if (conditions.since !== undefined) {
+    parts.push(`created_at>${conditions.since}`);
+  }
+  if (conditions.until !== undefined) {
+    parts.push(`created_at<${conditions.until}`);
+  }
+
+  return parts.join('&');
+}
+
+function createDelegationToken(
+  delegatorSecretKey: Uint8Array,
+  delegateePubkey: string,
+  conditions: DelegationConditions
+): DelegationToken {
+  const delegatorPubkey = bytesToHex(
+    schnorr.getPublicKey(delegatorSecretKey)
+  );
+
+  const conditionsString = buildConditionsString(conditions);
+
+  // 建立要簽名的字串
+  const message = `nostr:delegation:${delegateePubkey}:${conditionsString}`;
+  const messageHash = sha256(new TextEncoder().encode(message));
+
+  // 簽名
+  const signature = bytesToHex(
+    schnorr.sign(messageHash, delegatorSecretKey)
+  );
+
+  return {
+    delegatorPubkey,
+    conditions: conditionsString,
+    signature,
+  };
+}
+
+// 使用範例
+const token = createDelegationToken(
+  delegatorSecretKey,
+  '被委託者公鑰hex',
+  {
+    kind: 1,
+    since: Math.floor(Date.now() / 1000),
+    until: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 天
+  }
+);</code></pre>
+
+  <h3>驗證委託</h3>
+  <pre><code class="language-typescript">function verifyDelegation(
+  event: any,
+  delegationTag: string[]
+): boolean {
+  if (delegationTag[0] !== 'delegation' || delegationTag.length !== 4) {
+    return false;
+  }
+
+  const [, delegatorPubkey, conditions, signature] = delegationTag;
+
+  // 1. 驗證條件
+  if (!validateConditions(event, conditions)) {
+    return false;
+  }
+
+  // 2. 驗證簽名
+  const message = `nostr:delegation:${event.pubkey}:${conditions}`;
+  const messageHash = sha256(new TextEncoder().encode(message));
+
+  try {
+    return schnorr.verify(
+      hexToBytes(signature),
+      messageHash,
+      hexToBytes(delegatorPubkey)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function validateConditions(event: any, conditions: string): boolean {
+  const parts = conditions.split('&');
+
+  for (const part of parts) {
+    if (part.startsWith('kind=')) {
+      const kind = parseInt(part.slice(5));
+      if (event.kind !== kind) return false;
+    } else if (part.startsWith('created_at>')) {
+      const since = parseInt(part.slice(11));
+      if (event.created_at <= since) return false;
+    } else if (part.startsWith('created_at<')) {
+      const until = parseInt(part.slice(11));
+      if (event.created_at >= until) return false;
+    }
+  }
+
+  return true;
+}
+
+// 使用範例
+const delegationTag = event.tags.find((t: string[]) => t[0] === 'delegation');
+if (delegationTag && verifyDelegation(event, delegationTag)) {
+  console.log('委託有效，事件代表:', delegationTag[1]);
+}</code></pre>
+
+  <h3>使用委託發布事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+function createDelegatedEvent(
+  content: string,
+  delegateeSecretKey: Uint8Array,
+  delegationToken: DelegationToken
+) {
+  const event = {
+    kind: 1,
+    content,
+    tags: [
+      [
+        'delegation',
+        delegationToken.delegatorPubkey,
+        delegationToken.conditions,
+        delegationToken.signature,
+      ],
+    ],
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, delegateeSecretKey);
+}
+
+// 使用範例
+const delegatedEvent = createDelegatedEvent(
+  '這是委託發布的訊息',
+  delegateeSecretKey,
+  token
+);</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>多設備管理</h3>
+  <ul>
+    <li>主密鑰保存在冷錢包</li>
+    <li>為每個設備創建獨立的委託密鑰</li>
+    <li>設定時間限制和類型限制</li>
+  </ul>
+
+  <h3>團隊發布</h3>
+  <ul>
+    <li>品牌帳號由主密鑰控制</li>
+    <li>團隊成員獲得有限委託權限</li>
+    <li>可隨時撤銷（通過時間條件過期）</li>
+  </ul>
+
+  <h3>自動化發布</h3>
+  <ul>
+    <li>機器人使用委託密鑰</li>
+    <li>限制只能發布特定類型的事件</li>
+    <li>降低主密鑰洩露風險</li>
+  </ul>
+
+  <h2 id="security">安全考量</h2>
+  <ul>
+    <li><strong>時間限制</strong>：始終設定 <code>until</code> 條件，避免永久委託</li>
+    <li><strong>類型限制</strong>：限制可發布的事件類型</li>
+    <li><strong>密鑰隔離</strong>：委託密鑰應獨立於主密鑰</li>
+    <li><strong>監控審計</strong>：定期檢查委託發布的內容</li>
+  </ul>
+
+  <h2 id="relay-support">中繼器支援</h2>
+  <p>
+    支援 NIP-26 的中繼器應該：
+  </p>
+  <ul>
+    <li>驗證委託簽名的有效性</li>
+    <li>驗證事件是否符合條件限制</li>
+    <li>在查詢時，將委託事件關聯到委託者</li>
+  </ul>
+
+  <h2 id="limitations">限制與注意事項</h2>
+  <ul>
+    <li>委託無法撤銷，只能等待過期</li>
+    <li>不是所有客戶端都支援顯示委託資訊</li>
+    <li>某些中繼器可能不驗證委託</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件簽名</li>
+    <li><a href="/tech/nostr/nip-46">NIP-46</a>：遠端簽名 - 另一種密鑰管理方式</li>
+    <li><a href="/tech/nostr/nip-07">NIP-07</a>：瀏覽器擴充 - 簽名介面</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/26.md" target="_blank" rel="noopener noreferrer">NIP-26 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+    <li><a href="https://github.com/paulmillr/noble-curves" target="_blank" rel="noopener noreferrer">noble-curves</a></li>
+  </ul>
+</ArticleLayout>

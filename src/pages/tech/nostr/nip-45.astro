@@ -1,0 +1,365 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-45: Counting Results"
+  description="使用 COUNT 請求高效獲取事件數量統計"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-45 定義了 <code>COUNT</code> 請求類型，允許客戶端向中繼器查詢符合條件的事件數量，
+    而無需下載所有事件。這對於顯示追蹤者數量、按讚數、回覆數等統計資訊非常有用。
+  </p>
+
+  <h2 id="count-request">COUNT 請求</h2>
+  <p>
+    COUNT 請求的格式與 REQ 類似，但使用 <code>COUNT</code> 動詞：
+  </p>
+
+  <pre><code class="language-json">["COUNT", "&lt;subscription_id&gt;", &lt;filter&gt;, ...]</code></pre>
+
+  <h3>過濾器</h3>
+  <p>
+    過濾器格式與 NIP-01 的 REQ 請求相同：
+  </p>
+
+  <pre><code class="language-json">{
+  "kinds": [1],
+  "authors": ["pubkey1", "pubkey2"],
+  "#e": ["event_id"],
+  "#p": ["pubkey"],
+  "since": 1700000000,
+  "until": 1700100000
+}</code></pre>
+
+  <h2 id="count-response">COUNT 回應</h2>
+  <p>
+    中繼器回應包含計數結果：
+  </p>
+
+  <pre><code class="language-json">["COUNT", "&lt;subscription_id&gt;", {"count": 238}]</code></pre>
+
+  <h3>可選的近似值標記</h3>
+  <p>
+    當計數可能不精確時，中繼器可以標記為近似值：
+  </p>
+
+  <pre><code class="language-json">["COUNT", "&lt;subscription_id&gt;", {"count": 238, "approximate": true}]</code></pre>
+
+  <h2 id="examples">使用範例</h2>
+
+  <h3>統計追蹤者數量</h3>
+  <pre><code class="language-json">// 請求
+["COUNT", "followers", {"kinds": [3], "#p": ["目標用戶公鑰"]}]
+
+// 回應
+["COUNT", "followers", {"count": 1523}]</code></pre>
+
+  <h3>統計貼文按讚數</h3>
+  <pre><code class="language-json">// 請求
+["COUNT", "likes", {"kinds": [7], "#e": ["貼文事件ID"]}]
+
+// 回應
+["COUNT", "likes", {"count": 42}]</code></pre>
+
+  <h3>統計回覆數</h3>
+  <pre><code class="language-json">// 請求
+["COUNT", "replies", {"kinds": [1], "#e": ["原始貼文ID"]}]
+
+// 回應
+["COUNT", "replies", {"count": 15}]</code></pre>
+
+  <h3>統計用戶貼文數</h3>
+  <pre><code class="language-json">// 請求
+["COUNT", "posts", {"kinds": [1], "authors": ["用戶公鑰"]}]
+
+// 回應
+["COUNT", "posts", {"count": 892}]</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>基礎計數函數</h3>
+  <pre><code class="language-typescript">interface CountResult {
+  count: number;
+  approximate?: boolean;
+}
+
+async function countEvents(
+  relay: WebSocket,
+  filter: object
+): Promise&lt;CountResult&gt; {
+  return new Promise((resolve, reject) => {
+    const subId = Math.random().toString(36).substring(7);
+    const timeout = setTimeout(() => {
+      reject(new Error('Count request timeout'));
+    }, 10000);
+
+    const handler = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+
+      if (data[0] === 'COUNT' && data[1] === subId) {
+        clearTimeout(timeout);
+        relay.removeEventListener('message', handler);
+        resolve(data[2]);
+      }
+    };
+
+    relay.addEventListener('message', handler);
+    relay.send(JSON.stringify(['COUNT', subId, filter]));
+  });
+}
+
+// 使用範例
+const result = await countEvents(relay, {
+  kinds: [7],
+  '#e': ['event_id'],
+});
+console.log(`按讚數: ${result.count}`);</code></pre>
+
+  <h3>多中繼器計數</h3>
+  <pre><code class="language-typescript">interface MultiRelayCountResult {
+  total: number;
+  byRelay: Map&lt;string, number&gt;;
+  hasApproximate: boolean;
+}
+
+async function countFromMultipleRelays(
+  relayUrls: string[],
+  filter: object
+): Promise&lt;MultiRelayCountResult&gt; {
+  const results = await Promise.allSettled(
+    relayUrls.map(async (url) => {
+      const ws = new WebSocket(url);
+      await new Promise((resolve) => (ws.onopen = resolve));
+
+      try {
+        const result = await countEvents(ws, filter);
+        return { url, ...result };
+      } finally {
+        ws.close();
+      }
+    })
+  );
+
+  const byRelay = new Map&lt;string, number&gt;();
+  let hasApproximate = false;
+  let maxCount = 0;
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      byRelay.set(result.value.url, result.value.count);
+      maxCount = Math.max(maxCount, result.value.count);
+      if (result.value.approximate) {
+        hasApproximate = true;
+      }
+    }
+  }
+
+  return {
+    total: maxCount, // 取最大值作為總數
+    byRelay,
+    hasApproximate,
+  };
+}</code></pre>
+
+  <h3>社交統計類別</h3>
+  <pre><code class="language-typescript">class NostrStats {
+  private relays: string[];
+
+  constructor(relays: string[]) {
+    this.relays = relays;
+  }
+
+  // 獲取追蹤者數量
+  async getFollowerCount(pubkey: string): Promise&lt;number&gt; {
+    const result = await countFromMultipleRelays(this.relays, {
+      kinds: [3],
+      '#p': [pubkey],
+    });
+    return result.total;
+  }
+
+  // 獲取關注數量
+  async getFollowingCount(pubkey: string): Promise&lt;number&gt; {
+    // 需要獲取 kind 3 事件並計算 p 標籤數量
+    // COUNT 無法直接計算這個
+    return 0;
+  }
+
+  // 獲取貼文按讚數
+  async getReactionCount(eventId: string): Promise&lt;number&gt; {
+    const result = await countFromMultipleRelays(this.relays, {
+      kinds: [7],
+      '#e': [eventId],
+    });
+    return result.total;
+  }
+
+  // 獲取貼文回覆數
+  async getReplyCount(eventId: string): Promise&lt;number&gt; {
+    const result = await countFromMultipleRelays(this.relays, {
+      kinds: [1],
+      '#e': [eventId],
+    });
+    return result.total;
+  }
+
+  // 獲取貼文轉發數
+  async getRepostCount(eventId: string): Promise&lt;number&gt; {
+    const result = await countFromMultipleRelays(this.relays, {
+      kinds: [6],
+      '#e': [eventId],
+    });
+    return result.total;
+  }
+
+  // 獲取貼文 Zap 數量
+  async getZapCount(eventId: string): Promise&lt;number&gt; {
+    const result = await countFromMultipleRelays(this.relays, {
+      kinds: [9735],
+      '#e': [eventId],
+    });
+    return result.total;
+  }
+
+  // 獲取用戶貼文數量
+  async getPostCount(pubkey: string): Promise&lt;number&gt; {
+    const result = await countFromMultipleRelays(this.relays, {
+      kinds: [1],
+      authors: [pubkey],
+    });
+    return result.total;
+  }
+}
+
+// 使用範例
+const stats = new NostrStats([
+  'wss://relay.damus.io',
+  'wss://relay.nostr.band',
+  'wss://nos.lol',
+]);
+
+const pubkey = '用戶公鑰';
+const followers = await stats.getFollowerCount(pubkey);
+const posts = await stats.getPostCount(pubkey);
+
+console.log(`追蹤者: ${followers}, 貼文: ${posts}`);</code></pre>
+
+  <h3>React Hook</h3>
+  <pre><code class="language-typescript">import { useState, useEffect } from 'react';
+
+interface EventStats {
+  reactions: number;
+  replies: number;
+  reposts: number;
+  zaps: number;
+  loading: boolean;
+}
+
+function useEventStats(eventId: string, relays: string[]): EventStats {
+  const [stats, setStats] = useState&lt;EventStats&gt;({
+    reactions: 0,
+    replies: 0,
+    reposts: 0,
+    zaps: 0,
+    loading: true,
+  });
+
+  useEffect(() => {
+    const nostrStats = new NostrStats(relays);
+
+    Promise.all([
+      nostrStats.getReactionCount(eventId),
+      nostrStats.getReplyCount(eventId),
+      nostrStats.getRepostCount(eventId),
+      nostrStats.getZapCount(eventId),
+    ]).then(([reactions, replies, reposts, zaps]) => {
+      setStats({
+        reactions,
+        replies,
+        reposts,
+        zaps,
+        loading: false,
+      });
+    });
+  }, [eventId, relays]);
+
+  return stats;
+}
+
+// 使用範例
+function PostStats({ eventId }: { eventId: string }) {
+  const stats = useEventStats(eventId, RELAYS);
+
+  if (stats.loading) {
+    return &lt;div&gt;載入中...&lt;/div&gt;;
+  }
+
+  return (
+    &lt;div className="stats"&gt;
+      &lt;span&gt;❤️ {stats.reactions}&lt;/span&gt;
+      &lt;span&gt;💬 {stats.replies}&lt;/span&gt;
+      &lt;span&gt;🔁 {stats.reposts}&lt;/span&gt;
+      &lt;span&gt;⚡ {stats.zaps}&lt;/span&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="relay-support">中繼器支援檢測</h2>
+  <pre><code class="language-typescript">async function supportsCount(relayUrl: string): Promise&lt;boolean&gt; {
+  try {
+    const response = await fetch(
+      relayUrl.replace('wss://', 'https://').replace('ws://', 'http://'),
+      { headers: { Accept: 'application/nostr+json' } }
+    );
+    const info = await response.json();
+    return info.supported_nips?.includes(45) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+// 過濾支援 COUNT 的中繼器
+async function getCountSupportedRelays(relays: string[]): Promise&lt;string[]&gt; {
+  const results = await Promise.all(
+    relays.map(async (relay) => ({
+      relay,
+      supported: await supportsCount(relay),
+    }))
+  );
+  return results.filter((r) => r.supported).map((r) => r.relay);
+}</code></pre>
+
+  <h2 id="limitations">限制與注意事項</h2>
+  <ul>
+    <li><strong>中繼器支援</strong>：並非所有中繼器都支援 COUNT</li>
+    <li><strong>準確性</strong>：不同中繼器可能返回不同數值</li>
+    <li><strong>近似值</strong>：大量資料時可能返回近似值</li>
+    <li><strong>效能限制</strong>：某些中繼器可能限制 COUNT 請求頻率</li>
+    <li><strong>無法聚合</strong>：無法直接進行 SUM、AVG 等聚合運算</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>快取結果</strong>：統計數據變化不頻繁，可以快取</li>
+    <li><strong>降級處理</strong>：不支援時改用 REQ 計數</li>
+    <li><strong>多中繼器查詢</strong>：取最大值獲得更準確的統計</li>
+    <li><strong>顯示近似</strong>：當 approximate 為 true 時顯示 ≈ 符號</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - REQ 請求</li>
+    <li><a href="/tech/nostr/nip-11">NIP-11</a>：中繼器資訊 - 功能發現</li>
+    <li><a href="/tech/nostr/nip-25">NIP-25</a>：反應 - 按讚事件</li>
+    <li><a href="/tech/nostr/nip-57">NIP-57</a>：Zaps - 打賞事件</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/45.md" target="_blank" rel="noopener noreferrer">NIP-45 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>

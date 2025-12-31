@@ -1,0 +1,481 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-61: Nutzaps"
+  description="使用 Cashu ecash 進行 Zaps 打賞"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-61 定義了 Nutzaps - 使用 Cashu ecash 代幣進行打賞的機制。
+    與傳統的閃電網路 Zaps（NIP-57）不同，Nutzaps 提供更強的隱私性，
+    因為 Cashu 使用盲簽名技術，造幣廠無法追蹤代幣流向。
+  </p>
+
+  <h2 id="advantages">Nutzaps 優勢</h2>
+  <ul>
+    <li><strong>隱私性</strong>：無法追蹤支付來源</li>
+    <li><strong>無需 LNURL</strong>：不依賴閃電網路服務</li>
+    <li><strong>即時確認</strong>：無需等待閃電網路確認</li>
+    <li><strong>低手續費</strong>：Cashu 交易通常免費</li>
+  </ul>
+
+  <h2 id="event-kind">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>9321</code></td>
+        <td>Nutzap 事件</td>
+        <td>一般事件</td>
+      </tr>
+      <tr>
+        <td><code>10019</code></td>
+        <td>Nutzap 資訊</td>
+        <td>可替換事件</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="nutzap-info">Nutzap 資訊 (Kind 10019)</h2>
+  <p>
+    用戶發布此事件來宣告他們接受 Nutzaps 以及偏好的造幣廠。
+  </p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>mint</code></td>
+        <td>接受的造幣廠 URL</td>
+        <td><code>["mint", "https://mint.example.com", "sat"]</code></td>
+      </tr>
+      <tr>
+        <td><code>relay</code></td>
+        <td>接收 Nutzaps 的中繼器</td>
+        <td><code>["relay", "wss://relay.example.com"]</code></td>
+      </tr>
+      <tr>
+        <td><code>pubkey</code></td>
+        <td>P2PK 鎖定公鑰</td>
+        <td><code>["pubkey", "hex公鑰"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>範例</h3>
+  <pre><code class="language-json">{
+  "kind": 10019,
+  "pubkey": "接收者公鑰",
+  "tags": [
+    ["mint", "https://mint.minibits.cash", "sat"],
+    ["mint", "https://mint.coinos.io", "sat"],
+    ["relay", "wss://relay.damus.io"],
+    ["relay", "wss://nos.lol"],
+    ["pubkey", "用於 P2PK 鎖定的公鑰"]
+  ],
+  "content": "",
+  "created_at": 1700000000
+}</code></pre>
+
+  <h2 id="nutzap-event">Nutzap 事件 (Kind 9321)</h2>
+  <p>
+    實際的打賞事件，包含 Cashu 代幣。
+  </p>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>必要</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>amount</code></td>
+        <td>金額（最小單位）</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td><code>unit</code></td>
+        <td>單位（sat, msat, usd）</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td><code>proof</code></td>
+        <td>Cashu proof JSON</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td><code>u</code></td>
+        <td>造幣廠 URL</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td><code>e</code></td>
+        <td>被打賞的事件 ID</td>
+        <td>否</td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>被打賞者公鑰</td>
+        <td>是</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>範例</h3>
+  <pre><code class="language-json">{
+  "kind": 9321,
+  "pubkey": "打賞者公鑰",
+  "tags": [
+    ["amount", "100"],
+    ["unit", "sat"],
+    ["u", "https://mint.minibits.cash"],
+    ["proof", "{\"amount\":64,\"id\":\"009a1f293253e41e\",\"secret\":\"...\",\"C\":\"...\"}"],
+    ["proof", "{\"amount\":32,\"id\":\"009a1f293253e41e\",\"secret\":\"...\",\"C\":\"...\"}"],
+    ["proof", "{\"amount\":4,\"id\":\"009a1f293253e41e\",\"secret\":\"...\",\"C\":\"...\"}"],
+    ["e", "被打賞的事件ID", "wss://relay.example.com"],
+    ["p", "被打賞者公鑰"]
+  ],
+  "content": "讚！很棒的內容 🎉",
+  "created_at": 1700000000
+}</code></pre>
+
+  <h2 id="p2pk-locking">P2PK 鎖定</h2>
+  <p>
+    為了確保只有接收者能夠使用代幣，可以使用 P2PK（Pay to Public Key）鎖定：
+  </p>
+  <ul>
+    <li>打賞者使用接收者的公鑰鎖定 Cashu 代幣</li>
+    <li>只有擁有對應私鑰的人才能解鎖並使用代幣</li>
+    <li>即使代幣被截獲，也無法被盜用</li>
+  </ul>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>發布 Nutzap 資訊</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+interface NutzapConfig {
+  mints: { url: string; unit: string }[];
+  relays: string[];
+  p2pkPubkey?: string;
+}
+
+function createNutzapInfo(
+  config: NutzapConfig,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [];
+
+  config.mints.forEach((mint) => {
+    tags.push(['mint', mint.url, mint.unit]);
+  });
+
+  config.relays.forEach((relay) => {
+    tags.push(['relay', relay]);
+  });
+
+  if (config.p2pkPubkey) {
+    tags.push(['pubkey', config.p2pkPubkey]);
+  }
+
+  return finalizeEvent(
+    {
+      kind: 10019,
+      content: '',
+      tags,
+      created_at: Math.floor(Date.now() / 1000),
+    },
+    secretKey
+  );
+}
+
+// 使用範例
+const nutzapInfo = createNutzapInfo(
+  {
+    mints: [
+      { url: 'https://mint.minibits.cash', unit: 'sat' },
+      { url: 'https://mint.coinos.io', unit: 'sat' },
+    ],
+    relays: ['wss://relay.damus.io', 'wss://nos.lol'],
+    p2pkPubkey: 'hex公鑰',
+  },
+  secretKey
+);</code></pre>
+
+  <h3>發送 Nutzap</h3>
+  <pre><code class="language-typescript">import { CashuMint, CashuWallet, getEncodedToken, Proof } from '@cashu/cashu-ts';
+
+interface NutzapTarget {
+  pubkey: string;
+  eventId?: string;
+  relayHint?: string;
+}
+
+async function sendNutzap(
+  mintUrl: string,
+  proofs: Proof[],
+  amount: number,
+  target: NutzapTarget,
+  message: string,
+  secretKey: Uint8Array
+) {
+  const mint = new CashuMint(mintUrl);
+  const wallet = new CashuWallet(mint);
+
+  // 選擇並拆分代幣
+  const { send } = await wallet.send(amount, proofs);
+
+  // 建立 Nutzap 事件
+  const tags: string[][] = [
+    ['amount', amount.toString()],
+    ['unit', 'sat'],
+    ['u', mintUrl],
+    ['p', target.pubkey],
+  ];
+
+  // 添加每個 proof 作為單獨的標籤
+  send.forEach((proof) => {
+    tags.push(['proof', JSON.stringify(proof)]);
+  });
+
+  if (target.eventId) {
+    const eventTag = ['e', target.eventId];
+    if (target.relayHint) {
+      eventTag.push(target.relayHint);
+    }
+    tags.push(eventTag);
+  }
+
+  return finalizeEvent(
+    {
+      kind: 9321,
+      content: message,
+      tags,
+      created_at: Math.floor(Date.now() / 1000),
+    },
+    secretKey
+  );
+}
+
+// 使用範例
+const nutzap = await sendNutzap(
+  'https://mint.minibits.cash',
+  myProofs,
+  100,
+  {
+    pubkey: '被打賞者公鑰',
+    eventId: '事件ID',
+    relayHint: 'wss://relay.example.com',
+  },
+  '很棒的內容！',
+  secretKey
+);</code></pre>
+
+  <h3>接收 Nutzaps</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+interface ReceivedNutzap {
+  id: string;
+  from: string;
+  amount: number;
+  unit: string;
+  mint: string;
+  proofs: Proof[];
+  message: string;
+  eventId?: string;
+  createdAt: number;
+}
+
+async function getReceivedNutzaps(
+  pool: SimplePool,
+  relays: string[],
+  pubkey: string,
+  since?: number
+): Promise&lt;ReceivedNutzap[]&gt; {
+  const filter: any = {
+    kinds: [9321],
+    '#p': [pubkey],
+  };
+
+  if (since) {
+    filter.since = since;
+  }
+
+  const events = await pool.querySync(relays, filter);
+
+  return events.map((event) => {
+    const getTag = (name: string) =>
+      event.tags.find((t: string[]) => t[0] === name)?.[1];
+
+    const proofs = event.tags
+      .filter((t: string[]) => t[0] === 'proof')
+      .map((t: string[]) => JSON.parse(t[1]));
+
+    return {
+      id: event.id,
+      from: event.pubkey,
+      amount: parseInt(getTag('amount') || '0'),
+      unit: getTag('unit') || 'sat',
+      mint: getTag('u') || '',
+      proofs,
+      message: event.content,
+      eventId: getTag('e'),
+      createdAt: event.created_at,
+    };
+  });
+}
+
+// 兌換收到的 Nutzaps
+async function redeemNutzap(
+  nutzap: ReceivedNutzap,
+  secretKey: Uint8Array
+): Promise&lt;Proof[]&gt; {
+  const mint = new CashuMint(nutzap.mint);
+  const wallet = new CashuWallet(mint);
+
+  // 如果是 P2PK 鎖定的，需要提供私鑰
+  const newProofs = await wallet.receive(nutzap.proofs, {
+    privkey: bytesToHex(secretKey),
+  });
+
+  return newProofs;
+}</code></pre>
+
+  <h3>查詢用戶的 Nutzap 配置</h3>
+  <pre><code class="language-typescript">interface UserNutzapConfig {
+  mints: { url: string; unit: string }[];
+  relays: string[];
+  p2pkPubkey?: string;
+}
+
+async function getUserNutzapConfig(
+  pool: SimplePool,
+  relays: string[],
+  pubkey: string
+): Promise&lt;UserNutzapConfig | null&gt; {
+  const events = await pool.querySync(relays, {
+    kinds: [10019],
+    authors: [pubkey],
+  });
+
+  if (events.length === 0) {
+    return null;
+  }
+
+  // 取最新的
+  const event = events.sort((a, b) => b.created_at - a.created_at)[0];
+
+  const mints = event.tags
+    .filter((t: string[]) => t[0] === 'mint')
+    .map((t: string[]) => ({ url: t[1], unit: t[2] || 'sat' }));
+
+  const configRelays = event.tags
+    .filter((t: string[]) => t[0] === 'relay')
+    .map((t: string[]) => t[1]);
+
+  const pubkeyTag = event.tags.find((t: string[]) => t[0] === 'pubkey');
+
+  return {
+    mints,
+    relays: configRelays,
+    p2pkPubkey: pubkeyTag?.[1],
+  };
+}
+
+// 檢查用戶是否支援 Nutzaps
+async function supportsNutzaps(
+  pool: SimplePool,
+  relays: string[],
+  pubkey: string
+): Promise&lt;boolean&gt; {
+  const config = await getUserNutzapConfig(pool, relays, pubkey);
+  return config !== null && config.mints.length > 0;
+}</code></pre>
+
+  <h2 id="comparison">Nutzaps vs 傳統 Zaps</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>Zaps (NIP-57)</th>
+        <th>Nutzaps (NIP-61)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>支付網路</td>
+        <td>閃電網路</td>
+        <td>Cashu ecash</td>
+      </tr>
+      <tr>
+        <td>隱私性</td>
+        <td>可追蹤</td>
+        <td>不可追蹤</td>
+      </tr>
+      <tr>
+        <td>設置要求</td>
+        <td>LNURL 服務</td>
+        <td>僅需發布 kind 10019</td>
+      </tr>
+      <tr>
+        <td>確認時間</td>
+        <td>需等待閃電網路</td>
+        <td>即時</td>
+      </tr>
+      <tr>
+        <td>託管風險</td>
+        <td>無（非託管）</td>
+        <td>有（造幣廠託管）</td>
+      </tr>
+      <tr>
+        <td>互操作性</td>
+        <td>需 LNURL 支援</td>
+        <td>只需 Cashu 支援</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="security">安全考量</h2>
+  <ul>
+    <li><strong>造幣廠信任</strong>：Cashu 是託管式的，選擇可信的造幣廠</li>
+    <li><strong>P2PK 鎖定</strong>：建議使用 P2PK 防止代幣被截獲</li>
+    <li><strong>及時兌換</strong>：收到 Nutzap 後應及時兌換，防止造幣廠倒閉</li>
+    <li><strong>多造幣廠</strong>：分散使用多個造幣廠降低風險</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-57">NIP-57</a>：Zaps - 閃電網路打賞</li>
+    <li><a href="/tech/nostr/nip-60">NIP-60</a>：Cashu Wallet - 錢包管理</li>
+    <li><a href="/tech/nostr/nip-44">NIP-44</a>：加密訊息 v2 - 內容加密</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/61.md" target="_blank" rel="noopener noreferrer">NIP-61 規範</a></li>
+    <li><a href="https://cashu.space/" target="_blank" rel="noopener noreferrer">Cashu 官網</a></li>
+    <li><a href="https://github.com/cashubtc/cashu-ts" target="_blank" rel="noopener noreferrer">cashu-ts</a></li>
+  </ul>
+</ArticleLayout>

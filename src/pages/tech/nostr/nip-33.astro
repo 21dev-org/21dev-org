@@ -1,0 +1,449 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-33: Parameterized Replaceable Events"
+  description="帶參數的可替換事件，允許同一作者發布多個可替換事件"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-33 定義了「帶參數的可替換事件」（Parameterized Replaceable Events），
+    擴展了 NIP-01 中的可替換事件概念。普通可替換事件每個 kind 只能有一個，
+    而帶參數的可替換事件通過 <code>d</code> 標籤允許同一 kind 存在多個實例。
+  </p>
+
+  <h2 id="event-kinds">事件類型範圍</h2>
+  <p>
+    帶參數的可替換事件使用特定的 kind 範圍：
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind 範圍</th>
+        <th>類型</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>30000-39999</code></td>
+        <td>帶參數可替換事件</td>
+        <td>使用 d 標籤區分不同實例</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="d-tag">d 標籤</h2>
+  <p>
+    <code>d</code> 標籤是區分同一 kind 不同實例的關鍵：
+  </p>
+
+  <pre><code class="language-json">["d", "&lt;識別符&gt;"]</code></pre>
+
+  <h3>識別規則</h3>
+  <ul>
+    <li>每個事件必須有且只有一個 <code>d</code> 標籤</li>
+    <li>識別符可以是任何字串（包括空字串）</li>
+    <li>相同 <code>pubkey</code> + <code>kind</code> + <code>d</code> 值的新事件會替換舊事件</li>
+    <li>中繼器只保留最新版本（以 <code>created_at</code> 判斷）</li>
+  </ul>
+
+  <h2 id="addressing">naddr 地址</h2>
+  <p>
+    帶參數的可替換事件使用 <code>naddr</code>（NIP-19）來引用：
+  </p>
+
+  <pre><code class="language-text">naddr1...（包含 kind、pubkey、d 值和推薦中繼器）</code></pre>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>長文文章（kind 30023）</h3>
+  <pre><code class="language-json">{
+  "kind": 30023,
+  "pubkey": "作者公鑰",
+  "created_at": 1700000000,
+  "tags": [
+    ["d", "my-first-article"],
+    ["title", "我的第一篇文章"],
+    ["published_at", "1700000000"]
+  ],
+  "content": "# 文章內容\n\n這是 Markdown 格式的長文...",
+  "sig": "..."
+}</code></pre>
+
+  <h3>更新同一篇文章</h3>
+  <pre><code class="language-json">{
+  "kind": 30023,
+  "pubkey": "同一作者公鑰",
+  "created_at": 1700100000,
+  "tags": [
+    ["d", "my-first-article"],
+    ["title", "我的第一篇文章（更新版）"],
+    ["published_at", "1700000000"]
+  ],
+  "content": "# 更新後的內容\n\n這是修改後的文章...",
+  "sig": "..."
+}</code></pre>
+
+  <h3>用戶個人資料（kind 30078）</h3>
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "pubkey": "用戶公鑰",
+  "created_at": 1700000000,
+  "tags": [
+    ["d", "app-settings/theme"]
+  ],
+  "content": "{\"theme\": \"dark\", \"fontSize\": 14}",
+  "sig": "..."
+}</code></pre>
+
+  <h2 id="common-kinds">常見的帶參數可替換事件</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>d 標籤用途</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>30000</code></td>
+        <td>關注集合</td>
+        <td>集合名稱</td>
+      </tr>
+      <tr>
+        <td><code>30001</code></td>
+        <td>書籤集合</td>
+        <td>集合名稱</td>
+      </tr>
+      <tr>
+        <td><code>30008</code></td>
+        <td>個人資料徽章</td>
+        <td>徽章識別</td>
+      </tr>
+      <tr>
+        <td><code>30009</code></td>
+        <td>徽章定義</td>
+        <td>徽章唯一 ID</td>
+      </tr>
+      <tr>
+        <td><code>30017</code></td>
+        <td>商店攤位</td>
+        <td>攤位 ID</td>
+      </tr>
+      <tr>
+        <td><code>30018</code></td>
+        <td>商品</td>
+        <td>商品 ID</td>
+      </tr>
+      <tr>
+        <td><code>30023</code></td>
+        <td>長文文章</td>
+        <td>文章 slug</td>
+      </tr>
+      <tr>
+        <td><code>30024</code></td>
+        <td>草稿文章</td>
+        <td>草稿 ID</td>
+      </tr>
+      <tr>
+        <td><code>30078</code></td>
+        <td>應用資料</td>
+        <td>資料鍵</td>
+      </tr>
+      <tr>
+        <td><code>30311</code></td>
+        <td>直播活動</td>
+        <td>活動 ID</td>
+      </tr>
+      <tr>
+        <td><code>30402</code></td>
+        <td>分類廣告</td>
+        <td>列表 ID</td>
+      </tr>
+      <tr>
+        <td><code>30617</code></td>
+        <td>Git 倉庫</td>
+        <td>倉庫識別</td>
+      </tr>
+      <tr>
+        <td><code>30818</code></td>
+        <td>Wiki 文章</td>
+        <td>主題名稱</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立帶參數可替換事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+interface ParameterizedReplaceableEvent {
+  kind: number;
+  dTag: string;
+  content: string;
+  tags?: string[][];
+}
+
+function createParameterizedReplaceableEvent(
+  event: ParameterizedReplaceableEvent,
+  secretKey: Uint8Array
+) {
+  // 確保 kind 在正確範圍
+  if (event.kind < 30000 || event.kind > 39999) {
+    throw new Error('Kind must be between 30000-39999');
+  }
+
+  const tags: string[][] = [['d', event.dTag]];
+
+  // 添加其他標籤
+  if (event.tags) {
+    tags.push(...event.tags);
+  }
+
+  return finalizeEvent(
+    {
+      kind: event.kind,
+      content: event.content,
+      tags,
+      created_at: Math.floor(Date.now() / 1000),
+    },
+    secretKey
+  );
+}
+
+// 使用範例：建立長文文章
+const article = createParameterizedReplaceableEvent(
+  {
+    kind: 30023,
+    dTag: 'bitcoin-basics',
+    content: '# 比特幣基礎\n\n比特幣是...',
+    tags: [
+      ['title', '比特幣基礎入門'],
+      ['summary', '一篇關於比特幣基礎的文章'],
+      ['published_at', Math.floor(Date.now() / 1000).toString()],
+      ['t', 'bitcoin'],
+      ['t', '入門'],
+    ],
+  },
+  secretKey
+);</code></pre>
+
+  <h3>查詢帶參數可替換事件</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+interface NaddrPointer {
+  kind: number;
+  pubkey: string;
+  identifier: string;
+}
+
+async function fetchParameterizedReplaceableEvent(
+  pool: SimplePool,
+  relays: string[],
+  pointer: NaddrPointer
+) {
+  const filter = {
+    kinds: [pointer.kind],
+    authors: [pointer.pubkey],
+    '#d': [pointer.identifier],
+  };
+
+  const events = await pool.querySync(relays, filter);
+
+  // 返回最新的一個
+  return events.sort((a, b) => b.created_at - a.created_at)[0] || null;
+}
+
+// 使用範例
+const article = await fetchParameterizedReplaceableEvent(
+  pool,
+  relays,
+  {
+    kind: 30023,
+    pubkey: '作者公鑰',
+    identifier: 'bitcoin-basics',
+  }
+);</code></pre>
+
+  <h3>NIP-19 naddr 編解碼</h3>
+  <pre><code class="language-typescript">import { nip19 } from 'nostr-tools';
+
+// 編碼為 naddr
+function encodeNaddr(
+  kind: number,
+  pubkey: string,
+  identifier: string,
+  relays: string[] = []
+): string {
+  return nip19.naddrEncode({
+    kind,
+    pubkey,
+    identifier,
+    relays,
+  });
+}
+
+// 解碼 naddr
+function decodeNaddr(naddr: string): NaddrPointer | null {
+  try {
+    const { type, data } = nip19.decode(naddr);
+    if (type === 'naddr') {
+      return {
+        kind: data.kind,
+        pubkey: data.pubkey,
+        identifier: data.identifier,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+// 使用範例
+const naddr = encodeNaddr(
+  30023,
+  '作者公鑰',
+  'bitcoin-basics',
+  ['wss://relay.example.com']
+);
+
+console.log(naddr); // naddr1...
+
+const decoded = decodeNaddr(naddr);
+console.log(decoded);
+// { kind: 30023, pubkey: '...', identifier: 'bitcoin-basics' }</code></pre>
+
+  <h3>列出用戶的所有文章</h3>
+  <pre><code class="language-typescript">interface Article {
+  id: string;
+  pubkey: string;
+  identifier: string;
+  title: string;
+  summary?: string;
+  content: string;
+  publishedAt: number;
+  tags: string[];
+  naddr: string;
+}
+
+async function listUserArticles(
+  pool: SimplePool,
+  relays: string[],
+  pubkey: string
+): Promise&lt;Article[]&gt; {
+  const events = await pool.querySync(relays, {
+    kinds: [30023],
+    authors: [pubkey],
+  });
+
+  // 按 d 標籤去重，只保留最新版本
+  const latestByD = new Map&lt;string, any&gt;();
+
+  for (const event of events) {
+    const dTag = event.tags.find((t: string[]) => t[0] === 'd');
+    const identifier = dTag?.[1] || '';
+
+    const existing = latestByD.get(identifier);
+    if (!existing || event.created_at > existing.created_at) {
+      latestByD.set(identifier, event);
+    }
+  }
+
+  return Array.from(latestByD.values()).map((event) => {
+    const getTag = (name: string) =>
+      event.tags.find((t: string[]) => t[0] === name)?.[1];
+
+    const identifier = getTag('d') || '';
+
+    return {
+      id: event.id,
+      pubkey: event.pubkey,
+      identifier,
+      title: getTag('title') || '無標題',
+      summary: getTag('summary'),
+      content: event.content,
+      publishedAt: parseInt(getTag('published_at') || event.created_at),
+      tags: event.tags
+        .filter((t: string[]) => t[0] === 't')
+        .map((t: string[]) => t[1]),
+      naddr: encodeNaddr(30023, event.pubkey, identifier, relays.slice(0, 2)),
+    };
+  });
+}</code></pre>
+
+  <h2 id="relay-behavior">中繼器行為</h2>
+  <p>
+    對於帶參數的可替換事件，中繼器應該：
+  </p>
+  <ul>
+    <li>同一 <code>pubkey</code> + <code>kind</code> + <code>d</code> 只保留一個事件</li>
+    <li>收到較新事件時，替換舊事件</li>
+    <li>拒絕時間戳較舊的事件</li>
+    <li>支援 <code>#d</code> 過濾器查詢</li>
+  </ul>
+
+  <h2 id="comparison">與普通可替換事件的比較</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>可替換事件 (10000-19999)</th>
+        <th>帶參數可替換事件 (30000-39999)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>每個 kind 實例數</td>
+        <td>每用戶 1 個</td>
+        <td>每用戶多個（由 d 標籤區分）</td>
+      </tr>
+      <tr>
+        <td>唯一性</td>
+        <td>pubkey + kind</td>
+        <td>pubkey + kind + d</td>
+      </tr>
+      <tr>
+        <td>引用方式</td>
+        <td>直接用 kind 查詢</td>
+        <td>使用 naddr 或 #d 過濾</td>
+      </tr>
+      <tr>
+        <td>使用場景</td>
+        <td>個人資料、設定</td>
+        <td>文章、商品、列表</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>有意義的 d 值</strong>：使用可讀的 slug 而非隨機 ID</li>
+    <li><strong>穩定的 d 值</strong>：d 值一旦設定不應更改</li>
+    <li><strong>包含中繼器提示</strong>：在 naddr 中包含推薦的中繼器</li>
+    <li><strong>版本追蹤</strong>：可在標籤中記錄版本號或更新時間</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件類型</li>
+    <li><a href="/tech/nostr/nip-19">NIP-19</a>：bech32 編碼 - naddr 格式</li>
+    <li><a href="/tech/nostr/nip-23">NIP-23</a>：長文內容 - kind 30023</li>
+    <li><a href="/tech/nostr/nip-78">NIP-78</a>：應用程式資料 - kind 30078</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/33.md" target="_blank" rel="noopener noreferrer">NIP-33 規範</a></li>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/01.md" target="_blank" rel="noopener noreferrer">NIP-01 事件類型</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
