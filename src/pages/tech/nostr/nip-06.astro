@@ -1,0 +1,408 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-06: 助記詞密鑰派生"
+  description="從 BIP-39 助記詞派生 Nostr 密鑰對的標準方法"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-06 定義了從助記詞（mnemonic seed phrase）派生 Nostr 密鑰對的標準方法。
+    這個規範基於比特幣的 BIP-39 和 BIP-32 標準，讓用戶可以使用熟悉的 12 或 24 個單詞
+    來備份和恢復他們的 Nostr 身份。
+  </p>
+
+  <h2 id="standards">使用的標準</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>標準</th>
+        <th>用途</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>BIP-39</strong></td>
+        <td>生成助記詞並從中派生二進制種子</td>
+      </tr>
+      <tr>
+        <td><strong>BIP-32</strong></td>
+        <td>階層式確定性（HD）密鑰派生</td>
+      </tr>
+      <tr>
+        <td><strong>SLIP-44</strong></td>
+        <td>Nostr 的幣種類型編號：1237</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="derivation-path">派生路徑</h2>
+  <p>
+    Nostr 使用以下 BIP-32 派生路徑：
+  </p>
+
+  <pre><code class="language-text">m/44'/1237'/&lt;account&gt;'/0/0</code></pre>
+
+  <table>
+    <thead>
+      <tr>
+        <th>層級</th>
+        <th>值</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>44'</code></td>
+        <td>固定</td>
+        <td>BIP-44 用途（硬化派生）</td>
+      </tr>
+      <tr>
+        <td><code>1237'</code></td>
+        <td>固定</td>
+        <td>Nostr 的 SLIP-44 幣種編號</td>
+      </tr>
+      <tr>
+        <td><code>account'</code></td>
+        <td>0, 1, 2...</td>
+        <td>帳戶索引（硬化派生）</td>
+      </tr>
+      <tr>
+        <td><code>0</code></td>
+        <td>固定</td>
+        <td>外部鏈</td>
+      </tr>
+      <tr>
+        <td><code>0</code></td>
+        <td>固定</td>
+        <td>地址索引</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="not-prose my-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <p class="text-sm text-blue-800 dark:text-blue-200">
+      <strong>多帳戶支援：</strong>基本客戶端可以使用 account = 0。
+      需要多個身份的用戶可以遞增帳戶索引，從同一組助記詞派生實際上無限的密鑰對。
+    </p>
+  </div>
+
+  <h2 id="key-generation-flow">密鑰生成流程</h2>
+  <ol>
+    <li><strong>生成助記詞</strong>：使用 BIP-39 生成 12 或 24 個單詞</li>
+    <li><strong>派生種子</strong>：從助記詞（可選加上密碼）派生 512 位元種子</li>
+    <li><strong>生成主密鑰</strong>：使用 BIP-32 從種子生成主密鑰</li>
+    <li><strong>派生子密鑰</strong>：按照路徑 m/44'/1237'/0'/0/0 派生</li>
+    <li><strong>提取私鑰</strong>：取得 32 位元組的私鑰</li>
+    <li><strong>計算公鑰</strong>：從私鑰計算 secp256k1 公鑰（x 座標）</li>
+  </ol>
+
+  <h2 id="test-vectors">測試向量</h2>
+
+  <h3>測試向量 1</h3>
+  <pre><code class="language-text">助記詞: leader monkey parrot ring guide accident before fence cannon height naive bean
+
+派生路徑: m/44'/1237'/0'/0/0
+
+私鑰 (hex): 7f7ff03d123792d6ac594bfa67bf6d0c0ab55b6b1fdb6249303fe861f1ccba9a
+nsec: nsec10allq0gjx7fddtzef0ax00mdps9t2kmtrldkyjfs8l5xruwvh2dq0lhhkp
+
+公鑰 (hex): 17162c921dc4d2518f9a101db33695df1afb56ab82f5ff3e5da6571e474dc088
+npub: npub1zutzeysacnf9rru6zqwmxd54mud0k44tst6l7vaex3s3rr4ppjfs6mq2yp</code></pre>
+
+  <h3>測試向量 2</h3>
+  <pre><code class="language-text">助記詞: what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade
+
+派生路徑: m/44'/1237'/0'/0/0
+
+私鑰 (hex): c15d739894c81a2fcfd3a2df85a0d2c0dbc47a280d092799f144d73d7ae78add
+nsec: nsec1c9wh8xy5eqdzln7n5t0ctgxjcrdug73gp5yj0x03gntn67h83twssdfhel
+
+公鑰 (hex): d41b22899549e1f3d335a31002cfd382174006e166d3e658e3a5eecdb6463573
+npub: npub16sdj9zv4f8sl85e45vgq3n7vced8zpr5fjkayqh2jtqwxgwqdqys8t4uvx</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>安裝依賴</h3>
+  <pre><code class="language-bash">npm install @scure/bip39 @scure/bip32 @noble/secp256k1 nostr-tools</code></pre>
+
+  <h3>從助記詞派生密鑰</h3>
+  <pre><code class="language-typescript">import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
+import { HDKey } from '@scure/bip32';
+import { bytesToHex } from '@noble/hashes/utils';
+import { getPublicKey, nip19 } from 'nostr-tools';
+
+// Nostr 的 BIP-32 派生路徑
+const NOSTR_DERIVATION_PATH = "m/44'/1237'/0'/0/0";
+
+/**
+ * 生成新的助記詞
+ */
+function generateNostrMnemonic(strength: 128 | 256 = 128): string {
+  // 128 bits = 12 words, 256 bits = 24 words
+  return generateMnemonic(wordlist, strength);
+}
+
+/**
+ * 驗證助記詞是否有效
+ */
+function isValidMnemonic(mnemonic: string): boolean {
+  return validateMnemonic(mnemonic, wordlist);
+}
+
+/**
+ * 從助記詞派生 Nostr 密鑰對
+ */
+function deriveNostrKeys(
+  mnemonic: string,
+  accountIndex: number = 0,
+  passphrase: string = ''
+): {
+  privateKey: Uint8Array;
+  privateKeyHex: string;
+  nsec: string;
+  publicKey: string;
+  npub: string;
+} {
+  // 驗證助記詞
+  if (!isValidMnemonic(mnemonic)) {
+    throw new Error('無效的助記詞');
+  }
+
+  // 從助記詞派生種子
+  const seed = mnemonicToSeedSync(mnemonic, passphrase);
+
+  // 建立 HD 密鑰
+  const hdKey = HDKey.fromMasterSeed(seed);
+
+  // 派生路徑（支援多帳戶）
+  const path = `m/44'/1237'/${accountIndex}'/0/0`;
+  const derived = hdKey.derive(path);
+
+  if (!derived.privateKey) {
+    throw new Error('無法派生私鑰');
+  }
+
+  const privateKey = derived.privateKey;
+  const privateKeyHex = bytesToHex(privateKey);
+  const publicKey = getPublicKey(privateKey);
+
+  return {
+    privateKey,
+    privateKeyHex,
+    nsec: nip19.nsecEncode(privateKey),
+    publicKey,
+    npub: nip19.npubEncode(publicKey),
+  };
+}
+
+// 使用範例
+const mnemonic = generateNostrMnemonic();
+console.log('助記詞:', mnemonic);
+
+const keys = deriveNostrKeys(mnemonic);
+console.log('私鑰 (hex):', keys.privateKeyHex);
+console.log('nsec:', keys.nsec);
+console.log('公鑰 (hex):', keys.publicKey);
+console.log('npub:', keys.npub);</code></pre>
+
+  <h3>多帳戶派生</h3>
+  <pre><code class="language-typescript">/**
+ * 從同一組助記詞派生多個帳戶
+ */
+function deriveMultipleAccounts(
+  mnemonic: string,
+  count: number,
+  passphrase: string = ''
+) {
+  const accounts = [];
+
+  for (let i = 0; i < count; i++) {
+    const keys = deriveNostrKeys(mnemonic, i, passphrase);
+    accounts.push({
+      accountIndex: i,
+      path: `m/44'/1237'/${i}'/0/0`,
+      ...keys,
+    });
+  }
+
+  return accounts;
+}
+
+// 使用範例：派生 5 個帳戶
+const accounts = deriveMultipleAccounts(mnemonic, 5);
+accounts.forEach((account) => {
+  console.log(`帳戶 ${account.accountIndex}:`);
+  console.log(`  路徑: ${account.path}`);
+  console.log(`  npub: ${account.npub}`);
+});</code></pre>
+
+  <h3>帶密碼的派生</h3>
+  <pre><code class="language-typescript">// 使用額外的密碼短語增加安全性
+// 相同的助記詞配合不同密碼會產生完全不同的密鑰
+const keysWithPassphrase = deriveNostrKeys(
+  mnemonic,
+  0,
+  'my-secret-passphrase'
+);
+
+console.log('帶密碼的 npub:', keysWithPassphrase.npub);
+
+// 注意：忘記密碼將無法恢復密鑰！</code></pre>
+
+  <h3>完整的密鑰管理類別</h3>
+  <pre><code class="language-typescript">import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
+import { HDKey } from '@scure/bip32';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import { getPublicKey, nip19, finalizeEvent } from 'nostr-tools';
+
+class NostrHDWallet {
+  private seed: Uint8Array;
+  private hdKey: HDKey;
+
+  constructor(mnemonic: string, passphrase: string = '') {
+    if (!validateMnemonic(mnemonic, wordlist)) {
+      throw new Error('無效的助記詞');
+    }
+
+    this.seed = mnemonicToSeedSync(mnemonic, passphrase);
+    this.hdKey = HDKey.fromMasterSeed(this.seed);
+  }
+
+  static generate(strength: 128 | 256 = 128): {
+    mnemonic: string;
+    wallet: NostrHDWallet;
+  } {
+    const mnemonic = generateMnemonic(wordlist, strength);
+    return {
+      mnemonic,
+      wallet: new NostrHDWallet(mnemonic),
+    };
+  }
+
+  static fromMnemonic(mnemonic: string, passphrase?: string): NostrHDWallet {
+    return new NostrHDWallet(mnemonic, passphrase);
+  }
+
+  getAccount(index: number = 0) {
+    const path = `m/44'/1237'/${index}'/0/0`;
+    const derived = this.hdKey.derive(path);
+
+    if (!derived.privateKey) {
+      throw new Error('無法派生私鑰');
+    }
+
+    const privateKey = derived.privateKey;
+    const publicKey = getPublicKey(privateKey);
+
+    return {
+      index,
+      path,
+      privateKey,
+      privateKeyHex: bytesToHex(privateKey),
+      nsec: nip19.nsecEncode(privateKey),
+      publicKey,
+      npub: nip19.npubEncode(publicKey),
+
+      // 簽名事件的便利方法
+      signEvent: (event: any) => {
+        return finalizeEvent(event, privateKey);
+      },
+    };
+  }
+
+  getAccounts(count: number) {
+    return Array.from({ length: count }, (_, i) => this.getAccount(i));
+  }
+}
+
+// 使用範例
+const { mnemonic: newMnemonic, wallet } = NostrHDWallet.generate(256); // 24 words
+console.log('請安全保存此助記詞:', newMnemonic);
+
+const mainAccount = wallet.getAccount(0);
+console.log('主帳戶 npub:', mainAccount.npub);
+
+// 簽名事件
+const signedEvent = mainAccount.signEvent({
+  kind: 1,
+  content: 'Hello from HD wallet!',
+  tags: [],
+  created_at: Math.floor(Date.now() / 1000),
+});</code></pre>
+
+  <h2 id="security">安全考量</h2>
+
+  <div class="not-prose my-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+    <p class="text-sm text-red-800 dark:text-red-200">
+      <strong>重要安全提醒：</strong>
+    </p>
+    <ul class="text-sm text-red-800 dark:text-red-200 mt-2 list-disc list-inside">
+      <li>助記詞等同於私鑰，必須安全保存</li>
+      <li>永遠不要在線上儲存或分享助記詞</li>
+      <li>建議使用 24 個單詞以獲得更高安全性</li>
+      <li>考慮使用額外密碼短語作為第二層保護</li>
+      <li>忘記密碼短語將永久失去存取權限</li>
+    </ul>
+  </div>
+
+  <h3>備份建議</h3>
+  <ul>
+    <li>將助記詞寫在紙上，存放在安全的地方</li>
+    <li>考慮使用金屬板刻印以防火防水</li>
+    <li>不要截圖或存在雲端</li>
+    <li>可以分散存放（如 Shamir 分割）</li>
+  </ul>
+
+  <h2 id="compatibility">相容性</h2>
+  <p>
+    由於 NIP-06 使用標準的 BIP-39/BIP-32，助記詞可以：
+  </p>
+  <ul>
+    <li>在任何支援 NIP-06 的 Nostr 客戶端中恢復</li>
+    <li>與比特幣錢包共用（使用不同的派生路徑）</li>
+    <li>在硬體錢包中安全儲存</li>
+  </ul>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>單一身份</h3>
+  <ul>
+    <li>使用 account = 0 作為主要 Nostr 身份</li>
+    <li>簡單易用，適合大多數用戶</li>
+  </ul>
+
+  <h3>多重身份</h3>
+  <ul>
+    <li>個人帳戶（account = 0）</li>
+    <li>工作帳戶（account = 1）</li>
+    <li>匿名帳戶（account = 2）</li>
+    <li>全部從同一組助記詞管理</li>
+  </ul>
+
+  <h3>組織管理</h3>
+  <ul>
+    <li>為團隊成員派生不同帳戶</li>
+    <li>集中備份，分散使用</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 密鑰對和簽名</li>
+    <li><a href="/tech/nostr/nip-19">NIP-19</a>：bech32 編碼 - nsec/npub 格式</li>
+    <li><a href="/tech/nostr/nip-49">NIP-49</a>：私鑰加密 - 加密儲存私鑰</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/06.md" target="_blank" rel="noopener noreferrer">NIP-06 規範</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki" target="_blank" rel="noopener noreferrer">BIP-39: 助記詞</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki" target="_blank" rel="noopener noreferrer">BIP-32: HD 錢包</a></li>
+    <li><a href="https://github.com/satoshilabs/slips/blob/master/slip-0044.md" target="_blank" rel="noopener noreferrer">SLIP-44: 幣種類型</a></li>
+  </ul>
+</ArticleLayout>
