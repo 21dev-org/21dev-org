@@ -1,0 +1,503 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-94 檔案中繼資料"
+  description="深入了解 Nostr 的檔案中繼資料標準，使用 kind 1063 事件描述檔案的 URL、類型、大小等資訊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-94 檔案中繼資料' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-65 中繼器列表', href: '/tech/nostr/nip-65' }}
+  nextPage={{ title: 'NIP-96 檔案儲存', href: '/tech/nostr/nip-96' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-94？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-94 定義了描述檔案中繼資料的標準格式。它使用 kind 1063 事件來儲存檔案的
+    URL、MIME 類型、檔案大小、雜湊值、圖片尺寸等資訊。這個標準讓客戶端可以
+    在下載前了解檔案詳情，並驗證檔案完整性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>與 NIP-96 的關係：</strong>
+      NIP-96 檔案上傳伺服器會在回應中返回 NIP-94 格式的中繼資料，
+      讓客戶端可以直接使用這些資訊。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 1063,
+  "content": "這是我的照片描述",
+  "tags": [
+    ["url", "https://media.nostr.build/abc123.jpg"],
+    ["m", "image/jpeg"],
+    ["x", "a1b2c3d4e5f6..."],
+    ["ox", "original-hash..."],
+    ["size", "1234567"],
+    ["dim", "1920x1080"],
+    ["blurhash", "LEHV6nWB2yk8pyo0adR*.7kCMdnj"],
+    ["thumb", "https://media.nostr.build/abc123_thumb.jpg"],
+    ["image", "https://media.nostr.build/abc123_preview.jpg"],
+    ["summary", "日落時分的山景照片"],
+    ["alt", "橙紅色天空下的山脈剪影"]
+  ],
+  "pubkey": "<上傳者公鑰>",
+  "created_at": 1704067200,
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤說明</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">必須</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">url</td>
+          <td class="py-3 px-4 text-green-600">是</td>
+          <td class="py-3 px-4">檔案的下載 URL</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">m</td>
+          <td class="py-3 px-4 text-yellow-600">建議</td>
+          <td class="py-3 px-4">MIME 類型（如 image/jpeg、video/mp4）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">x</td>
+          <td class="py-3 px-4 text-yellow-600">建議</td>
+          <td class="py-3 px-4">檔案的 SHA-256 雜湊（十六進位）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">ox</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">原始檔案的 SHA-256（處理前）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">size</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">檔案大小（bytes）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">dim</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">圖片/影片尺寸（寬x高）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">blurhash</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">模糊預覽雜湊（用於載入中預覽）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">thumb</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">縮圖 URL</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">image</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">預覽圖 URL（用於影片）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">summary</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">檔案摘要描述</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">alt</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">替代文字（無障礙）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">fallback</td>
+          <td class="py-3 px-4 text-gray-500">可選</td>
+          <td class="py-3 px-4">備用下載 URL</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見 MIME 類型</h2>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">圖片</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>image/jpeg</li>
+        <li>image/png</li>
+        <li>image/gif</li>
+        <li>image/webp</li>
+        <li>image/svg+xml</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">影片</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>video/mp4</li>
+        <li>video/webm</li>
+        <li>video/ogg</li>
+        <li>video/quicktime</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">音訊</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)] font-mono">
+        <li>audio/mpeg</li>
+        <li>audio/ogg</li>
+        <li>audio/wav</li>
+        <li>audio/webm</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">建立檔案中繼資料事件</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function createFileMetadataEvent(fileInfo) {
+  const {
+    url,
+    mimeType,
+    hash,
+    originalHash,
+    size,
+    width,
+    height,
+    blurhash,
+    thumbnailUrl,
+    description,
+    altText
+  } = fileInfo
+
+  const event = {
+    kind: 1063,
+    content: description || '',
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['url', url],
+      ['m', mimeType]
+    ]
+  }
+
+  // 添加可選標籤
+  if (hash) event.tags.push(['x', hash])
+  if (originalHash) event.tags.push(['ox', originalHash])
+  if (size) event.tags.push(['size', size.toString()])
+  if (width && height) event.tags.push(['dim', \`\${width}x\${height}\`])
+  if (blurhash) event.tags.push(['blurhash', blurhash])
+  if (thumbnailUrl) event.tags.push(['thumb', thumbnailUrl])
+  if (altText) event.tags.push(['alt', altText])
+
+  // 簽名並發布
+  const signedEvent = await window.nostr.signEvent(event)
+  await relay.publish(signedEvent)
+
+  return signedEvent
+}
+
+// 使用範例
+const fileEvent = await createFileMetadataEvent({
+  url: 'https://media.nostr.build/abc123.jpg',
+  mimeType: 'image/jpeg',
+  hash: 'a1b2c3d4...',
+  size: 1234567,
+  width: 1920,
+  height: 1080,
+  blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
+  description: '美麗的日落',
+  altText: '橙色天空下的山脈'
+})`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解析檔案中繼資料</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function parseFileMetadata(event) {
+  if (event.kind !== 1063) {
+    throw new Error('Not a file metadata event')
+  }
+
+  const getTag = (name) => event.tags.find(t => t[0] === name)?.[1]
+
+  const dim = getTag('dim')
+  let width, height
+  if (dim) {
+    [width, height] = dim.split('x').map(Number)
+  }
+
+  return {
+    url: getTag('url'),
+    mimeType: getTag('m'),
+    hash: getTag('x'),
+    originalHash: getTag('ox'),
+    size: getTag('size') ? parseInt(getTag('size')) : null,
+    width,
+    height,
+    blurhash: getTag('blurhash'),
+    thumbnailUrl: getTag('thumb'),
+    previewUrl: getTag('image'),
+    summary: getTag('summary'),
+    altText: getTag('alt'),
+    fallbackUrl: getTag('fallback'),
+    description: event.content,
+    pubkey: event.pubkey,
+    createdAt: event.created_at
+  }
+}
+
+// 判斷檔案類型
+function getFileType(mimeType) {
+  if (!mimeType) return 'unknown'
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType.startsWith('video/')) return 'video'
+  if (mimeType.startsWith('audio/')) return 'audio'
+  if (mimeType.startsWith('application/pdf')) return 'pdf'
+  return 'file'
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">驗證檔案完整性</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function verifyFileIntegrity(metadata) {
+  const { url, hash, size } = metadata
+
+  // 下載檔案
+  const response = await fetch(url)
+  const blob = await response.blob()
+
+  // 驗證大小
+  if (size && blob.size !== size) {
+    return {
+      valid: false,
+      error: \`大小不匹配: 預期 \${size}, 實際 \${blob.size}\`
+    }
+  }
+
+  // 驗證雜湊
+  if (hash) {
+    const buffer = await blob.arrayBuffer()
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+    const actualHash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    if (actualHash !== hash) {
+      return {
+        valid: false,
+        error: '雜湊不匹配，檔案可能已被竄改'
+      }
+    }
+  }
+
+  return { valid: true }
+}
+
+// 使用
+const result = await verifyFileIntegrity(fileMetadata)
+if (!result.valid) {
+  console.error('檔案驗證失敗:', result.error)
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BlurHash 預覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BlurHash 是一種將圖片編碼為短字串的演算法，用於在圖片載入前顯示模糊預覽：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { decode } from 'blurhash'
+
+function renderBlurhash(blurhash, width, height, canvas) {
+  // 解碼 blurhash
+  const pixels = decode(blurhash, width, height)
+
+  // 建立 ImageData
+  const imageData = new ImageData(
+    new Uint8ClampedArray(pixels),
+    width,
+    height
+  )
+
+  // 繪製到 canvas
+  const ctx = canvas.getContext('2d')
+  ctx.putImageData(imageData, 0, 0)
+}
+
+// 在圖片載入前顯示 blurhash
+function ImageWithBlurhash({ url, blurhash, width, height, alt }) {
+  const [loaded, setLoaded] = useState(false)
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    if (blurhash && canvasRef.current) {
+      renderBlurhash(blurhash, 32, 32, canvasRef.current)
+    }
+  }, [blurhash])
+
+  return (
+    <div style={{ position: 'relative', width, height }}>
+      {!loaded && blurhash && (
+        <canvas
+          ref={canvasRef}
+          width={32}
+          height={32}
+          style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            filter: 'blur(20px)',
+            transform: 'scale(1.2)'
+          }}
+        />
+      )}
+      <img
+        src={url}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        style={{
+          opacity: loaded ? 1 : 0,
+          transition: 'opacity 0.3s'
+        }}
+      />
+    </div>
+  )
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">在貼文中引用媒體</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用 imeta 標籤在貼文中內嵌 NIP-94 風格的中繼資料：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 在 kind 1 貼文中嵌入媒體中繼資料
+{
+  "kind": 1,
+  "content": "今天拍的照片！ https://media.nostr.build/abc.jpg",
+  "tags": [
+    ["imeta",
+      "url https://media.nostr.build/abc.jpg",
+      "m image/jpeg",
+      "dim 1920x1080",
+      "x a1b2c3d4...",
+      "blurhash LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+      "alt 美麗的風景照片"
+    ]
+  ]
+}
+
+// imeta 標籤格式
+// 每個屬性以 "key value" 格式
+// 多個屬性作為 imeta 標籤的元素
+
+// 多個媒體時使用多個 imeta 標籤
+{
+  "kind": 1,
+  "content": "兩張照片 https://a.jpg https://b.jpg",
+  "tags": [
+    ["imeta", "url https://a.jpg", "m image/jpeg", "dim 800x600"],
+    ["imeta", "url https://b.jpg", "m image/png", "dim 1200x900"]
+  ]
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢檔案事件</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢特定用戶上傳的所有檔案
+function getUserFiles(relay, pubkey, limit = 50) {
+  return new Promise((resolve) => {
+    const files = []
+
+    const sub = relay.subscribe([{
+      kinds: [1063],
+      authors: [pubkey],
+      limit
+    }])
+
+    sub.on('event', (event) => {
+      files.push(parseFileMetadata(event))
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(files)
+    })
+  })
+}
+
+// 查詢特定類型的檔案
+function getFilesByType(relay, mimeTypePrefix, limit = 50) {
+  return new Promise((resolve) => {
+    const files = []
+
+    const sub = relay.subscribe([{
+      kinds: [1063],
+      limit: limit * 3  // 過量請求以過濾
+    }])
+
+    sub.on('event', (event) => {
+      const metadata = parseFileMetadata(event)
+      if (metadata.mimeType?.startsWith(mimeTypePrefix)) {
+        files.push(metadata)
+      }
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(files.slice(0, limit))
+    })
+  })
+}
+
+// 使用
+const images = await getFilesByType(relay, 'image/', 20)
+const videos = await getFilesByType(relay, 'video/', 10)`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">建議做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 總是提供 MIME 類型和雜湊</li>
+        <li>• 為圖片添加 blurhash 改善體驗</li>
+        <li>• 提供 alt 文字確保無障礙</li>
+        <li>• 使用 fallback 提供備用來源</li>
+        <li>• 下載前驗證檔案雜湊</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• URL 可能會失效</li>
+        <li>• 大檔案可能載入緩慢</li>
+        <li>• 不是所有客戶端都支援所有格式</li>
+        <li>• 注意檔案大小限制</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      NIP-94 中繼資料通常由 NIP-96 伺服器自動生成。
+      當你使用支援的客戶端上傳檔案時，這些標籤會自動填入。
+    </p>
+  </div>
+</ArticleLayout>
