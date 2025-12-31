@@ -1,0 +1,317 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-11 中繼器資訊"
+  description="深入了解 Nostr 中繼器的資訊文件，發現中繼器功能、限制和政策。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-11 中繼器資訊' },
+  ]}
+  difficulty="beginner"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'NIP-10 回覆與標記', href: '/tech/nostr/nip-10' }}
+  nextPage={{ title: 'NIP-19 bech32 編碼', href: '/tech/nostr/nip-19' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-11？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-11 定義了中繼器資訊文件（Relay Information Document），讓客戶端可以
+    發現中繼器的功能、限制和政策。透過 HTTP GET 請求中繼器的 WebSocket URL，
+    並設定 Accept: application/nostr+json 標頭即可獲取。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>用途：</strong>
+      客戶端可以根據中繼器資訊決定是否連接、顯示中繼器名稱和描述、
+      了解支援的 NIP、檢查限制條件等。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">獲取方式</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`# 使用 curl 獲取中繼器資訊
+curl -H "Accept: application/nostr+json" https://relay.damus.io/
+
+# 注意：
+# - 將 wss:// 改為 https://
+# - 必須設定 Accept 標頭
+# - 返回 JSON 格式`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">文件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "name": "relay.example.com",
+  "description": "A fast and reliable Nostr relay",
+  "pubkey": "admin-pubkey-hex",
+  "contact": "admin@example.com",
+  "supported_nips": [1, 2, 4, 9, 11, 12, 15, 16, 20, 22, 33, 40],
+  "software": "git+https://github.com/...",
+  "version": "1.0.0",
+  "limitation": {
+    "max_message_length": 16384,
+    "max_subscriptions": 20,
+    "max_filters": 100,
+    "max_limit": 5000,
+    "max_subid_length": 100,
+    "max_event_tags": 100,
+    "max_content_length": 8196,
+    "min_pow_difficulty": 0,
+    "auth_required": false,
+    "payment_required": false,
+    "restricted_writes": false,
+    "created_at_lower_limit": 31536000,
+    "created_at_upper_limit": 3600
+  },
+  "relay_countries": ["US", "CA"],
+  "language_tags": ["en", "zh"],
+  "tags": ["sfw-only", "bitcoin"],
+  "posting_policy": "https://example.com/policy",
+  "payments_url": "https://example.com/pay",
+  "fees": {
+    "admission": [{ "amount": 1000000, "unit": "msats" }],
+    "subscription": [{ "amount": 5000000, "unit": "msats", "period": 2592000 }],
+    "publication": [{ "kinds": [4], "amount": 100, "unit": "msats" }]
+  },
+  "icon": "https://example.com/icon.png"
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">欄位說明</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">基本資訊</h3>
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">欄位</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">類型</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">name</td>
+          <td class="py-3 px-4">string</td>
+          <td class="py-3 px-4">中繼器名稱</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">description</td>
+          <td class="py-3 px-4">string</td>
+          <td class="py-3 px-4">中繼器描述</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">pubkey</td>
+          <td class="py-3 px-4">string</td>
+          <td class="py-3 px-4">管理員公鑰（hex）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">contact</td>
+          <td class="py-3 px-4">string</td>
+          <td class="py-3 px-4">聯絡方式（email 等）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">supported_nips</td>
+          <td class="py-3 px-4">number[]</td>
+          <td class="py-3 px-4">支援的 NIP 列表</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">software</td>
+          <td class="py-3 px-4">string</td>
+          <td class="py-3 px-4">軟體專案 URL</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">version</td>
+          <td class="py-3 px-4">string</td>
+          <td class="py-3 px-4">軟體版本</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">限制（limitation）</h3>
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">欄位</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">max_message_length</td>
+          <td class="py-3 px-4">最大 WebSocket 訊息長度（bytes）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">max_subscriptions</td>
+          <td class="py-3 px-4">每個連接最大訂閱數</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">max_filters</td>
+          <td class="py-3 px-4">每個訂閱最大過濾器數</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">max_limit</td>
+          <td class="py-3 px-4">過濾器中 limit 的最大值</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">auth_required</td>
+          <td class="py-3 px-4">是否需要 NIP-42 認證</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">payment_required</td>
+          <td class="py-3 px-4">是否需要付費</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">獲取中繼器資訊</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function getRelayInfo(relayUrl) {
+  // 將 wss:// 轉換為 https://
+  const httpUrl = relayUrl
+    .replace('wss://', 'https://')
+    .replace('ws://', 'http://')
+
+  try {
+    const response = await fetch(httpUrl, {
+      headers: {
+        'Accept': 'application/nostr+json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(\`HTTP \${response.status}\`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('無法獲取中繼器資訊:', error)
+    return null
+  }
+}
+
+// 使用
+const info = await getRelayInfo('wss://relay.damus.io')
+console.log('中繼器:', info.name)
+console.log('支援 NIP:', info.supported_nips)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">檢查功能支援</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function supportsNip(relayInfo, nipNumber) {
+  return relayInfo?.supported_nips?.includes(nipNumber) ?? false
+}
+
+function checkRelayCapabilities(relayInfo) {
+  return {
+    hasSearch: supportsNip(relayInfo, 50),
+    hasAuth: supportsNip(relayInfo, 42),
+    hasNip04: supportsNip(relayInfo, 4),
+    hasNip44: supportsNip(relayInfo, 44),
+    hasDeletion: supportsNip(relayInfo, 9),
+    hasZaps: supportsNip(relayInfo, 57),
+    maxLimit: relayInfo?.limitation?.max_limit ?? 100,
+    requiresAuth: relayInfo?.limitation?.auth_required ?? false,
+    requiresPayment: relayInfo?.limitation?.payment_required ?? false
+  }
+}
+
+// 使用
+const caps = checkRelayCapabilities(info)
+if (caps.hasSearch) {
+  console.log('此中繼器支援搜尋功能')
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">批量檢查中繼器</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function findRelaysWithFeature(relayUrls, nipNumber) {
+  const results = await Promise.all(
+    relayUrls.map(async (url) => {
+      const info = await getRelayInfo(url)
+      return {
+        url,
+        info,
+        supported: supportsNip(info, nipNumber)
+      }
+    })
+  )
+
+  return results.filter(r => r.supported)
+}
+
+// 找出支援搜尋（NIP-50）的中繼器
+const relays = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.nostr.band'
+]
+
+const searchRelays = await findRelaysWithFeature(relays, 50)
+console.log('支援搜尋的中繼器:', searchRelays.map(r => r.url))`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見中繼器軟體</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { name: 'strfry', lang: 'C++', desc: '高效能中繼器' },
+        { name: 'nostr-rs-relay', lang: 'Rust', desc: 'Rust 實作' },
+        { name: 'nostream', lang: 'TypeScript', desc: 'Node.js 中繼器' },
+        { name: 'relay', lang: 'Go', desc: 'Go 語言實作' },
+        { name: 'nostr-relay', lang: 'Python', desc: 'Python 中繼器' },
+        { name: 'knostr', lang: 'Kotlin', desc: 'Kotlin 實作' },
+      ].map((sw) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{sw.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)]">{sw.desc}</p>
+          <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400">
+            {sw.lang}
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">客戶端使用建議</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">推薦做法</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 連接前先獲取資訊</li>
+        <li>• 快取中繼器資訊</li>
+        <li>• 顯示名稱和圖示</li>
+        <li>• 遵守限制條件</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 資訊文件可能不存在</li>
+        <li>• 資訊可能過時</li>
+        <li>• 設定合理的超時</li>
+        <li>• 處理 CORS 問題</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      中繼器資訊文件是可選的，不是所有中繼器都會提供。
+      客戶端應該能夠在沒有資訊文件的情況下正常工作。
+    </p>
+  </div>
+</ArticleLayout>

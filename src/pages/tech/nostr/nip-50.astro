@@ -1,0 +1,323 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-50 搜尋"
+  description="深入了解 Nostr 的搜尋功能，使用 search 過濾器在中繼器上進行全文搜尋。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-50 搜尋' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'NIP-46 遠端簽名', href: '/tech/nostr/nip-46' }}
+  nextPage={{ title: 'NIP-57 Zaps', href: '/tech/nostr/nip-57' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-50？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-50 定義了 Nostr 中繼器的搜尋功能，在 REQ 過濾器中加入 search 欄位，
+    讓客戶端可以進行全文搜尋。這是一個可選功能，需要中繼器支援（在 NIP-11 中宣告）。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong>
+      不是所有中繼器都支援 NIP-50。在使用搜尋功能前，
+      先檢查中繼器的 NIP-11 資訊是否包含 50 在 supported_nips 中。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過濾器格式</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 基本搜尋
+["REQ", "search-sub", {
+  "search": "bitcoin lightning",
+  "kinds": [1],
+  "limit": 50
+}]
+
+// search 欄位會搜尋事件的 content
+// 可以與其他過濾器組合使用`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">搜尋語法</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">語法</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">範例</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">word</td>
+          <td class="py-3 px-4">單詞匹配</td>
+          <td class="py-3 px-4 font-mono">bitcoin</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">word1 word2</td>
+          <td class="py-3 px-4">AND（必須包含所有詞）</td>
+          <td class="py-3 px-4 font-mono">bitcoin lightning</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">"phrase"</td>
+          <td class="py-3 px-4">精確短語</td>
+          <td class="py-3 px-4 font-mono">"hello world"</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">-word</td>
+          <td class="py-3 px-4">排除詞</td>
+          <td class="py-3 px-4 font-mono">bitcoin -scam</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">擴展語法</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    部分中繼器支援額外的搜尋修飾符：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 搜尋特定語言
+{
+  "search": "bitcoin language:zh"
+}
+
+// 搜尋特定領域（由中繼器定義）
+{
+  "search": "bitcoin domain:finance"
+}
+
+// 搜尋特定情感（部分中繼器支援）
+{
+  "search": "bitcoin sentiment:positive"
+}
+
+// 注意：擴展語法由各中繼器自行定義
+// 使用前請查閱中繼器文件`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">基本搜尋</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function searchNotes(relay, query, limit = 50) {
+  return new Promise((resolve) => {
+    const results = []
+
+    const sub = relay.subscribe([{
+      kinds: [1],
+      search: query,
+      limit: limit
+    }])
+
+    sub.on('event', (event) => {
+      results.push(event)
+    })
+
+    sub.on('eose', () => {
+      sub.close()
+      resolve(results)
+    })
+  })
+}
+
+// 使用
+const notes = await searchNotes(relay, 'bitcoin lightning')
+console.log(\`找到 \${notes.length} 條結果\`)`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">組合過濾器</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 搜尋特定用戶的內容
+{
+  "kinds": [1],
+  "authors": ["pubkey1", "pubkey2"],
+  "search": "bitcoin",
+  "limit": 100
+}
+
+// 搜尋特定時間範圍
+{
+  "kinds": [1],
+  "search": "announcement",
+  "since": 1704067200,  // 2024-01-01
+  "until": 1706745600,  // 2024-02-01
+  "limit": 50
+}
+
+// 搜尋長文章
+{
+  "kinds": [30023],
+  "search": "tutorial",
+  "limit": 20
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">檢查中繼器支援</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function findSearchRelays(relayUrls) {
+  const searchRelays = []
+
+  for (const url of relayUrls) {
+    const info = await getRelayInfo(url)
+    if (info?.supported_nips?.includes(50)) {
+      searchRelays.push({
+        url,
+        name: info.name || url
+      })
+    }
+  }
+
+  return searchRelays
+}
+
+// 只在支援搜尋的中繼器上搜尋
+async function smartSearch(relayUrls, query) {
+  const searchRelays = await findSearchRelays(relayUrls)
+
+  if (searchRelays.length === 0) {
+    throw new Error('沒有找到支援搜尋的中繼器')
+  }
+
+  console.log(\`在 \${searchRelays.length} 個中繼器上搜尋\`)
+
+  // 並行搜尋所有中繼器
+  const results = await Promise.all(
+    searchRelays.map(r => searchNotes(r.url, query))
+  )
+
+  // 合併並去重
+  return deduplicateEvents(results.flat())
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支援搜尋的中繼器</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { name: 'relay.nostr.band', desc: '專業搜尋中繼器', features: '全文搜尋、趨勢' },
+        { name: 'nostr.wine', desc: '付費中繼器', features: '搜尋、過濾' },
+        { name: 'relay.snort.social', desc: 'Snort 官方中繼器', features: '基本搜尋' },
+      ].map((r) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{r.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)] mb-2">{r.desc}</p>
+          <span class="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-600 dark:text-green-400">
+            {r.features}
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">搜尋結果處理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 搜尋結果可能包含相關性分數
+// 這是中繼器特定的擴展
+
+function sortByRelevance(events) {
+  // 如果中繼器提供了排序，結果通常已按相關性排序
+  // 否則可以按時間排序
+  return events.sort((a, b) => b.created_at - a.created_at)
+}
+
+function highlightMatches(content, query) {
+  const words = query.split(' ').filter(w => !w.startsWith('-'))
+
+  let highlighted = content
+  for (const word of words) {
+    const regex = new RegExp(\`(\${word})\`, 'gi')
+    highlighted = highlighted.replace(regex, '<mark>$1</mark>')
+  }
+
+  return highlighted
+}
+
+// 顯示搜尋結果
+function displayResults(events, query) {
+  for (const event of events) {
+    console.log('---')
+    console.log('ID:', event.id.slice(0, 8))
+    console.log('內容:', highlightMatches(event.content, query))
+    console.log('時間:', new Date(event.created_at * 1000))
+  }
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制與考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">技術限制</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 不是所有中繼器都支援</li>
+        <li>• 搜尋語法可能不同</li>
+        <li>• 索引可能不完整</li>
+        <li>• 結果數量有限制</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">隱私考量</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 搜尋詞會發送到中繼器</li>
+        <li>• 中繼器可能記錄搜尋</li>
+        <li>• 考慮使用多個中繼器分散</li>
+        <li>• 敏感搜尋要謹慎</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與本地搜尋比較</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-50 搜尋</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">本地搜尋</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">範圍</td>
+          <td class="py-3 px-4">中繼器上所有事件</td>
+          <td class="py-3 px-4">本地快取的事件</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">速度</td>
+          <td class="py-3 px-4">取決於網路和中繼器</td>
+          <td class="py-3 px-4">通常更快</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">隱私</td>
+          <td class="py-3 px-4">搜尋詞會暴露</td>
+          <td class="py-3 px-4">完全私密</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">可用性</td>
+          <td class="py-3 px-4">需要中繼器支援</td>
+          <td class="py-3 px-4">總是可用</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>最佳實踐：</strong>
+      結合使用 NIP-50 搜尋和本地搜尋。對於發現新內容使用中繼器搜尋，
+      對於已關注用戶的內容使用本地搜尋。
+    </p>
+  </div>
+</ArticleLayout>

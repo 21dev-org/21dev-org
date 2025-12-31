@@ -153,6 +153,7 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-07/', title: 'NIP-07 瀏覽器擴充', type: 'tech' },
       { href: '/tech/nostr/nip-09/', title: 'NIP-09 事件刪除', type: 'tech' },
       { href: '/tech/nostr/nip-10/', title: 'NIP-10 回覆與標記', type: 'tech' },
+      { href: '/tech/nostr/nip-11/', title: 'NIP-11 中繼器資訊', type: 'tech' },
       { href: '/tech/nostr/nip-19/', title: 'NIP-19 bech32 編碼', type: 'tech' },
       { href: '/tech/nostr/nip-23/', title: 'NIP-23 長文內容', type: 'tech' },
       { href: '/tech/nostr/nip-25/', title: 'NIP-25 反應', type: 'tech' },
@@ -160,11 +161,12 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-05/', title: 'NIP-05 域名驗證', type: 'tech' },
       { href: '/tech/nostr/nip-44/', title: 'NIP-44 加密訊息 v2', type: 'tech' },
       { href: '/tech/nostr/nip-46/', title: 'NIP-46 遠端簽名', type: 'tech' },
+      { href: '/tech/nostr/nip-50/', title: 'NIP-50 搜尋', type: 'tech' },
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
       { href: '/tech/nostr/nip-65/', title: 'NIP-65 中繼器列表', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-25', 'NIP-46', 'NIP-65', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串', '刪除', 'Outbox'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-09', 'NIP-10', 'NIP-11', 'NIP-25', 'NIP-46', 'NIP-50', 'NIP-65', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect', '反應', '回覆', '對話串', '刪除', 'Outbox', '搜尋'],
   },
 ];
 
