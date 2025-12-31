@@ -1,0 +1,508 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-96 檔案儲存"
+  description="深入了解 Nostr 的檔案上傳標準，使用統一的 HTTP API 上傳圖片、影片和其他媒體檔案。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-96 檔案儲存' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'NIP-65 中繼器列表', href: '/tech/nostr/nip-65' }}
+  nextPage={{ title: '客戶端開發', href: '/tech/nostr/client-dev' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-96？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-96 定義了 Nostr 生態系統中的檔案上傳標準。它提供統一的 HTTP API，
+    讓客戶端可以上傳圖片、影片、音訊和其他檔案到相容的伺服器，
+    並獲得可在 Nostr 事件中使用的 URL。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>為什麼需要 NIP-96？</strong>
+      Nostr 事件本身不適合儲存大型二進位檔案。NIP-96 提供標準化的方式
+      將媒體檔案上傳到專用伺服器，然後在事件中引用 URL。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">服務發現</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-96 伺服器通過 <code class="px-1.5 py-0.5 bg-[var(--bg-secondary)] rounded text-sm">/.well-known/nostr/nip96.json</code> 端點公開其配置：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// GET https://nostr.build/.well-known/nostr/nip96.json
+{
+  "api_url": "https://nostr.build/api/v2/nip96/upload",
+  "download_url": "https://media.nostr.build",
+  "supported_nips": [96, 98],
+  "tos_url": "https://nostr.build/tos",
+  "content_types": [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "video/mp4",
+    "video/webm",
+    "audio/mpeg",
+    "audio/ogg"
+  ],
+  "plans": {
+    "free": {
+      "name": "Free",
+      "is_nip98_required": true,
+      "max_byte_size": 26214400,
+      "file_expiration": [0, 0],
+      "media_transformations": {
+        "image": ["resizing", "format_conversion"]
+      }
+    },
+    "professional": {
+      "name": "Professional",
+      "is_nip98_required": true,
+      "max_byte_size": 104857600,
+      "file_expiration": [0, 0],
+      "media_transformations": {
+        "image": ["resizing", "format_conversion", "compression"],
+        "video": ["resizing", "format_conversion"]
+      }
+    }
+  }
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置欄位說明</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">欄位</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">api_url</td>
+          <td class="py-3 px-4">檔案上傳 API 端點</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">download_url</td>
+          <td class="py-3 px-4">檔案下載基礎 URL（可選）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">supported_nips</td>
+          <td class="py-3 px-4">支援的 NIP 列表（如 96、98）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">content_types</td>
+          <td class="py-3 px-4">接受的 MIME 類型</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">max_byte_size</td>
+          <td class="py-3 px-4">最大檔案大小（bytes）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">is_nip98_required</td>
+          <td class="py-3 px-4">是否需要 NIP-98 認證</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-98 認證</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    大多數 NIP-96 伺服器要求使用 NIP-98 HTTP 認證。這是一個簽名的 Nostr 事件作為 Bearer token：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// NIP-98 認證事件（kind 27235）
+{
+  "kind": 27235,
+  "created_at": 1704067200,
+  "tags": [
+    ["u", "https://nostr.build/api/v2/nip96/upload"],  // 目標 URL
+    ["method", "POST"],                                  // HTTP 方法
+    ["payload", "sha256-hash-of-body"]                  // 請求體雜湊（可選）
+  ],
+  "content": "",
+  "pubkey": "<你的公鑰>",
+  "id": "...",
+  "sig": "..."
+}
+
+// 在 HTTP 標頭中使用
+Authorization: Nostr <base64 encoded event JSON>`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">上傳流程</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`1. 服務發現
+   └─> GET /.well-known/nostr/nip96.json
+   └─> 獲取 api_url 和支援的格式
+
+2. 建立 NIP-98 認證
+   └─> 簽署 kind 27235 事件
+   └─> Base64 編碼
+
+3. 上傳檔案
+   └─> POST multipart/form-data 到 api_url
+   └─> 包含 Authorization 標頭
+
+4. 處理回應
+   └─> 獲取檔案 URL
+   └─> 在 Nostr 事件中使用`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">完整上傳流程</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { finalizeEvent, getPublicKey } from 'nostr-tools'
+
+class Nip96Uploader {
+  constructor(serverUrl) {
+    this.serverUrl = serverUrl
+    this.config = null
+  }
+
+  // 1. 獲取伺服器配置
+  async discover() {
+    const configUrl = new URL('/.well-known/nostr/nip96.json', this.serverUrl)
+    const response = await fetch(configUrl)
+    this.config = await response.json()
+    return this.config
+  }
+
+  // 2. 建立 NIP-98 認證標頭
+  async createAuthHeader(url, method, bodyHash = null) {
+    const event = {
+      kind: 27235,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['u', url],
+        ['method', method]
+      ],
+      content: ''
+    }
+
+    if (bodyHash) {
+      event.tags.push(['payload', bodyHash])
+    }
+
+    // 使用瀏覽器擴充簽名
+    const signedEvent = await window.nostr.signEvent(event)
+
+    // Base64 編碼
+    const encoded = btoa(JSON.stringify(signedEvent))
+    return \`Nostr \${encoded}\`
+  }
+
+  // 3. 計算檔案雜湊
+  async hashFile(file) {
+    const buffer = await file.arrayBuffer()
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  // 4. 上傳檔案
+  async upload(file, options = {}) {
+    if (!this.config) {
+      await this.discover()
+    }
+
+    const apiUrl = this.config.api_url
+
+    // 建立 FormData
+    const formData = new FormData()
+    formData.append('file', file)
+
+    if (options.alt) {
+      formData.append('alt', options.alt)  // 替代文字
+    }
+    if (options.expiration) {
+      formData.append('expiration', options.expiration.toString())
+    }
+
+    // 建立認證標頭
+    const authHeader = await this.createAuthHeader(apiUrl, 'POST')
+
+    // 發送請求
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || 'Upload failed')
+    }
+
+    return await response.json()
+  }
+}
+
+// 使用範例
+const uploader = new Nip96Uploader('https://nostr.build')
+await uploader.discover()
+
+const fileInput = document.querySelector('input[type="file"]')
+const file = fileInput.files[0]
+
+const result = await uploader.upload(file, {
+  alt: '我的圖片描述'
+})
+
+console.log('上傳成功:', result.nip94_event.tags)
+// 獲取 URL: result.nip94_event.tags.find(t => t[0] === 'url')[1]`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">上傳回應格式</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 成功回應
+{
+  "status": "success",
+  "message": "File uploaded successfully",
+  "nip94_event": {
+    "tags": [
+      ["url", "https://media.nostr.build/abc123.jpg"],
+      ["m", "image/jpeg"],                    // MIME 類型
+      ["x", "sha256hash..."],                 // 檔案雜湊
+      ["ox", "original-sha256hash..."],       // 原始檔案雜湊
+      ["size", "1234567"],                    // 檔案大小
+      ["dim", "1920x1080"],                   // 圖片尺寸
+      ["blurhash", "LEHV6nWB2yk8pyo0adR*.7kCMdnj"],  // BlurHash
+      ["thumb", "https://media.nostr.build/abc123_thumb.jpg"]  // 縮圖
+    ]
+  }
+}
+
+// 錯誤回應
+{
+  "status": "error",
+  "message": "File too large. Maximum size is 25MB"
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">在貼文中使用上傳的媒體</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function createPostWithImage(content, imageFile) {
+  // 上傳圖片
+  const uploader = new Nip96Uploader('https://nostr.build')
+  const uploadResult = await uploader.upload(imageFile)
+
+  // 從回應中提取資訊
+  const tags = uploadResult.nip94_event.tags
+  const url = tags.find(t => t[0] === 'url')[1]
+  const mimeType = tags.find(t => t[0] === 'm')?.[1]
+  const dim = tags.find(t => t[0] === 'dim')?.[1]
+  const blurhash = tags.find(t => t[0] === 'blurhash')?.[1]
+
+  // 建立貼文事件
+  const postEvent = {
+    kind: 1,
+    content: \`\${content}\\n\\n\${url}\`,  // 在內容中包含 URL
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      // 使用 imeta 標籤提供媒體中繼資料
+      ['imeta',
+        \`url \${url}\`,
+        \`m \${mimeType}\`,
+        \`dim \${dim}\`,
+        \`blurhash \${blurhash}\`
+      ]
+    ]
+  }
+
+  const signedEvent = await window.nostr.signEvent(postEvent)
+  await relay.publish(signedEvent)
+
+  return signedEvent
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">刪除檔案</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function deleteFile(serverUrl, fileHash) {
+  const uploader = new Nip96Uploader(serverUrl)
+  await uploader.discover()
+
+  const deleteUrl = \`\${uploader.config.api_url}/\${fileHash}\`
+  const authHeader = await uploader.createAuthHeader(deleteUrl, 'DELETE')
+
+  const response = await fetch(deleteUrl, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': authHeader
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error('Delete failed')
+  }
+
+  return await response.json()
+}
+
+// 使用
+await deleteFile('https://nostr.build', 'sha256hash...')`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-96 伺服器</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { name: 'nostr.build', desc: '最流行的媒體伺服器', features: '免費 25MB，付費更多' },
+        { name: 'void.cat', desc: '通用檔案儲存', features: '多種格式支援' },
+        { name: 'nostpic.com', desc: '圖片專用', features: '圖片優化' },
+        { name: 'files.sovbit.host', desc: '比特幣支付', features: '閃電網路付費' },
+        { name: 'nostrcheck.me', desc: '多功能服務', features: 'NIP-05 + 媒體' },
+        { name: 'satellite.earth', desc: 'CDN 支援', features: '全球分發' },
+      ].map((server) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{server.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)] mb-2">{server.desc}</p>
+          <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400">
+            {server.features}
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">imeta 標籤</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    在事件中引用媒體時，建議使用 imeta 標籤提供中繼資料：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 1,
+  "content": "看看這張照片！ https://media.nostr.build/abc.jpg",
+  "tags": [
+    ["imeta",
+      "url https://media.nostr.build/abc.jpg",
+      "m image/jpeg",
+      "alt 日落時的山景",
+      "dim 1920x1080",
+      "blurhash LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+      "x sha256hash...",
+      "fallback https://backup.server/abc.jpg"
+    ]
+  ]
+}
+
+// imeta 支援的屬性：
+// url      - 媒體 URL
+// m        - MIME 類型
+// alt      - 替代文字（無障礙）
+// dim      - 尺寸 (寬x高)
+// blurhash - 模糊預覽雜湊
+// x        - SHA-256 雜湊
+// fallback - 備用 URL`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">媒體轉換</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    部分伺服器支援即時媒體轉換：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 調整圖片大小
+https://media.nostr.build/abc.jpg?w=800&h=600
+
+// 格式轉換
+https://media.nostr.build/abc.jpg?format=webp
+
+// 品質調整
+https://media.nostr.build/abc.jpg?quality=80
+
+// 取得縮圖
+https://media.nostr.build/abc.jpg?thumb=true
+
+// 注意：並非所有伺服器都支援這些參數
+// 請查閱各伺服器的文件`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">上傳時注意</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 上傳的檔案是公開的</li>
+        <li>• 檢查檔案大小限制</li>
+        <li>• 注意 EXIF 資料可能洩露位置</li>
+        <li>• 使用 NIP-98 保護上傳權限</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">最佳實踐</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 上傳前移除敏感 metadata</li>
+        <li>• 使用多個伺服器備份</li>
+        <li>• 提供 alt 文字增加可訪問性</li>
+        <li>• 使用 blurhash 改善載入體驗</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Blossom 的比較</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Blossom 是另一個媒體儲存標準，兩者有不同的設計理念：
+  </p>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-96</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Blossom</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">URL 格式</td>
+          <td class="py-3 px-4">伺服器分配</td>
+          <td class="py-3 px-4">基於 SHA-256 雜湊</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">去重</td>
+          <td class="py-3 px-4">伺服器決定</td>
+          <td class="py-3 px-4">內容定址（自動去重）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">媒體處理</td>
+          <td class="py-3 px-4">支援轉換</td>
+          <td class="py-3 px-4">原始檔案</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">成熟度</td>
+          <td class="py-3 px-4">較成熟，廣泛支援</td>
+          <td class="py-3 px-4">較新</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>提示：</strong>
+      許多 Nostr 客戶端已內建 NIP-96 支援，用戶無需手動處理上傳流程。
+      開發者可以使用現有的程式庫簡化整合。
+    </p>
+  </div>
+</ArticleLayout>
