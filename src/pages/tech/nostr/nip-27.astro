@@ -1,0 +1,342 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-27: 文字引用"
+  description="在 Nostr 文字內容中引用其他事件和用戶的標準方法"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-27 標準化了客戶端如何在可讀文字內容（如 kind 1 短文和 kind 30023 長文）中
+    處理對用戶和事件的內嵌引用。透過使用 <code>nostr:</code> URI 前綴，
+    客戶端可以將引用轉換為可點擊的連結、預覽卡片或其他豐富的呈現方式。
+  </p>
+
+  <h2 id="mention-format">提及格式</h2>
+  <p>
+    提及使用 NIP-21 的 <code>nostr:</code> URI 格式：
+  </p>
+
+  <h3>用戶提及</h3>
+  <pre><code class="language-text">nostr:npub1xxx...
+nostr:nprofile1qqsw3dy8cpu...</code></pre>
+
+  <h3>事件引用</h3>
+  <pre><code class="language-text">nostr:note1xxx...
+nostr:nevent1qqsxxx...
+nostr:naddr1qqsxxx...</code></pre>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>提及用戶</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "剛看到 nostr:npub1qqqqqq... 發的精彩文章！",
+  "tags": [
+    ["p", "&lt;mentioned-pubkey&gt;"]
+  ]
+}</code></pre>
+
+  <h3>引用事件</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這個討論很有意思：nostr:nevent1qqsxxx...",
+  "tags": [
+    ["q", "&lt;event-id&gt;", "wss://relay.example.com", "&lt;author-pubkey&gt;"]
+  ]
+}</code></pre>
+
+  <h3>引用長文</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "推薦這篇教學：nostr:naddr1qqxnzd3exsmxxxx...",
+  "tags": [
+    ["q", "30023:&lt;author-pubkey&gt;:article-slug", "wss://relay.example.com"]
+  ]
+}</code></pre>
+
+  <h2 id="tag-requirements">標籤要求</h2>
+  <p>
+    包含標籤是<strong>可選的</strong>，但在以下情況建議添加：
+  </p>
+
+  <ul>
+    <li>希望通知被提及的用戶</li>
+    <li>希望被引用的事件能識別此提及為回覆</li>
+  </ul>
+
+  <h3>用戶提及標籤</h3>
+  <pre><code class="language-json">["p", "&lt;pubkey&gt;", "&lt;relay-url&gt;"]</code></pre>
+
+  <h3>事件引用標籤 (q 標籤)</h3>
+  <pre><code class="language-json">// 引用一般事件
+["q", "&lt;event-id&gt;", "&lt;relay-url&gt;", "&lt;author-pubkey&gt;"]
+
+// 引用可定址事件
+["q", "&lt;kind&gt;:&lt;pubkey&gt;:&lt;d-tag&gt;", "&lt;relay-url&gt;"]</code></pre>
+
+  <h2 id="client-behavior">客戶端行為</h2>
+
+  <h3>建立事件時</h3>
+  <ul>
+    <li>將提及直接插入 <code>.content</code> 中，使用 NIP-21 格式</li>
+    <li>可以提供自動完成功能幫助用戶插入提及</li>
+    <li>根據需要決定是否添加通知標籤</li>
+  </ul>
+
+  <h3>讀取事件時</h3>
+  <ul>
+    <li>解析內容中的 <code>nostr:</code> URI</li>
+    <li>將用戶提及轉換為可點擊的個人資料連結</li>
+    <li>將事件引用轉換為預覽卡片或嵌入內容</li>
+    <li>連結到內部頁面或外部 Web 客戶端</li>
+  </ul>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立帶引用的事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, nip19 } from 'nostr-tools';
+
+interface MentionedUser {
+  pubkey: string;
+  relay?: string;
+}
+
+interface QuotedEvent {
+  eventId?: string;
+  kind?: number;
+  pubkey?: string;
+  identifier?: string;
+  relay?: string;
+}
+
+function createNoteWithReferences(
+  content: string,
+  mentions: MentionedUser[] = [],
+  quotes: QuotedEvent[] = [],
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [];
+
+  // 添加用戶提及標籤
+  mentions.forEach((mention) => {
+    const pTag = ['p', mention.pubkey];
+    if (mention.relay) pTag.push(mention.relay);
+    tags.push(pTag);
+  });
+
+  // 添加事件引用標籤
+  quotes.forEach((quote) => {
+    if (quote.eventId) {
+      // 一般事件
+      const qTag = ['q', quote.eventId];
+      if (quote.relay) qTag.push(quote.relay);
+      if (quote.pubkey) qTag.push(quote.pubkey);
+      tags.push(qTag);
+    } else if (quote.kind && quote.pubkey && quote.identifier) {
+      // 可定址事件
+      const address = `${quote.kind}:${quote.pubkey}:${quote.identifier}`;
+      const qTag = ['q', address];
+      if (quote.relay) qTag.push(quote.relay);
+      tags.push(qTag);
+    }
+  });
+
+  const event = {
+    kind: 1,
+    content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const sk = generateSecretKey();
+
+// 建立 nostr: URI
+const userNpub = nip19.npubEncode('pubkey-hex...');
+const eventNevent = nip19.neventEncode({
+  id: 'event-id-hex...',
+  relays: ['wss://relay.example.com'],
+  author: 'author-pubkey...',
+});
+
+const content = `
+剛看到 nostr:${userNpub} 的精彩分享！
+
+這篇文章值得一讀：nostr:${eventNevent}
+`;
+
+const event = createNoteWithReferences(
+  content,
+  [{ pubkey: 'pubkey-hex...', relay: 'wss://relay.example.com' }],
+  [{ eventId: 'event-id-hex...', relay: 'wss://relay.example.com', pubkey: 'author-pubkey...' }],
+  sk
+);</code></pre>
+
+  <h3>解析內容中的引用</h3>
+  <pre><code class="language-typescript">import { nip19 } from 'nostr-tools';
+
+interface ParsedReference {
+  type: 'npub' | 'nprofile' | 'note' | 'nevent' | 'naddr';
+  data: any;
+  raw: string;
+  start: number;
+  end: number;
+}
+
+function parseReferences(content: string): ParsedReference[] {
+  const regex = /nostr:(n(?:pub|profile|ote|event|addr)1[a-z0-9]+)/gi;
+  const references: ParsedReference[] = [];
+
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const raw = match[1];
+    try {
+      const decoded = nip19.decode(raw);
+      references.push({
+        type: decoded.type as ParsedReference['type'],
+        data: decoded.data,
+        raw: match[0],
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    } catch {
+      // 無效的 bech32，忽略
+    }
+  }
+
+  return references;
+}
+
+// 使用範例
+const refs = parseReferences(content);
+refs.forEach((ref) => {
+  console.log(`類型: ${ref.type}`);
+  console.log(`資料:`, ref.data);
+});</code></pre>
+
+  <h3>渲染豐富內容</h3>
+  <pre><code class="language-typescript">interface RenderOptions {
+  onProfileClick?: (pubkey: string) => void;
+  onEventClick?: (eventId: string) => void;
+}
+
+function renderRichContent(
+  content: string,
+  options: RenderOptions = {}
+): string {
+  const references = parseReferences(content);
+
+  // 從後往前替換，避免位置偏移
+  let result = content;
+  for (let i = references.length - 1; i >= 0; i--) {
+    const ref = references[i];
+    let replacement = '';
+
+    switch (ref.type) {
+      case 'npub':
+        replacement = `<a href="/profile/${ref.data}" class="mention">@${ref.data.slice(0, 8)}...</a>`;
+        break;
+      case 'nprofile':
+        replacement = `<a href="/profile/${ref.data.pubkey}" class="mention">@${ref.data.pubkey.slice(0, 8)}...</a>`;
+        break;
+      case 'note':
+        replacement = `<div class="quote-card" data-event="${ref.data}">載入中...</div>`;
+        break;
+      case 'nevent':
+        replacement = `<div class="quote-card" data-event="${ref.data.id}">載入中...</div>`;
+        break;
+      case 'naddr':
+        replacement = `<div class="quote-card" data-addr="${ref.data.kind}:${ref.data.pubkey}:${ref.data.identifier}">載入中...</div>`;
+        break;
+    }
+
+    result = result.slice(0, ref.start) + replacement + result.slice(ref.end);
+  }
+
+  return result;
+}
+
+// React 元件範例
+function RichTextContent({ content }: { content: string }) {
+  const references = parseReferences(content);
+  const parts: JSX.Element[] = [];
+  let lastIndex = 0;
+
+  references.forEach((ref, i) => {
+    // 添加引用前的普通文字
+    if (ref.start > lastIndex) {
+      parts.push(
+        <span key={`text-${i}`}>
+          {content.slice(lastIndex, ref.start)}
+        </span>
+      );
+    }
+
+    // 添加引用元件
+    switch (ref.type) {
+      case 'npub':
+      case 'nprofile':
+        const pubkey = ref.type === 'npub' ? ref.data : ref.data.pubkey;
+        parts.push(
+          <ProfileMention key={`ref-${i}`} pubkey={pubkey} />
+        );
+        break;
+      case 'note':
+      case 'nevent':
+        const eventId = ref.type === 'note' ? ref.data : ref.data.id;
+        parts.push(
+          <QuotedEvent key={`ref-${i}`} eventId={eventId} />
+        );
+        break;
+      case 'naddr':
+        parts.push(
+          <QuotedArticle
+            key={`ref-${i}`}
+            kind={ref.data.kind}
+            pubkey={ref.data.pubkey}
+            identifier={ref.data.identifier}
+          />
+        );
+        break;
+    }
+
+    lastIndex = ref.end;
+  });
+
+  // 添加剩餘文字
+  if (lastIndex < content.length) {
+    parts.push(<span key="text-end">{content.slice(lastIndex)}</span>);
+  }
+
+  return <>{parts}</>;
+}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用 nprofile/nevent</strong>：包含中繼器提示，提高可發現性</li>
+    <li><strong>添加通知標籤</strong>：讓被提及的用戶收到通知</li>
+    <li><strong>提供自動完成</strong>：幫助用戶輕鬆插入提及</li>
+    <li><strong>優雅降級</strong>：無法解析時顯示原始 URI</li>
+    <li><strong>快取引用內容</strong>：避免重複抓取同一事件</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-21">NIP-21</a>：nostr: URI - URI 格式定義</li>
+    <li><a href="/tech/nostr/nip-19">NIP-19</a>：bech32 編碼 - npub、nevent 等格式</li>
+    <li><a href="/tech/nostr/nip-10">NIP-10</a>：回覆與標記 - 回覆機制</li>
+    <li><a href="/tech/nostr/nip-18">NIP-18</a>：轉發 - 引用轉發</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/27.md" target="_blank" rel="noopener noreferrer">NIP-27 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
