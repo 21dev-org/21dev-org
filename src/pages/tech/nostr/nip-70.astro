@@ -1,0 +1,353 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-70: 受保護事件"
+  description="使用 - 標籤防止事件被中繼器廣播到其他地方"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-70 定義了 <code>"-"</code> 標籤，用於標記事件為「受保護」狀態。
+    當事件包含此標籤時，中繼器應該拒絕將該事件廣播到其他中繼器，
+    確保事件僅保留在用戶選擇發布的中繼器上。
+  </p>
+
+  <h2 id="tag-format">標籤格式</h2>
+  <pre><code class="language-json">["-"]</code></pre>
+
+  <p>
+    這是一個簡單的單元素標籤，不需要任何額外參數。
+    當中繼器看到包含此標籤的事件時，應遵守以下行為準則。
+  </p>
+
+  <h2 id="relay-behavior">中繼器行為</h2>
+
+  <h3>接收事件時</h3>
+  <ul>
+    <li>接受並儲存來自原始作者的受保護事件</li>
+    <li><strong>拒絕</strong>來自其他客戶端/中繼器的轉發</li>
+    <li>驗證事件確實來自原始發布者</li>
+  </ul>
+
+  <h3>回應訂閱時</h3>
+  <ul>
+    <li>正常回應訂閱該事件的客戶端</li>
+    <li>不主動將事件推送到其他中繼器</li>
+  </ul>
+
+  <h3>錯誤回應</h3>
+  <pre><code class="language-json">["OK", "&lt;event-id&gt;", false, "blocked: event is protected"]</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>付費中繼器內容</h3>
+  <p>
+    作者希望將獨家內容限制在付費中繼器，防止免費中繼器獲取並重新發布。
+  </p>
+
+  <h3>私密社群</h3>
+  <p>
+    社群成員在專屬中繼器分享內容，不希望被外部索引或存檔。
+  </p>
+
+  <h3>草稿與測試</h3>
+  <p>
+    開發者或作者發布草稿內容進行測試，不希望被其他中繼器永久保存。
+  </p>
+
+  <h3>地理限制</h3>
+  <p>
+    某些內容僅適合在特定區域的中繼器發布，不希望全球傳播。
+  </p>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>受保護的短文</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這是僅限此中繼器的獨家內容！",
+  "tags": [
+    ["-"]
+  ],
+  "created_at": 1234567890,
+  "pubkey": "...",
+  "id": "...",
+  "sig": "..."
+}</code></pre>
+
+  <h3>受保護的長文</h3>
+  <pre><code class="language-json">{
+  "kind": 30023,
+  "content": "# 付費會員專屬文章\n\n這篇文章僅供付費中繼器會員閱讀...",
+  "tags": [
+    ["d", "exclusive-article-2024"],
+    ["title", "會員專屬文章"],
+    ["-"]
+  ]
+}</code></pre>
+
+  <h3>受保護的媒體事件</h3>
+  <pre><code class="language-json">{
+  "kind": 1063,
+  "content": "獨家影片內容",
+  "tags": [
+    ["url", "https://exclusive-relay.com/video.mp4"],
+    ["m", "video/mp4"],
+    ["-"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立受保護事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+function createProtectedEvent(
+  content: string,
+  kind: number = 1,
+  additionalTags: string[][] = [],
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['-'], // 保護標籤
+    ...additionalTags,
+  ];
+
+  const event = {
+    kind,
+    content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：建立受保護短文
+const protectedNote = createProtectedEvent(
+  '這是僅限此中繼器的內容',
+  1,
+  [],
+  secretKey
+);
+
+// 使用範例：建立受保護長文
+const protectedArticle = createProtectedEvent(
+  '# 會員專屬\n\n詳細內容...',
+  30023,
+  [
+    ['d', 'members-only-article'],
+    ['title', '會員專屬文章'],
+  ],
+  secretKey
+);</code></pre>
+
+  <h3>檢測受保護事件</h3>
+  <pre><code class="language-typescript">function isProtectedEvent(event: any): boolean {
+  return event.tags.some((tag: string[]) => tag[0] === '-' && tag.length === 1);
+}
+
+function getProtectionStatus(event: any): {
+  isProtected: boolean;
+  canRebroadcast: boolean;
+} {
+  const isProtected = isProtectedEvent(event);
+
+  return {
+    isProtected,
+    canRebroadcast: !isProtected,
+  };
+}
+
+// 使用範例
+const status = getProtectionStatus(event);
+if (status.isProtected) {
+  console.log('此事件受保護，不應轉發到其他中繼器');
+}</code></pre>
+
+  <h3>中繼器端驗證</h3>
+  <pre><code class="language-typescript">interface RelayValidationResult {
+  accepted: boolean;
+  message?: string;
+}
+
+function validateIncomingEvent(
+  event: any,
+  sourceType: 'client' | 'relay',
+  senderPubkey?: string
+): RelayValidationResult {
+  const isProtected = isProtectedEvent(event);
+
+  // 受保護事件只接受來自原始作者的直接發布
+  if (isProtected) {
+    if (sourceType === 'relay') {
+      return {
+        accepted: false,
+        message: 'blocked: event is protected',
+      };
+    }
+
+    // 如果是客戶端發送，驗證是否為作者本人
+    if (senderPubkey && senderPubkey !== event.pubkey) {
+      return {
+        accepted: false,
+        message: 'blocked: protected events can only be published by author',
+      };
+    }
+  }
+
+  return { accepted: true };
+}
+
+// 使用範例
+const result = validateIncomingEvent(event, 'relay');
+if (!result.accepted) {
+  // 發送 OK 回應表示拒絕
+  sendMessage(['OK', event.id, false, result.message]);
+}</code></pre>
+
+  <h3>客戶端處理</h3>
+  <pre><code class="language-typescript">interface PublishOptions {
+  relays: string[];
+  protect?: boolean;
+}
+
+async function publishEvent(
+  content: string,
+  kind: number,
+  options: PublishOptions,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [];
+
+  // 如果需要保護，添加 - 標籤
+  if (options.protect) {
+    tags.push(['-']);
+  }
+
+  const event = finalizeEvent(
+    {
+      kind,
+      content,
+      tags,
+      created_at: Math.floor(Date.now() / 1000),
+    },
+    secretKey
+  );
+
+  // 發布到指定中繼器
+  const results = await Promise.allSettled(
+    options.relays.map((relay) => publishToRelay(relay, event))
+  );
+
+  return {
+    event,
+    results: results.map((r, i) => ({
+      relay: options.relays[i],
+      success: r.status === 'fulfilled' && r.value.success,
+      message: r.status === 'fulfilled' ? r.value.message : r.reason,
+    })),
+  };
+}
+
+// 使用範例：發布受保護事件到付費中繼器
+const result = await publishEvent(
+  '會員專屬內容',
+  1,
+  {
+    relays: ['wss://paid-relay.example.com'],
+    protect: true,
+  },
+  secretKey
+);
+
+console.log(`已發布到 ${result.results.filter((r) => r.success).length} 個中繼器`);</code></pre>
+
+  <h3>UI 指示器</h3>
+  <pre><code class="language-typescript">// React 元件範例
+function ProtectedBadge({ event }: { event: any }) {
+  if (!isProtectedEvent(event)) {
+    return null;
+  }
+
+  return (
+    &lt;div className="protected-badge"&gt;
+      &lt;span className="icon"&gt;🔒&lt;/span&gt;
+      &lt;span&gt;受保護事件&lt;/span&gt;
+      &lt;span className="tooltip"&gt;
+        此內容僅在特定中繼器可見
+      &lt;/span&gt;
+    &lt;/div&gt;
+  );
+}
+
+function EventActions({ event }: { event: any }) {
+  const isProtected = isProtectedEvent(event);
+
+  return (
+    &lt;div className="actions"&gt;
+      &lt;button disabled={isProtected}&gt;
+        轉發
+      &lt;/button&gt;
+      {isProtected && (
+        &lt;span className="hint"&gt;受保護事件無法轉發&lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="security-considerations">安全考量</h2>
+
+  <h3>非加密保護</h3>
+  <p>
+    <code>"-"</code> 標籤僅表達作者意圖，不提供加密保護。
+    任何接收到事件的客戶端仍然可以讀取內容。此機制依賴於中繼器的合作。
+  </p>
+
+  <h3>中繼器信任</h3>
+  <ul>
+    <li>惡意中繼器可能忽略此標籤並轉發事件</li>
+    <li>選擇信譽良好的中繼器很重要</li>
+    <li>對於真正敏感的內容，應使用加密（如 NIP-44）</li>
+  </ul>
+
+  <h3>客戶端責任</h3>
+  <ul>
+    <li>客戶端應尊重此標籤，不主動轉發受保護事件</li>
+    <li>應在 UI 中清楚標示受保護狀態</li>
+    <li>禁用或警告可能導致轉發的操作</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>明確標示</strong>：在 UI 中清楚顯示事件的保護狀態</li>
+    <li><strong>選擇性發布</strong>：僅發布到信任的中繼器</li>
+    <li><strong>結合加密</strong>：對敏感內容同時使用加密和保護標籤</li>
+    <li><strong>告知用戶</strong>：解釋保護機制的限制</li>
+    <li><strong>驗證來源</strong>：中繼器應驗證事件確實來自作者</li>
+  </ul>
+
+  <h2 id="limitations">限制</h2>
+  <ul>
+    <li>依賴中繼器合作，無法強制執行</li>
+    <li>不防止已接收內容的用戶手動分享</li>
+    <li>不提供內容加密</li>
+    <li>可能影響內容的可發現性和傳播</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-42">NIP-42</a>：中繼器認證 - 客戶端身份驗證</li>
+    <li><a href="/tech/nostr/nip-44">NIP-44</a>：加密訊息 - 內容加密</li>
+    <li><a href="/tech/nostr/nip-65">NIP-65</a>：中繼器列表 - 選擇發布目標</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/70.md" target="_blank" rel="noopener noreferrer">NIP-70 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
