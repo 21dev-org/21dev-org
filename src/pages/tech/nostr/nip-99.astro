@@ -1,0 +1,604 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-99: 分類廣告"
+  description="在 Nostr 上發布和管理商品、服務、工作等分類廣告"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-99 定義了在 Nostr 上發布分類廣告的標準格式。使用 kind 30402 可定址事件，
+    用戶可以發布商品出售、服務提供、工作機會、租賃等各種類型的廣告，
+    並通過標籤進行分類和搜尋。
+  </p>
+
+  <h2 id="event-structure">事件結構</h2>
+
+  <h3>事件類型</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>30402</code></td>
+        <td>分類廣告</td>
+        <td>可定址（可替換）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>必要標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>唯一識別符</td>
+        <td><code>["d", "macbook-pro-2023"]</code></td>
+      </tr>
+      <tr>
+        <td><code>title</code></td>
+        <td>廣告標題</td>
+        <td><code>["title", "出售 MacBook Pro 2023"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>可選標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>summary</code></td>
+        <td>簡短摘要</td>
+        <td><code>["summary", "九成新，配件齊全"]</code></td>
+      </tr>
+      <tr>
+        <td><code>published_at</code></td>
+        <td>發布時間戳</td>
+        <td><code>["published_at", "1704067200"]</code></td>
+      </tr>
+      <tr>
+        <td><code>location</code></td>
+        <td>地理位置</td>
+        <td><code>["location", "台北市"]</code></td>
+      </tr>
+      <tr>
+        <td><code>price</code></td>
+        <td>價格（數量、貨幣、頻率）</td>
+        <td><code>["price", "50000", "TWD"]</code></td>
+      </tr>
+      <tr>
+        <td><code>image</code></td>
+        <td>圖片 URL</td>
+        <td><code>["image", "https://..."]</code></td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>主題標籤</td>
+        <td><code>["t", "電子產品"]</code></td>
+      </tr>
+      <tr>
+        <td><code>g</code></td>
+        <td>Geohash 位置</td>
+        <td><code>["g", "wsqqjk"]</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="listing-types">廣告類型</h2>
+
+  <p>使用 <code>t</code> 標籤區分不同類型的廣告：</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>類型</th>
+        <th>標籤值</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>商品出售</td>
+        <td><code>for-sale</code></td>
+        <td>出售實體商品</td>
+      </tr>
+      <tr>
+        <td>徵求購買</td>
+        <td><code>wanted</code></td>
+        <td>徵求特定商品</td>
+      </tr>
+      <tr>
+        <td>服務提供</td>
+        <td><code>service</code></td>
+        <td>提供專業服務</td>
+      </tr>
+      <tr>
+        <td>工作機會</td>
+        <td><code>job</code></td>
+        <td>招聘資訊</td>
+      </tr>
+      <tr>
+        <td>房屋租賃</td>
+        <td><code>rental</code></td>
+        <td>出租房屋或空間</td>
+      </tr>
+      <tr>
+        <td>活動</td>
+        <td><code>event</code></td>
+        <td>活動公告</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="price-format">價格格式</h2>
+
+  <pre><code class="language-json">["price", "&lt;數量&gt;", "&lt;貨幣&gt;", "&lt;頻率&gt;"]</code></pre>
+
+  <h3>貨幣代碼</h3>
+  <ul>
+    <li><code>USD</code>：美元</li>
+    <li><code>TWD</code>：新台幣</li>
+    <li><code>EUR</code>：歐元</li>
+    <li><code>BTC</code>：比特幣</li>
+    <li><code>SAT</code>：聰</li>
+  </ul>
+
+  <h3>頻率（用於租賃/服務）</h3>
+  <ul>
+    <li><code>hour</code>：每小時</li>
+    <li><code>day</code>：每天</li>
+    <li><code>week</code>：每週</li>
+    <li><code>month</code>：每月</li>
+  </ul>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>商品出售</h3>
+  <pre><code class="language-json">{
+  "kind": 30402,
+  "content": "出售九成新 MacBook Pro 2023 M3 晶片版本。\n\n配置：\n- 14 吋螢幕\n- 18GB 記憶體\n- 512GB SSD\n\n附原廠充電器和保護殼。\n\n可面交或順豐到付。",
+  "tags": [
+    ["d", "macbook-pro-2023-m3"],
+    ["title", "MacBook Pro 2023 M3 九成新出售"],
+    ["summary", "14吋 18GB/512GB，附配件"],
+    ["price", "45000", "TWD"],
+    ["t", "for-sale"],
+    ["t", "電子產品"],
+    ["t", "apple"],
+    ["t", "macbook"],
+    ["location", "台北市大安區"],
+    ["g", "wsqqjk8"],
+    ["image", "https://example.com/macbook1.jpg"],
+    ["image", "https://example.com/macbook2.jpg"],
+    ["published_at", "1704067200"]
+  ]
+}</code></pre>
+
+  <h3>服務提供</h3>
+  <pre><code class="language-json">{
+  "kind": 30402,
+  "content": "提供專業網站開發服務。\n\n服務內容：\n- 前端開發（React、Vue）\n- 後端開發（Node.js、Python）\n- 全端應用\n- 區塊鏈整合\n\n支援比特幣/閃電網路支付。",
+  "tags": [
+    ["d", "web-dev-service-2024"],
+    ["title", "專業網站開發服務"],
+    ["summary", "前後端開發、區塊鏈整合"],
+    ["price", "50000", "SAT", "hour"],
+    ["t", "service"],
+    ["t", "開發"],
+    ["t", "web"],
+    ["t", "bitcoin"],
+    ["location", "遠端"],
+    ["published_at", "1704067200"]
+  ]
+}</code></pre>
+
+  <h3>工作機會</h3>
+  <pre><code class="language-json">{
+  "kind": 30402,
+  "content": "我們正在尋找全端工程師加入團隊！\n\n要求：\n- 3 年以上開發經驗\n- 熟悉 TypeScript、React、Node.js\n- 對 Bitcoin/Nostr 有興趣\n\n待遇：\n- 遠端工作\n- 彈性工時\n- 比特幣薪資可議",
+  "tags": [
+    ["d", "fullstack-dev-position-2024"],
+    ["title", "徵求全端工程師 - 遠端工作"],
+    ["summary", "Bitcoin 公司，支援 BTC 薪資"],
+    ["price", "80000", "USD", "year"],
+    ["t", "job"],
+    ["t", "全職"],
+    ["t", "工程師"],
+    ["t", "遠端"],
+    ["t", "bitcoin"],
+    ["location", "遠端"],
+    ["published_at", "1704067200"]
+  ]
+}</code></pre>
+
+  <h3>房屋租賃</h3>
+  <pre><code class="language-json">{
+  "kind": 30402,
+  "content": "台北市中心套房出租。\n\n房屋資訊：\n- 獨立衛浴\n- 採光良好\n- 近捷運站\n- 包水電網路\n\n押金兩個月，租期至少一年。接受 Bitcoin 付款。",
+  "tags": [
+    ["d", "taipei-studio-rental-2024"],
+    ["title", "台北市中心套房出租"],
+    ["summary", "獨立衛浴，近捷運，包水電網路"],
+    ["price", "18000", "TWD", "month"],
+    ["t", "rental"],
+    ["t", "套房"],
+    ["t", "台北"],
+    ["location", "台北市中正區"],
+    ["g", "wsqqj"],
+    ["image", "https://example.com/apt1.jpg"],
+    ["image", "https://example.com/apt2.jpg"],
+    ["published_at", "1704067200"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立分類廣告</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+type ListingType = 'for-sale' | 'wanted' | 'service' | 'job' | 'rental' | 'event';
+type Currency = 'USD' | 'TWD' | 'EUR' | 'BTC' | 'SAT';
+type PriceFrequency = 'hour' | 'day' | 'week' | 'month' | 'year';
+
+interface Price {
+  amount: string;
+  currency: Currency;
+  frequency?: PriceFrequency;
+}
+
+interface ClassifiedListing {
+  identifier: string;
+  title: string;
+  content: string;
+  summary?: string;
+  type: ListingType;
+  price?: Price;
+  location?: string;
+  geohash?: string;
+  images?: string[];
+  tags?: string[];
+}
+
+function createClassifiedListing(
+  listing: ClassifiedListing,
+  secretKey: Uint8Array
+) {
+  const tags: string[][] = [
+    ['d', listing.identifier],
+    ['title', listing.title],
+    ['t', listing.type],
+  ];
+
+  if (listing.summary) {
+    tags.push(['summary', listing.summary]);
+  }
+
+  if (listing.price) {
+    const priceTag = ['price', listing.price.amount, listing.price.currency];
+    if (listing.price.frequency) {
+      priceTag.push(listing.price.frequency);
+    }
+    tags.push(priceTag);
+  }
+
+  if (listing.location) {
+    tags.push(['location', listing.location]);
+  }
+
+  if (listing.geohash) {
+    tags.push(['g', listing.geohash]);
+  }
+
+  listing.images?.forEach((url) => {
+    tags.push(['image', url]);
+  });
+
+  listing.tags?.forEach((tag) => {
+    tags.push(['t', tag]);
+  });
+
+  tags.push(['published_at', Math.floor(Date.now() / 1000).toString()]);
+
+  const event = {
+    kind: 30402,
+    content: listing.content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：發布商品
+const forSaleListing = createClassifiedListing(
+  {
+    identifier: 'bitcoin-hardware-wallet',
+    title: '全新 Bitcoin 硬體錢包出售',
+    content: '全新未拆封 Coldcard Mk4...',
+    summary: '全新未拆，原價購入',
+    type: 'for-sale',
+    price: { amount: '200', currency: 'USD' },
+    location: '台北市',
+    tags: ['bitcoin', '硬體錢包', 'coldcard'],
+    images: ['https://example.com/wallet.jpg'],
+  },
+  secretKey
+);</code></pre>
+
+  <h3>解析分類廣告</h3>
+  <pre><code class="language-typescript">interface ParsedListing {
+  identifier: string;
+  title: string;
+  content: string;
+  summary?: string;
+  type?: string;
+  price?: {
+    amount: string;
+    currency: string;
+    frequency?: string;
+  };
+  location?: string;
+  geohash?: string;
+  images: string[];
+  tags: string[];
+  publishedAt?: number;
+}
+
+function parseClassifiedListing(event: any): ParsedListing | null {
+  if (event.kind !== 30402) {
+    return null;
+  }
+
+  const getTag = (name: string) => {
+    const tag = event.tags.find((t: string[]) => t[0] === name);
+    return tag?.[1];
+  };
+
+  const getAllTags = (name: string) => {
+    return event.tags
+      .filter((t: string[]) => t[0] === name)
+      .map((t: string[]) => t[1]);
+  };
+
+  const priceTag = event.tags.find((t: string[]) => t[0] === 'price');
+  let price;
+  if (priceTag && priceTag.length >= 3) {
+    price = {
+      amount: priceTag[1],
+      currency: priceTag[2],
+      frequency: priceTag[3],
+    };
+  }
+
+  const publishedAtStr = getTag('published_at');
+
+  return {
+    identifier: getTag('d') || '',
+    title: getTag('title') || '無標題',
+    content: event.content,
+    summary: getTag('summary'),
+    type: getAllTags('t').find((t: string) =>
+      ['for-sale', 'wanted', 'service', 'job', 'rental', 'event'].includes(t)
+    ),
+    price,
+    location: getTag('location'),
+    geohash: getTag('g'),
+    images: getAllTags('image'),
+    tags: getAllTags('t'),
+    publishedAt: publishedAtStr ? parseInt(publishedAtStr) : undefined,
+  };
+}
+
+// 使用範例
+const listing = parseClassifiedListing(event);
+if (listing) {
+  console.log(`標題: ${listing.title}`);
+  console.log(`類型: ${listing.type}`);
+  if (listing.price) {
+    console.log(`價格: ${listing.price.amount} ${listing.price.currency}`);
+  }
+}</code></pre>
+
+  <h3>搜尋分類廣告</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+interface ListingSearchOptions {
+  type?: ListingType;
+  tags?: string[];
+  location?: string;
+  geohash?: string;
+  author?: string;
+  limit?: number;
+}
+
+async function searchListings(
+  pool: SimplePool,
+  relays: string[],
+  options: ListingSearchOptions = {}
+): Promise&lt;any[]&gt; {
+  const filter: any = {
+    kinds: [30402],
+    limit: options.limit || 50,
+  };
+
+  if (options.author) {
+    filter.authors = [options.author];
+  }
+
+  const tTags: string[] = [];
+  if (options.type) {
+    tTags.push(options.type);
+  }
+  if (options.tags) {
+    tTags.push(...options.tags);
+  }
+  if (tTags.length > 0) {
+    filter['#t'] = tTags;
+  }
+
+  if (options.geohash) {
+    filter['#g'] = [options.geohash];
+  }
+
+  const events = await pool.querySync(relays, filter);
+
+  // 如果指定了 location，在客戶端過濾
+  let filtered = events;
+  if (options.location) {
+    filtered = events.filter((e) => {
+      const locationTag = e.tags.find((t: string[]) => t[0] === 'location');
+      return locationTag?.[1]?.includes(options.location!);
+    });
+  }
+
+  return filtered.sort((a, b) => b.created_at - a.created_at);
+}
+
+// 使用範例：搜尋台北的商品
+const listings = await searchListings(pool, relays, {
+  type: 'for-sale',
+  location: '台北',
+  tags: ['電子產品'],
+  limit: 20,
+});
+
+listings.forEach((event) => {
+  const listing = parseClassifiedListing(event);
+  console.log(listing?.title);
+});</code></pre>
+
+  <h3>React 元件</h3>
+  <pre><code class="language-typescript">interface ListingCardProps {
+  event: any;
+}
+
+function ListingCard({ event }: ListingCardProps) {
+  const listing = parseClassifiedListing(event);
+
+  if (!listing) return null;
+
+  const typeLabels: Record&lt;string, string&gt; = {
+    'for-sale': '出售',
+    wanted: '徵求',
+    service: '服務',
+    job: '工作',
+    rental: '租賃',
+    event: '活動',
+  };
+
+  const formatPrice = (price: ParsedListing['price']) => {
+    if (!price) return '價格面議';
+    const freq = price.frequency ? `/${price.frequency}` : '';
+    return `${price.amount} ${price.currency}${freq}`;
+  };
+
+  return (
+    &lt;div className="listing-card"&gt;
+      {listing.images[0] && (
+        &lt;img
+          src={listing.images[0]}
+          alt={listing.title}
+          className="listing-image"
+        /&gt;
+      )}
+      &lt;div className="listing-content"&gt;
+        &lt;div className="listing-header"&gt;
+          &lt;span className={`type-badge ${listing.type}`}&gt;
+            {typeLabels[listing.type || ''] || '其他'}
+          &lt;/span&gt;
+          &lt;span className="price"&gt;{formatPrice(listing.price)}&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;h3 className="title"&gt;{listing.title}&lt;/h3&gt;
+        {listing.summary && (
+          &lt;p className="summary"&gt;{listing.summary}&lt;/p&gt;
+        )}
+        {listing.location && (
+          &lt;div className="location"&gt;
+            &lt;span&gt;📍&lt;/span&gt; {listing.location}
+          &lt;/div&gt;
+        )}
+        &lt;div className="tags"&gt;
+          {listing.tags
+            .filter((t) => !['for-sale', 'wanted', 'service', 'job', 'rental', 'event'].includes(t))
+            .map((tag) => (
+              &lt;span key={tag} className="tag"&gt;#{tag}&lt;/span&gt;
+            ))}
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>二手交易市場</h3>
+  <ul>
+    <li>Bitcoin 相關商品（硬體錢包、礦機）</li>
+    <li>電子產品、書籍、收藏品</li>
+    <li>支援閃電網路支付的 P2P 交易</li>
+  </ul>
+
+  <h3>服務市場</h3>
+  <ul>
+    <li>開發、設計、翻譯等專業服務</li>
+    <li>支援 Bitcoin 支付的自由工作者</li>
+  </ul>
+
+  <h3>工作機會</h3>
+  <ul>
+    <li>Bitcoin/區塊鏈公司招聘</li>
+    <li>支援 BTC 薪資的遠端工作</li>
+  </ul>
+
+  <h3>房屋租賃</h3>
+  <ul>
+    <li>接受 Bitcoin 支付的房東</li>
+    <li>數位遊牧者住宿</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>清晰標題</strong>：使用描述性標題，包含關鍵資訊</li>
+    <li><strong>詳細內容</strong>：在 content 中提供完整描述</li>
+    <li><strong>合適分類</strong>：使用正確的 t 標籤分類</li>
+    <li><strong>位置資訊</strong>：提供 location 和 geohash 方便搜尋</li>
+    <li><strong>高品質圖片</strong>：上傳清晰的商品/服務圖片</li>
+    <li><strong>及時更新</strong>：售出後刪除或標記已售</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-23">NIP-23</a>：長文內容 - 類似的可定址事件</li>
+    <li><a href="/tech/nostr/nip-52">NIP-52</a>：日曆活動 - 活動類廣告</li>
+    <li><a href="/tech/nostr/nip-57">NIP-57</a>：Zaps - 閃電網路支付</li>
+    <li><a href="/tech/nostr/nip-73">NIP-73</a>：外部內容 ID - 地理位置標籤</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/99.md" target="_blank" rel="noopener noreferrer">NIP-99 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
