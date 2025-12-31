@@ -150,6 +150,7 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/events/', title: '事件系統', type: 'tech' },
       { href: '/tech/nostr/keys/', title: '密鑰管理', type: 'tech' },
       { href: '/tech/nostr/nip-04/', title: 'NIP-04 加密私訊', type: 'tech' },
+      { href: '/tech/nostr/nip-07/', title: 'NIP-07 瀏覽器擴充', type: 'tech' },
       { href: '/tech/nostr/nip-19/', title: 'NIP-19 bech32 編碼', type: 'tech' },
       { href: '/tech/nostr/nip-23/', title: 'NIP-23 長文內容', type: 'tech' },
       { href: '/tech/nostr/relays/', title: '中繼器', type: 'tech' },
@@ -158,7 +159,7 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', '加密'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', '加密', '瀏覽器擴充'],
   },
 ];
 

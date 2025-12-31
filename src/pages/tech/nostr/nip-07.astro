@@ -1,0 +1,377 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-07 瀏覽器擴充"
+  description="深入了解 Nostr 的瀏覽器擴充簽名標準，window.nostr API 和安全密鑰管理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-07 瀏覽器擴充' },
+  ]}
+  difficulty="beginner"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'NIP-01 基本協議', href: '/tech/nostr/nip-01' }}
+  nextPage={{ title: 'NIP-19 bech32 編碼', href: '/tech/nostr/nip-19' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-07？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-07 定義了瀏覽器擴充功能與網頁應用之間的標準介面（window.nostr）。
+    這讓網頁應用可以請求簽名和加密操作，而不需要直接存取用戶的私鑰，
+    大幅提升安全性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>安全優勢：</strong>
+      私鑰永遠不會暴露給網頁應用。所有簽名操作都在擴充功能內部完成，
+      用戶可以在授權前審核每個請求。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">window.nostr API</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    符合 NIP-07 的擴充功能會在 window 物件上注入 nostr 屬性：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`interface Nostr {
+  // 取得公鑰
+  getPublicKey(): Promise<string>
+
+  // 簽署事件
+  signEvent(event: UnsignedEvent): Promise<SignedEvent>
+
+  // NIP-04 加密（可選）
+  nip04?: {
+    encrypt(pubkey: string, plaintext: string): Promise<string>
+    decrypt(pubkey: string, ciphertext: string): Promise<string>
+  }
+
+  // NIP-44 加密（可選）
+  nip44?: {
+    encrypt(pubkey: string, plaintext: string): Promise<string>
+    decrypt(pubkey: string, ciphertext: string): Promise<string>
+  }
+
+  // 取得中繼器列表（可選）
+  getRelays?(): Promise<RelayMap>
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">核心方法</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">getPublicKey()</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    取得用戶的公鑰（hex 格式）：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 檢查擴充功能是否存在
+if (!window.nostr) {
+  alert('請安裝 Nostr 瀏覽器擴充功能')
+  return
+}
+
+// 取得公鑰
+const pubkey = await window.nostr.getPublicKey()
+console.log('公鑰:', pubkey)
+// => "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d"`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">signEvent()</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    簽署未簽名的事件：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 建立未簽名事件
+const unsignedEvent = {
+  kind: 1,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [],
+  content: 'Hello, Nostr!'
+  // 注意：不包含 id, pubkey, sig
+}
+
+// 請求擴充功能簽名
+const signedEvent = await window.nostr.signEvent(unsignedEvent)
+
+console.log(signedEvent)
+// {
+//   id: "abc123...",
+//   pubkey: "3bf0c63f...",
+//   created_at: 1704067200,
+//   kind: 1,
+//   tags: [],
+//   content: "Hello, Nostr!",
+//   sig: "sig123..."
+// }`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密方法</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">NIP-04 加密</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 加密訊息
+const recipientPubkey = "npub1..."
+const encrypted = await window.nostr.nip04.encrypt(
+  recipientPubkey,
+  "這是一條私密訊息"
+)
+// => "encrypted_content?iv=..."
+
+// 解密訊息
+const decrypted = await window.nostr.nip04.decrypt(
+  senderPubkey,
+  encrypted
+)
+// => "這是一條私密訊息"`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">NIP-44 加密（推薦）</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 檢查是否支援 NIP-44
+if (window.nostr.nip44) {
+  const encrypted = await window.nostr.nip44.encrypt(
+    recipientPubkey,
+    "這是一條私密訊息"
+  )
+
+  const decrypted = await window.nostr.nip44.decrypt(
+    senderPubkey,
+    encrypted
+  )
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">完整使用範例</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function postNote(content) {
+  // 1. 檢查擴充功能
+  if (!window.nostr) {
+    throw new Error('請安裝 Nostr 擴充功能')
+  }
+
+  // 2. 取得公鑰
+  const pubkey = await window.nostr.getPublicKey()
+
+  // 3. 建立事件
+  const event = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content
+  }
+
+  // 4. 簽名
+  const signedEvent = await window.nostr.signEvent(event)
+
+  // 5. 發送到中繼器
+  const relay = new WebSocket('wss://relay.damus.io')
+  relay.onopen = () => {
+    relay.send(JSON.stringify(['EVENT', signedEvent]))
+  }
+
+  return signedEvent
+}
+
+// 使用
+postNote('Hello from my web app!')
+  .then(event => console.log('已發布:', event.id))
+  .catch(err => console.error('錯誤:', err))`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">熱門擴充功能</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        {
+          name: 'Alby',
+          url: 'https://getalby.com',
+          desc: '支援 Lightning 和 Nostr',
+          browsers: 'Chrome, Firefox, Safari',
+        },
+        {
+          name: 'nos2x',
+          url: 'https://github.com/fiatjaf/nos2x',
+          desc: '輕量級 Nostr 簽名器',
+          browsers: 'Chrome',
+        },
+        {
+          name: 'Flamingo',
+          url: 'https://www.getflamingo.org',
+          desc: 'Safari 專用擴充',
+          browsers: 'Safari',
+        },
+        {
+          name: 'Nostore',
+          url: 'https://apps.apple.com/app/nostore/id1666553677',
+          desc: 'iOS Safari 擴充',
+          browsers: 'iOS Safari',
+        },
+        {
+          name: 'Spring',
+          url: 'https://spring.site',
+          desc: '多帳號管理',
+          browsers: 'Chrome, Firefox',
+        },
+        {
+          name: 'Keys.band',
+          url: 'https://keys.band',
+          desc: '密鑰管理器',
+          browsers: 'Chrome',
+        },
+      ].map((ext) => (
+        <a
+          href={ext.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] hover:border-purple-500/50 transition-colors"
+        >
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{ext.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)] mb-2">{ext.desc}</p>
+          <p class="text-xs text-[var(--text-tertiary)]">{ext.browsers}</p>
+        </a>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤處理</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`async function safeGetPublicKey() {
+  try {
+    // 檢查擴充功能
+    if (typeof window.nostr === 'undefined') {
+      return { error: 'NO_EXTENSION', message: '未安裝擴充功能' }
+    }
+
+    // 請求公鑰（用戶可能拒絕）
+    const pubkey = await window.nostr.getPublicKey()
+    return { pubkey }
+
+  } catch (err) {
+    // 用戶拒絕授權
+    if (err.message?.includes('rejected') || err.message?.includes('denied')) {
+      return { error: 'USER_REJECTED', message: '用戶拒絕授權' }
+    }
+    // 其他錯誤
+    return { error: 'UNKNOWN', message: err.message }
+  }
+}
+
+// 使用
+const result = await safeGetPublicKey()
+if (result.error) {
+  console.log('錯誤:', result.message)
+} else {
+  console.log('公鑰:', result.pubkey)
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TypeScript 類型定義</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// types/nostr.d.ts
+interface Window {
+  nostr?: Nostr
+}
+
+interface Nostr {
+  getPublicKey(): Promise<string>
+  signEvent(event: UnsignedEvent): Promise<Event>
+  getRelays?(): Promise<Record<string, RelayPolicy>>
+  nip04?: {
+    encrypt(pubkey: string, plaintext: string): Promise<string>
+    decrypt(pubkey: string, ciphertext: string): Promise<string>
+  }
+  nip44?: {
+    encrypt(pubkey: string, plaintext: string): Promise<string>
+    decrypt(pubkey: string, ciphertext: string): Promise<string>
+  }
+}
+
+interface UnsignedEvent {
+  kind: number
+  created_at: number
+  tags: string[][]
+  content: string
+}
+
+interface Event extends UnsignedEvent {
+  id: string
+  pubkey: string
+  sig: string
+}
+
+interface RelayPolicy {
+  read: boolean
+  write: boolean
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">應該做</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 總是檢查 window.nostr 是否存在</li>
+        <li>• 處理用戶拒絕授權的情況</li>
+        <li>• 使用 try-catch 包裝所有呼叫</li>
+        <li>• 清楚告知用戶將簽名的內容</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">不應該做</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 要求用戶輸入私鑰</li>
+        <li>• 假設擴充功能一定存在</li>
+        <li>• 忽略錯誤處理</li>
+        <li>• 批量簽名而不讓用戶確認</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能偵測</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`function detectNostrCapabilities() {
+  if (!window.nostr) {
+    return { available: false }
+  }
+
+  return {
+    available: true,
+    getPublicKey: true,
+    signEvent: true,
+    nip04: !!window.nostr.nip04,
+    nip44: !!window.nostr.nip44,
+    getRelays: !!window.nostr.getRelays
+  }
+}
+
+const caps = detectNostrCapabilities()
+console.log('Nostr 功能:', caps)
+// {
+//   available: true,
+//   getPublicKey: true,
+//   signEvent: true,
+//   nip04: true,
+//   nip44: true,
+//   getRelays: true
+// }`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>開發提示：</strong>
+      在開發時可以使用 nos2x 進行測試，因為它是開源且輕量的。
+      正式環境建議支援多種擴充功能，提供更好的用戶體驗。
+    </p>
+  </div>
+</ArticleLayout>
