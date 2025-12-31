@@ -1,0 +1,322 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-40 過期時間戳"
+  description="Nostr 事件過期機制，用於設定事件的有效期限。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-40 過期時間戳' },
+  ]}
+  difficulty="beginner"
+  readingTime="5 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-25/',
+    title: 'NIP-25 反應',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-42/',
+    title: 'NIP-42 中繼器認證',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-40 定義了事件過期機制，讓發布者可以指定事件的有效期限。
+    過期後，中繼器應刪除該事件，客戶端也不應顯示。這對於臨時公告、
+    限時優惠或隱私敏感內容非常有用。
+  </p>
+
+  <h2 id="expiration-tag">Expiration 標籤</h2>
+  <p>
+    使用 <code>expiration</code> 標籤指定事件的過期時間，值為 Unix 時間戳（秒）：
+  </p>
+
+  <pre><code class="language-json">{`["expiration", "<Unix 時間戳>"]`}</code></pre>
+
+  <h3>事件範例</h3>
+  <pre><code class="language-json">{`{
+  "id": "...",
+  "pubkey": "...",
+  "created_at": 1700000000,
+  "kind": 1,
+  "tags": [
+    ["expiration", "1700086400"]
+  ],
+  "content": "這則訊息將在 24 小時後過期",
+  "sig": "..."
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立過期事件</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
+
+// 建立帶有過期時間的事件
+function createExpiringEvent(
+  privateKey: Uint8Array,
+  content: string,
+  expiresInSeconds: number
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const expiration = now + expiresInSeconds;
+
+  const event = {
+    kind: 1,
+    created_at: now,
+    tags: [
+      ['expiration', expiration.toString()],
+    ],
+    content,
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 建立 1 小時後過期的事件
+const hourEvent = createExpiringEvent(
+  privateKey,
+  '這則訊息 1 小時後過期',
+  3600
+);
+
+// 建立 24 小時後過期的事件
+const dayEvent = createExpiringEvent(
+  privateKey,
+  '這則訊息 24 小時後過期',
+  86400
+);
+
+// 建立特定日期過期的事件
+function createEventExpiringAt(
+  privateKey: Uint8Array,
+  content: string,
+  expirationDate: Date
+) {
+  const expiration = Math.floor(expirationDate.getTime() / 1000);
+
+  const event = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['expiration', expiration.toString()],
+    ],
+    content,
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 建立在 2024 年底過期的事件
+const newYearEvent = createEventExpiringAt(
+  privateKey,
+  '2024 年特別公告',
+  new Date('2024-12-31T23:59:59Z')
+);`}</code></pre>
+
+  <h3>檢查事件是否過期</h3>
+  <pre><code class="language-typescript">{`// 檢查事件是否已過期
+function isEventExpired(event: Event): boolean {
+  const expirationTag = event.tags.find(t => t[0] === 'expiration');
+
+  if (!expirationTag) {
+    return false; // 沒有過期標籤，永不過期
+  }
+
+  const expiration = parseInt(expirationTag[1], 10);
+  const now = Math.floor(Date.now() / 1000);
+
+  return now > expiration;
+}
+
+// 取得過期時間
+function getExpiration(event: Event): Date | null {
+  const expirationTag = event.tags.find(t => t[0] === 'expiration');
+
+  if (!expirationTag) {
+    return null;
+  }
+
+  const expiration = parseInt(expirationTag[1], 10);
+  return new Date(expiration * 1000);
+}
+
+// 取得剩餘時間
+function getTimeRemaining(event: Event): number | null {
+  const expirationTag = event.tags.find(t => t[0] === 'expiration');
+
+  if (!expirationTag) {
+    return null;
+  }
+
+  const expiration = parseInt(expirationTag[1], 10);
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = expiration - now;
+
+  return remaining > 0 ? remaining : 0;
+}
+
+// 格式化剩餘時間
+function formatTimeRemaining(seconds: number): string {
+  if (seconds <= 0) return '已過期';
+
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) return \`\${days} 天 \${hours} 小時\`;
+  if (hours > 0) return \`\${hours} 小時 \${minutes} 分鐘\`;
+  return \`\${minutes} 分鐘\`;
+}`}</code></pre>
+
+  <h3>過濾過期事件</h3>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢事件並過濾過期的
+async function getActiveEvents(pubkey: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [1],
+    authors: [pubkey],
+    limit: 50,
+  });
+
+  // 過濾掉已過期的事件
+  return events.filter(event => !isEventExpired(event));
+}
+
+// 訂閱事件時自動過濾過期
+function subscribeToActiveEvents(
+  pubkey: string,
+  onEvent: (event: Event) => void
+) {
+  return pool.subscribeMany(
+    relays,
+    [{ kinds: [1], authors: [pubkey] }],
+    {
+      onevent: (event) => {
+        if (!isEventExpired(event)) {
+          onEvent(event);
+        }
+      },
+    }
+  );
+}`}</code></pre>
+
+  <h2 id="relay-behavior">中繼器行為</h2>
+  <p>符合 NIP-40 的中繼器應該：</p>
+
+  <ul>
+    <li><strong>拒絕已過期事件</strong>：不接受 expiration 時間已過的事件</li>
+    <li><strong>定期清理</strong>：刪除已過期的事件以節省儲存空間</li>
+    <li><strong>不返回過期事件</strong>：查詢時不返回已過期的事件</li>
+  </ul>
+
+  <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
+    <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">注意</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      並非所有中繼器都支援 NIP-40。某些中繼器可能會忽略過期標籤，繼續儲存和提供過期事件。
+      客戶端應該自行過濾過期事件，不要完全依賴中繼器的行為。
+    </p>
+  </div>
+
+  <h2 id="use-cases">應用場景</h2>
+
+  <h3>限時公告</h3>
+  <pre><code class="language-typescript">{`// 活動公告，活動結束後過期
+const eventAnnouncement = createEventExpiringAt(
+  privateKey,
+  '🎉 線上聚會今晚 8 點開始！加入連結：...',
+  new Date('2024-03-15T22:00:00Z')
+);`}</code></pre>
+
+  <h3>閃購優惠</h3>
+  <pre><code class="language-typescript">{`// 限時優惠，24 小時後過期
+const flashSale = createExpiringEvent(
+  privateKey,
+  '⚡ 限時優惠！使用代碼 NOSTR24 享 50% 折扣',
+  86400
+);`}</code></pre>
+
+  <h3>臨時訊息</h3>
+  <pre><code class="language-typescript">{`// 臨時位置分享，1 小時後過期
+const locationShare = createExpiringEvent(
+  privateKey,
+  '📍 我現在在台北 101，想見面的朋友來找我',
+  3600
+);`}</code></pre>
+
+  <h3>投票與問卷</h3>
+  <pre><code class="language-typescript">{`// 投票，截止時間後過期
+const poll = {
+  kind: 1,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [
+    ['expiration', (Math.floor(Date.now() / 1000) + 604800).toString()], // 1 週
+    ['poll_option', '0', '選項 A'],
+    ['poll_option', '1', '選項 B'],
+  ],
+  content: '你比較喜歡哪個？投票將在一週後截止。',
+};`}</code></pre>
+
+  <h2 id="ui-display">UI 顯示建議</h2>
+  <pre><code class="language-typescript">{`// React 組件範例
+function ExpiringNote({ event }: { event: Event }) {
+  const [remaining, setRemaining] = useState(getTimeRemaining(event));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newRemaining = getTimeRemaining(event);
+      setRemaining(newRemaining);
+
+      if (newRemaining === 0) {
+        clearInterval(interval);
+      }
+    }, 60000); // 每分鐘更新
+
+    return () => clearInterval(interval);
+  }, [event]);
+
+  if (remaining === null) {
+    // 沒有過期時間
+    return <Note event={event} />;
+  }
+
+  if (remaining === 0) {
+    // 已過期，不顯示
+    return null;
+  }
+
+  return (
+    <div className="relative">
+      <Note event={event} />
+      <div className="absolute top-2 right-2 text-xs text-gray-500">
+        ⏱️ {formatTimeRemaining(remaining)}
+      </div>
+    </div>
+  );
+}`}</code></pre>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>不可撤銷</strong>：一旦設定過期時間，無法延長（除非發布新事件）</li>
+    <li><strong>非強制性</strong>：過期只是建議，無法保證所有副本都被刪除</li>
+    <li><strong>時區問題</strong>：使用 Unix 時間戳避免時區混淆</li>
+    <li><strong>快取問題</strong>：客戶端快取可能仍包含過期事件</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-09/">NIP-09</a> - 事件刪除（主動刪除機制）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/40.md" target="_blank" rel="noopener">NIP-40 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
