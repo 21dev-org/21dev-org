@@ -1,0 +1,601 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-72: 審核社群"
+  description="Nostr 審核社群定義，支援版主管理和貼文審核機制"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-72 定義了在 Nostr 上建立審核社群（Moderated Communities）的標準。
+    與 NIP-29 的中繼器群組不同，NIP-72 社群的審核是在客戶端層面進行，
+    允許任何人發布貼文，但只有經過版主批准的內容才會被客戶端顯示。
+  </p>
+
+  <h2 id="event-kinds">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>名稱</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>34550</code></td>
+        <td>社群定義</td>
+        <td>定義社群資訊、版主和中繼器</td>
+      </tr>
+      <tr>
+        <td><code>1111</code></td>
+        <td>社群貼文</td>
+        <td>發布到社群的文字內容（NIP-22）</td>
+      </tr>
+      <tr>
+        <td><code>4550</code></td>
+        <td>審核批准</td>
+        <td>版主對貼文的批准事件</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="community-definition">社群定義 (Kind 34550)</h2>
+  <p>
+    社群定義是一個可替換事件，包含社群的基本資訊、版主列表和中繼器設定。
+  </p>
+
+  <pre><code class="language-json">{
+  "kind": 34550,
+  "tags": [
+    ["d", "nostr-dev"],
+    ["name", "Nostr 開發者社群"],
+    ["description", "討論 Nostr 協議開發的社群"],
+    ["image", "https://example.com/community-logo.png"],
+    ["p", "&lt;moderator-pubkey-1&gt;", "wss://relay.example.com", "moderator"],
+    ["p", "&lt;moderator-pubkey-2&gt;", "wss://relay.example.com", "moderator"],
+    ["relay", "wss://community-relay.example.com", "author"],
+    ["relay", "wss://community-relay.example.com", "requests"],
+    ["relay", "wss://community-relay.example.com", "approvals"]
+  ],
+  "content": ""
+}</code></pre>
+
+  <h3>社群標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+        <th>必要性</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>社群唯一識別符</td>
+        <td>必要</td>
+      </tr>
+      <tr>
+        <td><code>name</code></td>
+        <td>社群顯示名稱（優先於 d 標籤）</td>
+        <td>建議</td>
+      </tr>
+      <tr>
+        <td><code>description</code></td>
+        <td>社群描述</td>
+        <td>建議</td>
+      </tr>
+      <tr>
+        <td><code>image</code></td>
+        <td>社群圖片 URL</td>
+        <td>選填</td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>版主公鑰（帶 "moderator" 角色）</td>
+        <td>建議</td>
+      </tr>
+      <tr>
+        <td><code>relay</code></td>
+        <td>指定用途的中繼器</td>
+        <td>選填</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>中繼器角色</h3>
+  <ul>
+    <li><code>author</code>：社群創建者發布定義的中繼器</li>
+    <li><code>requests</code>：用戶提交貼文請求的中繼器</li>
+    <li><code>approvals</code>：版主發布批准事件的中繼器</li>
+  </ul>
+
+  <h2 id="community-posts">社群貼文 (Kind 1111)</h2>
+  <p>
+    使用 NIP-22 格式的 kind 1111 事件發布社群貼文。貼文必須包含 <code>a</code> 標籤指向目標社群。
+  </p>
+
+  <pre><code class="language-json">{
+  "kind": 1111,
+  "content": "這是我在社群發布的第一篇貼文！",
+  "tags": [
+    ["a", "34550:&lt;community-creator-pubkey&gt;:nostr-dev", "wss://relay.example.com"],
+    ["K", "34550"],
+    ["k", "1111"]
+  ]
+}</code></pre>
+
+  <div class="not-prose my-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+    <p class="text-sm text-yellow-800 dark:text-yellow-200">
+      <strong>向後相容：</strong>舊版使用 kind 1 事件發布社群貼文，但新實作應使用 kind 1111。
+    </p>
+  </div>
+
+  <h2 id="approval-events">審核批准 (Kind 4550)</h2>
+  <p>
+    版主透過發布 kind 4550 事件來批准貼文。任何人都可以發布批准事件表達對貼文的認可，
+    但客戶端通常只會顯示由社群定義中指定的版主所批准的內容。
+  </p>
+
+  <pre><code class="language-json">{
+  "kind": 4550,
+  "content": "{\"id\":\"...\",\"pubkey\":\"...\",\"content\":\"原始貼文內容...\",\"kind\":1111,...}",
+  "tags": [
+    ["a", "34550:&lt;community-creator-pubkey&gt;:nostr-dev", "wss://relay.example.com"],
+    ["e", "&lt;post-event-id&gt;", "wss://relay.example.com"],
+    ["p", "&lt;post-author-pubkey&gt;"],
+    ["k", "1111"]
+  ]
+}</code></pre>
+
+  <h3>批准事件標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>a</code></td>
+        <td>指向社群定義（格式：<code>34550:&lt;pubkey&gt;:&lt;d-tag&gt;</code>）</td>
+      </tr>
+      <tr>
+        <td><code>e</code></td>
+        <td>被批准的貼文事件 ID</td>
+      </tr>
+      <tr>
+        <td><code>p</code></td>
+        <td>貼文作者的公鑰（用於通知）</td>
+      </tr>
+      <tr>
+        <td><code>k</code></td>
+        <td>原始貼文的 kind</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>content 欄位</h3>
+  <p>
+    批准事件的 content 必須包含被批准貼文的完整 JSON 字串化內容。
+    這允許客戶端在無法取得原始貼文時仍能顯示內容。
+  </p>
+
+  <h2 id="approval-strategies">審核策略</h2>
+  <p>
+    對於可替換事件（如長文 kind 30023），版主可以選擇不同的批准策略：
+  </p>
+
+  <h3>1. 逐版本批准 (Per-version)</h3>
+  <p>只使用 <code>e</code> 標籤。每次作者更新內容都需要重新批准。</p>
+  <pre><code class="language-json">{
+  "tags": [
+    ["a", "34550:&lt;community-pubkey&gt;:community-id"],
+    ["e", "&lt;specific-version-id&gt;"],
+    ["p", "&lt;author-pubkey&gt;"],
+    ["k", "30023"]
+  ]
+}</code></pre>
+
+  <h3>2. 全面授權 (Blanket authorization)</h3>
+  <p>使用 <code>a</code> 標籤指向貼文。作者可以更新內容而無需額外批准。</p>
+  <pre><code class="language-json">{
+  "tags": [
+    ["a", "34550:&lt;community-pubkey&gt;:community-id"],
+    ["a", "30023:&lt;author-pubkey&gt;:article-id"],
+    ["p", "&lt;author-pubkey&gt;"],
+    ["k", "30023"]
+  ]
+}</code></pre>
+
+  <h3>3. 雙重標記</h3>
+  <p>同時使用 <code>e</code> 和 <code>a</code> 標籤，顯示原始批准版本和最新版本。</p>
+
+  <h2 id="cross-posting">跨社群轉發</h2>
+  <p>
+    社群支援使用 NIP-18 轉發（kind 6 或 kind 16）進行跨社群分享：
+  </p>
+
+  <pre><code class="language-json">{
+  "kind": 6,
+  "content": "{\"id\":\"...\",\"content\":\"原始貼文...\",\"kind\":1,...}",
+  "tags": [
+    ["a", "34550:&lt;target-community-pubkey&gt;:target-community"],
+    ["e", "&lt;original-post-id&gt;"],
+    ["p", "&lt;original-author-pubkey&gt;"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立社群</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+
+interface CommunityConfig {
+  identifier: string;
+  name: string;
+  description?: string;
+  image?: string;
+  moderators: Array<{ pubkey: string; relay?: string }>;
+  relays?: {
+    author?: string;
+    requests?: string;
+    approvals?: string;
+  };
+  rules?: string[];
+}
+
+function createCommunity(config: CommunityConfig, secretKey: Uint8Array) {
+  const tags: string[][] = [
+    ['d', config.identifier],
+    ['name', config.name],
+  ];
+
+  if (config.description) {
+    tags.push(['description', config.description]);
+  }
+
+  if (config.image) {
+    tags.push(['image', config.image]);
+  }
+
+  // 添加版主
+  config.moderators.forEach((mod) => {
+    const pTag = ['p', mod.pubkey];
+    if (mod.relay) pTag.push(mod.relay);
+    pTag.push('moderator');
+    tags.push(pTag);
+  });
+
+  // 添加中繼器設定
+  if (config.relays) {
+    if (config.relays.author) {
+      tags.push(['relay', config.relays.author, 'author']);
+    }
+    if (config.relays.requests) {
+      tags.push(['relay', config.relays.requests, 'requests']);
+    }
+    if (config.relays.approvals) {
+      tags.push(['relay', config.relays.approvals, 'approvals']);
+    }
+  }
+
+  // 添加規則
+  if (config.rules) {
+    config.rules.forEach((rule, index) => {
+      tags.push(['rule', rule, (index + 1).toString()]);
+    });
+  }
+
+  const event = {
+    kind: 34550,
+    content: '',
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const sk = generateSecretKey();
+const pk = getPublicKey(sk);
+
+const community = createCommunity(
+  {
+    identifier: 'nostr-taiwan',
+    name: 'Nostr 台灣社群',
+    description: '台灣 Nostr 愛好者的討論空間',
+    image: 'https://example.com/tw-nostr.png',
+    moderators: [
+      { pubkey: pk, relay: 'wss://relay.damus.io' },
+    ],
+    relays: {
+      author: 'wss://relay.damus.io',
+      requests: 'wss://relay.damus.io',
+      approvals: 'wss://relay.damus.io',
+    },
+    rules: [
+      '保持友善和尊重',
+      '禁止垃圾訊息和廣告',
+      '討論需與 Nostr 相關',
+    ],
+  },
+  sk
+);
+
+console.log(community);</code></pre>
+
+  <h3>發布社群貼文</h3>
+  <pre><code class="language-typescript">interface CommunityReference {
+  creatorPubkey: string;
+  identifier: string;
+  relay?: string;
+}
+
+function createCommunityPost(
+  content: string,
+  community: CommunityReference,
+  secretKey: Uint8Array,
+  options?: {
+    replyTo?: { eventId: string; authorPubkey: string };
+    hashtags?: string[];
+  }
+) {
+  const communityTag = `34550:${community.creatorPubkey}:${community.identifier}`;
+
+  const tags: string[][] = [
+    ['a', communityTag, community.relay || ''],
+    ['K', '34550'],
+    ['k', '1111'],
+  ];
+
+  // 添加回覆標籤
+  if (options?.replyTo) {
+    tags.push(['e', options.replyTo.eventId, '', 'reply']);
+    tags.push(['p', options.replyTo.authorPubkey]);
+  }
+
+  // 添加主題標籤
+  if (options?.hashtags) {
+    options.hashtags.forEach((tag) => {
+      tags.push(['t', tag]);
+    });
+  }
+
+  const event = {
+    kind: 1111,
+    content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const post = createCommunityPost(
+  '大家好！這是我在社群的第一篇貼文。',
+  {
+    creatorPubkey: '&lt;community-creator-pubkey&gt;',
+    identifier: 'nostr-taiwan',
+    relay: 'wss://relay.damus.io',
+  },
+  sk,
+  {
+    hashtags: ['nostr', '台灣'],
+  }
+);</code></pre>
+
+  <h3>批准貼文</h3>
+  <pre><code class="language-typescript">function approvePost(
+  post: any,
+  community: CommunityReference,
+  moderatorSecretKey: Uint8Array,
+  options?: {
+    blanketAuthorization?: boolean;
+  }
+) {
+  const communityTag = `34550:${community.creatorPubkey}:${community.identifier}`;
+
+  const tags: string[][] = [
+    ['a', communityTag, community.relay || ''],
+    ['p', post.pubkey],
+    ['k', post.kind.toString()],
+  ];
+
+  // 添加貼文引用
+  if (options?.blanketAuthorization && post.kind >= 30000 && post.kind < 40000) {
+    // 可替換事件的全面授權
+    const dTag = post.tags.find((t: string[]) => t[0] === 'd')?.[1];
+    if (dTag) {
+      tags.push(['a', `${post.kind}:${post.pubkey}:${dTag}`]);
+    }
+  }
+
+  // 總是添加特定版本引用
+  tags.push(['e', post.id, community.relay || '']);
+
+  const event = {
+    kind: 4550,
+    content: JSON.stringify(post),
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, moderatorSecretKey);
+}
+
+// 使用範例
+const approval = approvePost(
+  post,
+  {
+    creatorPubkey: '&lt;community-creator-pubkey&gt;',
+    identifier: 'nostr-taiwan',
+    relay: 'wss://relay.damus.io',
+  },
+  sk
+);</code></pre>
+
+  <h3>查詢社群內容</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢社群定義
+async function getCommunity(creatorPubkey: string, identifier: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [34550],
+    authors: [creatorPubkey],
+    '#d': [identifier],
+  });
+
+  return events[0];
+}
+
+// 查詢社群貼文（待審核）
+async function getPendingPosts(communityTag: string) {
+  const posts = await pool.querySync(relays, {
+    kinds: [1111],
+    '#a': [communityTag],
+  });
+
+  return posts;
+}
+
+// 查詢已批准的貼文
+async function getApprovedPosts(
+  communityTag: string,
+  moderatorPubkeys: string[]
+) {
+  const approvals = await pool.querySync(relays, {
+    kinds: [4550],
+    authors: moderatorPubkeys,
+    '#a': [communityTag],
+  });
+
+  // 從批准事件中提取貼文
+  const posts = approvals.map((approval) => {
+    try {
+      return JSON.parse(approval.content);
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+
+  return posts;
+}
+
+// 使用範例
+const communityTag = '34550:&lt;creator-pubkey&gt;:nostr-taiwan';
+const community = await getCommunity('&lt;creator-pubkey&gt;', 'nostr-taiwan');
+
+if (community) {
+  const moderators = community.tags
+    .filter((t: string[]) => t[0] === 'p' && t[3] === 'moderator')
+    .map((t: string[]) => t[1]);
+
+  const approvedPosts = await getApprovedPosts(communityTag, moderators);
+  console.log(`已批准貼文: ${approvedPosts.length}`);
+}</code></pre>
+
+  <h2 id="moderation-flow">審核流程</h2>
+  <ol>
+    <li><strong>用戶發布貼文</strong>：使用 kind 1111 發布到社群</li>
+    <li><strong>版主審核</strong>：版主查看待審核貼文</li>
+    <li><strong>發布批准</strong>：版主發布 kind 4550 批准事件</li>
+    <li><strong>客戶端顯示</strong>：客戶端只顯示已批准的貼文</li>
+  </ol>
+
+  <div class="not-prose my-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <p class="text-sm text-blue-800 dark:text-blue-200">
+      <strong>注意：</strong>審核是在客戶端層面進行的，中繼器不會過濾未批准的貼文。
+      這意味著所有貼文都會被儲存，只是客戶端選擇只顯示已批准的內容。
+    </p>
+  </div>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>主題討論區</h3>
+  <ul>
+    <li>技術討論社群</li>
+    <li>興趣愛好群組</li>
+    <li>地區社群</li>
+  </ul>
+
+  <h3>內容策展</h3>
+  <ul>
+    <li>精選文章集合</li>
+    <li>新聞聚合</li>
+    <li>教學資源</li>
+  </ul>
+
+  <h3>組織管理</h3>
+  <ul>
+    <li>公司公告板</li>
+    <li>專案協作空間</li>
+    <li>會員專區</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>設定多位版主</strong>：避免單點故障，確保審核效率</li>
+    <li><strong>明確社群規則</strong>：在描述中說明什麼內容會被批准</li>
+    <li><strong>及時審核</strong>：定期處理待審核貼文，保持社群活躍</li>
+    <li><strong>保存原始內容</strong>：批准事件應包含完整的原始貼文</li>
+    <li><strong>考慮用戶體驗</strong>：讓用戶知道貼文正在等待審核</li>
+  </ul>
+
+  <h2 id="comparison">與 NIP-29 比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>NIP-72 審核社群</th>
+        <th>NIP-29 中繼器群組</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>審核層級</td>
+        <td>客戶端</td>
+        <td>中繼器</td>
+      </tr>
+      <tr>
+        <td>貼文儲存</td>
+        <td>所有貼文都儲存</td>
+        <td>可拒絕未授權貼文</td>
+      </tr>
+      <tr>
+        <td>隱私性</td>
+        <td>較低（所有貼文可見）</td>
+        <td>較高（可限制存取）</td>
+      </tr>
+      <tr>
+        <td>去中心化</td>
+        <td>高（不依賴特定中繼器）</td>
+        <td>中（依賴群組中繼器）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-29">NIP-29</a>：中繼器群組 - 另一種群組機制</li>
+    <li><a href="/tech/nostr/nip-18">NIP-18</a>：轉發 - 跨社群分享</li>
+    <li><a href="/tech/nostr/nip-23">NIP-23</a>：長文內容 - 可發布到社群</li>
+    <li><a href="/tech/nostr/nip-32">NIP-32</a>：標籤系統 - 內容分類</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/72.md" target="_blank" rel="noopener noreferrer">NIP-72 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
