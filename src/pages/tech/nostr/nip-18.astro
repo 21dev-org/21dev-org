@@ -1,0 +1,390 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-18 轉發"
+  description="Nostr 轉發機制，用於分享和放大其他用戶的內容。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-18 轉發' },
+  ]}
+  difficulty="beginner"
+  readingTime="6 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-13/',
+    title: 'NIP-13 工作量證明',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-19/',
+    title: 'NIP-19 bech32 編碼',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-18 定義了 Nostr 的轉發（Repost）機制，類似於 Twitter 的轉推功能。
+    轉發讓用戶可以分享其他人的內容給自己的追蹤者，幫助優質內容獲得更廣泛的傳播。
+  </p>
+
+  <h2 id="event-kinds">事件類型</h2>
+  <p>NIP-18 定義了兩種轉發事件：</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">Kind</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">名稱</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">6</td>
+          <td class="border border-[var(--border-default)] p-3">Repost</td>
+          <td class="border border-[var(--border-default)] p-3">轉發 kind 1 短文（筆記）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">16</td>
+          <td class="border border-[var(--border-default)] p-3">Generic Repost</td>
+          <td class="border border-[var(--border-default)] p-3">轉發任意類型的事件</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="repost-structure">轉發結構 (Kind 6)</h2>
+  <p>Kind 6 用於轉發 kind 1 的短文筆記：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 6,
+  "tags": [
+    ["e", "<原始事件 ID>", "<中繼器 URL>"],
+    ["p", "<原始作者公鑰>"]
+  ],
+  "content": "",
+  "pubkey": "<轉發者公鑰>",
+  ...
+}`}</code></pre>
+
+  <h3>包含原始事件</h3>
+  <p>
+    為了讓客戶端可以立即顯示內容而不需額外查詢，可以在 <code>content</code>
+    中包含原始事件的 JSON 字串：
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 6,
+  "tags": [
+    ["e", "abc123...", "wss://relay.damus.io"],
+    ["p", "def456..."]
+  ],
+  "content": "{\"id\":\"abc123...\",\"pubkey\":\"def456...\",\"kind\":1,\"content\":\"原始內容\",\"tags\":[],\"created_at\":1234567890,\"sig\":\"...\"}",
+  ...
+}`}</code></pre>
+
+  <h2 id="generic-repost">通用轉發 (Kind 16)</h2>
+  <p>
+    Kind 16 可以轉發任意類型的事件，需要額外的 <code>k</code> 標籤指定原始事件類型：
+  </p>
+
+  <pre><code class="language-json">{`{
+  "kind": 16,
+  "tags": [
+    ["e", "<原始事件 ID>", "<中繼器 URL>"],
+    ["p", "<原始作者公鑰>"],
+    ["k", "<原始事件 kind>"]
+  ],
+  "content": "",
+  ...
+}`}</code></pre>
+
+  <h3>轉發長文範例</h3>
+  <pre><code class="language-json">{`{
+  "kind": 16,
+  "tags": [
+    ["e", "article123...", "wss://relay.example.com"],
+    ["p", "author456..."],
+    ["k", "30023"]
+  ],
+  "content": "",
+  ...
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立轉發</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
+
+interface Event {
+  id: string;
+  pubkey: string;
+  kind: number;
+  content: string;
+  tags: string[][];
+  created_at: number;
+  sig: string;
+}
+
+// 轉發 kind 1 筆記
+function createRepost(
+  privateKey: Uint8Array,
+  originalEvent: Event,
+  relay: string,
+  includeContent: boolean = true
+) {
+  const tags: string[][] = [
+    ['e', originalEvent.id, relay],
+    ['p', originalEvent.pubkey],
+  ];
+
+  const event = {
+    kind: 6,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: includeContent ? JSON.stringify(originalEvent) : '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 通用轉發（任意 kind）
+function createGenericRepost(
+  privateKey: Uint8Array,
+  originalEvent: Event,
+  relay: string,
+  includeContent: boolean = true
+) {
+  const tags: string[][] = [
+    ['e', originalEvent.id, relay],
+    ['p', originalEvent.pubkey],
+    ['k', originalEvent.kind.toString()],
+  ];
+
+  const event = {
+    kind: 16,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: includeContent ? JSON.stringify(originalEvent) : '',
+  };
+
+  return finalizeEvent(event, privateKey);
+}
+
+// 使用範例
+const repost = createRepost(privateKey, originalNote, 'wss://relay.damus.io');
+const articleRepost = createGenericRepost(privateKey, articleEvent, 'wss://nos.lol');`}</code></pre>
+
+  <h3>解析轉發</h3>
+  <pre><code class="language-typescript">{`// 解析轉發事件
+function parseRepost(repostEvent: Event): {
+  originalEventId: string;
+  originalAuthor: string;
+  originalKind: number;
+  embeddedEvent: Event | null;
+  relay: string | null;
+} {
+  const eTag = repostEvent.tags.find(t => t[0] === 'e');
+  const pTag = repostEvent.tags.find(t => t[0] === 'p');
+  const kTag = repostEvent.tags.find(t => t[0] === 'k');
+
+  // 嘗試解析嵌入的原始事件
+  let embeddedEvent: Event | null = null;
+  if (repostEvent.content) {
+    try {
+      embeddedEvent = JSON.parse(repostEvent.content);
+    } catch {
+      // content 不是有效的 JSON
+    }
+  }
+
+  // 判斷原始事件類型
+  let originalKind = 1; // 預設 kind 6 轉發的是 kind 1
+  if (repostEvent.kind === 16 && kTag) {
+    originalKind = parseInt(kTag[1], 10);
+  } else if (embeddedEvent) {
+    originalKind = embeddedEvent.kind;
+  }
+
+  return {
+    originalEventId: eTag?.[1] || '',
+    originalAuthor: pTag?.[1] || '',
+    originalKind,
+    embeddedEvent,
+    relay: eTag?.[2] || null,
+  };
+}`}</code></pre>
+
+  <h3>查詢轉發</h3>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢用戶的所有轉發
+async function getUserReposts(pubkey: string) {
+  return await pool.querySync(relays, {
+    kinds: [6, 16],
+    authors: [pubkey],
+    limit: 50,
+  });
+}
+
+// 查詢特定事件的轉發數量
+async function getRepostCount(eventId: string): Promise<number> {
+  const reposts = await pool.querySync(relays, {
+    kinds: [6, 16],
+    '#e': [eventId],
+  });
+
+  return reposts.length;
+}
+
+// 查詢特定事件的所有轉發者
+async function getReposters(eventId: string): Promise<string[]> {
+  const reposts = await pool.querySync(relays, {
+    kinds: [6, 16],
+    '#e': [eventId],
+  });
+
+  return [...new Set(reposts.map(r => r.pubkey))];
+}
+
+// 檢查用戶是否已轉發
+async function hasUserReposted(
+  userPubkey: string,
+  eventId: string
+): Promise<boolean> {
+  const reposts = await pool.querySync(relays, {
+    kinds: [6, 16],
+    authors: [userPubkey],
+    '#e': [eventId],
+    limit: 1,
+  });
+
+  return reposts.length > 0;
+}`}</code></pre>
+
+  <h2 id="fetching-original">取得原始事件</h2>
+  <pre><code class="language-typescript">{`// 取得轉發的原始事件
+async function getOriginalEvent(repostEvent: Event): Promise<Event | null> {
+  const parsed = parseRepost(repostEvent);
+
+  // 優先使用嵌入的事件
+  if (parsed.embeddedEvent) {
+    // 驗證嵌入事件的 ID 是否正確
+    if (parsed.embeddedEvent.id === parsed.originalEventId) {
+      return parsed.embeddedEvent;
+    }
+  }
+
+  // 從中繼器查詢
+  const searchRelays = parsed.relay
+    ? [parsed.relay, ...relays]
+    : relays;
+
+  const events = await pool.querySync(searchRelays, {
+    ids: [parsed.originalEventId],
+    limit: 1,
+  });
+
+  return events[0] || null;
+}`}</code></pre>
+
+  <h2 id="display">顯示建議</h2>
+  <p>客戶端顯示轉發時的建議做法：</p>
+
+  <ul>
+    <li>顯示「轉發」標記和轉發者資訊</li>
+    <li>顯示原始內容和原作者</li>
+    <li>點擊可跳轉到原始事件</li>
+    <li>轉發時間和原始發布時間都應顯示</li>
+  </ul>
+
+  <pre><code class="language-typescript">{`// React 組件範例
+function RepostNote({ repostEvent }: { repostEvent: Event }) {
+  const [originalEvent, setOriginalEvent] = useState<Event | null>(null);
+  const [reposter, setReposter] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    // 載入轉發者資訊
+    loadProfile(repostEvent.pubkey).then(setReposter);
+
+    // 載入原始事件
+    getOriginalEvent(repostEvent).then(setOriginalEvent);
+  }, [repostEvent]);
+
+  if (!originalEvent) {
+    return <div>載入中...</div>;
+  }
+
+  return (
+    <div className="repost">
+      <div className="repost-header">
+        🔁 {reposter?.name || shortenPubkey(repostEvent.pubkey)} 轉發了
+        <span className="time">
+          {formatTime(repostEvent.created_at)}
+        </span>
+      </div>
+      <Note event={originalEvent} />
+    </div>
+  );
+}`}</code></pre>
+
+  <h2 id="quote-repost">引用轉發</h2>
+  <p>
+    NIP-18 專注於純轉發。如果要添加評論（引用轉發），應使用 kind 1 筆記
+    並引用原始事件：
+  </p>
+
+  <pre><code class="language-typescript">{`// 引用轉發（帶評論）
+function createQuoteRepost(
+  privateKey: Uint8Array,
+  originalEvent: Event,
+  comment: string,
+  relay: string
+) {
+  // 使用 NIP-19 的 nevent 格式引用
+  const nevent = nip19.neventEncode({
+    id: originalEvent.id,
+    relays: [relay],
+    author: originalEvent.pubkey,
+  });
+
+  const event = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['e', originalEvent.id, relay, 'mention'],
+      ['p', originalEvent.pubkey],
+      ['q', originalEvent.id],  // 引用標籤
+    ],
+    content: \`\${comment}\\n\\nnostr:\${nevent}\`,
+  };
+
+  return finalizeEvent(event, privateKey);
+}`}</code></pre>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>驗證嵌入內容</strong>：如果使用嵌入的事件，應驗證其簽名</li>
+    <li><strong>中繼器提示</strong>：<code>e</code> 標籤的第三個值是中繼器提示，幫助查詢原始事件</li>
+    <li><strong>取消轉發</strong>：使用 NIP-09 刪除轉發事件</li>
+    <li><strong>重複轉發</strong>：客戶端應防止用戶重複轉發同一事件</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-09/">NIP-09</a> - 事件刪除（取消轉發）</li>
+    <li><a href="/tech/nostr/nip-10/">NIP-10</a> - 回覆與標記</li>
+    <li><a href="/tech/nostr/nip-25/">NIP-25</a> - 反應（另一種互動方式）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/18.md" target="_blank" rel="noopener">NIP-18 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
