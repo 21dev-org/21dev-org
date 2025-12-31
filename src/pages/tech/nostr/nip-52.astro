@@ -1,0 +1,883 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import { defined } from '@/utils/types';
+---
+
+<ArticleLayout
+  title="NIP-52: 日曆活動"
+  subtitle="Calendar Events - 去中心化活動排程與 RSVP"
+  difficulty="intermediate"
+  readingTime={12}
+  tags={['Nostr', 'NIP-52', '日曆', 'calendar', 'events']}
+  prevPage={defined({ href: '/tech/nostr/nip-51', label: 'NIP-51 列表' })}
+  nextPage={defined({ href: '/tech/nostr/nip-53', label: 'NIP-53 直播活動' })}
+>
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mb-8 flex-wrap">
+    <a href="/" class="hover:text-[var(--text-secondary)] transition-colors">首頁</a>
+    <span>/</span>
+    <a href="/tech" class="hover:text-[var(--text-secondary)] transition-colors">技術</a>
+    <span>/</span>
+    <a href="/tech/nostr" class="hover:text-[var(--text-secondary)] transition-colors">Nostr</a>
+    <span>/</span>
+    <span class="text-[var(--text-primary)]">NIP-52</span>
+  </nav>
+
+  <!-- Introduction -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">概述</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-52 定義了日曆活動系統，允許用戶創建、分享和管理活動。它支援全天活動和指定時間的活動，
+      包含 RSVP（回覆出席）機制、地點標記、參與者管理等完整功能，實現去中心化的活動排程。
+    </p>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-purple-400">核心概念：</strong>
+        NIP-52 使用三種主要事件類型：kind 31922（日期活動）、kind 31923（時間活動）和 kind 31925（RSVP），
+        並可透過 kind 31924 日曆列表組織多個活動。
+      </p>
+    </div>
+  </section>
+
+  <!-- Event Kinds -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">事件類型</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">Kind</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">名稱</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">類型</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">31922</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Date-based Event</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">全天或多日活動</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">31923</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Time-based Event</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">指定時間的活動</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">31924</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Calendar</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">日曆列表（活動集合）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">31925</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">RSVP</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">出席回覆</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Date-based Events -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">日期活動（Kind 31922）</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      用於全天或跨多日的活動，不涉及具體時間和時區：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">必要</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">格式</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">d</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["d", "&lt;uuid&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">唯一標識符</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">title</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["title", "活動名稱"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動標題</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">start</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["start", "2024-12-25"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">開始日期（ISO 8601）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">end</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["end", "2024-12-26"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">結束日期（多日活動）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Time-based Events -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">時間活動（Kind 31923）</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      用於有具體時間的活動，支援時區設定：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">必要</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">格式</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">d</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["d", "&lt;uuid&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">唯一標識符</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">title</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["title", "活動名稱"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動標題</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">start</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["start", "1703487600"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">開始時間（Unix 時間戳）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">end</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["end", "1703494800"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">結束時間</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">start_tzid</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["start_tzid", "Asia/Taipei"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">開始時間時區</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">end_tzid</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["end_tzid", "Asia/Taipei"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">結束時間時區</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Common Tags -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">通用標籤</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      以下標籤適用於日期活動和時間活動：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">格式</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">summary</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["summary", "簡短描述"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動摘要</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">image</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["image", "https://..."]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動圖片</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">location</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["location", "台北市..."]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動地點</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">g</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["g", "wsqqk"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Geohash（地理位置搜尋）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">p</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["p", "pubkey", "relay", "role"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">參與者</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">t</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["t", "meetup"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">主題標籤</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">r</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["r", "https://meet.example.com"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">外部連結（視訊會議等）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RSVP -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">RSVP 回覆（Kind 31925）</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      用戶可以透過 RSVP 事件回覆活動邀請：
+    </p>
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2 flex items-center gap-2">
+          <span class="text-xl">✓</span> accepted
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">確認參加</p>
+      </div>
+      <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+        <h4 class="font-semibold text-red-400 mb-2 flex items-center gap-2">
+          <span class="text-xl">✗</span> declined
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">無法參加</p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2 flex items-center gap-2">
+          <span class="text-xl">?</span> tentative
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">待定，可能參加</p>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">必要</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">a</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">指向活動的座標</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">d</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">與 a 標籤相同的座標</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">status</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">accepted / declined / tentative</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">fb</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">free / busy（顯示忙碌狀態）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Examples -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">使用範例</h2>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">全天活動（日期）</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 31922,
+  "tags": [
+    ["d", "christmas-2024"],
+    ["title", "聖誕節"],
+    ["start", "2024-12-25"],
+    ["image", "https://example.com/christmas.jpg"]
+  ],
+  "content": "聖誕節快樂！🎄"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">多日活動</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 31922,
+  "tags": [
+    ["d", "bitcoin-conf-2024"],
+    ["title", "Bitcoin 2024 大會"],
+    ["start", "2024-07-25"],
+    ["end", "2024-07-27"],
+    ["location", "Nashville, Tennessee"],
+    ["g", "dnmw7"],
+    ["image", "https://example.com/btc-conf.jpg"],
+    ["t", "bitcoin"],
+    ["t", "conference"]
+  ],
+  "content": "年度比特幣盛會，匯聚全球開發者與愛好者"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">指定時間活動</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 31923,
+  "tags": [
+    ["d", "nostr-meetup-taipei"],
+    ["title", "Nostr 開發者聚會 - 台北"],
+    ["start", "1704042000"],
+    ["end", "1704049200"],
+    ["start_tzid", "Asia/Taipei"],
+    ["end_tzid", "Asia/Taipei"],
+    ["location", "台北市信義區某咖啡廳"],
+    ["g", "wsqqk"],
+    ["summary", "每月一次的 Nostr 開發者交流聚會"],
+    ["r", "https://meet.example.com/nostr-taipei"],
+    ["p", "<organizer-pubkey>", "wss://relay.example.com", "organizer"],
+    ["p", "<speaker-pubkey>", "", "speaker"],
+    ["t", "nostr"],
+    ["t", "meetup"]
+  ],
+  "content": "本月主題：NIP-52 日曆活動實作分享"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">RSVP 回覆</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 31925,
+  "tags": [
+    ["a", "31923:<organizer-pubkey>:nostr-meetup-taipei"],
+    ["d", "31923:<organizer-pubkey>:nostr-meetup-taipei"],
+    ["status", "accepted"],
+    ["fb", "busy"]
+  ],
+  "content": "期待參加！我會帶一些 Nostr 貼紙 🎉"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">日曆列表</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 31924,
+  "tags": [
+    ["d", "my-tech-calendar"],
+    ["title", "科技活動日曆"],
+    ["a", "31923:<pubkey1>:nostr-meetup-taipei"],
+    ["a", "31922:<pubkey2>:bitcoin-conf-2024"],
+    ["a", "31923:<pubkey3>:eth-hackathon"]
+  ],
+  "content": "收集各種科技和區塊鏈相關活動"
+}`}</code></pre>
+  </section>
+
+  <!-- TypeScript Implementation -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">TypeScript 實作</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+type RSVPStatus = 'accepted' | 'declined' | 'tentative'
+type FreeBusy = 'free' | 'busy'
+
+interface Participant {
+  pubkey: string
+  relay?: string
+  role?: string
+}
+
+interface DateEventOptions {
+  id: string
+  title: string
+  startDate: string  // YYYY-MM-DD
+  endDate?: string
+  summary?: string
+  image?: string
+  location?: string
+  geohash?: string
+  participants?: Participant[]
+  hashtags?: string[]
+  links?: string[]
+  content?: string
+}
+
+interface TimeEventOptions {
+  id: string
+  title: string
+  startTime: number  // Unix timestamp
+  endTime?: number
+  startTimezone?: string  // IANA timezone
+  endTimezone?: string
+  summary?: string
+  image?: string
+  location?: string
+  geohash?: string
+  participants?: Participant[]
+  hashtags?: string[]
+  links?: string[]
+  content?: string
+}
+
+// 創建日期活動
+function createDateEvent(
+  options: DateEventOptions,
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = [
+    ['d', options.id],
+    ['title', options.title],
+    ['start', options.startDate],
+  ]
+
+  if (options.endDate) {
+    tags.push(['end', options.endDate])
+  }
+
+  addCommonTags(tags, options)
+
+  const event = {
+    kind: 31922,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options.content || '',
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 創建時間活動
+function createTimeEvent(
+  options: TimeEventOptions,
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = [
+    ['d', options.id],
+    ['title', options.title],
+    ['start', options.startTime.toString()],
+  ]
+
+  if (options.endTime) {
+    tags.push(['end', options.endTime.toString()])
+  }
+
+  if (options.startTimezone) {
+    tags.push(['start_tzid', options.startTimezone])
+  }
+
+  if (options.endTimezone) {
+    tags.push(['end_tzid', options.endTimezone])
+  }
+
+  addCommonTags(tags, options)
+
+  const event = {
+    kind: 31923,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options.content || '',
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 添加通用標籤
+function addCommonTags(
+  tags: string[][],
+  options: Partial<DateEventOptions & TimeEventOptions>
+) {
+  if (options.summary) {
+    tags.push(['summary', options.summary])
+  }
+  if (options.image) {
+    tags.push(['image', options.image])
+  }
+  if (options.location) {
+    tags.push(['location', options.location])
+  }
+  if (options.geohash) {
+    tags.push(['g', options.geohash])
+  }
+  if (options.participants) {
+    for (const p of options.participants) {
+      const pTag = ['p', p.pubkey]
+      if (p.relay) pTag.push(p.relay)
+      else if (p.role) pTag.push('')
+      if (p.role) pTag.push(p.role)
+      tags.push(pTag)
+    }
+  }
+  if (options.hashtags) {
+    for (const tag of options.hashtags) {
+      tags.push(['t', tag])
+    }
+  }
+  if (options.links) {
+    for (const link of options.links) {
+      tags.push(['r', link])
+    }
+  }
+}
+
+// 創建 RSVP
+function createRSVP(
+  eventKind: 31922 | 31923,
+  eventPubkey: string,
+  eventId: string,
+  status: RSVPStatus,
+  secretKey: Uint8Array,
+  options?: { freeBusy?: FreeBusy; comment?: string }
+): object {
+  const aTag = \`\${eventKind}:\${eventPubkey}:\${eventId}\`
+
+  const tags: string[][] = [
+    ['a', aTag],
+    ['d', aTag],
+    ['status', status],
+  ]
+
+  if (options?.freeBusy) {
+    tags.push(['fb', options.freeBusy])
+  }
+
+  const event = {
+    kind: 31925,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options?.comment || '',
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 創建日曆列表
+function createCalendar(
+  id: string,
+  title: string,
+  eventRefs: { kind: 31922 | 31923; pubkey: string; id: string }[],
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = [
+    ['d', id],
+    ['title', title],
+  ]
+
+  for (const ref of eventRefs) {
+    tags.push(['a', \`\${ref.kind}:\${ref.pubkey}:\${ref.id}\`])
+  }
+
+  const event = {
+    kind: 31924,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 使用範例
+const sk = generateSecretKey()
+const pk = getPublicKey(sk)
+
+// 創建全天活動
+const dateEvent = createDateEvent({
+  id: 'bitcoin-pizza-day',
+  title: 'Bitcoin Pizza Day',
+  startDate: '2024-05-22',
+  summary: '紀念第一筆比特幣實體交易',
+  hashtags: ['bitcoin', 'pizzaday'],
+}, sk)
+
+// 創建指定時間活動
+const timeEvent = createTimeEvent({
+  id: 'nostr-workshop',
+  title: 'Nostr 開發工作坊',
+  startTime: Math.floor(Date.now() / 1000) + 86400 * 7,
+  endTime: Math.floor(Date.now() / 1000) + 86400 * 7 + 7200,
+  startTimezone: 'Asia/Taipei',
+  endTimezone: 'Asia/Taipei',
+  location: '線上',
+  links: ['https://meet.example.com/workshop'],
+  participants: [
+    { pubkey: pk, role: 'organizer' },
+  ],
+  content: '學習如何開發 Nostr 客戶端',
+}, sk)
+
+// RSVP 確認參加
+const rsvp = createRSVP(
+  31923,
+  pk,
+  'nostr-workshop',
+  'accepted',
+  sk,
+  { freeBusy: 'busy', comment: '我會準時參加！' }
+)
+
+console.log('Date event:', dateEvent)
+console.log('Time event:', timeEvent)
+console.log('RSVP:', rsvp)`}</code></pre>
+  </section>
+
+  <!-- Query Events -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">查詢活動</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { SimplePool } from 'nostr-tools'
+
+const pool = new SimplePool()
+const relays = ['wss://relay.example.com']
+
+// 查詢用戶的所有活動
+async function getUserEvents(pubkey: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [31922, 31923],
+    authors: [pubkey],
+  })
+  return events
+}
+
+// 查詢特定地區的活動（使用 geohash）
+async function getEventsByLocation(geohashPrefix: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [31922, 31923],
+    '#g': [geohashPrefix],
+  })
+  return events
+}
+
+// 查詢特定主題的活動
+async function getEventsByTag(tag: string) {
+  const events = await pool.querySync(relays, {
+    kinds: [31922, 31923],
+    '#t': [tag],
+  })
+  return events
+}
+
+// 查詢活動的 RSVP
+async function getEventRSVPs(eventKind: number, eventPubkey: string, eventId: string) {
+  const aTag = \`\${eventKind}:\${eventPubkey}:\${eventId}\`
+  const rsvps = await pool.querySync(relays, {
+    kinds: [31925],
+    '#a': [aTag],
+  })
+  return rsvps
+}
+
+// 統計 RSVP
+function countRSVPs(rsvps: any[]): {
+  accepted: number
+  declined: number
+  tentative: number
+  total: number
+} {
+  const counts = { accepted: 0, declined: 0, tentative: 0, total: rsvps.length }
+
+  for (const rsvp of rsvps) {
+    const statusTag = rsvp.tags.find((t: string[]) => t[0] === 'status')
+    const status = statusTag?.[1]
+    if (status === 'accepted') counts.accepted++
+    else if (status === 'declined') counts.declined++
+    else if (status === 'tentative') counts.tentative++
+  }
+
+  return counts
+}
+
+// 解析活動事件
+function parseCalendarEvent(event: any) {
+  const getTag = (name: string) =>
+    event.tags.find((t: string[]) => t[0] === name)?.[1]
+
+  const isDateBased = event.kind === 31922
+
+  const participants = event.tags
+    .filter((t: string[]) => t[0] === 'p')
+    .map((t: string[]) => ({
+      pubkey: t[1],
+      relay: t[2] || undefined,
+      role: t[3] || undefined,
+    }))
+
+  const hashtags = event.tags
+    .filter((t: string[]) => t[0] === 't')
+    .map((t: string[]) => t[1])
+
+  return {
+    id: getTag('d'),
+    title: getTag('title'),
+    start: isDateBased ? getTag('start') : parseInt(getTag('start') || '0'),
+    end: isDateBased ? getTag('end') : (getTag('end') ? parseInt(getTag('end')!) : undefined),
+    startTimezone: getTag('start_tzid'),
+    endTimezone: getTag('end_tzid'),
+    summary: getTag('summary'),
+    image: getTag('image'),
+    location: getTag('location'),
+    geohash: getTag('g'),
+    participants,
+    hashtags,
+    content: event.content,
+    isDateBased,
+    pubkey: event.pubkey,
+    createdAt: event.created_at,
+  }
+}`}</code></pre>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">應用場景</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📅 個人日曆</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          管理個人活動、約會和提醒，跨客戶端同步。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎉 社群聚會</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          發布 Meetup、黑客松、研討會等社群活動。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🏢 會議排程</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          團隊會議、視訊通話排程，整合 RSVP 確認。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎵 演出活動</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          音樂會、表演活動發布，結合地點搜尋。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📺 直播預告</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          結合 NIP-53，預告直播活動時間。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🗓️ 公共日曆</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          創建主題日曆（如區塊鏈活動），讓其他人訂閱。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Best Practices -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">最佳實踐</h2>
+    <div class="space-y-4">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 使用正確的活動類型</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          全天活動使用 kind 31922（日期），有具體時間的活動使用 kind 31923（時間）。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 包含時區資訊</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          時間活動應包含 start_tzid 標籤，幫助不同時區的用戶正確顯示時間。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 添加 geohash 方便搜尋</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          實體活動應包含 g 標籤（geohash），讓用戶可以搜尋附近的活動。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 不支援重複活動</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          NIP-52 目前不支援重複活動（如每週會議），需要為每次活動創建獨立事件。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ RSVP 的 d 標籤</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          RSVP 事件的 d 標籤應與 a 標籤相同，確保每個用戶對同一活動只有一個 RSVP。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related NIPs -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">相關 NIP</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <a
+        href="/tech/nostr/nip-53"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-53 直播活動</h4>
+        <p class="text-sm text-[var(--text-secondary)]">即時直播與互動</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-38"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-38 用戶狀態</h4>
+        <p class="text-sm text-[var(--text-secondary)]">顯示用戶正在參加的活動</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-51"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-51 列表</h4>
+        <p class="text-sm text-[var(--text-secondary)]">日曆列表的基礎</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-01"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-01 基本協議</h4>
+        <p class="text-sm text-[var(--text-secondary)]">可定址事件的基礎</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">總結</h2>
+    <div class="p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        NIP-52 為 Nostr 提供了完整的日曆活動系統，支援全天活動、指定時間活動、RSVP 回覆和日曆列表。
+        透過 geohash 和主題標籤，用戶可以輕鬆發現和參與感興趣的活動。
+      </p>
+      <div class="grid md:grid-cols-4 gap-4 text-center">
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-purple-400">31922</div>
+          <div class="text-sm text-[var(--text-secondary)]">日期活動</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-blue-400">31923</div>
+          <div class="text-sm text-[var(--text-secondary)]">時間活動</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-green-400">31925</div>
+          <div class="text-sm text-[var(--text-secondary)]">RSVP</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-orange-400">31924</div>
+          <div class="text-sm text-[var(--text-secondary)]">日曆列表</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
