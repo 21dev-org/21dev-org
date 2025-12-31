@@ -1,0 +1,585 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-73: 外部內容 ID"
+  description="使用 i 標籤引用外部內容的唯一識別符"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-73 定義了 <code>i</code> 標籤，用於將 Nostr 事件關聯到外部系統中的內容。
+    這讓使用者可以對電影、音樂、書籍、Podcast 等外部內容發表評論、評分或討論，
+    同時保持與原始內容的可追蹤連結。
+  </p>
+
+  <h2 id="tag-format">標籤格式</h2>
+  <pre><code class="language-json">["i", "&lt;type&gt;:&lt;id&gt;", "&lt;proof-url&gt;"]</code></pre>
+
+  <table>
+    <thead>
+      <tr>
+        <th>欄位</th>
+        <th>說明</th>
+        <th>必要性</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>type</code></td>
+        <td>外部系統/平台類型</td>
+        <td>必要</td>
+      </tr>
+      <tr>
+        <td><code>id</code></td>
+        <td>該系統中的唯一識別符</td>
+        <td>必要</td>
+      </tr>
+      <tr>
+        <td><code>proof-url</code></td>
+        <td>證明連結（如適用）</td>
+        <td>可選</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="supported-types">支援的類型</h2>
+
+  <h3>媒體與娛樂</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>類型</th>
+        <th>說明</th>
+        <th>ID 格式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>imdb</code></td>
+        <td>IMDb 電影/電視</td>
+        <td><code>tt1234567</code></td>
+      </tr>
+      <tr>
+        <td><code>tmdb</code></td>
+        <td>TheMovieDB</td>
+        <td><code>movie:12345</code> 或 <code>tv:12345</code></td>
+      </tr>
+      <tr>
+        <td><code>spotify</code></td>
+        <td>Spotify 音樂</td>
+        <td><code>track:xxx</code>、<code>album:xxx</code></td>
+      </tr>
+      <tr>
+        <td><code>tidal</code></td>
+        <td>Tidal 音樂</td>
+        <td><code>track:12345</code></td>
+      </tr>
+      <tr>
+        <td><code>deezer</code></td>
+        <td>Deezer 音樂</td>
+        <td><code>track:12345</code></td>
+      </tr>
+      <tr>
+        <td><code>podcast:guid</code></td>
+        <td>Podcast 劇集 GUID</td>
+        <td>UUID 格式</td>
+      </tr>
+      <tr>
+        <td><code>podcast:item:guid</code></td>
+        <td>Podcast 項目 GUID</td>
+        <td>項目唯一識別符</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>書籍與出版</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>類型</th>
+        <th>說明</th>
+        <th>ID 格式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>isbn</code></td>
+        <td>國際標準書號</td>
+        <td>10 或 13 位 ISBN</td>
+      </tr>
+      <tr>
+        <td><code>openlibrary</code></td>
+        <td>Open Library</td>
+        <td><code>OL12345W</code></td>
+      </tr>
+      <tr>
+        <td><code>goodreads</code></td>
+        <td>Goodreads 書籍</td>
+        <td>書籍 ID</td>
+      </tr>
+      <tr>
+        <td><code>doi</code></td>
+        <td>數位物件識別碼</td>
+        <td><code>10.1000/xyz123</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>遊戲與軟體</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>類型</th>
+        <th>說明</th>
+        <th>ID 格式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>steam</code></td>
+        <td>Steam 遊戲</td>
+        <td>App ID</td>
+      </tr>
+      <tr>
+        <td><code>igdb</code></td>
+        <td>IGDB 遊戲資料庫</td>
+        <td>遊戲 ID</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>地理位置</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>類型</th>
+        <th>說明</th>
+        <th>ID 格式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>geo</code></td>
+        <td>地理座標</td>
+        <td><code>lat,lon</code></td>
+      </tr>
+      <tr>
+        <td><code>geohash</code></td>
+        <td>Geohash 編碼</td>
+        <td>Geohash 字串</td>
+      </tr>
+      <tr>
+        <td><code>osm</code></td>
+        <td>OpenStreetMap</td>
+        <td><code>node:12345</code>、<code>way:12345</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>電影評論</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "剛看完《乘風破浪》，非常精彩的電影！劇情緊湊，演員演技出色。推薦！⭐⭐⭐⭐⭐",
+  "tags": [
+    ["i", "imdb:tt1234567"],
+    ["i", "tmdb:movie:54321"]
+  ]
+}</code></pre>
+
+  <h3>音樂分享</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這首歌最近單曲循環中 🎵",
+  "tags": [
+    ["i", "spotify:track:4iV5W9uYEdYUVa79Axb7Rh"],
+    ["i", "tidal:track:12345678"]
+  ]
+}</code></pre>
+
+  <h3>書籍討論</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "終於讀完了《精通比特幣》，強烈推薦給所有想深入了解區塊鏈的人！",
+  "tags": [
+    ["i", "isbn:9781491954386"],
+    ["i", "openlibrary:OL26201858W"]
+  ]
+}</code></pre>
+
+  <h3>Podcast 討論</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "今天這集 Podcast 聊到了很多有趣的觀點！",
+  "tags": [
+    ["i", "podcast:guid:917393e3-1b1e-5cef-ace4-edaa54e1f82d"],
+    ["i", "podcast:item:guid:ep-2024-01-15"]
+  ]
+}</code></pre>
+
+  <h3>地點打卡</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "今天來到這家咖啡廳，環境很棒！☕",
+  "tags": [
+    ["i", "geo:25.0330,121.5654"],
+    ["i", "geohash:wsqqj"],
+    ["i", "osm:node:123456789"]
+  ]
+}</code></pre>
+
+  <h3>遊戲評論</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "剛通關這款遊戲，故事線非常感人！",
+  "tags": [
+    ["i", "steam:1234567"],
+    ["i", "igdb:12345"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立外部內容引用</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+type ExternalContentType =
+  | 'imdb'
+  | 'tmdb'
+  | 'spotify'
+  | 'tidal'
+  | 'deezer'
+  | 'isbn'
+  | 'openlibrary'
+  | 'goodreads'
+  | 'doi'
+  | 'steam'
+  | 'igdb'
+  | 'geo'
+  | 'geohash'
+  | 'osm'
+  | 'podcast:guid'
+  | 'podcast:item:guid';
+
+interface ExternalReference {
+  type: ExternalContentType;
+  id: string;
+  proofUrl?: string;
+}
+
+function createExternalReferenceEvent(
+  content: string,
+  references: ExternalReference[],
+  secretKey: Uint8Array,
+  additionalTags: string[][] = []
+) {
+  const iTags = references.map((ref) => {
+    const tag = ['i', `${ref.type}:${ref.id}`];
+    if (ref.proofUrl) {
+      tag.push(ref.proofUrl);
+    }
+    return tag;
+  });
+
+  const event = {
+    kind: 1,
+    content,
+    tags: [...iTags, ...additionalTags],
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：電影評論
+const movieReview = createExternalReferenceEvent(
+  '非常棒的電影！劇情緊湊，特效出色。',
+  [
+    { type: 'imdb', id: 'tt1234567' },
+    { type: 'tmdb', id: 'movie:54321' },
+  ],
+  secretKey
+);
+
+// 使用範例：音樂分享
+const musicShare = createExternalReferenceEvent(
+  '這首歌太好聽了！🎵',
+  [
+    { type: 'spotify', id: 'track:4iV5W9uYEdYUVa79Axb7Rh' },
+  ],
+  secretKey
+);</code></pre>
+
+  <h3>解析外部引用</h3>
+  <pre><code class="language-typescript">interface ParsedExternalRef {
+  type: string;
+  id: string;
+  proofUrl?: string;
+  fullId: string;
+}
+
+function parseExternalReferences(event: any): ParsedExternalRef[] {
+  const iTags = event.tags.filter(
+    (tag: string[]) => tag[0] === 'i' && tag.length >= 2
+  );
+
+  return iTags.map((tag: string[]) => {
+    const fullId = tag[1];
+    const colonIndex = fullId.indexOf(':');
+
+    let type: string;
+    let id: string;
+
+    if (colonIndex > 0) {
+      type = fullId.slice(0, colonIndex);
+      id = fullId.slice(colonIndex + 1);
+    } else {
+      type = 'unknown';
+      id = fullId;
+    }
+
+    return {
+      type,
+      id,
+      proofUrl: tag[2],
+      fullId,
+    };
+  });
+}
+
+// 使用範例
+const refs = parseExternalReferences(event);
+refs.forEach((ref) => {
+  console.log(`類型: ${ref.type}, ID: ${ref.id}`);
+});</code></pre>
+
+  <h3>產生外部連結</h3>
+  <pre><code class="language-typescript">function getExternalUrl(ref: ParsedExternalRef): string | null {
+  switch (ref.type) {
+    case 'imdb':
+      return `https://www.imdb.com/title/${ref.id}`;
+
+    case 'tmdb':
+      const [tmdbType, tmdbId] = ref.id.split(':');
+      return `https://www.themoviedb.org/${tmdbType}/${tmdbId}`;
+
+    case 'spotify':
+      const [spotifyType, spotifyId] = ref.id.split(':');
+      return `https://open.spotify.com/${spotifyType}/${spotifyId}`;
+
+    case 'tidal':
+      const [tidalType, tidalId] = ref.id.split(':');
+      return `https://tidal.com/${tidalType}/${tidalId}`;
+
+    case 'isbn':
+      return `https://openlibrary.org/isbn/${ref.id}`;
+
+    case 'openlibrary':
+      return `https://openlibrary.org/works/${ref.id}`;
+
+    case 'goodreads':
+      return `https://www.goodreads.com/book/show/${ref.id}`;
+
+    case 'doi':
+      return `https://doi.org/${ref.id}`;
+
+    case 'steam':
+      return `https://store.steampowered.com/app/${ref.id}`;
+
+    case 'igdb':
+      return `https://www.igdb.com/games/${ref.id}`;
+
+    case 'geo':
+      const [lat, lon] = ref.id.split(',');
+      return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}`;
+
+    case 'geohash':
+      return `https://geohash.org/${ref.id}`;
+
+    case 'osm':
+      const [osmType, osmId] = ref.id.split(':');
+      return `https://www.openstreetmap.org/${osmType}/${osmId}`;
+
+    default:
+      return null;
+  }
+}
+
+// 使用範例
+const refs = parseExternalReferences(event);
+refs.forEach((ref) => {
+  const url = getExternalUrl(ref);
+  if (url) {
+    console.log(`${ref.type}: ${url}`);
+  }
+});</code></pre>
+
+  <h3>搜尋相關事件</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+async function findEventsForContent(
+  pool: SimplePool,
+  relays: string[],
+  type: ExternalContentType,
+  id: string
+): Promise&lt;any[]&gt; {
+  const filter = {
+    kinds: [1],
+    '#i': [`${type}:${id}`],
+    limit: 100,
+  };
+
+  const events = await pool.querySync(relays, filter);
+
+  return events.sort((a, b) => b.created_at - a.created_at);
+}
+
+// 使用範例：查詢關於特定電影的所有討論
+const movieDiscussions = await findEventsForContent(
+  pool,
+  ['wss://relay.example.com'],
+  'imdb',
+  'tt1234567'
+);
+
+console.log(`找到 ${movieDiscussions.length} 則相關討論`);</code></pre>
+
+  <h3>React 元件</h3>
+  <pre><code class="language-typescript">interface ExternalContentCardProps {
+  reference: ParsedExternalRef;
+}
+
+function ExternalContentCard({ reference }: ExternalContentCardProps) {
+  const url = getExternalUrl(reference);
+
+  const typeLabels: Record&lt;string, string&gt; = {
+    imdb: 'IMDb',
+    tmdb: 'TMDb',
+    spotify: 'Spotify',
+    tidal: 'Tidal',
+    isbn: 'ISBN',
+    openlibrary: 'Open Library',
+    goodreads: 'Goodreads',
+    doi: 'DOI',
+    steam: 'Steam',
+    igdb: 'IGDB',
+    geo: '位置',
+    geohash: 'Geohash',
+    osm: 'OpenStreetMap',
+  };
+
+  const typeIcons: Record&lt;string, string&gt; = {
+    imdb: '🎬',
+    tmdb: '🎥',
+    spotify: '🎵',
+    tidal: '🎧',
+    isbn: '📚',
+    openlibrary: '📖',
+    goodreads: '📕',
+    doi: '📄',
+    steam: '🎮',
+    igdb: '🕹️',
+    geo: '📍',
+    geohash: '🗺️',
+    osm: '🌍',
+  };
+
+  return (
+    &lt;div className="external-content-card"&gt;
+      &lt;span className="icon"&gt;
+        {typeIcons[reference.type] || '🔗'}
+      &lt;/span&gt;
+      &lt;span className="label"&gt;
+        {typeLabels[reference.type] || reference.type}
+      &lt;/span&gt;
+      &lt;span className="id"&gt;{reference.id}&lt;/span&gt;
+      {url && (
+        &lt;a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="link"
+        &gt;
+          開啟
+        &lt;/a&gt;
+      )}
+    &lt;/div&gt;
+  );
+}
+
+function EventExternalRefs({ event }: { event: any }) {
+  const refs = parseExternalReferences(event);
+
+  if (refs.length === 0) {
+    return null;
+  }
+
+  return (
+    &lt;div className="external-refs"&gt;
+      {refs.map((ref, i) =&gt; (
+        &lt;ExternalContentCard key={i} reference={ref} /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>媒體評論與討論</h3>
+  <ul>
+    <li>電影、電視劇評論</li>
+    <li>音樂專輯、歌曲討論</li>
+    <li>Podcast 節目評論</li>
+    <li>遊戲評測</li>
+  </ul>
+
+  <h3>書籍社群</h3>
+  <ul>
+    <li>讀書筆記與心得</li>
+    <li>書籍推薦列表</li>
+    <li>學術論文討論（DOI）</li>
+  </ul>
+
+  <h3>位置相關內容</h3>
+  <ul>
+    <li>餐廳、咖啡廳評論</li>
+    <li>旅遊景點分享</li>
+    <li>活動地點標記</li>
+  </ul>
+
+  <h3>內容聚合</h3>
+  <ul>
+    <li>聚合所有關於特定電影的討論</li>
+    <li>建立圍繞特定書籍的社群</li>
+    <li>追蹤特定音樂的熱度</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用標準識別符</strong>：優先使用廣泛認可的 ID 系統（如 IMDb、ISBN）</li>
+    <li><strong>多重引用</strong>：同時使用多個來源 ID 提高可發現性</li>
+    <li><strong>提供證明連結</strong>：在可能的情況下包含 proof URL</li>
+    <li><strong>客戶端豐富化</strong>：從外部 API 獲取詳細資訊並展示</li>
+    <li><strong>快取外部資料</strong>：減少對外部服務的請求</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-32">NIP-32</a>：標籤系統 - 分類標籤</li>
+    <li><a href="/tech/nostr/nip-39">NIP-39</a>：外部身份 - 身份驗證</li>
+    <li><a href="/tech/nostr/nip-48">NIP-48</a>：代理標籤 - 另一種外部引用方式</li>
+    <li><a href="/tech/nostr/nip-52">NIP-52</a>：日曆活動 - 地點標籤</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/73.md" target="_blank" rel="noopener noreferrer">NIP-73 規範</a></li>
+    <li><a href="https://www.imdb.com/" target="_blank" rel="noopener noreferrer">IMDb</a></li>
+    <li><a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TheMovieDB</a></li>
+    <li><a href="https://openlibrary.org/" target="_blank" rel="noopener noreferrer">Open Library</a></li>
+  </ul>
+</ArticleLayout>
