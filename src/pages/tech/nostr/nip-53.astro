@@ -1,0 +1,752 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import { defined } from '@/utils/types';
+---
+
+<ArticleLayout
+  title="NIP-53: 直播活動"
+  subtitle="Live Activities - 直播、會議室與即時互動"
+  difficulty="advanced"
+  readingTime={15}
+  tags={['Nostr', 'NIP-53', '直播', 'live', 'streaming']}
+  prevPage={defined({ href: '/tech/nostr/nip-51', label: 'NIP-51 列表' })}
+  nextPage={defined({ href: '/tech/nostr/nip-56', label: 'NIP-56 舉報' })}
+>
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mb-8 flex-wrap">
+    <a href="/" class="hover:text-[var(--text-secondary)] transition-colors">首頁</a>
+    <span>/</span>
+    <a href="/tech" class="hover:text-[var(--text-secondary)] transition-colors">技術</a>
+    <span>/</span>
+    <a href="/tech/nostr" class="hover:text-[var(--text-secondary)] transition-colors">Nostr</a>
+    <span>/</span>
+    <span class="text-[var(--text-primary)]">NIP-53</span>
+  </nav>
+
+  <!-- Introduction -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">概述</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-53 定義了一套用於直播活動、會議室和即時互動的事件類型。它支援視訊直播、語音房間、
+      線上會議等場景，包含參與者管理、聊天訊息、狀態追蹤等完整功能。
+    </p>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-purple-400">核心概念：</strong>
+        NIP-53 使用多種事件類型協同工作：kind 30311 定義直播活動，kind 1311 用於聊天訊息，
+        kind 30312/30313 用於會議空間，kind 10312 追蹤用戶在場狀態。
+      </p>
+    </div>
+  </section>
+
+  <!-- Event Kinds -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">事件類型</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">Kind</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">名稱</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">類型</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">30311</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Live Event</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">直播活動主事件</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">1311</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Live Chat</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">一般事件</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">直播聊天訊息</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">30312</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Meeting Space</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">會議空間配置</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">30313</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Meeting Room</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可定址</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">會議房間</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">10312</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">Room Presence</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">可替換</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">用戶在場狀態</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Live Event Structure -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">直播活動結構（Kind 30311）</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      直播活動事件包含豐富的元資料和參與者資訊：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">格式</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">d</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["d", "&lt;uuid&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">唯一標識符（必要）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">title</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["title", "&lt;name&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動標題</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">summary</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["summary", "&lt;desc&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">活動描述</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">image</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["image", "&lt;url&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">預覽圖片</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">streaming</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["streaming", "&lt;url&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">直播串流 URL</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">recording</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["recording", "&lt;url&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">錄影回放 URL</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">starts</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["starts", "&lt;timestamp&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">開始時間</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">ends</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["ends", "&lt;timestamp&gt;"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">結束時間</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">status</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["status", "live"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">planned / live / ended</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">p</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["p", "pubkey", "relay", "role", "proof"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">參與者與角色</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">current_participants</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["current_participants", "100"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">當前觀眾數</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Status Types -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">活動狀態</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+        <h4 class="font-semibold text-blue-400 mb-2 flex items-center gap-2">
+          <span class="text-xl">📅</span> planned
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          已排程但尚未開始的活動。顯示預計開始時間，讓用戶可以預約提醒。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2 flex items-center gap-2">
+          <span class="text-xl">🔴</span> live
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          正在進行中的直播。用戶可以加入觀看和參與聊天互動。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-gray-500/10 border border-gray-500/20">
+        <h4 class="font-semibold text-gray-400 mb-2 flex items-center gap-2">
+          <span class="text-xl">⏹️</span> ended
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          已結束的活動。可能包含錄影回放連結供事後觀看。
+        </p>
+      </div>
+    </div>
+    <div class="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        如果活動超過 1 小時沒有更新，客戶端可以將其視為已結束。
+      </p>
+    </div>
+  </section>
+
+  <!-- Participant Roles -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">參與者角色</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      參與者標籤格式：<code class="px-2 py-1 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">["p", "pubkey", "relay", "role", "proof"]</code>
+    </p>
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">👑 Host</h4>
+        <p class="text-sm text-[var(--text-secondary)]">活動主持人，擁有完整控制權</p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎤 Speaker</h4>
+        <p class="text-sm text-[var(--text-secondary)]">講者，可以發言或分享畫面</p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">👤 Participant</h4>
+        <p class="text-sm text-[var(--text-secondary)]">一般參與者，可觀看和聊天</p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🛡️ Moderator</h4>
+        <p class="text-sm text-[var(--text-secondary)]">管理員，可管理聊天室</p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🏠 Owner</h4>
+        <p class="text-sm text-[var(--text-secondary)]">擁有者，會議空間所有人</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Examples -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">使用範例</h2>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">創建直播活動</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30311,
+  "tags": [
+    ["d", "abc123-live-event"],
+    ["title", "Nostr 開發者聚會"],
+    ["summary", "討論 Nostr 協議的最新發展"],
+    ["image", "https://example.com/cover.jpg"],
+    ["streaming", "https://stream.example.com/live/abc123"],
+    ["starts", "1704067200"],
+    ["status", "planned"],
+    ["p", "<host-pubkey>", "wss://relay.example.com", "Host"],
+    ["p", "<speaker-pubkey>", "wss://relay.example.com", "Speaker"]
+  ],
+  "content": ""
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">正在直播的活動</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30311,
+  "tags": [
+    ["d", "abc123-live-event"],
+    ["title", "Nostr 開發者聚會"],
+    ["summary", "討論 Nostr 協議的最新發展"],
+    ["streaming", "https://stream.example.com/live/abc123"],
+    ["starts", "1704067200"],
+    ["status", "live"],
+    ["current_participants", "256"],
+    ["p", "<host-pubkey>", "wss://relay.example.com", "Host"],
+    ["p", "<speaker1>", "", "Speaker"],
+    ["p", "<speaker2>", "", "Speaker", "<proof-signature>"]
+  ],
+  "content": ""
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">直播聊天訊息</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 1311,
+  "tags": [
+    ["a", "30311:<host-pubkey>:abc123-live-event", "wss://relay.example.com"]
+  ],
+  "content": "這個功能太棒了！🎉"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">已結束（含錄影）</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30311,
+  "tags": [
+    ["d", "abc123-live-event"],
+    ["title", "Nostr 開發者聚會"],
+    ["status", "ended"],
+    ["starts", "1704067200"],
+    ["ends", "1704074400"],
+    ["recording", "https://video.example.com/recordings/abc123.mp4"],
+    ["total_participants", "1024"]
+  ],
+  "content": ""
+}`}</code></pre>
+  </section>
+
+  <!-- TypeScript Implementation -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">TypeScript 實作</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+import { schnorr } from '@noble/curves/secp256k1'
+import { sha256 } from '@noble/hashes/sha256'
+import { bytesToHex } from '@noble/hashes/utils'
+
+type LiveStatus = 'planned' | 'live' | 'ended'
+type ParticipantRole = 'Host' | 'Speaker' | 'Participant' | 'Moderator' | 'Owner'
+
+interface Participant {
+  pubkey: string
+  relay?: string
+  role: ParticipantRole
+  proof?: string
+}
+
+interface LiveEventOptions {
+  id: string
+  title: string
+  summary?: string
+  image?: string
+  streamingUrl?: string
+  recordingUrl?: string
+  starts?: number
+  ends?: number
+  status: LiveStatus
+  participants?: Participant[]
+  currentParticipants?: number
+  totalParticipants?: number
+}
+
+// 創建直播活動事件
+function createLiveEvent(
+  options: LiveEventOptions,
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = [
+    ['d', options.id],
+    ['title', options.title],
+    ['status', options.status],
+  ]
+
+  if (options.summary) {
+    tags.push(['summary', options.summary])
+  }
+
+  if (options.image) {
+    tags.push(['image', options.image])
+  }
+
+  if (options.streamingUrl) {
+    tags.push(['streaming', options.streamingUrl])
+  }
+
+  if (options.recordingUrl) {
+    tags.push(['recording', options.recordingUrl])
+  }
+
+  if (options.starts) {
+    tags.push(['starts', options.starts.toString()])
+  }
+
+  if (options.ends) {
+    tags.push(['ends', options.ends.toString()])
+  }
+
+  if (options.currentParticipants !== undefined) {
+    tags.push(['current_participants', options.currentParticipants.toString()])
+  }
+
+  if (options.totalParticipants !== undefined) {
+    tags.push(['total_participants', options.totalParticipants.toString()])
+  }
+
+  // 添加參與者
+  if (options.participants) {
+    for (const p of options.participants) {
+      const pTag = ['p', p.pubkey, p.relay || '', p.role]
+      if (p.proof) {
+        pTag.push(p.proof)
+      }
+      tags.push(pTag)
+    }
+  }
+
+  const event = {
+    kind: 30311,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 生成參與者證明簽名
+function generateParticipantProof(
+  hostPubkey: string,
+  eventId: string,
+  participantSecretKey: Uint8Array
+): string {
+  const aTag = \`30311:\${hostPubkey}:\${eventId}\`
+  const hash = sha256(new TextEncoder().encode(aTag))
+  const signature = schnorr.sign(hash, participantSecretKey)
+  return bytesToHex(signature)
+}
+
+// 發送直播聊天訊息
+function createLiveChatMessage(
+  hostPubkey: string,
+  eventId: string,
+  message: string,
+  relay: string,
+  secretKey: Uint8Array
+): object {
+  const aTag = \`30311:\${hostPubkey}:\${eventId}\`
+
+  const event = {
+    kind: 1311,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['a', aTag, relay],
+    ],
+    content: message,
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 更新活動狀態為直播中
+function startLiveEvent(
+  eventId: string,
+  currentOptions: LiveEventOptions,
+  secretKey: Uint8Array
+): object {
+  return createLiveEvent({
+    ...currentOptions,
+    id: eventId,
+    status: 'live',
+    starts: Math.floor(Date.now() / 1000),
+  }, secretKey)
+}
+
+// 結束直播活動
+function endLiveEvent(
+  eventId: string,
+  currentOptions: LiveEventOptions,
+  recordingUrl: string,
+  totalParticipants: number,
+  secretKey: Uint8Array
+): object {
+  return createLiveEvent({
+    ...currentOptions,
+    id: eventId,
+    status: 'ended',
+    ends: Math.floor(Date.now() / 1000),
+    recordingUrl,
+    totalParticipants,
+  }, secretKey)
+}
+
+// 使用範例
+const hostSk = generateSecretKey()
+const hostPk = getPublicKey(hostSk)
+
+const speakerSk = generateSecretKey()
+const speakerPk = getPublicKey(speakerSk)
+
+const eventId = 'nostr-dev-meetup-2024'
+
+// 創建排程活動
+const plannedEvent = createLiveEvent({
+  id: eventId,
+  title: 'Nostr 開發者聚會',
+  summary: '討論 Nostr 協議的最新發展和未來計畫',
+  image: 'https://example.com/cover.jpg',
+  streamingUrl: 'https://stream.example.com/live/abc123',
+  starts: Math.floor(Date.now() / 1000) + 86400, // 明天
+  status: 'planned',
+  participants: [
+    { pubkey: hostPk, role: 'Host' },
+    { pubkey: speakerPk, relay: 'wss://relay.example.com', role: 'Speaker' },
+  ],
+}, hostSk)
+
+// 講者生成參與證明
+const proof = generateParticipantProof(hostPk, eventId, speakerSk)
+console.log('Speaker proof:', proof)
+
+// 發送聊天訊息
+const chatMessage = createLiveChatMessage(
+  hostPk,
+  eventId,
+  '大家好！期待今天的分享！🎉',
+  'wss://relay.example.com',
+  speakerSk
+)
+
+console.log('Planned event:', plannedEvent)
+console.log('Chat message:', chatMessage)`}</code></pre>
+  </section>
+
+  <!-- Query Live Events -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">查詢直播活動</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { SimplePool } from 'nostr-tools'
+
+const pool = new SimplePool()
+const relays = ['wss://relay.example.com']
+
+// 查詢正在直播的活動
+async function getLiveEvents() {
+  const events = await pool.querySync(relays, {
+    kinds: [30311],
+    '#status': ['live'],
+  })
+  return events
+}
+
+// 查詢即將開始的活動
+async function getUpcomingEvents() {
+  const now = Math.floor(Date.now() / 1000)
+  const events = await pool.querySync(relays, {
+    kinds: [30311],
+    '#status': ['planned'],
+  })
+
+  // 過濾出未來的活動
+  return events.filter(event => {
+    const startsTag = event.tags.find(t => t[0] === 'starts')
+    if (!startsTag) return true
+    return parseInt(startsTag[1]) > now
+  })
+}
+
+// 查詢特定活動的聊天訊息
+async function getLiveChatMessages(hostPubkey: string, eventId: string) {
+  const aTag = \`30311:\${hostPubkey}:\${eventId}\`
+  const messages = await pool.querySync(relays, {
+    kinds: [1311],
+    '#a': [aTag],
+  })
+  return messages.sort((a, b) => a.created_at - b.created_at)
+}
+
+// 訂閱直播聊天
+function subscribeLiveChat(
+  hostPubkey: string,
+  eventId: string,
+  onMessage: (message: any) => void
+) {
+  const aTag = \`30311:\${hostPubkey}:\${eventId}\`
+
+  return pool.subscribeMany(
+    relays,
+    [{
+      kinds: [1311],
+      '#a': [aTag],
+      since: Math.floor(Date.now() / 1000),
+    }],
+    {
+      onevent(event) {
+        onMessage(event)
+      },
+    }
+  )
+}
+
+// 解析直播活動
+function parseLiveEvent(event: any) {
+  const getTag = (name: string) =>
+    event.tags.find((t: string[]) => t[0] === name)?.[1]
+
+  const participants = event.tags
+    .filter((t: string[]) => t[0] === 'p')
+    .map((t: string[]) => ({
+      pubkey: t[1],
+      relay: t[2] || undefined,
+      role: t[3] || 'Participant',
+      proof: t[4] || undefined,
+    }))
+
+  return {
+    id: getTag('d'),
+    title: getTag('title'),
+    summary: getTag('summary'),
+    image: getTag('image'),
+    streamingUrl: getTag('streaming'),
+    recordingUrl: getTag('recording'),
+    starts: getTag('starts') ? parseInt(getTag('starts')!) : undefined,
+    ends: getTag('ends') ? parseInt(getTag('ends')!) : undefined,
+    status: getTag('status') as LiveStatus,
+    currentParticipants: getTag('current_participants')
+      ? parseInt(getTag('current_participants')!)
+      : undefined,
+    participants,
+    host: event.pubkey,
+    createdAt: event.created_at,
+  }
+}
+
+// 使用範例
+const liveEvents = await getLiveEvents()
+console.log('正在直播:', liveEvents.map(e => parseLiveEvent(e)))
+
+const upcoming = await getUpcomingEvents()
+console.log('即將開始:', upcoming.map(e => parseLiveEvent(e)))`}</code></pre>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">應用場景</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📺 視訊直播</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          類似 YouTube Live 或 Twitch 的直播平台，支援即時聊天互動。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎙️ 語音房間</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          類似 Twitter Spaces 或 Clubhouse 的語音聊天室，如 Nostr Nests。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">💼 線上會議</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          去中心化的視訊會議，支援多個房間和會議排程。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎓 線上課程</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          教育直播，支援課程排程、學員互動和錄影回放。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎮 遊戲直播</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          遊戲實況直播，整合打賞（Zaps）功能。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎵 音樂表演</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          現場音樂演出直播，觀眾可以透過 Zaps 打賞藝人。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Best Practices -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">最佳實踐</h2>
+    <div class="space-y-4">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 定期更新活動狀態</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          直播期間定期更新事件（建議每 5-10 分鐘），更新觀眾數等資訊，避免被視為已結束。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 使用參與者證明</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          講者應提供 proof 簽名，證明他們同意被列為參與者，防止惡意主持人冒名。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 保留錄影連結</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          活動結束後更新事件，添加 recording 標籤讓錯過直播的用戶可以回看。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 限制參與者列表大小</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          建議參與者列表不超過 1000 人，大型活動應使用 current_participants 數字而非列出所有人。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 聊天訊息必須包含 a 標籤</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          kind 1311 聊天訊息必須包含指向活動的 a 標籤，否則無法正確關聯。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related NIPs -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">相關 NIP</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <a
+        href="/tech/nostr/nip-57"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-57 Zaps</h4>
+        <p class="text-sm text-[var(--text-secondary)]">直播打賞功能</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-19"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-19 bech32 編碼</h4>
+        <p class="text-sm text-[var(--text-secondary)]">naddr 編碼分享活動連結</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-30"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-30 自訂表情</h4>
+        <p class="text-sm text-[var(--text-secondary)]">聊天訊息使用自訂表情</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-38"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-38 用戶狀態</h4>
+        <p class="text-sm text-[var(--text-secondary)]">顯示用戶正在觀看的直播</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">總結</h2>
+    <div class="p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        NIP-53 提供了一套完整的直播活動解決方案，支援視訊直播、語音房間、線上會議等多種場景。
+        透過狀態管理、參與者角色和即時聊天，打造去中心化的互動體驗。
+      </p>
+      <div class="grid md:grid-cols-4 gap-4 text-center">
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-purple-400">30311</div>
+          <div class="text-sm text-[var(--text-secondary)]">直播活動</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-blue-400">1311</div>
+          <div class="text-sm text-[var(--text-secondary)]">聊天訊息</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-green-400">3 種</div>
+          <div class="text-sm text-[var(--text-secondary)]">活動狀態</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-orange-400">5 種</div>
+          <div class="text-sm text-[var(--text-secondary)]">參與者角色</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
