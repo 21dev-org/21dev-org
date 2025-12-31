@@ -1,0 +1,142 @@
+---
+/**
+ * Learning Progress Component
+ * Displays user's learning progress and level
+ * Uses client-side JavaScript to read from localStorage
+ */
+
+interface Props {
+  class?: string;
+  showDetails?: boolean;
+}
+
+const { class: className = '', showDetails = false } = Astro.props;
+---
+
+<div class:list={['learning-progress', className]} id="learning-progress-widget">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-medium text-[var(--text-tertiary)]">學習進度</h3>
+    <span
+      id="learning-level"
+      class="text-xs px-2 py-0.5 rounded-full bg-bitcoin-100 text-bitcoin-700 dark:bg-bitcoin-900/30 dark:text-bitcoin-400"
+    >
+      載入中...
+    </span>
+  </div>
+
+  <div id="progress-stats" class="space-y-2">
+    <div class="flex items-center justify-between text-sm">
+      <span class="text-[var(--text-secondary)]">已閱讀頁面</span>
+      <span id="total-pages" class="font-medium text-[var(--text-primary)]">-</span>
+    </div>
+
+    {
+      showDetails && (
+        <>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-[var(--text-secondary)]">學習文章</span>
+            <span id="articles-count" class="text-[var(--text-primary)]">
+              -
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-[var(--text-secondary)]">BIP 文檔</span>
+            <span id="bips-count" class="text-[var(--text-primary)]">
+              -
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-[var(--text-secondary)]">技術文檔</span>
+            <span id="tech-count" class="text-[var(--text-primary)]">
+              -
+            </span>
+          </div>
+        </>
+      )
+    }
+  </div>
+
+  <div id="progress-description" class="mt-3 text-xs text-[var(--text-tertiary)]">
+    追蹤你的學習旅程
+  </div>
+</div>
+
+<script>
+  import {
+    getProgress,
+    getLearningLevel,
+    getProgressStats,
+    recordPageVisit,
+  } from '@/utils/learning-progress';
+
+  function updateProgressWidget() {
+    const progress = getProgress();
+    const level = getLearningLevel(progress);
+    const stats = getProgressStats(progress);
+
+    // Update level badge
+    const levelEl = document.getElementById('learning-level');
+    if (levelEl) {
+      levelEl.textContent = level.levelZh;
+    }
+
+    // Update total pages
+    const totalEl = document.getElementById('total-pages');
+    if (totalEl) {
+      totalEl.textContent = String(stats.totalPages);
+    }
+
+    // Update detailed stats if present
+    const articlesEl = document.getElementById('articles-count');
+    if (articlesEl) {
+      articlesEl.textContent = String(stats.articlesCount);
+    }
+
+    const bipsEl = document.getElementById('bips-count');
+    if (bipsEl) {
+      bipsEl.textContent = String(stats.bipsCount);
+    }
+
+    const techEl = document.getElementById('tech-count');
+    if (techEl) {
+      techEl.textContent = String(stats.techDocsCount);
+    }
+
+    // Update description
+    const descEl = document.getElementById('progress-description');
+    if (descEl) {
+      descEl.textContent = level.description;
+    }
+  }
+
+  function initProgressTracking() {
+    // Record current page visit
+    const path = window.location.pathname;
+    if (
+      path.startsWith('/learn/') ||
+      path.startsWith('/bips/') ||
+      path.startsWith('/books/') ||
+      path.startsWith('/tech/')
+    ) {
+      recordPageVisit(path);
+    }
+
+    // Update the widget
+    updateProgressWidget();
+  }
+
+  // Initialize on load
+  initProgressTracking();
+
+  // Re-initialize on page navigation
+  document.addEventListener('astro:after-swap', initProgressTracking);
+</script>
+
+<style>
+  .learning-progress {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+  }
+</style>

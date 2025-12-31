@@ -1,0 +1,193 @@
+---
+/**
+ * Share Buttons Component
+ * Provides social sharing options for articles
+ */
+import TwitterIcon from '@/components/svg/TwitterIcon.astro';
+import NostrIcon from '@/components/svg/NostrIcon.astro';
+
+interface Props {
+  title: string;
+  url?: string;
+  description?: string;
+  class?: string;
+}
+
+const { title, url, description = '', class: className = '' } = Astro.props;
+
+// Use current URL if not provided
+const shareUrl = url || Astro.url.href;
+---
+
+<div class:list={['share-buttons flex items-center gap-2', className]}>
+  <span class="text-sm text-[var(--text-tertiary)] mr-1">分享:</span>
+
+  <!-- Twitter/X -->
+  <a
+    href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="share-btn"
+    aria-label="分享到 Twitter"
+    title="分享到 Twitter"
+  >
+    <TwitterIcon size={18} />
+  </a>
+
+  <!-- Nostr -->
+  <button
+    type="button"
+    class="share-btn nostr-share"
+    data-title={title}
+    data-url={shareUrl}
+    data-description={description}
+    aria-label="分享到 Nostr"
+    title="分享到 Nostr"
+  >
+    <NostrIcon size={18} />
+  </button>
+
+  <!-- Copy Link -->
+  <button
+    type="button"
+    class="share-btn copy-link"
+    data-url={shareUrl}
+    aria-label="複製連結"
+    title="複製連結"
+  >
+    <svg
+      class="w-[18px] h-[18px]"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+      ></path>
+    </svg>
+  </button>
+</div>
+
+<!-- Copy success tooltip -->
+<div
+  id="copy-tooltip"
+  class="fixed pointer-events-none opacity-0 transition-opacity duration-200 bg-[var(--bg-secondary)] text-[var(--text-primary)] text-sm px-3 py-1.5 rounded-lg shadow-lg border border-[var(--border-default)] z-50"
+>
+  已複製連結
+</div>
+
+<style>
+  .share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 0.5rem;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .share-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+  }
+
+  .share-btn:active {
+    transform: scale(0.95);
+  }
+</style>
+
+<script>
+  function initShareButtons() {
+    // Copy link functionality
+    const copyButtons = document.querySelectorAll('.copy-link');
+    const tooltip = document.getElementById('copy-tooltip');
+
+    copyButtons.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const button = e.currentTarget as HTMLButtonElement;
+        const url = button.dataset.url;
+
+        if (url && tooltip) {
+          try {
+            await navigator.clipboard.writeText(url);
+
+            // Position tooltip near the button
+            const rect = button.getBoundingClientRect();
+            tooltip.style.left = `${rect.left + rect.width / 2}px`;
+            tooltip.style.top = `${rect.top - 40}px`;
+            tooltip.style.transform = 'translateX(-50%)';
+            tooltip.style.opacity = '1';
+
+            // Hide after 2 seconds
+            setTimeout(() => {
+              tooltip.style.opacity = '0';
+            }, 2000);
+          } catch {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+          }
+        }
+      });
+    });
+
+    // Nostr share functionality
+    const nostrButtons = document.querySelectorAll('.nostr-share');
+
+    nostrButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const button = e.currentTarget as HTMLButtonElement;
+        const title = button.dataset.title || '';
+        const url = button.dataset.url || '';
+
+        // Create Nostr share content
+        const content = `${title}\n\n${url}\n\n#bitcoin #21dev`;
+
+        // Try to open in Nostr client
+        // First try web+nostr protocol, then fallback to copying
+        const nostrUrl = `web+nostr:${encodeURIComponent(content)}`;
+
+        // Check if a Nostr handler is registered
+        try {
+          window.open(nostrUrl, '_blank');
+        } catch {
+          // Fallback: copy to clipboard
+          navigator.clipboard.writeText(content).then(() => {
+            if (tooltip) {
+              const rect = button.getBoundingClientRect();
+              tooltip.textContent = '已複製 Nostr 內容';
+              tooltip.style.left = `${rect.left + rect.width / 2}px`;
+              tooltip.style.top = `${rect.top - 40}px`;
+              tooltip.style.transform = 'translateX(-50%)';
+              tooltip.style.opacity = '1';
+
+              setTimeout(() => {
+                tooltip.style.opacity = '0';
+                tooltip.textContent = '已複製連結';
+              }, 2000);
+            }
+          });
+        }
+      });
+    });
+  }
+
+  // Initialize on load
+  initShareButtons();
+
+  // Re-initialize on page navigation (Astro View Transitions)
+  document.addEventListener('astro:after-swap', initShareButtons);
+</script>
