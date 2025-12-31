@@ -1,0 +1,375 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-13 工作量證明"
+  description="Nostr 工作量證明機制，用於防止垃圾訊息和提升事件優先級。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-13 工作量證明' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-11/',
+    title: 'NIP-11 中繼器資訊',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-19/',
+    title: 'NIP-19 bech32 編碼',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-13 定義了 Nostr 事件的工作量證明（Proof of Work）機制。通過要求事件 ID
+    具有特定數量的前導零位元，可以增加產生事件的計算成本，從而防止垃圾訊息攻擊。
+    這個概念類似於比特幣的挖礦，但用於 Nostr 事件。
+  </p>
+
+  <h2 id="how-it-works">運作原理</h2>
+  <p>
+    Nostr 事件的 ID 是事件內容的 SHA-256 雜湊值。NIP-13 通過在事件中加入
+    <code>nonce</code> 標籤，不斷調整 nonce 值直到事件 ID 的前導零位元數達到目標難度。
+  </p>
+
+  <h3>難度計算</h3>
+  <p>
+    難度以前導零位元數表示。例如，難度 16 表示事件 ID 的前 16 個位元必須為零，
+    相當於 ID 以 <code>0000</code>（4 個十六進位零）開頭。
+  </p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">難度</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">前導零位元</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">十六進位開頭</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">預期嘗試次數</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">8</td>
+          <td class="border border-[var(--border-default)] p-3">8 bits</td>
+          <td class="border border-[var(--border-default)] p-3">00</td>
+          <td class="border border-[var(--border-default)] p-3">~256</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">16</td>
+          <td class="border border-[var(--border-default)] p-3">16 bits</td>
+          <td class="border border-[var(--border-default)] p-3">0000</td>
+          <td class="border border-[var(--border-default)] p-3">~65,536</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">24</td>
+          <td class="border border-[var(--border-default)] p-3">24 bits</td>
+          <td class="border border-[var(--border-default)] p-3">000000</td>
+          <td class="border border-[var(--border-default)] p-3">~16,777,216</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3">32</td>
+          <td class="border border-[var(--border-default)] p-3">32 bits</td>
+          <td class="border border-[var(--border-default)] p-3">00000000</td>
+          <td class="border border-[var(--border-default)] p-3">~4,294,967,296</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="nonce-tag">Nonce 標籤</h2>
+  <p>
+    事件必須包含 <code>nonce</code> 標籤來聲明工作量證明。標籤格式為：
+  </p>
+
+  <pre><code class="language-json">{`["nonce", "<nonce 值>", "<目標難度>"]`}</code></pre>
+
+  <h3>事件範例</h3>
+  <pre><code class="language-json">{`{
+  "id": "000006d8c378af1779d2feebc7603a125d99eca0ccf1085959b307f64e5dd358",
+  "pubkey": "a]48...",
+  "created_at": 1651794653,
+  "kind": 1,
+  "tags": [
+    ["nonce", "776797", "20"]
+  ],
+  "content": "這是一則帶有工作量證明的筆記",
+  "sig": "..."
+}`}</code></pre>
+
+  <p>
+    在這個範例中，事件 ID 以 <code>000006</code> 開頭，表示至少有 20 個前導零位元
+    （實際上有 21 個）。<code>nonce</code> 標籤聲明目標難度為 20，nonce 值為 776797。
+  </p>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>計算前導零位元</h3>
+  <pre><code class="language-typescript">{`// 計算事件 ID 的前導零位元數
+function countLeadingZeroBits(hex: string): number {
+  let count = 0;
+
+  for (const char of hex) {
+    const nibble = parseInt(char, 16);
+    if (nibble === 0) {
+      count += 4;
+    } else {
+      // 計算這個半位元組的前導零
+      count += Math.clz32(nibble) - 28;
+      break;
+    }
+  }
+
+  return count;
+}
+
+// 測試
+console.log(countLeadingZeroBits('000006d8...')); // 21
+console.log(countLeadingZeroBits('0000ffff...')); // 16
+console.log(countLeadingZeroBits('00000000...')); // 32`}</code></pre>
+
+  <h3>挖掘事件</h3>
+  <pre><code class="language-typescript">{`import { getEventHash, finalizeEvent, getPublicKey } from 'nostr-tools';
+
+interface UnsignedEvent {
+  kind: number;
+  created_at: number;
+  tags: string[][];
+  content: string;
+  pubkey: string;
+}
+
+// 挖掘帶有 PoW 的事件
+function mineEvent(
+  event: UnsignedEvent,
+  targetDifficulty: number,
+  maxIterations: number = 10000000
+): UnsignedEvent | null {
+  let nonce = 0;
+
+  while (nonce < maxIterations) {
+    // 建立帶有當前 nonce 的事件
+    const eventWithNonce: UnsignedEvent = {
+      ...event,
+      tags: [
+        ...event.tags.filter(t => t[0] !== 'nonce'),
+        ['nonce', nonce.toString(), targetDifficulty.toString()],
+      ],
+    };
+
+    // 計算事件 ID
+    const id = getEventHash(eventWithNonce);
+
+    // 檢查難度
+    if (countLeadingZeroBits(id) >= targetDifficulty) {
+      console.log(\`Found valid PoW after \${nonce} iterations\`);
+      console.log(\`Event ID: \${id}\`);
+      return eventWithNonce;
+    }
+
+    nonce++;
+
+    // 每 100000 次顯示進度
+    if (nonce % 100000 === 0) {
+      console.log(\`Mining... \${nonce} attempts\`);
+    }
+  }
+
+  console.log('Max iterations reached without finding valid PoW');
+  return null;
+}
+
+// 使用範例
+async function createPowEvent(
+  privateKey: Uint8Array,
+  content: string,
+  difficulty: number
+) {
+  const pubkey = getPublicKey(privateKey);
+
+  const unsignedEvent: UnsignedEvent = {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content,
+    pubkey,
+  };
+
+  const minedEvent = mineEvent(unsignedEvent, difficulty);
+
+  if (!minedEvent) {
+    throw new Error('Failed to mine event');
+  }
+
+  return finalizeEvent(minedEvent, privateKey);
+}`}</code></pre>
+
+  <h3>Web Worker 實作</h3>
+  <p>
+    對於較高難度的 PoW，建議使用 Web Worker 避免阻塞主線程：
+  </p>
+
+  <pre><code class="language-typescript">{`// pow-worker.ts
+self.onmessage = (e) => {
+  const { event, targetDifficulty, startNonce, endNonce } = e.data;
+
+  for (let nonce = startNonce; nonce < endNonce; nonce++) {
+    const eventWithNonce = {
+      ...event,
+      tags: [
+        ...event.tags.filter((t: string[]) => t[0] !== 'nonce'),
+        ['nonce', nonce.toString(), targetDifficulty.toString()],
+      ],
+    };
+
+    const id = getEventHash(eventWithNonce);
+
+    if (countLeadingZeroBits(id) >= targetDifficulty) {
+      self.postMessage({ found: true, event: eventWithNonce, nonce });
+      return;
+    }
+
+    // 定期回報進度
+    if (nonce % 10000 === 0) {
+      self.postMessage({ found: false, progress: nonce });
+    }
+  }
+
+  self.postMessage({ found: false, exhausted: true });
+};
+
+// 主線程使用多個 worker 並行挖掘
+async function mineWithWorkers(
+  event: UnsignedEvent,
+  difficulty: number,
+  workerCount: number = 4
+) {
+  const workers: Worker[] = [];
+  const chunkSize = 1000000;
+
+  return new Promise((resolve, reject) => {
+    for (let i = 0; i < workerCount; i++) {
+      const worker = new Worker('pow-worker.ts');
+
+      worker.onmessage = (e) => {
+        if (e.data.found) {
+          // 終止所有 worker
+          workers.forEach(w => w.terminate());
+          resolve(e.data.event);
+        }
+      };
+
+      worker.postMessage({
+        event,
+        targetDifficulty: difficulty,
+        startNonce: i * chunkSize,
+        endNonce: (i + 1) * chunkSize,
+      });
+
+      workers.push(worker);
+    }
+  });
+}`}</code></pre>
+
+  <h2 id="verification">驗證</h2>
+  <pre><code class="language-typescript">{`// 驗證事件的工作量證明
+function verifyPow(event: Event): { valid: boolean; difficulty: number } {
+  // 找到 nonce 標籤
+  const nonceTag = event.tags.find(t => t[0] === 'nonce');
+
+  if (!nonceTag) {
+    return { valid: false, difficulty: 0 };
+  }
+
+  const targetDifficulty = parseInt(nonceTag[2], 10);
+  const actualDifficulty = countLeadingZeroBits(event.id);
+
+  return {
+    valid: actualDifficulty >= targetDifficulty,
+    difficulty: actualDifficulty,
+  };
+}
+
+// 使用範例
+const result = verifyPow(event);
+if (result.valid) {
+  console.log(\`Valid PoW with difficulty \${result.difficulty}\`);
+} else {
+  console.log('Invalid PoW');
+}`}</code></pre>
+
+  <h2 id="relay-usage">中繼器應用</h2>
+  <p>中繼器可以通過 NIP-11 聲明對 PoW 的要求：</p>
+
+  <pre><code class="language-json">{`{
+  "limitation": {
+    "min_pow_difficulty": 16
+  }
+}`}</code></pre>
+
+  <h3>查詢帶有 PoW 的事件</h3>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io'];
+
+// 查詢所有事件，然後篩選高 PoW
+async function getHighPowEvents(minDifficulty: number) {
+  const events = await pool.querySync(relays, {
+    kinds: [1],
+    limit: 100,
+  });
+
+  return events.filter(event => {
+    const { valid, difficulty } = verifyPow(event);
+    return valid && difficulty >= minDifficulty;
+  });
+}`}</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+  <ul>
+    <li><strong>垃圾訊息防護</strong>：中繼器可要求最低 PoW 難度</li>
+    <li><strong>優先顯示</strong>：客戶端可優先顯示高 PoW 事件</li>
+    <li><strong>付費替代</strong>：用計算成本替代付費訂閱</li>
+    <li><strong>信譽系統</strong>：累積的 PoW 可作為用戶信譽指標</li>
+    <li><strong>重要公告</strong>：用高 PoW 標記重要訊息</li>
+  </ul>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>時間戳承諾</strong>：PoW 與 <code>created_at</code> 綁定，事件時間無法修改</li>
+    <li><strong>設備差異</strong>：不同設備計算能力差異大，難度設定需考慮普通用戶</li>
+    <li><strong>電池消耗</strong>：移動設備上的 PoW 會消耗大量電池</li>
+    <li><strong>難度通膨</strong>：隨著硬體進步，相同難度的成本會降低</li>
+  </ul>
+
+  <h2 id="committed-pow">綁定 PoW</h2>
+  <p>
+    為防止 PoW 被重複使用在不同事件上，nonce 標籤可以包含對特定欄位的承諾：
+  </p>
+
+  <pre><code class="language-json">{`{
+  "tags": [
+    ["nonce", "776797", "20", "pubkey,created_at"]
+  ]
+}`}</code></pre>
+
+  <p>
+    這表示 PoW 是針對特定的 pubkey 和 created_at 計算的，
+    無法被複製到其他用戶或時間的事件上。
+  </p>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-11/">NIP-11</a> - 中繼器資訊（PoW 要求聲明）</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/13.md" target="_blank" rel="noopener">NIP-13 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
