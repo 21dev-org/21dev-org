@@ -1,0 +1,478 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-56 檢舉"
+  description="Nostr 內容檢舉標準，讓用戶可以標記不當內容供客戶端和中繼器參考。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-56 檢舉' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{
+    href: '/tech/nostr/nip-51/',
+    title: 'NIP-51 列表',
+  }}
+  nextPage={{
+    href: '/tech/nostr/nip-57/',
+    title: 'NIP-57 Zaps',
+  }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-56 定義了內容檢舉標準，使用 kind 1984 事件讓用戶可以標記不當內容。
+    這些檢舉可以被客戶端和中繼器用於內容審核決策，但最終的處理方式
+    由各平台自行決定。
+  </p>
+
+  <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg my-6">
+    <p class="text-blue-700 dark:text-blue-300 font-medium mb-2">去中心化審核</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      Nostr 沒有中央審核機構。檢舉是一種信號，客戶端可以根據用戶的社交圖譜
+      （如朋友的檢舉）來決定如何處理內容。
+    </p>
+  </div>
+
+  <h2 id="event-structure">事件結構</h2>
+  <p>檢舉使用 kind 1984 事件：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 1984,
+  "content": "檢舉原因說明（選填）",
+  "tags": [
+    ["p", "<被檢舉者公鑰>", "<檢舉類型>"],
+    ["e", "<被檢舉事件ID>", "<檢舉類型>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
+    <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">Kind 1984</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      這個 kind 號碼是對喬治·歐威爾小說《1984》的引用，
+      暗示了審核系統的雙面性。
+    </p>
+  </div>
+
+  <h2 id="report-types">檢舉類型</h2>
+  <div class="overflow-x-auto my-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-[var(--bg-secondary)]">
+          <th class="border border-[var(--border-default)] p-3 text-left">類型</th>
+          <th class="border border-[var(--border-default)] p-3 text-left">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">nudity</td>
+          <td class="border border-[var(--border-default)] p-3">裸露或成人內容</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">malware</td>
+          <td class="border border-[var(--border-default)] p-3">病毒、木馬、間諜軟體等</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">profanity</td>
+          <td class="border border-[var(--border-default)] p-3">髒話或仇恨言論</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">illegal</td>
+          <td class="border border-[var(--border-default)] p-3">違法內容（依司法管轄區）</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">spam</td>
+          <td class="border border-[var(--border-default)] p-3">垃圾訊息</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">impersonation</td>
+          <td class="border border-[var(--border-default)] p-3">冒充他人</td>
+        </tr>
+        <tr>
+          <td class="border border-[var(--border-default)] p-3 font-mono">other</td>
+          <td class="border border-[var(--border-default)] p-3">其他</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="reporting-user">檢舉用戶</h2>
+  <p>檢舉用戶的整體行為：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 1984,
+  "content": "此帳號持續發送垃圾訊息",
+  "tags": [
+    ["p", "<被檢舉者公鑰>", "spam"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="reporting-event">檢舉特定事件</h2>
+  <p>檢舉特定貼文或事件，需要同時包含 <code>e</code> 和 <code>p</code> 標籤：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 1984,
+  "content": "這則貼文包含不當圖片",
+  "tags": [
+    ["e", "<事件ID>", "nudity"],
+    ["p", "<事件作者公鑰>"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="reporting-media">檢舉媒體</h2>
+  <p>檢舉特定的媒體檔案（使用檔案雜湊）：</p>
+
+  <pre><code class="language-json">{`{
+  "kind": 1984,
+  "content": "此圖片包含惡意軟體",
+  "tags": [
+    ["x", "<檔案SHA-256雜湊>"],
+    ["e", "<包含此媒體的事件ID>"],
+    ["p", "<發布者公鑰>"],
+    ["server", "https://media.example.com"]
+  ],
+  ...
+}`}</code></pre>
+
+  <h2 id="implementation">實作</h2>
+
+  <h3>建立檢舉</h3>
+  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+
+type ReportType =
+  | 'nudity'
+  | 'malware'
+  | 'profanity'
+  | 'illegal'
+  | 'spam'
+  | 'impersonation'
+  | 'other';
+
+// 檢舉用戶
+function reportUser(
+  privateKey: Uint8Array,
+  userPubkey: string,
+  reportType: ReportType,
+  reason?: string
+) {
+  return finalizeEvent({
+    kind: 1984,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['p', userPubkey, reportType],
+    ],
+    content: reason || '',
+  }, privateKey);
+}
+
+// 檢舉事件
+function reportEvent(
+  privateKey: Uint8Array,
+  eventId: string,
+  authorPubkey: string,
+  reportType: ReportType,
+  reason?: string
+) {
+  return finalizeEvent({
+    kind: 1984,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['e', eventId, reportType],
+      ['p', authorPubkey],
+    ],
+    content: reason || '',
+  }, privateKey);
+}
+
+// 檢舉媒體
+function reportMedia(
+  privateKey: Uint8Array,
+  fileHash: string,
+  eventId: string,
+  authorPubkey: string,
+  reportType: ReportType,
+  serverUrl?: string,
+  reason?: string
+) {
+  const tags: string[][] = [
+    ['x', fileHash],
+    ['e', eventId],
+    ['p', authorPubkey],
+  ];
+
+  if (serverUrl) {
+    tags.push(['server', serverUrl]);
+  }
+
+  return finalizeEvent({
+    kind: 1984,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: reason || '',
+  }, privateKey);
+}
+
+// 使用範例
+const spamReport = reportUser(
+  privateKey,
+  'abc123...',
+  'spam',
+  '此帳號每小時發送數十則廣告'
+);
+
+const nudityReport = reportEvent(
+  privateKey,
+  'def456...',
+  'ghi789...',
+  'nudity',
+  '貼文包含未標記的成人內容'
+);`}</code></pre>
+
+  <h3>查詢檢舉</h3>
+  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+
+const pool = new SimplePool();
+const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+
+// 查詢針對特定用戶的檢舉
+async function getReportsForUser(userPubkey: string) {
+  return await pool.querySync(relays, {
+    kinds: [1984],
+    '#p': [userPubkey],
+  });
+}
+
+// 查詢針對特定事件的檢舉
+async function getReportsForEvent(eventId: string) {
+  return await pool.querySync(relays, {
+    kinds: [1984],
+    '#e': [eventId],
+  });
+}
+
+// 查詢來自特定用戶的檢舉（檢舉者）
+async function getReportsByUser(reporterPubkey: string) {
+  return await pool.querySync(relays, {
+    kinds: [1984],
+    authors: [reporterPubkey],
+  });
+}`}</code></pre>
+
+  <h3>分析檢舉</h3>
+  <pre><code class="language-typescript">{`interface ReportSummary {
+  pubkey: string;
+  totalReports: number;
+  byType: Record<ReportType, number>;
+  reporters: string[];
+}
+
+// 分析用戶的檢舉統計
+function analyzeReports(reports: Event[]): ReportSummary {
+  const summary: ReportSummary = {
+    pubkey: '',
+    totalReports: reports.length,
+    byType: {
+      nudity: 0,
+      malware: 0,
+      profanity: 0,
+      illegal: 0,
+      spam: 0,
+      impersonation: 0,
+      other: 0,
+    },
+    reporters: [],
+  };
+
+  for (const report of reports) {
+    // 取得被檢舉者
+    const pTag = report.tags.find(t => t[0] === 'p');
+    if (pTag) {
+      summary.pubkey = pTag[1];
+      const reportType = (pTag[2] || 'other') as ReportType;
+      summary.byType[reportType]++;
+    }
+
+    // 取得事件檢舉類型
+    const eTag = report.tags.find(t => t[0] === 'e');
+    if (eTag && eTag[2]) {
+      const reportType = eTag[2] as ReportType;
+      summary.byType[reportType]++;
+    }
+
+    // 記錄檢舉者
+    if (!summary.reporters.includes(report.pubkey)) {
+      summary.reporters.push(report.pubkey);
+    }
+  }
+
+  return summary;
+}`}</code></pre>
+
+  <h2 id="client-usage">客戶端使用</h2>
+  <p>客戶端可以根據社交圖譜來使用檢舉資訊：</p>
+
+  <pre><code class="language-typescript">{`// 檢查內容是否被朋友檢舉
+async function checkFriendReports(
+  eventId: string,
+  myFollowing: string[]
+): Promise<{
+  reported: boolean;
+  friendReports: Event[];
+}> {
+  const reports = await getReportsForEvent(eventId);
+
+  // 過濾出朋友的檢舉
+  const friendReports = reports.filter(r =>
+    myFollowing.includes(r.pubkey)
+  );
+
+  return {
+    reported: friendReports.length > 0,
+    friendReports,
+  };
+}
+
+// 根據檢舉決定顯示方式
+function getContentDisplay(
+  event: Event,
+  friendReports: Event[]
+): 'show' | 'blur' | 'hide' {
+  if (friendReports.length === 0) {
+    return 'show';
+  }
+
+  // 多個朋友檢舉 → 隱藏
+  if (friendReports.length >= 3) {
+    return 'hide';
+  }
+
+  // 單一朋友檢舉 → 模糊
+  return 'blur';
+}`}</code></pre>
+
+  <h2 id="relay-usage">中繼器使用</h2>
+  <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg my-6">
+    <p class="text-red-700 dark:text-red-300 font-medium mb-2">注意：自動審核風險</p>
+    <p class="text-[var(--text-secondary)] text-sm">
+      中繼器不應該自動根據檢舉進行審核，因為這容易被濫用（惡意檢舉）。
+      建議只根據受信任的審核者的檢舉來採取行動。
+    </p>
+  </div>
+
+  <pre><code class="language-typescript">{`// 中繼器端：只信任特定審核者的檢舉
+const trustedModerators = [
+  'npub1moderator1...',
+  'npub1moderator2...',
+];
+
+function shouldBlockContent(
+  reports: Event[],
+  trustedModerators: string[]
+): boolean {
+  // 只考慮受信任審核者的檢舉
+  const trustedReports = reports.filter(r =>
+    trustedModerators.includes(r.pubkey)
+  );
+
+  return trustedReports.length > 0;
+}`}</code></pre>
+
+  <h2 id="react-component">React 組件範例</h2>
+  <pre><code class="language-tsx">{`interface ReportButtonProps {
+  eventId?: string;
+  userPubkey: string;
+  onReport: (type: ReportType, reason: string) => void;
+}
+
+function ReportButton({ eventId, userPubkey, onReport }: ReportButtonProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<ReportType>('other');
+  const [reason, setReason] = useState('');
+
+  const reportTypes: { value: ReportType; label: string }[] = [
+    { value: 'spam', label: '垃圾訊息' },
+    { value: 'nudity', label: '成人內容' },
+    { value: 'profanity', label: '仇恨言論' },
+    { value: 'impersonation', label: '冒充他人' },
+    { value: 'malware', label: '惡意軟體' },
+    { value: 'illegal', label: '違法內容' },
+    { value: 'other', label: '其他' },
+  ];
+
+  const handleSubmit = () => {
+    onReport(selectedType, reason);
+    setIsOpen(false);
+    setReason('');
+  };
+
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)}>
+        檢舉
+      </button>
+
+      {isOpen && (
+        <div className="modal">
+          <h3>檢舉{eventId ? '貼文' : '用戶'}</h3>
+
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value as ReportType)}
+          >
+            {reportTypes.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+
+          <textarea
+            placeholder="請說明原因（選填）"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+
+          <button onClick={handleSubmit}>送出檢舉</button>
+          <button onClick={() => setIsOpen(false)}>取消</button>
+        </div>
+      )}
+    </>
+  );
+}`}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>社交過濾</strong>：優先考慮朋友的檢舉，而非陌生人</li>
+    <li><strong>閾值設定</strong>：設定合理的檢舉數量閾值再採取行動</li>
+    <li><strong>透明度</strong>：讓用戶知道內容為何被隱藏或模糊</li>
+    <li><strong>申訴機制</strong>：提供被檢舉者申訴的管道</li>
+    <li><strong>避免自動化</strong>：不要完全自動化審核決策</li>
+  </ul>
+
+  <h2 id="considerations">注意事項</h2>
+  <ul>
+    <li><strong>濫用風險</strong>：檢舉系統可能被用於騷擾或審查</li>
+    <li><strong>主觀性</strong>：不同用戶對「不當」的定義不同</li>
+    <li><strong>無法刪除</strong>：檢舉無法真正刪除內容，只是信號</li>
+    <li><strong>隱私</strong>：檢舉是公開的，檢舉者身份可見</li>
+  </ul>
+
+  <h2 id="related">相關 NIP</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01/">NIP-01</a> - 基本協議與事件結構</li>
+    <li><a href="/tech/nostr/nip-36/">NIP-36</a> - 敏感內容標記</li>
+    <li><a href="/tech/nostr/nip-51/">NIP-51</a> - 列表（可用於靜音）</li>
+    <li><a href="/tech/nostr/nip-09/">NIP-09</a> - 事件刪除</li>
+  </ul>
+
+  <h2 id="resources">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/56.md" target="_blank" rel="noopener">NIP-56 規範原文</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
+  </ul>
+</ArticleLayout>
