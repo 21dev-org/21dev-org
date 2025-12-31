@@ -1,0 +1,540 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-15: Nostr 市場"
+  description="基於 Nostr 的去中心化市場協議，支持商品展示、訂單管理和支付整合"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-15 定義了在 Nostr 上建立去中心化市場的協議。商家可以發布商品目錄（Stalls）
+    和商品清單（Products），買家可以瀏覽、下單，並通過閃電網路完成支付。
+    整個流程不需要中央伺服器，完全建立在 Nostr 協議之上。
+  </p>
+
+  <h2 id="event-kinds">事件類型</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>說明</th>
+        <th>類型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>30017</code></td>
+        <td>商店（Stall）</td>
+        <td>可定址</td>
+      </tr>
+      <tr>
+        <td><code>30018</code></td>
+        <td>商品（Product）</td>
+        <td>可定址</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="stall-structure">商店結構 (Kind 30017)</h2>
+
+  <p>商店是商家的店面，包含基本資訊和支付配置。</p>
+
+  <h3>Content 欄位（JSON）</h3>
+  <pre><code class="language-json">{
+  "id": "stall-unique-id",
+  "name": "我的比特幣商店",
+  "description": "販售各種比特幣相關商品",
+  "currency": "sat",
+  "shipping": [
+    {
+      "id": "worldwide",
+      "name": "全球配送",
+      "cost": 10000,
+      "regions": ["worldwide"]
+    },
+    {
+      "id": "local",
+      "name": "本地取貨",
+      "cost": 0,
+      "regions": ["TW"]
+    }
+  ]
+}</code></pre>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>商店唯一識別符</td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>分類標籤（可選）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="product-structure">商品結構 (Kind 30018)</h2>
+
+  <p>商品是商店中的具體項目，包含價格、庫存和圖片等資訊。</p>
+
+  <h3>Content 欄位（JSON）</h3>
+  <pre><code class="language-json">{
+  "id": "product-unique-id",
+  "stall_id": "stall-unique-id",
+  "name": "Bitcoin 硬體錢包",
+  "description": "安全儲存你的比特幣",
+  "images": [
+    "https://example.com/wallet1.jpg",
+    "https://example.com/wallet2.jpg"
+  ],
+  "currency": "sat",
+  "price": 500000,
+  "quantity": 10,
+  "specs": [
+    ["顏色", "黑色"],
+    ["型號", "Mk4"]
+  ],
+  "shipping": [
+    {
+      "id": "worldwide",
+      "cost": 5000
+    }
+  ]
+}</code></pre>
+
+  <h3>標籤</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>標籤</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>d</code></td>
+        <td>商品唯一識別符</td>
+      </tr>
+      <tr>
+        <td><code>t</code></td>
+        <td>商品標籤</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>建立商店</h3>
+  <pre><code class="language-json">{
+  "kind": 30017,
+  "content": "{\"id\":\"btc-store-2024\",\"name\":\"比特幣精品店\",\"description\":\"提供各種比特幣周邊商品\",\"currency\":\"sat\",\"shipping\":[{\"id\":\"tw-shipping\",\"name\":\"台灣宅配\",\"cost\":5000,\"regions\":[\"TW\"]}]}",
+  "tags": [
+    ["d", "btc-store-2024"],
+    ["t", "bitcoin"],
+    ["t", "商店"]
+  ]
+}</code></pre>
+
+  <h3>發布商品</h3>
+  <pre><code class="language-json">{
+  "kind": 30018,
+  "content": "{\"id\":\"coldcard-mk4\",\"stall_id\":\"btc-store-2024\",\"name\":\"Coldcard Mk4 硬體錢包\",\"description\":\"頂級比特幣硬體錢包，支援氣隙簽名\",\"images\":[\"https://example.com/coldcard.jpg\"],\"currency\":\"sat\",\"price\":1500000,\"quantity\":5,\"specs\":[[\"品牌\",\"Coinkite\"],[\"型號\",\"Mk4\"],[\"顏色\",\"黑色\"]],\"shipping\":[{\"id\":\"tw-shipping\",\"cost\":5000}]}",
+  "tags": [
+    ["d", "coldcard-mk4"],
+    ["t", "硬體錢包"],
+    ["t", "coldcard"],
+    ["t", "bitcoin"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>定義類型</h3>
+  <pre><code class="language-typescript">interface ShippingOption {
+  id: string;
+  name: string;
+  cost: number;
+  regions: string[];
+}
+
+interface Stall {
+  id: string;
+  name: string;
+  description?: string;
+  currency: string;
+  shipping: ShippingOption[];
+}
+
+interface ProductSpec {
+  name: string;
+  value: string;
+}
+
+interface ProductShipping {
+  id: string;
+  cost: number;
+}
+
+interface Product {
+  id: string;
+  stall_id: string;
+  name: string;
+  description?: string;
+  images?: string[];
+  currency: string;
+  price: number;
+  quantity: number;
+  specs?: [string, string][];
+  shipping: ProductShipping[];
+}</code></pre>
+
+  <h3>建立商店</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+function createStall(
+  stall: Stall,
+  secretKey: Uint8Array,
+  tags: string[][] = []
+) {
+  const event = {
+    kind: 30017,
+    content: JSON.stringify(stall),
+    tags: [
+      ['d', stall.id],
+      ...tags,
+    ],
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const stallEvent = createStall(
+  {
+    id: 'my-btc-store',
+    name: '比特幣精品店',
+    description: '專營比特幣硬體錢包和周邊',
+    currency: 'sat',
+    shipping: [
+      { id: 'tw', name: '台灣宅配', cost: 5000, regions: ['TW'] },
+      { id: 'intl', name: '國際配送', cost: 20000, regions: ['worldwide'] },
+    ],
+  },
+  secretKey,
+  [['t', 'bitcoin'], ['t', '硬體錢包']]
+);</code></pre>
+
+  <h3>建立商品</h3>
+  <pre><code class="language-typescript">function createProduct(
+  product: Product,
+  secretKey: Uint8Array,
+  tags: string[][] = []
+) {
+  const event = {
+    kind: 30018,
+    content: JSON.stringify(product),
+    tags: [
+      ['d', product.id],
+      ...tags,
+    ],
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例
+const productEvent = createProduct(
+  {
+    id: 'trezor-model-t',
+    stall_id: 'my-btc-store',
+    name: 'Trezor Model T',
+    description: '觸控螢幕硬體錢包，支援多幣種',
+    images: [
+      'https://example.com/trezor1.jpg',
+      'https://example.com/trezor2.jpg',
+    ],
+    currency: 'sat',
+    price: 1200000,
+    quantity: 10,
+    specs: [
+      ['品牌', 'SatoshiLabs'],
+      ['型號', 'Model T'],
+      ['螢幕', '彩色觸控'],
+    ],
+    shipping: [
+      { id: 'tw', cost: 5000 },
+      { id: 'intl', cost: 15000 },
+    ],
+  },
+  secretKey,
+  [['t', 'trezor'], ['t', '硬體錢包']]
+);</code></pre>
+
+  <h3>解析商店與商品</h3>
+  <pre><code class="language-typescript">function parseStall(event: any): Stall | null {
+  if (event.kind !== 30017) return null;
+
+  try {
+    return JSON.parse(event.content);
+  } catch {
+    return null;
+  }
+}
+
+function parseProduct(event: any): Product | null {
+  if (event.kind !== 30018) return null;
+
+  try {
+    return JSON.parse(event.content);
+  } catch {
+    return null;
+  }
+}
+
+// 使用範例
+const stall = parseStall(stallEvent);
+const product = parseProduct(productEvent);
+
+if (stall && product) {
+  console.log(`商店: ${stall.name}`);
+  console.log(`商品: ${product.name} - ${product.price} sats`);
+}</code></pre>
+
+  <h3>搜尋商品</h3>
+  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+
+interface ProductSearchOptions {
+  tags?: string[];
+  merchantPubkey?: string;
+  limit?: number;
+}
+
+async function searchProducts(
+  pool: SimplePool,
+  relays: string[],
+  options: ProductSearchOptions = {}
+): Promise&lt;{ event: any; product: Product }[]&gt; {
+  const filter: any = {
+    kinds: [30018],
+    limit: options.limit || 50,
+  };
+
+  if (options.merchantPubkey) {
+    filter.authors = [options.merchantPubkey];
+  }
+
+  if (options.tags && options.tags.length > 0) {
+    filter['#t'] = options.tags;
+  }
+
+  const events = await pool.querySync(relays, filter);
+
+  return events
+    .map((event) => ({
+      event,
+      product: parseProduct(event),
+    }))
+    .filter((item): item is { event: any; product: Product } =>
+      item.product !== null
+    )
+    .sort((a, b) => b.event.created_at - a.event.created_at);
+}
+
+// 使用範例
+const results = await searchProducts(pool, relays, {
+  tags: ['硬體錢包'],
+  limit: 20,
+});
+
+results.forEach(({ product }) => {
+  console.log(`${product.name}: ${product.price} sats`);
+});</code></pre>
+
+  <h3>取得商家所有商品</h3>
+  <pre><code class="language-typescript">async function getMerchantCatalog(
+  pool: SimplePool,
+  relays: string[],
+  merchantPubkey: string
+): Promise&lt;{
+  stalls: { event: any; stall: Stall }[];
+  products: { event: any; product: Product }[];
+}&gt; {
+  // 取得商店
+  const stallEvents = await pool.querySync(relays, {
+    kinds: [30017],
+    authors: [merchantPubkey],
+  });
+
+  const stalls = stallEvents
+    .map((event) => ({ event, stall: parseStall(event) }))
+    .filter((item): item is { event: any; stall: Stall } =>
+      item.stall !== null
+    );
+
+  // 取得商品
+  const productEvents = await pool.querySync(relays, {
+    kinds: [30018],
+    authors: [merchantPubkey],
+  });
+
+  const products = productEvents
+    .map((event) => ({ event, product: parseProduct(event) }))
+    .filter((item): item is { event: any; product: Product } =>
+      item.product !== null
+    );
+
+  return { stalls, products };
+}</code></pre>
+
+  <h3>React 元件</h3>
+  <pre><code class="language-typescript">interface ProductCardProps {
+  product: Product;
+  onAddToCart?: (product: Product) => void;
+}
+
+function ProductCard({ product, onAddToCart }: ProductCardProps) {
+  const formatPrice = (sats: number) => {
+    if (sats >= 1000000) {
+      return `${(sats / 100000000).toFixed(8)} BTC`;
+    }
+    return `${sats.toLocaleString()} sats`;
+  };
+
+  return (
+    &lt;div className="product-card"&gt;
+      {product.images && product.images[0] && (
+        &lt;img
+          src={product.images[0]}
+          alt={product.name}
+          className="product-image"
+        /&gt;
+      )}
+      &lt;div className="product-info"&gt;
+        &lt;h3&gt;{product.name}&lt;/h3&gt;
+        {product.description && (
+          &lt;p className="description"&gt;{product.description}&lt;/p&gt;
+        )}
+        &lt;div className="price"&gt;{formatPrice(product.price)}&lt;/div&gt;
+        &lt;div className="quantity"&gt;
+          庫存: {product.quantity > 0 ? product.quantity : '售罄'}
+        &lt;/div&gt;
+        {product.specs && (
+          &lt;div className="specs"&gt;
+            {product.specs.map(([key, value]) => (
+              &lt;div key={key}&gt;
+                &lt;span className="spec-key"&gt;{key}:&lt;/span&gt;
+                &lt;span className="spec-value"&gt;{value}&lt;/span&gt;
+              &lt;/div&gt;
+            ))}
+          &lt;/div&gt;
+        )}
+        &lt;button
+          onClick={() => onAddToCart?.(product)}
+          disabled={product.quantity === 0}
+        &gt;
+          加入購物車
+        &lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+function StallPage({ stall, products }: {
+  stall: Stall;
+  products: Product[];
+}) {
+  return (
+    &lt;div className="stall-page"&gt;
+      &lt;header&gt;
+        &lt;h1&gt;{stall.name}&lt;/h1&gt;
+        {stall.description && &lt;p&gt;{stall.description}&lt;/p&gt;}
+        &lt;div className="shipping-options"&gt;
+          &lt;h4&gt;配送選項&lt;/h4&gt;
+          {stall.shipping.map((option) => (
+            &lt;div key={option.id}&gt;
+              {option.name}: {option.cost} sats
+            &lt;/div&gt;
+          ))}
+        &lt;/div&gt;
+      &lt;/header&gt;
+      &lt;div className="products-grid"&gt;
+        {products
+          .filter((p) => p.stall_id === stall.id)
+          .map((product) => (
+            &lt;ProductCard key={product.id} product={product} /&gt;
+          ))}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="payment-flow">支付流程</h2>
+
+  <p>NIP-15 通常與閃電網路支付整合：</p>
+
+  <ol>
+    <li>買家選擇商品和配送方式</li>
+    <li>計算總金額（商品價格 + 運費）</li>
+    <li>商家生成閃電網路發票</li>
+    <li>買家支付發票</li>
+    <li>商家確認收款並處理訂單</li>
+  </ol>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>比特幣商品</h3>
+  <ul>
+    <li>硬體錢包銷售</li>
+    <li>比特幣周邊商品</li>
+    <li>書籍和教育資源</li>
+  </ul>
+
+  <h3>數位商品</h3>
+  <ul>
+    <li>電子書和課程</li>
+    <li>軟體授權</li>
+    <li>數位藝術作品</li>
+  </ul>
+
+  <h3>服務販售</h3>
+  <ul>
+    <li>諮詢服務</li>
+    <li>開發服務</li>
+    <li>設計服務</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>清晰的商品描述</strong>：提供詳細的商品資訊和規格</li>
+    <li><strong>高品質圖片</strong>：使用清晰的商品圖片</li>
+    <li><strong>合理的定價</strong>：使用 sats 作為計價單位方便閃電網路支付</li>
+    <li><strong>即時更新庫存</strong>：商品售出後及時更新數量</li>
+    <li><strong>明確的運費</strong>：清楚列出各地區的運費</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-57">NIP-57</a>：Zaps - 閃電網路支付</li>
+    <li><a href="/tech/nostr/nip-99">NIP-99</a>：分類廣告 - 簡易商品列表</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/15.md" target="_blank" rel="noopener noreferrer">NIP-15 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
