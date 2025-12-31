@@ -1,0 +1,437 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-46 遠端簽名"
+  description="深入了解 Nostr Connect 遠端簽名協議，實現跨設備安全簽名。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-46 遠端簽名' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'NIP-44 加密訊息 v2', href: '/tech/nostr/nip-44' }}
+  nextPage={{ title: 'NIP-57 Zaps', href: '/tech/nostr/nip-57' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-46？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-46（Nostr Connect）定義了一種遠端簽名協議，讓應用程式可以向遠端簽名器
+    （如手機 App、硬體設備）請求簽名，而私鑰永遠不會離開簽名器。
+    這類似於 WalletConnect 在以太坊生態系統中的作用。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>安全優勢：</strong>
+      私鑰保存在你信任的設備上（如手機），網頁應用只能請求簽名，
+      無法存取或匯出你的私鑰。每個請求都需要你在簽名器上確認。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作原理</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    {
+      [
+        { step: '1', title: '建立連接', desc: '客戶端生成臨時密鑰對，通過 bunker:// URI 或 nostrconnect:// 與簽名器建立連接' },
+        { step: '2', title: '加密通訊', desc: '雙方通過中繼器交換 NIP-04/NIP-44 加密的訊息' },
+        { step: '3', title: '請求簽名', desc: '客戶端發送簽名請求（如 sign_event），簽名器顯示確認對話框' },
+        { step: '4', title: '返回結果', desc: '用戶確認後，簽名器返回已簽名的事件或加密結果' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連接 URI 格式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">bunker:// URI</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    由簽名器提供，客戶端掃描或輸入來連接：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`bunker://<remote-signer-pubkey>?relay=<relay-url>&secret=<secret>
+
+# 範例
+bunker://a]7f6...?relay=wss://relay.nsec.app&secret=abc123
+
+# 參數說明
+- remote-signer-pubkey: 簽名器的公鑰
+- relay: 用於通訊的中繼器
+- secret: 可選的連接密鑰`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">nostrconnect:// URI</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    由客戶端生成，簽名器掃描來連接：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`nostrconnect://<client-pubkey>?relay=<relay>&metadata=<metadata>
+
+# 範例
+nostrconnect://b8e3...?relay=wss://relay.damus.io&metadata={
+  "name": "My App",
+  "url": "https://myapp.com",
+  "description": "A cool Nostr app"
+}
+
+# 參數說明
+- client-pubkey: 客戶端的臨時公鑰
+- relay: 用於通訊的中繼器
+- metadata: 應用程式資訊（JSON 編碼）`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">RPC 方法</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">方法</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">參數</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">connect</td>
+          <td class="py-3 px-4">建立連接</td>
+          <td class="py-3 px-4">pubkey, secret?, perms?</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">get_public_key</td>
+          <td class="py-3 px-4">取得公鑰</td>
+          <td class="py-3 px-4">-</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">sign_event</td>
+          <td class="py-3 px-4">簽署事件</td>
+          <td class="py-3 px-4">event (JSON)</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">nip04_encrypt</td>
+          <td class="py-3 px-4">NIP-04 加密</td>
+          <td class="py-3 px-4">pubkey, plaintext</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">nip04_decrypt</td>
+          <td class="py-3 px-4">NIP-04 解密</td>
+          <td class="py-3 px-4">pubkey, ciphertext</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">nip44_encrypt</td>
+          <td class="py-3 px-4">NIP-44 加密</td>
+          <td class="py-3 px-4">pubkey, plaintext</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">nip44_decrypt</td>
+          <td class="py-3 px-4">NIP-44 解密</td>
+          <td class="py-3 px-4">pubkey, ciphertext</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono text-purple-500">ping</td>
+          <td class="py-3 px-4">心跳檢測</td>
+          <td class="py-3 px-4">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息格式</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">請求訊息</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 請求格式（加密前）
+{
+  "id": "<random-id>",
+  "method": "sign_event",
+  "params": ["<event-json>"]
+}
+
+// 作為 kind 24133 事件發送
+{
+  "kind": 24133,
+  "pubkey": "<client-pubkey>",
+  "content": "<nip04-encrypted-request>",
+  "tags": [
+    ["p", "<remote-signer-pubkey>"]
+  ],
+  ...
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">回應訊息</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 成功回應
+{
+  "id": "<request-id>",
+  "result": "<signed-event-json>"
+}
+
+// 錯誤回應
+{
+  "id": "<request-id>",
+  "error": "User rejected the request"
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">使用 nostr-tools</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { Nip46Signer } from 'nostr-tools/nip46'
+
+// 從 bunker:// URI 建立連接
+const bunkerUri = 'bunker://a7f6...?relay=wss://relay.nsec.app'
+const signer = new Nip46Signer(bunkerUri)
+
+// 等待連接建立
+await signer.connect()
+
+// 取得公鑰
+const pubkey = await signer.getPublicKey()
+console.log('公鑰:', pubkey)
+
+// 簽署事件
+const unsignedEvent = {
+  kind: 1,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [],
+  content: 'Hello from Nostr Connect!'
+}
+
+const signedEvent = await signer.signEvent(unsignedEvent)
+console.log('已簽名:', signedEvent)
+
+// 加密訊息
+const encrypted = await signer.nip04Encrypt(recipientPubkey, 'Secret message')
+
+// 斷開連接
+signer.close()`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">生成 nostrconnect:// URI</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { generateSecretKey, getPublicKey } from 'nostr-tools'
+
+function generateConnectUri(relay, appMetadata) {
+  // 生成客戶端臨時密鑰
+  const clientSecret = generateSecretKey()
+  const clientPubkey = getPublicKey(clientSecret)
+
+  // 編碼 metadata
+  const metadata = encodeURIComponent(JSON.stringify(appMetadata))
+
+  // 構建 URI
+  const uri = \`nostrconnect://\${clientPubkey}?relay=\${encodeURIComponent(relay)}&metadata=\${metadata}\`
+
+  return { uri, clientSecret, clientPubkey }
+}
+
+// 使用
+const { uri } = generateConnectUri(
+  'wss://relay.damus.io',
+  {
+    name: 'My Nostr App',
+    url: 'https://myapp.com',
+    description: 'A cool Nostr application'
+  }
+)
+
+// 顯示 QR 碼讓簽名器掃描
+displayQRCode(uri)`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">權限系統</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    簽名器可以要求客戶端聲明需要的權限：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 權限字串格式
+perms=sign_event:1,sign_event:4,nip04_encrypt,nip04_decrypt
+
+// 常見權限
+- sign_event:<kind>  // 簽署特定類型事件
+- nip04_encrypt      // NIP-04 加密
+- nip04_decrypt      // NIP-04 解密
+- nip44_encrypt      // NIP-44 加密
+- nip44_decrypt      // NIP-44 解密
+
+// 範例：只允許發布貼文和私訊
+perms=sign_event:1,sign_event:4,nip04_encrypt,nip04_decrypt`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支援的簽名器</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        {
+          name: 'nsec.app',
+          url: 'https://nsec.app',
+          desc: '網頁版遠端簽名器',
+          type: 'Web',
+        },
+        {
+          name: 'Amber',
+          url: 'https://github.com/greenart7c3/Amber',
+          desc: 'Android 簽名器',
+          type: 'Android',
+        },
+        {
+          name: 'Nostr Signer',
+          url: 'https://apps.apple.com/app/nostr-signer/id6478773177',
+          desc: 'iOS 簽名器',
+          type: 'iOS',
+        },
+        {
+          name: 'Keystache',
+          url: 'https://github.com/nicholasburka/Keystache',
+          desc: 'macOS 簽名器',
+          type: 'macOS',
+        },
+        {
+          name: 'nsecBunker',
+          url: 'https://github.com/kind-0/nsecbunkerd',
+          desc: '自架伺服器簽名器',
+          type: 'Server',
+        },
+        {
+          name: 'Alby',
+          url: 'https://getalby.com',
+          desc: '支援 NIP-46 的擴充',
+          type: 'Extension',
+        },
+      ].map((signer) => (
+        <a
+          href={signer.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] hover:border-purple-500/50 transition-colors"
+        >
+          <div class="flex justify-between items-start mb-1">
+            <h4 class="font-semibold text-[var(--text-primary)]">{signer.name}</h4>
+            <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400">
+              {signer.type}
+            </span>
+          </div>
+          <p class="text-sm text-[var(--text-secondary)]">{signer.desc}</p>
+        </a>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-07 vs NIP-46</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-07</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-46</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">簽名位置</td>
+          <td class="py-3 px-4">同一設備（瀏覽器擴充）</td>
+          <td class="py-3 px-4">遠端設備（手機、伺服器）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">通訊方式</td>
+          <td class="py-3 px-4">本地 JavaScript API</td>
+          <td class="py-3 px-4">中繼器加密訊息</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">跨設備</td>
+          <td class="py-3 px-4">不支援</td>
+          <td class="py-3 px-4">支援</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">適用場景</td>
+          <td class="py-3 px-4">桌面網頁應用</td>
+          <td class="py-3 px-4">任何環境（含行動裝置）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">延遲</td>
+          <td class="py-3 px-4">低（本地）</td>
+          <td class="py-3 px-4">較高（網路）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優點</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 私鑰永不離開簽名器</li>
+        <li>• 每次請求可審核</li>
+        <li>• 支援細粒度權限控制</li>
+        <li>• 可跨設備使用</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">注意事項</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 依賴中繼器可用性</li>
+        <li>• 連接密鑰需妥善保管</li>
+        <li>• 網路延遲影響體驗</li>
+        <li>• 需要簽名器在線</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見使用場景</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">手機作為簽名器</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        在電腦上使用網頁應用，簽名請求發送到手機上的 Amber/Nostr Signer 確認。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">團隊共享帳號</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 nsecBunker 伺服器管理密鑰，多人可請求簽名而不需分享私鑰。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">自動化服務</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Bot 或服務可以請求人工審核後簽名，避免自動化洩露私鑰風險。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">冷儲存簽名</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        私鑰存放在離線設備，通過 QR 碼傳遞簽名請求和結果。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>開發建議：</strong>
+      應用程式應同時支援 NIP-07 和 NIP-46，讓用戶可以選擇使用瀏覽器擴充或遠端簽名器。
+      使用 nostr-tools 的統一介面可以簡化實作。
+    </p>
+  </div>
+</ArticleLayout>

@@ -156,10 +156,11 @@ export const topicClusters: TopicCluster[] = [
       { href: '/tech/nostr/relays/', title: '中繼器', type: 'tech' },
       { href: '/tech/nostr/nip-05/', title: 'NIP-05 域名驗證', type: 'tech' },
       { href: '/tech/nostr/nip-44/', title: 'NIP-44 加密訊息 v2', type: 'tech' },
+      { href: '/tech/nostr/nip-46/', title: 'NIP-46 遠端簽名', type: 'tech' },
       { href: '/tech/nostr/nip-57/', title: 'NIP-57 Zaps', type: 'tech' },
     ],
     relatedBips: [],
-    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', '加密', '瀏覽器擴充'],
+    keywords: ['Nostr', 'NIP', '中繼器', '事件', 'Zaps', 'npub', 'nsec', 'bech32', 'NIP-44', 'NIP-07', 'NIP-46', '加密', '瀏覽器擴充', '遠端簽名', 'Nostr Connect'],
   },
 ];
 
