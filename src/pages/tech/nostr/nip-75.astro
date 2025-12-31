@@ -1,0 +1,789 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import { defined } from '@/utils/types';
+---
+
+<ArticleLayout
+  title="NIP-75: Zap 目標"
+  subtitle="Zap Goals - 去中心化群眾募資與打賞目標"
+  difficulty="intermediate"
+  readingTime={10}
+  tags={['Nostr', 'NIP-75', 'Zaps', '募資', 'crowdfunding']}
+  prevPage={defined({ href: '/tech/nostr/nip-65', label: 'NIP-65 中繼器列表' })}
+  nextPage={defined({ href: '/tech/nostr/nip-90', label: 'NIP-90 資料販賣機' })}
+>
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mb-8 flex-wrap">
+    <a href="/" class="hover:text-[var(--text-secondary)] transition-colors">首頁</a>
+    <span>/</span>
+    <a href="/tech" class="hover:text-[var(--text-secondary)] transition-colors">技術</a>
+    <span>/</span>
+    <a href="/tech/nostr" class="hover:text-[var(--text-secondary)] transition-colors">Nostr</a>
+    <span>/</span>
+    <span class="text-[var(--text-primary)]">NIP-75</span>
+  </nav>
+
+  <!-- Introduction -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">概述</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-75 定義了 Zap 目標事件，允許用戶創建募資目標並追蹤進度。這是一種去中心化的群眾募資機制，
+      結合 NIP-57 的 Zaps 功能，讓創作者、專案或活動可以設定募資目標並接收閃電網路打賞。
+    </p>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-purple-400">核心概念：</strong>
+        Zap 目標使用 kind 9041 事件，透過 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">amount</code> 標籤設定目標金額（毫聰），
+        並可設定截止時間和多個受益人。
+      </p>
+    </div>
+  </section>
+
+  <!-- Event Structure -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">事件結構</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      Zap 目標事件使用 kind 9041：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">標籤</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">必要</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">格式</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">amount</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["amount", "21000000"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">目標金額（毫聰 millisats）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">relays</td>
+            <td class="py-3 px-4 text-green-400">✓</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["relays", "wss://...", "wss://..."]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">追蹤 Zaps 的中繼器列表</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">closed_at</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["closed_at", "1704067200"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">截止時間（Unix 時間戳）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">image</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["image", "https://..."]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">目標圖片 URL</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">summary</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["summary", "簡短描述"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">簡短摘要</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">zap</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["zap", "pubkey", "relay", "weight"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">多個受益人分配</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">r</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["r", "https://..."]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">相關外部連結</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">a</td>
+            <td class="py-3 px-4 text-gray-400">-</td>
+            <td class="py-3 px-4 font-mono text-sm text-[var(--text-secondary)]">["a", "30023:pubkey:slug"]</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">關聯的可定址事件</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-blue-400">金額單位：</strong>
+        <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">amount</code>
+        使用毫聰（millisatoshi）作為單位。1 sat = 1000 millisats。例如 21,000 sats = 21000000 millisats。
+      </p>
+    </div>
+  </section>
+
+  <!-- Examples -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">使用範例</h2>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">基本募資目標</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9041,
+  "tags": [
+    ["amount", "21000000"],
+    ["relays", "wss://relay.damus.io", "wss://relay.nostr.band"]
+  ],
+  "content": "幫助我購買新的錄音設備，提升 Podcast 品質！"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">帶截止日期的目標</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9041,
+  "tags": [
+    ["amount", "100000000"],
+    ["relays", "wss://relay.example.com"],
+    ["closed_at", "1735689600"],
+    ["image", "https://example.com/goal-cover.jpg"],
+    ["summary", "年底前募集 100,000 sats 用於開發新功能"]
+  ],
+  "content": "我們計劃在明年推出全新的 Nostr 客戶端功能，需要您的支持！募集的資金將用於：\\n\\n1. 伺服器成本\\n2. 開發人員工時\\n3. 設計與測試"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">多受益人目標</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9041,
+  "tags": [
+    ["amount", "50000000"],
+    ["relays", "wss://relay.example.com"],
+    ["zap", "<dev1-pubkey>", "wss://relay.example.com", "2"],
+    ["zap", "<dev2-pubkey>", "wss://relay.example.com", "1"],
+    ["zap", "<designer-pubkey>", "wss://relay.example.com", "1"]
+  ],
+  "content": "開源專案開發基金 - 資金將按比例分配給團隊成員"
+}`}</code></pre>
+    <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 mb-6">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">權重說明：</strong>
+        上例中 dev1 獲得 2/(2+1+1) = 50%，dev2 和 designer 各獲得 25%。
+      </p>
+    </div>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">關聯文章的目標</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 9041,
+  "tags": [
+    ["amount", "10000000"],
+    ["relays", "wss://relay.example.com"],
+    ["a", "30023:<author-pubkey>:my-article-slug", "wss://relay.example.com"],
+    ["r", "https://github.com/myproject"]
+  ],
+  "content": "如果這篇文章對你有幫助，請考慮支持作者繼續創作！"
+}`}</code></pre>
+  </section>
+
+  <!-- TypeScript Implementation -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">TypeScript 實作</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+interface ZapSplit {
+  pubkey: string
+  relay?: string
+  weight: number
+}
+
+interface ZapGoalOptions {
+  amountSats: number
+  relays: string[]
+  content: string
+  closedAt?: number
+  image?: string
+  summary?: string
+  zapSplits?: ZapSplit[]
+  linkedUrl?: string
+  linkedEvent?: { kind: number; pubkey: string; identifier: string }
+}
+
+// 創建 Zap 目標事件
+function createZapGoal(
+  options: ZapGoalOptions,
+  secretKey: Uint8Array
+): object {
+  // 轉換為毫聰
+  const amountMillisats = (options.amountSats * 1000).toString()
+
+  const tags: string[][] = [
+    ['amount', amountMillisats],
+    ['relays', ...options.relays],
+  ]
+
+  if (options.closedAt) {
+    tags.push(['closed_at', options.closedAt.toString()])
+  }
+
+  if (options.image) {
+    tags.push(['image', options.image])
+  }
+
+  if (options.summary) {
+    tags.push(['summary', options.summary])
+  }
+
+  // 添加受益人分配
+  if (options.zapSplits) {
+    for (const split of options.zapSplits) {
+      tags.push(['zap', split.pubkey, split.relay || '', split.weight.toString()])
+    }
+  }
+
+  // 添加相關連結
+  if (options.linkedUrl) {
+    tags.push(['r', options.linkedUrl])
+  }
+
+  // 添加關聯事件
+  if (options.linkedEvent) {
+    const { kind, pubkey, identifier } = options.linkedEvent
+    tags.push(['a', \`\${kind}:\${pubkey}:\${identifier}\`])
+  }
+
+  const event = {
+    kind: 9041,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options.content,
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 計算目標進度
+interface ZapReceipt {
+  tags: string[][]
+  created_at: number
+}
+
+function calculateGoalProgress(
+  goal: { tags: string[][]; created_at: number },
+  zapReceipts: ZapReceipt[]
+): {
+  targetSats: number
+  raisedSats: number
+  percentage: number
+  isComplete: boolean
+  isClosed: boolean
+  contributors: number
+} {
+  // 獲取目標金額
+  const amountTag = goal.tags.find(t => t[0] === 'amount')
+  const targetMillisats = amountTag ? parseInt(amountTag[1]) : 0
+  const targetSats = targetMillisats / 1000
+
+  // 獲取截止時間
+  const closedAtTag = goal.tags.find(t => t[0] === 'closed_at')
+  const closedAt = closedAtTag ? parseInt(closedAtTag[1]) : null
+  const now = Math.floor(Date.now() / 1000)
+  const isClosed = closedAt ? now > closedAt : false
+
+  // 計算已募集金額（只計算截止前的 Zaps）
+  let raisedMillisats = 0
+  const validReceipts = zapReceipts.filter(receipt => {
+    if (closedAt && receipt.created_at > closedAt) {
+      return false
+    }
+    return true
+  })
+
+  for (const receipt of validReceipts) {
+    const amountTag = receipt.tags.find(t => t[0] === 'amount')
+    if (amountTag) {
+      raisedMillisats += parseInt(amountTag[1])
+    }
+  }
+
+  const raisedSats = raisedMillisats / 1000
+  const percentage = targetSats > 0 ? Math.min((raisedSats / targetSats) * 100, 100) : 0
+
+  return {
+    targetSats,
+    raisedSats,
+    percentage,
+    isComplete: raisedSats >= targetSats,
+    isClosed,
+    contributors: validReceipts.length,
+  }
+}
+
+// 格式化金額顯示
+function formatSats(sats: number): string {
+  if (sats >= 100000000) {
+    return \`\${(sats / 100000000).toFixed(2)} BTC\`
+  } else if (sats >= 1000000) {
+    return \`\${(sats / 1000000).toFixed(2)}M sats\`
+  } else if (sats >= 1000) {
+    return \`\${(sats / 1000).toFixed(1)}K sats\`
+  }
+  return \`\${sats} sats\`
+}
+
+// 使用範例
+const sk = generateSecretKey()
+const pk = getPublicKey(sk)
+
+// 創建基本募資目標
+const basicGoal = createZapGoal({
+  amountSats: 21000,
+  relays: ['wss://relay.damus.io', 'wss://relay.nostr.band'],
+  content: '幫助我購買新的錄音設備！',
+}, sk)
+
+// 創建帶截止日期的目標
+const timedGoal = createZapGoal({
+  amountSats: 100000,
+  relays: ['wss://relay.example.com'],
+  content: '年度開發基金募集',
+  closedAt: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 天後
+  image: 'https://example.com/goal.jpg',
+  summary: '為開源專案籌集開發資金',
+}, sk)
+
+// 創建多受益人目標
+const teamGoal = createZapGoal({
+  amountSats: 50000,
+  relays: ['wss://relay.example.com'],
+  content: '團隊開發基金',
+  zapSplits: [
+    { pubkey: 'dev1-pubkey', weight: 2 },
+    { pubkey: 'dev2-pubkey', weight: 1 },
+    { pubkey: 'designer-pubkey', weight: 1 },
+  ],
+}, sk)
+
+console.log('Basic goal:', basicGoal)
+console.log('Timed goal:', timedGoal)
+console.log('Team goal:', teamGoal)`}</code></pre>
+  </section>
+
+  <!-- Query Goals -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">查詢與追蹤進度</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { SimplePool } from 'nostr-tools'
+
+const pool = new SimplePool()
+const relays = ['wss://relay.example.com']
+
+// 查詢用戶的所有募資目標
+async function getUserGoals(pubkey: string) {
+  const goals = await pool.querySync(relays, {
+    kinds: [9041],
+    authors: [pubkey],
+  })
+  return goals
+}
+
+// 查詢目標收到的 Zaps
+async function getGoalZaps(goalEvent: any) {
+  const goalRelays = goalEvent.tags.find((t: string[]) => t[0] === 'relays')
+  const targetRelays = goalRelays ? goalRelays.slice(1) : relays
+
+  // 查詢 Zap receipts（kind 9735）指向此目標
+  const zaps = await pool.querySync(targetRelays, {
+    kinds: [9735],
+    '#e': [goalEvent.id],
+  })
+
+  return zaps
+}
+
+// 獲取目標完整資訊與進度
+async function getGoalWithProgress(goalId: string) {
+  // 獲取目標事件
+  const goals = await pool.querySync(relays, {
+    ids: [goalId],
+  })
+
+  if (goals.length === 0) return null
+
+  const goal = goals[0]
+  const zaps = await getGoalZaps(goal)
+  const progress = calculateGoalProgress(goal, zaps)
+
+  return {
+    goal: parseGoal(goal),
+    progress,
+    zaps,
+  }
+}
+
+// 解析目標事件
+function parseGoal(event: any) {
+  const getTag = (name: string) =>
+    event.tags.find((t: string[]) => t[0] === name)?.[1]
+
+  const relaysTags = event.tags.find((t: string[]) => t[0] === 'relays')
+  const goalRelays = relaysTags ? relaysTags.slice(1) : []
+
+  const zapSplits = event.tags
+    .filter((t: string[]) => t[0] === 'zap')
+    .map((t: string[]) => ({
+      pubkey: t[1],
+      relay: t[2] || undefined,
+      weight: parseInt(t[3]) || 1,
+    }))
+
+  const amountMillisats = parseInt(getTag('amount') || '0')
+
+  return {
+    id: event.id,
+    pubkey: event.pubkey,
+    amountSats: amountMillisats / 1000,
+    relays: goalRelays,
+    content: event.content,
+    closedAt: getTag('closed_at') ? parseInt(getTag('closed_at')!) : undefined,
+    image: getTag('image'),
+    summary: getTag('summary'),
+    zapSplits,
+    createdAt: event.created_at,
+  }
+}
+
+// 訂閱目標的 Zaps 更新
+function subscribeGoalZaps(
+  goalEvent: any,
+  onZap: (zap: any, progress: ReturnType<typeof calculateGoalProgress>) => void
+) {
+  const goalRelays = goalEvent.tags.find((t: string[]) => t[0] === 'relays')
+  const targetRelays = goalRelays ? goalRelays.slice(1) : relays
+
+  let allZaps: any[] = []
+
+  return pool.subscribeMany(
+    targetRelays,
+    [{
+      kinds: [9735],
+      '#e': [goalEvent.id],
+    }],
+    {
+      onevent(event) {
+        allZaps.push(event)
+        const progress = calculateGoalProgress(goalEvent, allZaps)
+        onZap(event, progress)
+      },
+    }
+  )
+}
+
+// 使用範例
+const goalId = 'abc123...'
+const result = await getGoalWithProgress(goalId)
+
+if (result) {
+  console.log(\`目標: \${result.goal.content}\`)
+  console.log(\`目標金額: \${formatSats(result.goal.amountSats)}\`)
+  console.log(\`已募集: \${formatSats(result.progress.raisedSats)}\`)
+  console.log(\`進度: \${result.progress.percentage.toFixed(1)}%\`)
+  console.log(\`贊助者: \${result.progress.contributors} 人\`)
+  console.log(\`已完成: \${result.progress.isComplete ? '是' : '否'}\`)
+}`}</code></pre>
+  </section>
+
+  <!-- React Component -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">React 元件範例</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { useState, useEffect } from 'react'
+
+interface GoalProgress {
+  targetSats: number
+  raisedSats: number
+  percentage: number
+  isComplete: boolean
+  isClosed: boolean
+  contributors: number
+}
+
+interface ZapGoalCardProps {
+  goal: {
+    id: string
+    content: string
+    amountSats: number
+    image?: string
+    summary?: string
+    closedAt?: number
+  }
+  progress: GoalProgress
+  onZap: () => void
+}
+
+function ZapGoalCard({ goal, progress, onZap }: ZapGoalCardProps) {
+  const daysLeft = goal.closedAt
+    ? Math.max(0, Math.ceil((goal.closedAt - Date.now() / 1000) / 86400))
+    : null
+
+  return (
+    <div className="rounded-xl bg-gray-800 border border-gray-700 overflow-hidden">
+      {goal.image && (
+        <img
+          src={goal.image}
+          alt="Goal"
+          className="w-full h-48 object-cover"
+        />
+      )}
+
+      <div className="p-6">
+        <h3 className="text-xl font-bold text-white mb-2">
+          {goal.summary || '募資目標'}
+        </h3>
+
+        <p className="text-gray-400 text-sm mb-4">
+          {goal.content}
+        </p>
+
+        {/* 進度條 */}
+        <div className="mb-4">
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-400">
+              {formatSats(progress.raisedSats)} 已募集
+            </span>
+            <span className="text-gray-400">
+              目標 {formatSats(goal.amountSats)}
+            </span>
+          </div>
+          <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className={\`h-full rounded-full transition-all duration-500 \${
+                progress.isComplete
+                  ? 'bg-green-500'
+                  : 'bg-gradient-to-r from-orange-500 to-yellow-500'
+              }\`}
+              style={{ width: \`\${Math.min(progress.percentage, 100)}%\` }}
+            />
+          </div>
+          <div className="flex justify-between text-sm mt-2">
+            <span className="text-purple-400 font-medium">
+              {progress.percentage.toFixed(1)}%
+            </span>
+            <span className="text-gray-500">
+              {progress.contributors} 位贊助者
+            </span>
+          </div>
+        </div>
+
+        {/* 狀態和截止時間 */}
+        <div className="flex items-center justify-between mb-4">
+          {progress.isComplete ? (
+            <span className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full">
+              ✓ 目標達成
+            </span>
+          ) : progress.isClosed ? (
+            <span className="px-3 py-1 bg-red-500/20 text-red-400 text-sm rounded-full">
+              已截止
+            </span>
+          ) : (
+            <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-sm rounded-full">
+              募資中
+            </span>
+          )}
+
+          {daysLeft !== null && !progress.isClosed && (
+            <span className="text-gray-500 text-sm">
+              剩餘 {daysLeft} 天
+            </span>
+          )}
+        </div>
+
+        {/* Zap 按鈕 */}
+        {!progress.isClosed && (
+          <button
+            onClick={onZap}
+            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-500
+                       hover:from-orange-600 hover:to-yellow-600
+                       text-white font-bold rounded-lg transition-all
+                       flex items-center justify-center gap-2"
+          >
+            ⚡ Zap 支持
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// 進度環形圖
+function GoalProgressRing({ percentage }: { percentage: number }) {
+  const radius = 45
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (percentage / 100) * circumference
+
+  return (
+    <svg width="120" height="120" className="transform -rotate-90">
+      <circle
+        cx="60"
+        cy="60"
+        r={radius}
+        stroke="currentColor"
+        className="text-gray-700"
+        strokeWidth="8"
+        fill="none"
+      />
+      <circle
+        cx="60"
+        cy="60"
+        r={radius}
+        stroke="url(#gradient)"
+        strokeWidth="8"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        className="transition-all duration-500"
+      />
+      <defs>
+        <linearGradient id="gradient">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#eab308" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}`}</code></pre>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">應用場景</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎯 創作者支持</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          設備升級、創作基金、專案開發等個人募資目標。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">💻 開源專案</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          為開源軟體開發籌集資金，支持多個開發者。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📺 直播活動</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          結合 NIP-53 直播，設定直播期間的打賞目標。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📝 長文內容</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          為 NIP-23 長文文章附加募資目標，支持作者創作。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🏆 成就解鎖</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          結合 NIP-58 徽章，達成目標後自動頒發感謝徽章。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🤝 團隊分潤</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          使用 zap 標籤自動分配募得資金給多個受益人。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Best Practices -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">最佳實踐</h2>
+    <div class="space-y-4">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 設定合理的目標金額</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          根據實際需求設定可達成的目標，過高的目標可能讓支持者失去信心。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 提供清晰的描述</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          在 content 和 summary 中詳細說明資金用途，增加透明度和信任。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 使用多個中繼器</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          在 relays 標籤中包含多個中繼器，確保 Zaps 不會因單一中繼器故障而遺失。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 客戶端必須使用目標指定的中繼器</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          發送 Zap 時，客戶端應使用目標事件中 relays 標籤指定的中繼器，確保能正確追蹤。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 截止後的 Zaps 不計入</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          closed_at 時間之後收到的 Zaps 不應計入目標進度，但仍會送達受益人。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related NIPs -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">相關 NIP</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <a
+        href="/tech/nostr/nip-57"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-57 Zaps</h4>
+        <p class="text-sm text-[var(--text-secondary)]">閃電網路打賞基礎</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-53"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-53 直播活動</h4>
+        <p class="text-sm text-[var(--text-secondary)]">直播募資整合</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-23"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-23 長文內容</h4>
+        <p class="text-sm text-[var(--text-secondary)]">文章附加募資目標</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-58"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-58 徽章</h4>
+        <p class="text-sm text-[var(--text-secondary)]">達成目標頒發感謝徽章</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">總結</h2>
+    <div class="p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        NIP-75 Zap 目標為 Nostr 提供了去中心化的群眾募資機制。透過與 NIP-57 Zaps 的整合，
+        創作者可以設定透明的募資目標，支持者可以即時追蹤進度，打造開放、無需許可的資金募集平台。
+      </p>
+      <div class="grid md:grid-cols-4 gap-4 text-center">
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-purple-400">Kind 9041</div>
+          <div class="text-sm text-[var(--text-secondary)]">Zap 目標</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-orange-400">毫聰</div>
+          <div class="text-sm text-[var(--text-secondary)]">金額單位</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-blue-400">多受益人</div>
+          <div class="text-sm text-[var(--text-secondary)]">zap 標籤分配</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-green-400">截止時間</div>
+          <div class="text-sm text-[var(--text-secondary)]">closed_at</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
