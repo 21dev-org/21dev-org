@@ -1,0 +1,329 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-48: 代理標籤"
+  description="標記從其他協議橋接到 Nostr 的內容來源"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-48 定義了 <code>proxy</code> 標籤，用於標記從其他協議（如 ActivityPub、AT Protocol、RSS）
+    橋接到 Nostr 的內容。這讓客戶端可以識別重複內容、顯示原始來源連結，
+    或在去重時優先處理原生 Nostr 內容。
+  </p>
+
+  <h2 id="tag-format">標籤格式</h2>
+  <pre><code class="language-json">["proxy", "&lt;id&gt;", "&lt;protocol&gt;"]</code></pre>
+
+  <table>
+    <thead>
+      <tr>
+        <th>欄位</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>id</code></td>
+        <td>原始內容的唯一識別符，格式因協議而異</td>
+      </tr>
+      <tr>
+        <td><code>protocol</code></td>
+        <td>來源協議名稱</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="supported-protocols">支援的協議</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>協議</th>
+        <th>ID 格式</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>activitypub</code></td>
+        <td>ActivityPub 物件 URL</td>
+        <td><code>https://mastodon.social/users/alice/statuses/123</code></td>
+      </tr>
+      <tr>
+        <td><code>atproto</code></td>
+        <td>AT URI</td>
+        <td><code>at://did:plc:xxx/app.bsky.feed.post/abc</code></td>
+      </tr>
+      <tr>
+        <td><code>rss</code></td>
+        <td>RSS Feed URL + guid</td>
+        <td><code>https://blog.example.com/feed.xml#post-123</code></td>
+      </tr>
+      <tr>
+        <td><code>web</code></td>
+        <td>網頁 URL</td>
+        <td><code>https://twitter.com/jack/status/20</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>從 ActivityPub 橋接</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這是從 Mastodon 橋接過來的貼文！",
+  "tags": [
+    ["proxy", "https://mastodon.social/users/alice/statuses/123456789", "activitypub"]
+  ]
+}</code></pre>
+
+  <h3>從 Bluesky (AT Protocol) 橋接</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這是從 Bluesky 橋接過來的貼文！",
+  "tags": [
+    ["proxy", "at://did:plc:abc123/app.bsky.feed.post/xyz789", "atproto"]
+  ]
+}</code></pre>
+
+  <h3>從 RSS 橋接</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這是部落格的新文章摘要...",
+  "tags": [
+    ["proxy", "https://blog.example.com/feed.xml#article-2024-01-15", "rss"]
+  ]
+}</code></pre>
+
+  <h3>從 Twitter/X 橋接</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這是從 Twitter 橋接過來的推文！",
+  "tags": [
+    ["proxy", "https://twitter.com/jack/status/20", "web"]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>建立代理事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+type ProxyProtocol = 'activitypub' | 'atproto' | 'rss' | 'web';
+
+interface ProxySource {
+  id: string;
+  protocol: ProxyProtocol;
+}
+
+function createProxiedEvent(
+  content: string,
+  source: ProxySource,
+  secretKey: Uint8Array,
+  additionalTags: string[][] = []
+) {
+  const tags: string[][] = [
+    ['proxy', source.id, source.protocol],
+    ...additionalTags,
+  ];
+
+  const event = {
+    kind: 1,
+    content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：橋接 Mastodon 貼文
+const mastodonPost = createProxiedEvent(
+  '這是一則從 Mastodon 橋接的貼文！',
+  {
+    id: 'https://mastodon.social/users/alice/statuses/123456789',
+    protocol: 'activitypub',
+  },
+  secretKey
+);</code></pre>
+
+  <h3>檢測代理事件</h3>
+  <pre><code class="language-typescript">interface ProxyInfo {
+  id: string;
+  protocol: string;
+  isProxied: boolean;
+}
+
+function getProxyInfo(event: any): ProxyInfo | null {
+  const proxyTag = event.tags.find((t: string[]) => t[0] === 'proxy');
+
+  if (!proxyTag || proxyTag.length < 3) {
+    return null;
+  }
+
+  return {
+    id: proxyTag[1],
+    protocol: proxyTag[2],
+    isProxied: true,
+  };
+}
+
+function isProxiedEvent(event: any): boolean {
+  return event.tags.some((t: string[]) => t[0] === 'proxy');
+}
+
+// 使用範例
+const proxyInfo = getProxyInfo(event);
+if (proxyInfo) {
+  console.log(`來源協議: ${proxyInfo.protocol}`);
+  console.log(`原始 ID: ${proxyInfo.id}`);
+}</code></pre>
+
+  <h3>去重處理</h3>
+  <pre><code class="language-typescript">interface DeduplicatedEvent {
+  event: any;
+  isNative: boolean;
+  proxySource?: ProxyInfo;
+}
+
+function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
+  const proxyMap = new Map&lt;string, any&gt;();
+  const nativeEvents: any[] = [];
+
+  // 分類事件
+  events.forEach((event) => {
+    const proxyInfo = getProxyInfo(event);
+    if (proxyInfo) {
+      // 記錄代理事件，以原始 ID 為鍵
+      const existing = proxyMap.get(proxyInfo.id);
+      if (!existing || event.created_at > existing.created_at) {
+        proxyMap.set(proxyInfo.id, event);
+      }
+    } else {
+      nativeEvents.push(event);
+    }
+  });
+
+  // 合併結果，優先顯示原生事件
+  const result: DeduplicatedEvent[] = [];
+
+  nativeEvents.forEach((event) => {
+    result.push({ event, isNative: true });
+  });
+
+  proxyMap.forEach((event) => {
+    const proxyInfo = getProxyInfo(event)!;
+    result.push({
+      event,
+      isNative: false,
+      proxySource: proxyInfo,
+    });
+  });
+
+  return result.sort((a, b) => b.event.created_at - a.event.created_at);
+}</code></pre>
+
+  <h3>顯示來源連結</h3>
+  <pre><code class="language-typescript">function getSourceUrl(proxyInfo: ProxyInfo): string | null {
+  switch (proxyInfo.protocol) {
+    case 'activitypub':
+    case 'web':
+      // 直接使用 URL
+      return proxyInfo.id;
+
+    case 'atproto':
+      // 將 AT URI 轉換為 Bluesky 網頁連結
+      const match = proxyInfo.id.match(
+        /at:\/\/(did:[^\/]+)\/app\.bsky\.feed\.post\/(.+)/
+      );
+      if (match) {
+        return `https://bsky.app/profile/${match[1]}/post/${match[2]}`;
+      }
+      return null;
+
+    case 'rss':
+      // 移除 fragment，返回 feed URL
+      return proxyInfo.id.split('#')[0];
+
+    default:
+      return null;
+  }
+}
+
+// React 元件範例
+function ProxyBadge({ event }: { event: any }) {
+  const proxyInfo = getProxyInfo(event);
+
+  if (!proxyInfo) {
+    return null;
+  }
+
+  const sourceUrl = getSourceUrl(proxyInfo);
+  const protocolLabels: Record&lt;string, string&gt; = {
+    activitypub: 'Fediverse',
+    atproto: 'Bluesky',
+    rss: 'RSS',
+    web: 'Web',
+  };
+
+  return (
+    &lt;div className="proxy-badge"&gt;
+      &lt;span&gt;來自 {protocolLabels[proxyInfo.protocol] || proxyInfo.protocol}&lt;/span&gt;
+      {sourceUrl && (
+        &lt;a href={sourceUrl} target="_blank" rel="noopener noreferrer"&gt;
+          查看原文
+        &lt;/a&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>跨平台橋接</h3>
+  <ul>
+    <li>將 Mastodon/Fediverse 內容同步到 Nostr</li>
+    <li>將 Bluesky 貼文橋接到 Nostr</li>
+    <li>將部落格 RSS 更新發布到 Nostr</li>
+    <li>歸檔 Twitter 內容到 Nostr</li>
+  </ul>
+
+  <h3>內容去重</h3>
+  <ul>
+    <li>識別從多個來源橋接的相同內容</li>
+    <li>優先顯示原生 Nostr 內容</li>
+    <li>合併來自不同橋接服務的重複貼文</li>
+  </ul>
+
+  <h3>來源追蹤</h3>
+  <ul>
+    <li>顯示內容的原始來源平台</li>
+    <li>提供返回原始內容的連結</li>
+    <li>讓用戶了解內容的真實來源</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用唯一識別符</strong>：確保 ID 在該協議中是全局唯一的</li>
+    <li><strong>保持連結有效</strong>：原始來源 URL 應該是可訪問的</li>
+    <li><strong>標記所有橋接內容</strong>：讓用戶和客戶端能識別非原生內容</li>
+    <li><strong>處理來源失效</strong>：原始內容可能被刪除，優雅處理</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件格式</li>
+    <li><a href="/tech/nostr/nip-73">NIP-73</a>：外部內容 ID - 另一種外部引用方式</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/48.md" target="_blank" rel="noopener noreferrer">NIP-48 規範</a></li>
+    <li><a href="https://www.w3.org/TR/activitypub/" target="_blank" rel="noopener noreferrer">ActivityPub 規範</a></li>
+    <li><a href="https://atproto.com/" target="_blank" rel="noopener noreferrer">AT Protocol</a></li>
+  </ul>
+</ArticleLayout>
