@@ -1,0 +1,744 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+import { defined } from '@/utils/types';
+---
+
+<ArticleLayout
+  title="NIP-38: 用戶狀態"
+  subtitle="User Statuses - 分享用戶的即時活動狀態"
+  difficulty="intermediate"
+  readingTime={10}
+  tags={['Nostr', 'NIP-38', '狀態', 'status', 'music']}
+  prevPage={defined({ href: '/tech/nostr/nip-36', label: 'NIP-36 敏感內容' })}
+  nextPage={defined({ href: '/tech/nostr/nip-40', label: 'NIP-40 過期時間戳' })}
+>
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mb-8 flex-wrap">
+    <a href="/" class="hover:text-[var(--text-secondary)] transition-colors">首頁</a>
+    <span>/</span>
+    <a href="/tech" class="hover:text-[var(--text-secondary)] transition-colors">技術</a>
+    <span>/</span>
+    <a href="/tech/nostr" class="hover:text-[var(--text-secondary)] transition-colors">Nostr</a>
+    <span>/</span>
+    <span class="text-[var(--text-primary)]">NIP-38</span>
+  </nav>
+
+  <!-- Introduction -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">概述</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-38 定義了用戶狀態事件，讓用戶可以分享他們當前的活動狀態。這類似於傳統社交平台的「正在聽」、「正在做什麼」功能，
+      但以去中心化的方式實現。狀態可以是一般活動、正在播放的音樂，或任何自定義類型。
+    </p>
+    <div class="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-purple-400">核心概念：</strong>
+        用戶狀態使用 kind 30315（可定址事件），透過 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">d</code> 標籤區分不同類型的狀態，
+        並支援過期時間讓狀態自動消失。
+      </p>
+    </div>
+  </section>
+
+  <!-- Event Structure -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">事件結構</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      用戶狀態事件使用 kind 30315，是可定址事件（addressable event）：
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse mb-4">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">欄位</th>
+            <th class="text-left py-3 px-4 text-[var(--text-primary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">kind</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">30315（用戶狀態）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">content</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">狀態文字，空字串表示清除狀態</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">d</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">狀態類型標識符（必要）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">expiration</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">過期時間戳（可選）</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-3 px-4 font-mono text-purple-400">r</td>
+            <td class="py-3 px-4 text-[var(--text-secondary)]">相關連結 URL（可選）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Status Types -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">狀態類型</h2>
+    <p class="text-[var(--text-secondary)] mb-4">
+      NIP-38 定義了兩種標準狀態類型，同時允許自定義類型：
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-2xl">💬</span> general
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)] mb-2">
+          一般活動狀態，如「工作中」、「旅行中」、「開會中」等。
+        </p>
+        <code class="text-xs px-2 py-1 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">d: "general"</code>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+          <span class="text-2xl">🎵</span> music
+        </h4>
+        <p class="text-sm text-[var(--text-secondary)] mb-2">
+          正在播放的音樂，過期時間應設為歌曲結束時間。
+        </p>
+        <code class="text-xs px-2 py-1 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">d: "music"</code>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+      <p class="text-[var(--text-secondary)]">
+        <strong class="text-blue-400">自定義類型：</strong>
+        除了標準類型外，應用可以定義自己的狀態類型，如 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">gaming</code>、
+        <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">reading</code>、
+        <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">streaming</code> 等。
+      </p>
+    </div>
+  </section>
+
+  <!-- Examples -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">使用範例</h2>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">一般狀態</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30315,
+  "tags": [
+    ["d", "general"]
+  ],
+  "content": "正在寫程式 👨‍💻"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">帶連結的狀態</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30315,
+  "tags": [
+    ["d", "general"],
+    ["r", "https://github.com/nostr-protocol/nips"]
+  ],
+  "content": "正在研究 Nostr NIPs"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">音樂狀態（帶過期時間）</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30315,
+  "tags": [
+    ["d", "music"],
+    ["r", "spotify:track:4PTG3Z6ehGkBFwjybzWkR8"],
+    ["expiration", "1704067200"]
+  ],
+  "content": "🎵 Never Gonna Give You Up - Rick Astley"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">帶自訂表情的狀態</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30315,
+  "tags": [
+    ["d", "general"],
+    ["emoji", "bitcoin", "https://example.com/bitcoin.png"]
+  ],
+  "content": "Stacking sats :bitcoin:"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">引用其他內容</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30315,
+  "tags": [
+    ["d", "general"],
+    ["e", "<event-id>", "wss://relay.example.com"],
+    ["p", "<author-pubkey>"]
+  ],
+  "content": "正在閱讀這篇精彩的文章"
+}`}</code></pre>
+
+    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">清除狀態</h3>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-6"><code class="text-sm text-gray-300">{`{
+  "kind": 30315,
+  "tags": [
+    ["d", "general"]
+  ],
+  "content": ""
+}`}</code></pre>
+  </section>
+
+  <!-- TypeScript Implementation -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">TypeScript 實作</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools'
+
+// 狀態類型
+type StatusType = 'general' | 'music' | string
+
+interface StatusOptions {
+  type: StatusType
+  content: string
+  url?: string
+  expiration?: number
+  eventRef?: { id: string; relay?: string }
+  profileRef?: string
+  emoji?: { shortcode: string; url: string }[]
+}
+
+// 創建用戶狀態事件
+function createStatusEvent(
+  options: StatusOptions,
+  secretKey: Uint8Array
+): object {
+  const tags: string[][] = [['d', options.type]]
+
+  // 添加 URL 連結
+  if (options.url) {
+    tags.push(['r', options.url])
+  }
+
+  // 添加過期時間
+  if (options.expiration) {
+    tags.push(['expiration', options.expiration.toString()])
+  }
+
+  // 添加事件引用
+  if (options.eventRef) {
+    tags.push(['e', options.eventRef.id, options.eventRef.relay || ''])
+  }
+
+  // 添加用戶引用
+  if (options.profileRef) {
+    tags.push(['p', options.profileRef])
+  }
+
+  // 添加自訂表情
+  if (options.emoji) {
+    for (const e of options.emoji) {
+      tags.push(['emoji', e.shortcode, e.url])
+    }
+  }
+
+  const event = {
+    kind: 30315,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: options.content,
+  }
+
+  return finalizeEvent(event, secretKey)
+}
+
+// 設置一般狀態
+function setGeneralStatus(
+  content: string,
+  secretKey: Uint8Array,
+  options?: { url?: string; expiration?: number }
+): object {
+  return createStatusEvent({
+    type: 'general',
+    content,
+    ...options,
+  }, secretKey)
+}
+
+// 設置音樂狀態
+function setMusicStatus(
+  track: string,
+  artist: string,
+  secretKey: Uint8Array,
+  options?: { url?: string; durationSeconds?: number }
+): object {
+  const expiration = options?.durationSeconds
+    ? Math.floor(Date.now() / 1000) + options.durationSeconds
+    : undefined
+
+  return createStatusEvent({
+    type: 'music',
+    content: \`🎵 \${track} - \${artist}\`,
+    url: options?.url,
+    expiration,
+  }, secretKey)
+}
+
+// 清除狀態
+function clearStatus(
+  type: StatusType,
+  secretKey: Uint8Array
+): object {
+  return createStatusEvent({
+    type,
+    content: '',
+  }, secretKey)
+}
+
+// 使用範例
+const sk = generateSecretKey()
+const pk = getPublicKey(sk)
+
+// 設置一般狀態
+const generalStatus = setGeneralStatus(
+  '正在開發 Nostr 客戶端 🚀',
+  sk,
+  { url: 'https://github.com/myproject' }
+)
+
+// 設置音樂狀態（歌曲長度 3 分 30 秒）
+const musicStatus = setMusicStatus(
+  'Bohemian Rhapsody',
+  'Queen',
+  sk,
+  {
+    url: 'spotify:track:7tFiyTwD0nx5a1eklYtX2J',
+    durationSeconds: 210,
+  }
+)
+
+// 設置帶表情的狀態
+const emojiStatus = createStatusEvent({
+  type: 'general',
+  content: 'HODLing :bitcoin: forever!',
+  emoji: [
+    { shortcode: 'bitcoin', url: 'https://example.com/bitcoin.png' }
+  ],
+}, sk)
+
+// 清除狀態
+const cleared = clearStatus('general', sk)
+
+console.log('General status:', generalStatus)
+console.log('Music status:', musicStatus)
+console.log('Emoji status:', emojiStatus)
+console.log('Cleared:', cleared)`}</code></pre>
+  </section>
+
+  <!-- Query Status -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">查詢狀態</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { SimplePool } from 'nostr-tools'
+
+const pool = new SimplePool()
+const relays = ['wss://relay.example.com']
+
+// 查詢用戶的所有狀態
+async function getUserStatuses(pubkey: string) {
+  const statuses = await pool.querySync(relays, {
+    kinds: [30315],
+    authors: [pubkey],
+  })
+  return statuses
+}
+
+// 查詢特定類型的狀態
+async function getUserStatusByType(pubkey: string, type: string) {
+  const statuses = await pool.querySync(relays, {
+    kinds: [30315],
+    authors: [pubkey],
+    '#d': [type],
+  })
+  return statuses[0] || null
+}
+
+// 查詢多個用戶的一般狀態
+async function getGeneralStatuses(pubkeys: string[]) {
+  const statuses = await pool.querySync(relays, {
+    kinds: [30315],
+    authors: pubkeys,
+    '#d': ['general'],
+  })
+  return statuses
+}
+
+// 查詢正在聽音樂的用戶
+async function getMusicStatuses(pubkeys: string[]) {
+  const statuses = await pool.querySync(relays, {
+    kinds: [30315],
+    authors: pubkeys,
+    '#d': ['music'],
+  })
+
+  // 過濾掉已過期的狀態
+  const now = Math.floor(Date.now() / 1000)
+  return statuses.filter(status => {
+    const expTag = status.tags.find((t: string[]) => t[0] === 'expiration')
+    if (!expTag) return true
+    return parseInt(expTag[1]) > now
+  })
+}
+
+// 解析狀態事件
+function parseStatus(event: any): {
+  type: string
+  content: string
+  url?: string
+  expiration?: number
+  isExpired: boolean
+} {
+  const type = event.tags.find((t: string[]) => t[0] === 'd')?.[1] || 'general'
+  const url = event.tags.find((t: string[]) => t[0] === 'r')?.[1]
+  const expTag = event.tags.find((t: string[]) => t[0] === 'expiration')
+  const expiration = expTag ? parseInt(expTag[1]) : undefined
+  const isExpired = expiration ? expiration < Math.floor(Date.now() / 1000) : false
+
+  return {
+    type,
+    content: event.content,
+    url,
+    expiration,
+    isExpired,
+  }
+}
+
+// 訂閱狀態更新
+function subscribeToStatuses(
+  pubkeys: string[],
+  onStatus: (event: any, parsed: ReturnType<typeof parseStatus>) => void
+) {
+  return pool.subscribeMany(
+    relays,
+    [{
+      kinds: [30315],
+      authors: pubkeys,
+    }],
+    {
+      onevent(event) {
+        const parsed = parseStatus(event)
+        if (!parsed.isExpired && parsed.content) {
+          onStatus(event, parsed)
+        }
+      },
+    }
+  )
+}
+
+// 使用範例
+const targetPubkey = 'abc123...'
+
+// 獲取用戶的一般狀態
+const generalStatus = await getUserStatusByType(targetPubkey, 'general')
+if (generalStatus) {
+  const parsed = parseStatus(generalStatus)
+  console.log(\`狀態: \${parsed.content}\`)
+  if (parsed.url) {
+    console.log(\`連結: \${parsed.url}\`)
+  }
+}
+
+// 訂閱關注列表的狀態
+const followingPubkeys = ['pubkey1', 'pubkey2', 'pubkey3']
+const sub = subscribeToStatuses(followingPubkeys, (event, parsed) => {
+  console.log(\`\${event.pubkey} 的 \${parsed.type} 狀態: \${parsed.content}\`)
+})`}</code></pre>
+  </section>
+
+  <!-- Use Cases -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">應用場景</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎵 音樂分享</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          與 Spotify、Apple Music 等整合，自動分享正在聽的歌曲，過期時間設為歌曲長度。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📅 日曆整合</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          日曆應用自動更新狀態為「開會中」、「忙碌」等，過期時間設為會議結束時間。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎙️ 直播/語音房</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          Nostr Nests 等語音房應用可以顯示用戶正在參與的房間連結。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎮 遊戲狀態</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          顯示正在玩的遊戲，邀請朋友一起玩。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">🎧 Podcast 分享</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          Podcast 應用分享正在收聽的節目，方便朋友發現好內容。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">📍 位置分享</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          分享當前位置或旅行狀態，如「在東京旅行」。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- React Component Example -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">React 元件範例</h2>
+    <pre class="p-4 rounded-lg bg-[var(--bg-darkest)] overflow-x-auto mb-4"><code class="text-sm text-gray-300">{`import { useState, useEffect } from 'react'
+import { SimplePool } from 'nostr-tools'
+
+interface UserStatusProps {
+  pubkey: string
+  relays: string[]
+}
+
+interface Status {
+  type: string
+  content: string
+  url?: string
+  isExpired: boolean
+}
+
+function UserStatus({ pubkey, relays }: UserStatusProps) {
+  const [statuses, setStatuses] = useState<Map<string, Status>>(new Map())
+  const pool = new SimplePool()
+
+  useEffect(() => {
+    const sub = pool.subscribeMany(
+      relays,
+      [{
+        kinds: [30315],
+        authors: [pubkey],
+      }],
+      {
+        onevent(event) {
+          const type = event.tags.find(t => t[0] === 'd')?.[1] || 'general'
+          const url = event.tags.find(t => t[0] === 'r')?.[1]
+          const expTag = event.tags.find(t => t[0] === 'expiration')
+          const expiration = expTag ? parseInt(expTag[1]) : undefined
+          const isExpired = expiration
+            ? expiration < Math.floor(Date.now() / 1000)
+            : false
+
+          if (!isExpired && event.content) {
+            setStatuses(prev => new Map(prev).set(type, {
+              type,
+              content: event.content,
+              url,
+              isExpired,
+            }))
+          }
+        },
+      }
+    )
+
+    return () => sub.close()
+  }, [pubkey, relays])
+
+  if (statuses.size === 0) return null
+
+  return (
+    <div className="space-y-2">
+      {Array.from(statuses.entries()).map(([type, status]) => (
+        <div
+          key={type}
+          className="flex items-center gap-2 text-sm text-gray-400"
+        >
+          <StatusIcon type={type} />
+          {status.url ? (
+            <a
+              href={status.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-purple-400"
+            >
+              {status.content}
+            </a>
+          ) : (
+            <span>{status.content}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function StatusIcon({ type }: { type: string }) {
+  switch (type) {
+    case 'music':
+      return <span>🎵</span>
+    case 'gaming':
+      return <span>🎮</span>
+    case 'streaming':
+      return <span>🎙️</span>
+    default:
+      return <span>💬</span>
+  }
+}
+
+// 狀態設置元件
+function StatusSetter({ onSubmit }: { onSubmit: (status: StatusOptions) => void }) {
+  const [type, setType] = useState('general')
+  const [content, setContent] = useState('')
+  const [url, setUrl] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSubmit({
+      type,
+      content,
+      url: url || undefined,
+    })
+    setContent('')
+    setUrl('')
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <select
+        value={type}
+        onChange={e => setType(e.target.value)}
+        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+      >
+        <option value="general">💬 一般</option>
+        <option value="music">🎵 音樂</option>
+        <option value="gaming">🎮 遊戲</option>
+        <option value="streaming">🎙️ 直播</option>
+      </select>
+
+      <input
+        type="text"
+        value={content}
+        onChange={e => setContent(e.target.value)}
+        placeholder="你在做什麼？"
+        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+      />
+
+      <input
+        type="url"
+        value={url}
+        onChange={e => setUrl(e.target.value)}
+        placeholder="相關連結（可選）"
+        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+      />
+
+      <button
+        type="submit"
+        disabled={!content}
+        className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700
+                   disabled:opacity-50 rounded font-medium"
+      >
+        更新狀態
+      </button>
+    </form>
+  )
+}`}</code></pre>
+  </section>
+
+  <!-- Best Practices -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">最佳實踐</h2>
+    <div class="space-y-4">
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 設置適當的過期時間</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          對於音樂等臨時狀態，設置合理的過期時間讓狀態自動消失，避免顯示過時資訊。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 使用標準類型</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          優先使用 <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">general</code> 和
+          <code class="px-1 py-0.5 rounded bg-[var(--inline-code-bg)] text-[var(--inline-code-text)]">music</code>
+          等標準類型，確保跨客戶端相容性。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 提供有用的連結</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          當狀態有相關連結時（如音樂 URL、直播間連結），使用 r 標籤提供連結讓其他用戶可以參與。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 客戶端應過濾過期狀態</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          中繼器可能不會自動刪除過期事件，客戶端應檢查 expiration 標籤並過濾已過期的狀態。
+        </p>
+      </div>
+      <div class="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 空內容清除狀態</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          要清除狀態，發送相同類型但 content 為空字串的事件。客戶端應將空內容視為無狀態。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related NIPs -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">相關 NIP</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <a
+        href="/tech/nostr/nip-30"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-30 自訂表情</h4>
+        <p class="text-sm text-[var(--text-secondary)]">狀態內容可使用自訂表情</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-40"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-40 過期時間戳</h4>
+        <p class="text-sm text-[var(--text-secondary)]">定義事件過期機制</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-01"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-01 基本協議</h4>
+        <p class="text-sm text-[var(--text-secondary)]">可定址事件的基礎規範</p>
+      </a>
+      <a
+        href="/tech/nostr/nip-02"
+        class="p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-purple-500/50 transition-colors"
+      >
+        <h4 class="font-semibold text-[var(--text-primary)] mb-1">NIP-02 聯絡人列表</h4>
+        <p class="text-sm text-[var(--text-secondary)]">追蹤關注者的狀態</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-4">總結</h2>
+    <div class="p-6 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        NIP-38 用戶狀態提供了一種簡單而靈活的方式，讓用戶分享他們的即時活動。
+        透過標準化的狀態類型和過期機制，應用可以整合各種服務來自動更新用戶狀態。
+      </p>
+      <div class="grid md:grid-cols-3 gap-4 text-center">
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-purple-400">Kind 30315</div>
+          <div class="text-sm text-[var(--text-secondary)]">可定址狀態事件</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-blue-400">d 標籤</div>
+          <div class="text-sm text-[var(--text-secondary)]">區分狀態類型</div>
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-primary)]">
+          <div class="text-2xl font-bold text-green-400">自動過期</div>
+          <div class="text-sm text-[var(--text-secondary)]">expiration 標籤</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
