@@ -1,0 +1,379 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-03: OpenTimestamps"
+  description="使用比特幣區塊鏈為 Nostr 事件提供不可篡改的時間戳證明"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-03 定義了如何使用 OpenTimestamps (OTS) 協議為 Nostr 事件提供時間戳證明。
+    透過將事件 ID 錨定到比特幣區塊鏈，可以證明某個事件在特定時間之前就已存在，
+    提供不可篡改的時間證明。
+  </p>
+
+  <h2 id="opentimestamps">OpenTimestamps 簡介</h2>
+  <p>
+    OpenTimestamps 是一個開放的時間戳標準，利用比特幣區塊鏈的不可篡改性
+    來證明資料在某個時間點之前就已存在。它通過將多個時間戳請求聚合到
+    單一交易中，大幅降低了成本。
+  </p>
+
+  <h3>工作原理</h3>
+  <ol>
+    <li>計算資料的雜湊值</li>
+    <li>將雜湊值提交給 OTS 日曆伺服器</li>
+    <li>日曆伺服器將多個雜湊聚合到 Merkle 樹</li>
+    <li>Merkle 根被包含在比特幣交易中</li>
+    <li>交易被確認後，時間戳完成</li>
+  </ol>
+
+  <h2 id="tag-format">標籤格式</h2>
+  <pre><code class="language-json">["ots", "&lt;base64-encoded-ots-proof&gt;"]</code></pre>
+
+  <p>
+    <code>ots</code> 標籤包含 Base64 編碼的 OpenTimestamps 證明檔案。
+    這個證明可以獨立驗證，不需要信任任何第三方。
+  </p>
+
+  <h2 id="workflow">工作流程</h2>
+
+  <h3>1. 建立事件並獲取 ID</h3>
+  <pre><code class="language-json">{
+  "id": "a1b2c3d4...",
+  "pubkey": "...",
+  "created_at": 1704067200,
+  "kind": 1,
+  "content": "這是需要時間戳的重要內容",
+  "tags": [],
+  "sig": "..."
+}</code></pre>
+
+  <h3>2. 提交 ID 到 OTS</h3>
+  <p>將事件 ID（32 字節雜湊）提交給 OpenTimestamps 日曆伺服器。</p>
+
+  <h3>3. 等待比特幣確認</h3>
+  <p>通常需要幾個小時到一天，等待 OTS 將雜湊錨定到比特幣區塊。</p>
+
+  <h3>4. 獲取並附加證明</h3>
+  <pre><code class="language-json">{
+  "id": "a1b2c3d4...",
+  "pubkey": "...",
+  "created_at": 1704067200,
+  "kind": 1,
+  "content": "這是需要時間戳的重要內容",
+  "tags": [
+    ["ots", "AE9wZW5UaW1lc3RhbXBz..."]
+  ],
+  "sig": "..."
+}</code></pre>
+
+  <h2 id="examples">範例</h2>
+
+  <h3>帶有 OTS 證明的事件</h3>
+  <pre><code class="language-json">{
+  "kind": 1,
+  "content": "這份聲明發布於 2024 年 1 月 1 日",
+  "tags": [
+    ["ots", "AE9wZW5UaW1lc3RhbXBzIHByb29mIGRhdGEgaGVyZS4uLg=="]
+  ],
+  "created_at": 1704067200,
+  "pubkey": "...",
+  "id": "...",
+  "sig": "..."
+}</code></pre>
+
+  <h3>長文時間戳</h3>
+  <pre><code class="language-json">{
+  "kind": 30023,
+  "content": "# 重要公告\n\n本文件的內容在此時間戳之前就已存在...",
+  "tags": [
+    ["d", "important-announcement"],
+    ["title", "重要公告"],
+    ["ots", "AE9wZW5UaW1lc3RhbXBz..."]
+  ]
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>提交時間戳請求</h3>
+  <pre><code class="language-typescript">import OpenTimestamps from 'opentimestamps';
+
+async function submitTimestamp(eventId: string): Promise&lt;Uint8Array&gt; {
+  // 將事件 ID 轉換為字節
+  const idBytes = hexToBytes(eventId);
+
+  // 建立 DetachedTimestampFile
+  const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
+    new OpenTimestamps.Ops.OpSHA256(),
+    idBytes
+  );
+
+  // 提交到日曆伺服器
+  await OpenTimestamps.stamp(detached);
+
+  // 序列化證明
+  const proofBytes = detached.serializeToBytes();
+
+  return proofBytes;
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i &lt; hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+// 使用範例
+const proof = await submitTimestamp(event.id);
+const proofBase64 = btoa(String.fromCharCode(...proof));</code></pre>
+
+  <h3>升級時間戳（等待確認）</h3>
+  <pre><code class="language-typescript">async function upgradeTimestamp(
+  proofBytes: Uint8Array
+): Promise&lt;Uint8Array | null&gt; {
+  // 反序列化現有證明
+  const detached = OpenTimestamps.DetachedTimestampFile.deserialize(proofBytes);
+
+  // 嘗試升級（獲取比特幣確認）
+  const changed = await OpenTimestamps.upgrade(detached);
+
+  if (changed) {
+    // 返回升級後的證明
+    return detached.serializeToBytes();
+  }
+
+  // 尚未確認
+  return null;
+}
+
+// 輪詢升級狀態
+async function waitForConfirmation(
+  initialProof: Uint8Array,
+  maxAttempts: number = 24,
+  intervalMs: number = 3600000 // 1 小時
+): Promise&lt;Uint8Array&gt; {
+  let proof = initialProof;
+
+  for (let i = 0; i &lt; maxAttempts; i++) {
+    const upgraded = await upgradeTimestamp(proof);
+    if (upgraded) {
+      return upgraded;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error('時間戳升級超時');
+}</code></pre>
+
+  <h3>驗證時間戳</h3>
+  <pre><code class="language-typescript">interface VerificationResult {
+  verified: boolean;
+  attestations: {
+    type: string;
+    time: Date;
+    blockHeight?: number;
+  }[];
+}
+
+async function verifyTimestamp(
+  eventId: string,
+  proofBase64: string
+): Promise&lt;VerificationResult&gt; {
+  // 解碼證明
+  const proofBytes = Uint8Array.from(atob(proofBase64), (c) => c.charCodeAt(0));
+
+  // 反序列化
+  const detached = OpenTimestamps.DetachedTimestampFile.deserialize(proofBytes);
+
+  // 驗證事件 ID 匹配
+  const idBytes = hexToBytes(eventId);
+  const expectedDigest = detached.fileDigest();
+
+  if (!arraysEqual(idBytes, expectedDigest)) {
+    return { verified: false, attestations: [] };
+  }
+
+  // 驗證時間戳
+  const verifyResult = await OpenTimestamps.verify(detached);
+
+  const attestations = [];
+  for (const [attestation, timestamp] of verifyResult) {
+    attestations.push({
+      type: attestation.constructor.name,
+      time: new Date(timestamp * 1000),
+      blockHeight: attestation.height,
+    });
+  }
+
+  return {
+    verified: attestations.length > 0,
+    attestations,
+  };
+}
+
+function arraysEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i &lt; a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+// 使用範例
+const result = await verifyTimestamp(event.id, otsTag[1]);
+if (result.verified) {
+  console.log(`時間戳驗證成功！`);
+  result.attestations.forEach((att) => {
+    console.log(`在 ${att.time.toISOString()} 由 ${att.type} 確認`);
+  });
+}</code></pre>
+
+  <h3>建立帶時間戳的事件</h3>
+  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+
+async function createTimestampedEvent(
+  content: string,
+  kind: number,
+  secretKey: Uint8Array,
+  additionalTags: string[][] = []
+): Promise&lt;{
+  event: any;
+  pendingProof: string;
+}&gt; {
+  // 先建立不含 OTS 的事件
+  const event = finalizeEvent(
+    {
+      kind,
+      content,
+      tags: additionalTags,
+      created_at: Math.floor(Date.now() / 1000),
+    },
+    secretKey
+  );
+
+  // 提交時間戳
+  const proofBytes = await submitTimestamp(event.id);
+  const proofBase64 = btoa(String.fromCharCode(...proofBytes));
+
+  return {
+    event,
+    pendingProof: proofBase64,
+  };
+}
+
+// 更新事件的 OTS 標籤（升級後）
+function addOtsTag(event: any, otsProof: string): any {
+  return {
+    ...event,
+    tags: [...event.tags, ['ots', otsProof]],
+  };
+}</code></pre>
+
+  <h3>React 元件</h3>
+  <pre><code class="language-typescript">interface TimestampBadgeProps {
+  event: any;
+}
+
+function TimestampBadge({ event }: TimestampBadgeProps) {
+  const [verification, setVerification] = useState&lt;VerificationResult | null&gt;(null);
+  const [loading, setLoading] = useState(false);
+
+  const otsTag = event.tags.find((t: string[]) => t[0] === 'ots');
+
+  if (!otsTag) {
+    return null;
+  }
+
+  const handleVerify = async () => {
+    setLoading(true);
+    try {
+      const result = await verifyTimestamp(event.id, otsTag[1]);
+      setVerification(result);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    &lt;div className="timestamp-badge"&gt;
+      &lt;span className="icon"&gt;⏰&lt;/span&gt;
+      &lt;span&gt;OpenTimestamps&lt;/span&gt;
+      {verification === null ? (
+        &lt;button onClick={handleVerify} disabled={loading}&gt;
+          {loading ? '驗證中...' : '驗證'}
+        &lt;/button&gt;
+      ) : verification.verified ? (
+        &lt;div className="verified"&gt;
+          &lt;span&gt;✓ 已驗證&lt;/span&gt;
+          {verification.attestations.map((att, i) =&gt; (
+            &lt;div key={i} className="attestation"&gt;
+              區塊 #{att.blockHeight} - {att.time.toLocaleDateString()}
+            &lt;/div&gt;
+          ))}
+        &lt;/div&gt;
+      ) : (
+        &lt;span className="pending"&gt;待確認&lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>法律與合規</h3>
+  <ul>
+    <li>證明聲明或公告的發布時間</li>
+    <li>智慧財產權的時間證明</li>
+    <li>合約或協議的存在證明</li>
+  </ul>
+
+  <h3>新聞與記錄</h3>
+  <ul>
+    <li>新聞報導的時間戳</li>
+    <li>歷史事件的記錄</li>
+    <li>證人陳述的時間證明</li>
+  </ul>
+
+  <h3>學術與研究</h3>
+  <ul>
+    <li>研究成果的優先權證明</li>
+    <li>論文預印本的時間戳</li>
+    <li>數據集的完整性證明</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>等待確認</strong>：OTS 證明需要比特幣確認才有效，通常需要數小時</li>
+    <li><strong>保存證明</strong>：證明資料應妥善保存，是驗證的必要條件</li>
+    <li><strong>定期升級</strong>：提交後定期檢查並升級證明狀態</li>
+    <li><strong>獨立驗證</strong>：任何人都可以用事件 ID 和證明獨立驗證</li>
+    <li><strong>不可更改</strong>：時間戳針對特定事件 ID，內容變更會使證明失效</li>
+  </ul>
+
+  <h2 id="limitations">限制</h2>
+  <ul>
+    <li>證明需要時間完成（數小時到一天）</li>
+    <li>只能證明「之前存在」，不能證明精確時間</li>
+    <li>事件內容不能更改，否則 ID 會變</li>
+    <li>需要額外的儲存空間保存證明</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 事件 ID 計算</li>
+    <li><a href="/tech/nostr/nip-23">NIP-23</a>：長文內容 - 重要文件時間戳</li>
+    <li><a href="/tech/nostr/nip-40">NIP-40</a>：過期時間戳 - 事件時間控制</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/03.md" target="_blank" rel="noopener noreferrer">NIP-03 規範</a></li>
+    <li><a href="https://opentimestamps.org/" target="_blank" rel="noopener noreferrer">OpenTimestamps 官網</a></li>
+    <li><a href="https://github.com/opentimestamps/javascript-opentimestamps" target="_blank" rel="noopener noreferrer">OpenTimestamps JavaScript 庫</a></li>
+  </ul>
+</ArticleLayout>
