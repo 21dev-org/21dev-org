@@ -1,0 +1,275 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot Channels"
+  description="深入理解 Taproot 通道，利用 Schnorr 簽名和 MAST 提升閃電網路的效率和隱私。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Taproot Channels' },
+  ]}
+  difficulty="advanced"
+  readingTime="22 分鐘"
+  prevPage={{ title: 'BOLT12 Offers', href: '/tech/lightning/bolt12-offers' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Taproot Channels？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Taproot Channels 是利用比特幣 Taproot 升級（BIP-340/341/342）重新設計的閃電網路通道。
+    通過 Schnorr 簽名和 MAST（Merkelized Abstract Syntax Trees），
+    Taproot 通道在鏈上看起來與普通交易無異，大幅提升隱私性和效率。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心優勢：</strong>
+      合作關閉 Taproot 通道時，鏈上交易看起來就像普通的單簽交易，
+      無法區分這是閃電網路通道還是普通轉帳。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">傳統通道 vs Taproot 通道</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">P2WSH 通道</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Taproot 通道</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Funding 輸出</td>
+          <td class="py-3 px-4">P2WSH（明顯的多簽）</td>
+          <td class="py-3 px-4">P2TR（看起來像單簽）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">合作關閉</td>
+          <td class="py-3 px-4">暴露 2-of-2 腳本</td>
+          <td class="py-3 px-4">僅 key path，無腳本</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">簽名大小</td>
+          <td class="py-3 px-4">~140 bytes（2 個 ECDSA）</td>
+          <td class="py-3 px-4">~64 bytes（1 個 Schnorr）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">鏈上隱私</td>
+          <td class="py-3 px-4">可識別為閃電通道</td>
+          <td class="py-3 px-4">無法區分</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">手續費</td>
+          <td class="py-3 px-4">較高</td>
+          <td class="py-3 px-4">降低 ~30%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Taproot 技術基礎</h2>
+
+  <div class="grid md:grid-cols-2 gap-6 mb-8">
+    <div class="p-6 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">Schnorr 簽名</h3>
+      <p class="text-sm text-[var(--text-secondary)] mb-3">
+        Schnorr 簽名支持密鑰聚合（MuSig2），兩個公鑰可以組合成一個，
+        產生的簽名與單人簽名無法區分。
+      </p>
+      <div class="p-3 rounded bg-[var(--bg-secondary)] font-mono text-xs">
+        P = P_alice + P_bob<br />
+        sig = sign(P, message)
+      </div>
+    </div>
+
+    <div class="p-6 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">MAST 結構</h3>
+      <p class="text-sm text-[var(--text-secondary)] mb-3">
+        MAST 允許將多個腳本組織成 Merkle 樹，只有使用到的分支需要揭示，
+        其他分支保持隱藏。
+      </p>
+      <div class="p-3 rounded bg-[var(--bg-secondary)] font-mono text-xs">
+        Taproot = key_path OR script_path<br />
+        （優先使用 key_path）
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code># Taproot 通道 Funding Output
+output_key = P_internal + hash(P_internal || script_tree) * G
+
+# P_internal = MuSig2(P_alice, P_bob)  -- 聚合公鑰
+# script_tree = 包含所有可能的關閉路徑
+
+# Key Path (合作關閉)
+witness: &lt;musig2_signature&gt;
+
+# Script Path (非合作關閉)
+witness: &lt;script&gt; &lt;control_block&gt; &lt;witness_data&gt;</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">關閉場景比較</h2>
+
+  <div class="not-prose mb-8 space-y-4">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">合作關閉 (Key Path)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        雙方同意關閉通道，使用 MuSig2 聚合簽名。
+      </p>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 鏈上僅見一個簽名</li>
+        <li>• 無法識別為閃電通道</li>
+        <li>• 最小的交易大小和費用</li>
+      </ul>
+    </div>
+
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">強制關閉 (Script Path)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        一方單獨關閉通道，需要揭示腳本分支。
+      </p>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 揭示使用的腳本分支</li>
+        <li>• 其他未使用分支保持隱藏</li>
+        <li>• 仍比傳統通道更隱私</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MuSig2 在通道中的應用</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    {
+      [
+        { step: '1', title: 'Nonce 交換', desc: '雙方交換隨機 nonce，用於生成聚合簽名' },
+        { step: '2', title: '聚合公鑰', desc: '計算 P = H(P_a || P_b) * P_a + H(P_b || P_a) * P_b' },
+        { step: '3', title: '部分簽名', desc: '各方計算自己的部分簽名 s_a, s_b' },
+        { step: '4', title: '聚合簽名', desc: '合併為完整簽名 s = s_a + s_b' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-bold text-sm">
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PTLC 取代 HTLC</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Taproot 通道為採用 PTLC（Point Time-Locked Contracts）鋪平道路：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">HTLC (現行)</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 使用 hash preimage</li>
+        <li>• 同一 hash 可被追蹤</li>
+        <li>• 路徑上所有節點見同一 hash</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">PTLC (未來)</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 使用橢圓曲線點</li>
+        <li>• 每跳不同的點</li>
+        <li>• 無法跨節點關聯支付</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">實現</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">狀態</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">備註</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">LND</td>
+          <td class="py-3 px-4"><span class="text-green-500">✓ Simple Taproot</span></td>
+          <td class="py-3 px-4">v0.17.0+（實驗性）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">CLN</td>
+          <td class="py-3 px-4"><span class="text-yellow-500">⏳ 開發中</span></td>
+          <td class="py-3 px-4">計劃中</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">LDK</td>
+          <td class="py-3 px-4"><span class="text-yellow-500">⏳ 開發中</span></td>
+          <td class="py-3 px-4">積極開發</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Eclair</td>
+          <td class="py-3 px-4"><span class="text-yellow-500">⏳ 研究中</span></td>
+          <td class="py-3 px-4">評估階段</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優勢總結</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    {
+      [
+        { title: '隱私增強', desc: '合作關閉無法區分', icon: '🔒' },
+        { title: '費用降低', desc: '更小的交易大小', icon: '💰' },
+        { title: '未來兼容', desc: '支持 PTLC 升級', icon: '🚀' },
+        { title: '簡化腳本', desc: 'MAST 隱藏複雜性', icon: '📜' },
+      ].map((item) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] text-center">
+          <div class="text-2xl mb-2">{item.icon}</div>
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{item.title}</h4>
+          <p class="text-xs text-[var(--text-secondary)]">{item.desc}</p>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關 BIP</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-340</strong>：Schnorr 簽名標準</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-341</strong>：Taproot 輸出結構</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-342</strong>：Tapscript 操作碼</span>
+    </li>
+    <li class="flex items-start gap-2">
+      <span class="text-yellow-500 font-bold">•</span>
+      <span><strong class="text-[var(--text-primary)]">BIP-327</strong>：MuSig2 多簽協議</span>
+    </li>
+  </ul>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>注意事項：</strong>
+      目前 Simple Taproot Channels 仍處於實驗階段，建議僅用於測試。
+      完整的 Taproot 通道（包括 PTLC）仍在開發中。
+    </p>
+  </div>
+</ArticleLayout>

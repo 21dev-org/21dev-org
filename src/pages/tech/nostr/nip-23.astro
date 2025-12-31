@@ -1,0 +1,277 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-23 長文內容"
+  description="深入了解 Nostr 的長文內容規範，Markdown 文章、部落格和可替換事件。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-23 長文內容' },
+  ]}
+  difficulty="beginner"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'NIP-19 bech32 編碼', href: '/tech/nostr/nip-19' }}
+  nextPage={{ title: 'NIP-05 域名驗證', href: '/tech/nostr/nip-05' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-23？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-23 定義了 Nostr 中的長文內容格式，適用於部落格文章、教程、新聞等長篇內容。
+    與普通貼文（kind 1）不同，長文使用 kind 30023，支持 Markdown 格式、
+    可被更新替換，並包含豐富的元數據。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>特點：</strong>
+      Kind 30023 是「可替換事件」，同一作者使用相同 d 標籤發布的新事件會替換舊事件，
+      讓作者可以更新和修訂文章。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 30023,
+  "created_at": 1234567890,
+  "content": "# 文章標題\\n\\n這是一篇 Markdown 格式的長文...",
+  "tags": [
+    ["d", "my-article-slug"],           // 唯一識別符（必須）
+    ["title", "我的文章標題"],           // 標題
+    ["summary", "文章摘要..."],          // 摘要
+    ["image", "https://..."],           // 封面圖片
+    ["published_at", "1234567890"],     // 首次發布時間
+    ["t", "nostr"],                      // 主題標籤
+    ["t", "bitcoin"]
+  ],
+  "pubkey": "...",
+  "id": "...",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤說明</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">必須</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">d</td>
+          <td class="py-3 px-4"><span class="text-green-500">是</span></td>
+          <td class="py-3 px-4">唯一識別符，通常是 URL slug</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">title</td>
+          <td class="py-3 px-4"><span class="text-yellow-500">推薦</span></td>
+          <td class="py-3 px-4">文章標題</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">summary</td>
+          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
+          <td class="py-3 px-4">文章摘要/描述</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">image</td>
+          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
+          <td class="py-3 px-4">封面圖片 URL</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">published_at</td>
+          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
+          <td class="py-3 px-4">首次發布時間戳</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">t</td>
+          <td class="py-3 px-4"><span class="text-gray-500">選填</span></td>
+          <td class="py-3 px-4">主題標籤（可多個）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">可替換事件機制</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Kind 30023 是「參數化可替換事件」，遵循以下規則：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code># 事件識別
+唯一鍵 = kind:pubkey:d-tag
+
+# 範例
+30023:npub1abc...:my-article-slug
+
+# 替換規則
+- 相同 kind + pubkey + d 標籤 = 同一篇文章
+- 新事件的 created_at 較新 → 替換舊事件
+- 中繼器只保留最新版本</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Markdown 內容</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    content 欄位使用標準 Markdown 格式：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code># 一級標題
+
+這是段落文字，支持 **粗體** 和 *斜體*。
+
+## 二級標題
+
+- 列表項目 1
+- 列表項目 2
+
+\`\`\`javascript
+// 程式碼區塊
+console.log('Hello, Nostr!')
+\`\`\`
+
+![圖片描述](https://example.com/image.png)
+
+[連結文字](https://example.com)</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">引用長文 (naddr)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    使用 NIP-19 的 naddr 格式引用長文：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`# naddr 包含的資訊
+- kind: 30023
+- pubkey: 作者公鑰
+- d: 文章識別符
+- relay: 推薦的中繼器
+
+# 範例
+naddr1qvzqqqr4gupzp...
+
+# 解碼後
+{
+  kind: 30023,
+  pubkey: "npub1...",
+  identifier: "my-article-slug",
+  relays: ["wss://relay.damus.io"]
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢長文</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`# 查詢特定作者的所有長文
+["REQ", "articles", {
+  "kinds": [30023],
+  "authors": ["<pubkey>"]
+}]
+
+# 查詢特定文章（使用 d 標籤）
+["REQ", "article", {
+  "kinds": [30023],
+  "authors": ["<pubkey>"],
+  "#d": ["my-article-slug"]
+}]
+
+# 查詢特定主題的文章
+["REQ", "topic", {
+  "kinds": [30023],
+  "#t": ["bitcoin"]
+}]`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Kind 1 的比較</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 1（短文）</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 30023（長文）</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">長度</td>
+          <td class="py-3 px-4">短（類似推文）</td>
+          <td class="py-3 px-4">長（文章、教程）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">格式</td>
+          <td class="py-3 px-4">純文字</td>
+          <td class="py-3 px-4">Markdown</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">可編輯</td>
+          <td class="py-3 px-4">否（只能刪除重發）</td>
+          <td class="py-3 px-4">是（發布新版本）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">元數據</td>
+          <td class="py-3 px-4">基本標籤</td>
+          <td class="py-3 px-4">標題、摘要、封面</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">引用格式</td>
+          <td class="py-3 px-4">note / nevent</td>
+          <td class="py-3 px-4">naddr</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支持的客戶端</h2>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        { name: 'Habla', url: 'https://habla.news', desc: '專注長文的閱讀平台' },
+        { name: 'Yakihonne', url: 'https://yakihonne.com', desc: '部落格和長文平台' },
+        { name: 'Highlighter', url: 'https://highlighter.com', desc: '長文寫作工具' },
+      ].map((client) => (
+        <a
+          href={client.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] hover:border-purple-500/50 transition-colors"
+        >
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{client.name}</h4>
+          <p class="text-sm text-[var(--text-secondary)]">{client.desc}</p>
+        </a>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">草稿功能</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Kind 30024 用於儲存草稿，結構與 30023 相同但不公開：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "kind": 30024,  // 草稿
+  "tags": [
+    ["d", "draft-my-article"],
+    ["title", "進行中的文章"]
+  ],
+  "content": "# 草稿內容..."
+}`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>最佳實踐：</strong>
+      使用有意義的 d 標籤（如 URL slug），這讓文章更容易被引用和分享。
+      保持 published_at 標籤不變，只更新 created_at，以保留原始發布日期。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,298 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="BOLT12 Offers"
+  description="深入理解 BOLT12 Offers，閃電網路的下一代支付請求協議。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'BOLT12 Offers' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Splicing', href: '/tech/lightning/splicing' }}
+  nextPage={{ title: 'Taproot Channels', href: '/tech/lightning/taproot-channels' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 BOLT12？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BOLT12 是閃電網路規範的重大更新，引入了「Offers」概念——一種可重複使用的支付請求格式。
+    與一次性的 BOLT11 發票不同，Offers 可以永久有效，並支持更豐富的功能，
+    如訂閱支付、退款、和更好的隱私保護。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>為什麼需要 BOLT12？</strong>
+      BOLT11 發票設計上是一次性的，每次支付都需要新發票。
+      BOLT12 Offers 解決了這個問題，同時帶來了更好的隱私和功能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT11 vs BOLT12</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">BOLT11</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">BOLT12</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">使用次數</td>
+          <td class="py-3 px-4">一次性</td>
+          <td class="py-3 px-4">可重複使用</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">金額</td>
+          <td class="py-3 px-4">固定或為空</td>
+          <td class="py-3 px-4">固定、範圍或付款者決定</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">有效期</td>
+          <td class="py-3 px-4">通常 1 小時</td>
+          <td class="py-3 px-4">可永久有效</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">付款者隱私</td>
+          <td class="py-3 px-4">有限</td>
+          <td class="py-3 px-4">支持盲化路徑</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">收款者隱私</td>
+          <td class="py-3 px-4">節點 ID 暴露</td>
+          <td class="py-3 px-4">可隱藏節點 ID</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">退款支持</td>
+          <td class="py-3 px-4">無</td>
+          <td class="py-3 px-4">內建支持</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">格式前綴</td>
+          <td class="py-3 px-4">lnbc...</td>
+          <td class="py-3 px-4">lno...（offer）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offers 工作流程</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    {
+      [
+        { step: '1', title: '創建 Offer', desc: '商家創建一個 Offer（lno1...），包含描述、金額範圍等資訊' },
+        { step: '2', title: '發送請求', desc: '付款者掃描 Offer，通過洋蔥訊息發送 invoice_request' },
+        { step: '3', title: '返回發票', desc: '商家收到請求，生成專屬發票並通過洋蔥訊息返回' },
+        { step: '4', title: '完成支付', desc: '付款者收到發票，按正常流程完成閃電支付' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-bold text-sm">
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offer 格式解析</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code># 範例 Offer
+lno1qgsqvgjwvd...（bech32m 編碼）
+
+# 解碼後的內容
+offer_id: 8a3c...
+description: "Coffee Shop Tips"
+issuer: "Bitcoin Cafe"
+amount_msat: 0 (付款者決定)
+features: 0x0200
+paths: [blinded_path_1, blinded_path_2]
+node_id: (隱藏，使用盲化路徑)</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">關鍵功能</h2>
+
+  <div class="grid md:grid-cols-2 gap-6 mb-8">
+    <div class="p-6 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">盲化路徑 (Blinded Paths)</h3>
+      <p class="text-sm text-[var(--text-secondary)] mb-3">
+        收款者可以提供「盲化路徑」而非真實節點 ID。
+        付款者只知道路徑的入口點，無法得知最終目的地。
+      </p>
+      <div class="p-3 rounded bg-[var(--bg-secondary)] font-mono text-xs">
+        A → B → ??? → ??? → 收款者<br />
+        （後半段路徑被加密）
+      </div>
+    </div>
+
+    <div class="p-6 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">洋蔥訊息 (Onion Messages)</h3>
+      <p class="text-sm text-[var(--text-secondary)] mb-3">
+        BOLT12 使用洋蔥訊息進行通訊，無需建立通道即可發送訊息。
+        這允許匿名請求發票。
+      </p>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 無需支付即可通訊</li>
+        <li>• 端到端加密</li>
+        <li>• 支持回覆路徑</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {
+      [
+        {
+          title: '靜態支付碼',
+          desc: '一個 Offer 可以永久使用，適合打賞、捐款',
+          icon: '🎁',
+        },
+        {
+          title: '訂閱服務',
+          desc: '定期支付服務費，無需每次生成新發票',
+          icon: '🔄',
+        },
+        {
+          title: '退款機制',
+          desc: '商家可以通過原支付路徑發起退款',
+          icon: '↩️',
+        },
+        {
+          title: '隱私支付',
+          desc: '盲化路徑保護收款者身份',
+          icon: '🔒',
+        },
+        {
+          title: 'NFC 支付',
+          desc: 'Offer 可嵌入 NFC 標籤，簡化線下支付',
+          icon: '📱',
+        },
+        {
+          title: '自動支付',
+          desc: '結合 LSP 實現自動化支付流程',
+          icon: '⚡',
+        },
+      ].map((item) => (
+        <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+          <div class="text-2xl mb-2">{item.icon}</div>
+          <h4 class="font-semibold text-[var(--text-primary)] mb-1">{item.title}</h4>
+          <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offer 類型</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">類型</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">前綴</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Offer</td>
+          <td class="py-3 px-4 font-mono">lno1...</td>
+          <td class="py-3 px-4">收款者發布，請求付款</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Invoice Request</td>
+          <td class="py-3 px-4 font-mono">lnr1...</td>
+          <td class="py-3 px-4">付款者發送，請求發票</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Invoice</td>
+          <td class="py-3 px-4 font-mono">lni1...</td>
+          <td class="py-3 px-4">收款者回應，包含支付詳情</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Invoice Error</td>
+          <td class="py-3 px-4">-</td>
+          <td class="py-3 px-4">錯誤回應</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">實現</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">狀態</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">備註</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">CLN (Core Lightning)</td>
+          <td class="py-3 px-4"><span class="text-green-500">✓ 完整支持</span></td>
+          <td class="py-3 px-4">Rusty Russell 主導開發</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">LDK</td>
+          <td class="py-3 px-4"><span class="text-green-500">✓ 已支持</span></td>
+          <td class="py-3 px-4">Spiral 開發</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Eclair</td>
+          <td class="py-3 px-4"><span class="text-green-500">✓ 已支持</span></td>
+          <td class="py-3 px-4">ACINQ</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">LND</td>
+          <td class="py-3 px-4"><span class="text-yellow-500">⏳ 開發中</span></td>
+          <td class="py-3 px-4">計劃支持</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Phoenix</td>
+          <td class="py-3 px-4"><span class="text-green-500">✓ 已支持</span></td>
+          <td class="py-3 px-4">移動端錢包</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">CLI 範例</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code># 創建 Offer (CLN)
+lightning-cli offer any "Coffee tips"
+
+# 返回：
+# "bolt12": "lno1qgsqvgjwvd..."
+# "offer_id": "8a3c..."
+
+# 從 Offer 獲取發票
+lightning-cli fetchinvoice lno1qgsqvgjwvd... 10000
+
+# 支付 BOLT12 發票
+lightning-cli pay lni1qqs...</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>最佳實踐：</strong>
+      對於需要接收多次支付的場景（如打賞、訂閱），優先使用 BOLT12 Offers 而非 BOLT11 發票。
+      這不僅提供更好的用戶體驗，還增強了隱私保護。
+    </p>
+  </div>
+</ArticleLayout>

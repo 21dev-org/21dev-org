@@ -1,0 +1,235 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-04 加密私訊"
+  description="深入了解 Nostr 的加密直接訊息規範，ECDH 密鑰交換和 AES-256-CBC 加密。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-04 加密私訊' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'NIP-01 基本協議', href: '/tech/nostr/nip-01' }}
+  nextPage={{ title: 'NIP-19 bech32 編碼', href: '/tech/nostr/nip-19' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-04 概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-04 定義了 Nostr 中的加密直接訊息（Encrypted Direct Messages）格式。
+    它使用 ECDH（橢圓曲線 Diffie-Hellman）密鑰交換生成共享密鑰，
+    然後用 AES-256-CBC 加密訊息內容。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>安全警告：</strong>
+      NIP-04 存在一些已知的安全限制，包括缺乏前向保密和元數據洩露。
+      NIP-44 是更安全的替代方案，但 NIP-04 仍被廣泛使用。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "id": "...",
+  "pubkey": "<發送者公鑰>",
+  "created_at": 1234567890,
+  "kind": 4,                          // 加密 DM 類型
+  "tags": [
+    ["p", "<接收者公鑰>"]            // 必須標記接收者
+  ],
+  "content": "<加密內容>?iv=<初始向量>",
+  "sig": "..."
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密流程</h2>
+
+  <div class="not-prose mb-8 space-y-3">
+    {
+      [
+        { step: '1', title: 'ECDH 密鑰交換', desc: '使用發送者私鑰和接收者公鑰計算共享密鑰：shared = ECDH(私鑰_A, 公鑰_B)' },
+        { step: '2', title: '生成 AES 密鑰', desc: '取共享點的 x 座標作為 AES-256 密鑰' },
+        { step: '3', title: '生成隨機 IV', desc: '生成 16 bytes 的隨機初始向量' },
+        { step: '4', title: 'AES-CBC 加密', desc: '使用 AES-256-CBC 模式加密訊息內容' },
+        { step: '5', title: '組合輸出', desc: '將加密內容和 IV 用 Base64 編碼，格式：<encrypted>?iv=<iv>' },
+      ].map((item) => (
+        <div class="flex items-start gap-4 p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">
+            {item.step}
+          </div>
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)]">{item.title}</h4>
+            <p class="text-sm text-[var(--text-secondary)]">{item.desc}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">加密訊息</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import * as secp256k1 from '@noble/secp256k1'
+import { randomBytes, createCipheriv } from 'crypto'
+
+function encrypt(privateKey, recipientPubkey, message) {
+  // 1. ECDH 計算共享密鑰
+  const sharedPoint = secp256k1.getSharedSecret(
+    privateKey,
+    '02' + recipientPubkey  // 壓縮公鑰格式
+  )
+  const sharedKey = sharedPoint.slice(1, 33)  // 取 x 座標
+
+  // 2. 生成隨機 IV
+  const iv = randomBytes(16)
+
+  // 3. AES-256-CBC 加密
+  const cipher = createCipheriv('aes-256-cbc', sharedKey, iv)
+  let encrypted = cipher.update(message, 'utf8', 'base64')
+  encrypted += cipher.final('base64')
+
+  // 4. 組合輸出
+  return encrypted + '?iv=' + iv.toString('base64')
+}`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解密訊息</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`import { createDecipheriv } from 'crypto'
+
+function decrypt(privateKey, senderPubkey, content) {
+  // 1. 解析加密內容和 IV
+  const [encrypted, ivParam] = content.split('?iv=')
+  const iv = Buffer.from(ivParam, 'base64')
+
+  // 2. ECDH 計算共享密鑰（與加密相同）
+  const sharedPoint = secp256k1.getSharedSecret(
+    privateKey,
+    '02' + senderPubkey
+  )
+  const sharedKey = sharedPoint.slice(1, 33)
+
+  // 3. AES-256-CBC 解密
+  const decipher = createDecipheriv('aes-256-cbc', sharedKey, iv)
+  let decrypted = decipher.update(encrypted, 'base64', 'utf8')
+  decrypted += decipher.final('utf8')
+
+  return decrypted
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全特性</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優點</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 端到端加密</li>
+        <li>• 無需密鑰交換儀式</li>
+        <li>• 中繼器無法讀取內容</li>
+        <li>• 實現簡單</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">限制</h4>
+      <ul class="space-y-1 text-sm text-[var(--text-secondary)]">
+        <li>• 無前向保密（PFS）</li>
+        <li>• 元數據可見（誰和誰通訊）</li>
+        <li>• 無訊息認證（MAC）</li>
+        <li>• 重放攻擊風險</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">ECDH 原理</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    ECDH 允許兩方在不交換私鑰的情況下建立共享密鑰：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code># Alice 和 Bob 各有密鑰對
+Alice: 私鑰 a, 公鑰 A = a * G
+Bob:   私鑰 b, 公鑰 B = b * G
+
+# 計算共享密鑰
+Alice: shared = a * B = a * (b * G) = ab * G
+Bob:   shared = b * A = b * (a * G) = ab * G
+
+# 相同的共享點！</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-44：更安全的替代</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    NIP-44 解決了 NIP-04 的多個安全問題：
+  </p>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-04</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-44</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">加密算法</td>
+          <td class="py-3 px-4">AES-256-CBC</td>
+          <td class="py-3 px-4">XChaCha20-Poly1305</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">訊息認證</td>
+          <td class="py-3 px-4">無</td>
+          <td class="py-3 px-4">有（AEAD）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">填充</td>
+          <td class="py-3 px-4">PKCS7</td>
+          <td class="py-3 px-4">固定長度</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">版本控制</td>
+          <td class="py-3 px-4">無</td>
+          <td class="py-3 px-4">有</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢私訊</h2>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`# 查詢發送給我的私訊
+["REQ", "my-dms", {
+  "kinds": [4],
+  "#p": ["<my_pubkey>"]
+}]
+
+# 查詢我發送的私訊
+["REQ", "sent-dms", {
+  "kinds": [4],
+  "authors": ["<my_pubkey>"]
+}]
+
+# 查詢與特定用戶的對話
+["REQ", "convo", {
+  "kinds": [4],
+  "authors": ["<my_pubkey>", "<their_pubkey>"],
+  "#p": ["<my_pubkey>", "<their_pubkey>"]
+}]`}</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>最佳實踐：</strong>
+      對於敏感通訊，考慮使用支持 NIP-44 的客戶端。
+      同時，定期更換密鑰可以降低長期密鑰洩露的風險。
+    </p>
+  </div>
+</ArticleLayout>

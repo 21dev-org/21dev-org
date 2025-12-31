@@ -1,0 +1,281 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-01 基本協議"
+  description="深入了解 Nostr 的基本協議規範，事件格式、簽名驗證和客戶端-中繼器通訊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-01 基本協議' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: '協議基礎', href: '/tech/nostr/protocol' }}
+  nextPage={{ title: 'NIP-04 加密私訊', href: '/tech/nostr/nip-04' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">NIP-01 概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    NIP-01 定義了 Nostr 協議的基本元素：事件格式、簽名方案、
+    客戶端與中繼器之間的通訊協議，以及基本的訊息類型。
+    這是所有 Nostr 應用的基礎。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>核心原則：</strong>
+      Nostr 的設計極度簡單——每個用戶只有一對密鑰，所有內容都是簽名的事件。
+      中繼器只是轉發事件，不需要信任它們。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件格式</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    每個事件都是一個 JSON 物件，包含以下欄位：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`{
+  "id": "事件 ID（內容的 SHA256 雜湊）",
+  "pubkey": "發布者的公鑰（32 bytes hex）",
+  "created_at": 1234567890,  // Unix 時間戳
+  "kind": 1,                  // 事件類型
+  "tags": [                   // 標籤陣列
+    ["e", "引用的事件 ID"],
+    ["p", "提及的公鑰"],
+    ["t", "hashtag"]
+  ],
+  "content": "事件內容",
+  "sig": "Schnorr 簽名（64 bytes hex）"
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件 ID 計算</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    事件 ID 是以下 JSON 序列化的 SHA256 雜湊：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>// 序列化格式
+[
+  0,                    // 固定值
+  &lt;pubkey&gt;,            // 發布者公鑰
+  &lt;created_at&gt;,        // 時間戳
+  &lt;kind&gt;,              // 事件類型
+  &lt;tags&gt;,              // 標籤陣列
+  &lt;content&gt;            // 內容字串
+]
+
+// 計算
+id = SHA256(JSON.stringify(serialized))</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見事件類型 (Kind)</h2>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">名稱</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">0</td>
+          <td class="py-3 px-4">Metadata</td>
+          <td class="py-3 px-4">用戶個人資料（名稱、頭像、簡介）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">1</td>
+          <td class="py-3 px-4">Short Text Note</td>
+          <td class="py-3 px-4">純文字貼文</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">2</td>
+          <td class="py-3 px-4">Recommend Relay</td>
+          <td class="py-3 px-4">推薦中繼器（已棄用）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">3</td>
+          <td class="py-3 px-4">Contacts</td>
+          <td class="py-3 px-4">關注列表</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">4</td>
+          <td class="py-3 px-4">Encrypted DM</td>
+          <td class="py-3 px-4">加密私訊（NIP-04）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">5</td>
+          <td class="py-3 px-4">Event Deletion</td>
+          <td class="py-3 px-4">刪除請求</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">7</td>
+          <td class="py-3 px-4">Reaction</td>
+          <td class="py-3 px-4">按讚、表情反應</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">客戶端-中繼器通訊</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Nostr 使用 WebSocket 進行通訊，有三種訊息類型：
+  </p>
+
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">CLIENT → RELAY</h4>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">EVENT</code> 發布事件</li>
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">REQ</code> 訂閱查詢</li>
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">CLOSE</code> 關閉訂閱</li>
+      </ul>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">RELAY → CLIENT</h4>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">EVENT</code> 返回事件</li>
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">OK</code> 確認收到</li>
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">EOSE</code> 訂閱結束</li>
+        <li><code class="bg-black/10 dark:bg-white/10 px-1 rounded">NOTICE</code> 通知訊息</li>
+      </ul>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">訊息格式</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有訊息都是 JSON 陣列，第一個元素是訊息類型
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訂閱過濾器</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    REQ 訊息使用過濾器來查詢事件：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 訂閱格式
+["REQ", "<subscription_id>", <filter1>, <filter2>, ...]
+
+// 過濾器選項
+{
+  "ids": ["<event_id>", ...],      // 特定事件 ID
+  "authors": ["<pubkey>", ...],    // 特定作者
+  "kinds": [0, 1, 3],               // 事件類型
+  "#e": ["<event_id>", ...],       // 引用事件
+  "#p": ["<pubkey>", ...],         // 提及用戶
+  "#t": ["bitcoin", "nostr"],       // 標籤
+  "since": 1234567890,              // 時間範圍起始
+  "until": 1234567899,              // 時間範圍結束
+  "limit": 100                      // 數量限制
+}`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實際範例</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發布貼文</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 客戶端發送
+["EVENT", {
+  "id": "abc123...",
+  "pubkey": "npub1...",
+  "created_at": 1704067200,
+  "kind": 1,
+  "tags": [],
+  "content": "Hello, Nostr!",
+  "sig": "sig123..."
+}]
+
+// 中繼器回應
+["OK", "abc123...", true, ""]`}</code></pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">訂閱用戶貼文</h3>
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>{`// 客戶端請求
+["REQ", "my-sub", {
+  "authors": ["npub1..."],
+  "kinds": [1],
+  "limit": 50
+}]
+
+// 中繼器回應（多個事件）
+["EVENT", "my-sub", {...event1...}]
+["EVENT", "my-sub", {...event2...}]
+["EOSE", "my-sub"]  // 歷史事件結束
+
+// 新事件即時推送
+["EVENT", "my-sub", {...new_event...}]`}</code></pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤系統</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    標籤是 Nostr 事件中的重要元素，用於關聯和索引：
+  </p>
+
+  <div class="not-prose mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">格式</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">e</td>
+          <td class="py-3 px-4 font-mono">["e", "&lt;event_id&gt;", "&lt;relay&gt;"]</td>
+          <td class="py-3 px-4">引用/回覆事件</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">p</td>
+          <td class="py-3 px-4 font-mono">["p", "&lt;pubkey&gt;"]</td>
+          <td class="py-3 px-4">提及用戶</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">t</td>
+          <td class="py-3 px-4 font-mono">["t", "hashtag"]</td>
+          <td class="py-3 px-4">主題標籤</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4 font-mono">a</td>
+          <td class="py-3 px-4 font-mono">["a", "&lt;kind&gt;:&lt;pubkey&gt;:&lt;d&gt;"]</td>
+          <td class="py-3 px-4">引用可替換事件</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">簽名驗證</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Nostr 使用 Schnorr 簽名（secp256k1 曲線）：
+  </p>
+
+  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
+    <pre class="text-[var(--text-secondary)]"><code>// 驗證步驟
+1. 重新計算事件 ID
+   computed_id = SHA256(serialize(event))
+
+2. 驗證 ID 匹配
+   assert(event.id === computed_id)
+
+3. 驗證 Schnorr 簽名
+   assert(schnorr.verify(event.sig, event.id, event.pubkey))</code></pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>安全提示：</strong>
+      客戶端必須驗證每個收到的事件的簽名，不能信任中繼器。
+      這是 Nostr 去中心化信任模型的核心。
+    </p>
+  </div>
+</ArticleLayout>
