@@ -1,0 +1,469 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="NIP-78: 應用程式自訂資料"
+  description="在 Nostr 中繼器上儲存任意應用程式資料"
+  pubDate={new Date()}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    NIP-78 定義了一種在 Nostr 中繼器上儲存任意應用程式資料的方法。
+    使用 kind 30078 可定址事件，應用程式可以將用戶偏好設定、配置資料或任何自訂資料
+    儲存在用戶選擇的中繼器上，實現「自帶資料庫」的模式。
+  </p>
+
+  <h2 id="event-structure">事件結構</h2>
+  <p>
+    Kind 30078 是一個可定址的可替換事件，使用 <code>d</code> 標籤作為識別符。
+  </p>
+
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "tags": [
+    ["d", "myapp/user-settings"]
+  ],
+  "content": "{\"theme\":\"dark\",\"language\":\"zh-TW\",\"notifications\":true}",
+  "created_at": 1700000000
+}</code></pre>
+
+  <h3>核心元素</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>元素</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>kind</code></td>
+        <td>固定為 30078</td>
+        <td><code>30078</code></td>
+      </tr>
+      <tr>
+        <td><code>d</code> 標籤</td>
+        <td>應用程式和資料的識別符</td>
+        <td><code>["d", "myapp/settings"]</code></td>
+      </tr>
+      <tr>
+        <td><code>content</code></td>
+        <td>任意格式的資料內容</td>
+        <td>JSON、純文字、Base64 等</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="d-tag-conventions">d 標籤命名慣例</h2>
+  <p>
+    <code>d</code> 標籤可以是任意字串，但建議使用有意義的命名來組織資料：
+  </p>
+
+  <pre><code class="language-json">// 應用程式設定
+["d", "com.example.myapp/settings"]
+
+// 特定功能的資料
+["d", "com.example.myapp/bookmarks"]
+
+// 帶版本的配置
+["d", "com.example.myapp/config/v2"]
+
+// 遊戲存檔
+["d", "com.example.game/save/slot1"]
+
+// 用戶偏好
+["d", "myapp:preferences:theme"]</code></pre>
+
+  <div class="not-prose my-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <p class="text-sm text-blue-800 dark:text-blue-200">
+      <strong>設計哲學：</strong>NIP-78 刻意不規定資料格式，讓每個應用程式根據自身需求決定內容結構和標籤方案。
+      這優先考慮應用程式特定功能而非互操作性。
+    </p>
+  </div>
+
+  <h2 id="use-cases">使用場景</h2>
+
+  <h3>1. 用戶偏好設定</h3>
+  <p>儲存 Nostr 客戶端或其他應用程式的用戶設定：</p>
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "tags": [["d", "nostr-client/preferences"]],
+  "content": "{\"theme\":\"dark\",\"fontSize\":16,\"autoLoadMedia\":false,\"defaultZapAmount\":1000}"
+}</code></pre>
+
+  <h3>2. 應用程式配置分發</h3>
+  <p>開發者可以透過 Nostr 分發配置更新，無需發布軟體更新：</p>
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "tags": [
+    ["d", "myapp/remote-config"],
+    ["version", "2.1.0"]
+  ],
+  "content": "{\"featureFlags\":{\"newUI\":true,\"betaFeatures\":false},\"apiEndpoints\":{\"primary\":\"https://api.example.com\",\"fallback\":\"https://backup.example.com\"}}"
+}</code></pre>
+
+  <h3>3. 非 Nostr 應用程式的資料儲存</h3>
+  <p>任何應用程式都可以使用 Nostr 作為個人資料儲存：</p>
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "tags": [["d", "todo-app/tasks"]],
+  "content": "[{\"id\":1,\"text\":\"學習 Nostr\",\"done\":true},{\"id\":2,\"text\":\"建立應用程式\",\"done\":false}]"
+}</code></pre>
+
+  <h3>4. 遊戲存檔</h3>
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "tags": [
+    ["d", "pixel-adventure/save/slot1"],
+    ["t", "game-save"]
+  ],
+  "content": "{\"level\":15,\"score\":12500,\"inventory\":[\"sword\",\"shield\",\"potion\"],\"position\":{\"x\":100,\"y\":200}}"
+}</code></pre>
+
+  <h3>5. 跨裝置同步</h3>
+  <pre><code class="language-json">{
+  "kind": 30078,
+  "tags": [["d", "password-manager/encrypted-vault"]],
+  "content": "&lt;encrypted-base64-data&gt;"
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>儲存應用程式資料</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, SimplePool } from 'nostr-tools';
+
+interface AppDataOptions {
+  appId: string;
+  dataKey: string;
+  data: any;
+  additionalTags?: string[][];
+}
+
+function createAppDataEvent(
+  options: AppDataOptions,
+  secretKey: Uint8Array
+) {
+  const dTag = `${options.appId}/${options.dataKey}`;
+
+  const tags: string[][] = [['d', dTag]];
+
+  if (options.additionalTags) {
+    tags.push(...options.additionalTags);
+  }
+
+  const content =
+    typeof options.data === 'string'
+      ? options.data
+      : JSON.stringify(options.data);
+
+  const event = {
+    kind: 30078,
+    content,
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  };
+
+  return finalizeEvent(event, secretKey);
+}
+
+// 使用範例：儲存用戶設定
+const sk = generateSecretKey();
+
+const settingsEvent = createAppDataEvent(
+  {
+    appId: 'com.example.myapp',
+    dataKey: 'settings',
+    data: {
+      theme: 'dark',
+      language: 'zh-TW',
+      notifications: {
+        enabled: true,
+        sound: false,
+      },
+    },
+  },
+  sk
+);
+
+// 發布到中繼器
+const pool = new SimplePool();
+await pool.publish(['wss://relay.damus.io'], settingsEvent);</code></pre>
+
+  <h3>讀取應用程式資料</h3>
+  <pre><code class="language-typescript">import { SimplePool, getPublicKey } from 'nostr-tools';
+
+async function getAppData&lt;T&gt;(
+  pubkey: string,
+  appId: string,
+  dataKey: string,
+  relays: string[]
+): Promise&lt;T | null&gt; {
+  const pool = new SimplePool();
+  const dTag = `${appId}/${dataKey}`;
+
+  const events = await pool.querySync(relays, {
+    kinds: [30078],
+    authors: [pubkey],
+    '#d': [dTag],
+  });
+
+  if (events.length === 0) {
+    return null;
+  }
+
+  // 取得最新的事件
+  const latestEvent = events.sort((a, b) => b.created_at - a.created_at)[0];
+
+  try {
+    return JSON.parse(latestEvent.content) as T;
+  } catch {
+    return latestEvent.content as T;
+  }
+}
+
+// 使用範例
+interface UserSettings {
+  theme: 'light' | 'dark';
+  language: string;
+  notifications: {
+    enabled: boolean;
+    sound: boolean;
+  };
+}
+
+const pk = getPublicKey(sk);
+const settings = await getAppData&lt;UserSettings&gt;(
+  pk,
+  'com.example.myapp',
+  'settings',
+  ['wss://relay.damus.io', 'wss://nos.lol']
+);
+
+if (settings) {
+  console.log(`主題: ${settings.theme}`);
+  console.log(`語言: ${settings.language}`);
+}</code></pre>
+
+  <h3>完整的應用程式資料管理類別</h3>
+  <pre><code class="language-typescript">import { finalizeEvent, SimplePool, getPublicKey } from 'nostr-tools';
+
+class NostrAppStorage {
+  private pool: SimplePool;
+  private relays: string[];
+  private appId: string;
+  private secretKey: Uint8Array;
+  private pubkey: string;
+
+  constructor(
+    appId: string,
+    secretKey: Uint8Array,
+    relays: string[]
+  ) {
+    this.pool = new SimplePool();
+    this.appId = appId;
+    this.secretKey = secretKey;
+    this.pubkey = getPublicKey(secretKey);
+    this.relays = relays;
+  }
+
+  private getDTag(key: string): string {
+    return `${this.appId}/${key}`;
+  }
+
+  async set&lt;T&gt;(key: string, value: T): Promise&lt;void&gt; {
+    const event = {
+      kind: 30078,
+      content: JSON.stringify(value),
+      tags: [['d', this.getDTag(key)]],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+
+    const signedEvent = finalizeEvent(event, this.secretKey);
+    await this.pool.publish(this.relays, signedEvent);
+  }
+
+  async get&lt;T&gt;(key: string): Promise&lt;T | null&gt; {
+    const events = await this.pool.querySync(this.relays, {
+      kinds: [30078],
+      authors: [this.pubkey],
+      '#d': [this.getDTag(key)],
+    });
+
+    if (events.length === 0) {
+      return null;
+    }
+
+    const latest = events.sort((a, b) => b.created_at - a.created_at)[0];
+
+    try {
+      return JSON.parse(latest.content) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async delete(key: string): Promise&lt;void&gt; {
+    // 發布一個空內容的事件來「刪除」資料
+    const event = {
+      kind: 30078,
+      content: '',
+      tags: [
+        ['d', this.getDTag(key)],
+        ['deleted', 'true'],
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+
+    const signedEvent = finalizeEvent(event, this.secretKey);
+    await this.pool.publish(this.relays, signedEvent);
+  }
+
+  async list(): Promise&lt;string[]&gt; {
+    const events = await this.pool.querySync(this.relays, {
+      kinds: [30078],
+      authors: [this.pubkey],
+    });
+
+    const keys = new Set&lt;string&gt;();
+    const prefix = `${this.appId}/`;
+
+    events.forEach((event) => {
+      const dTag = event.tags.find((t) => t[0] === 'd')?.[1];
+      if (dTag?.startsWith(prefix)) {
+        keys.add(dTag.slice(prefix.length));
+      }
+    });
+
+    return Array.from(keys);
+  }
+}
+
+// 使用範例
+const storage = new NostrAppStorage(
+  'com.example.todoapp',
+  sk,
+  ['wss://relay.damus.io', 'wss://nos.lol']
+);
+
+// 儲存資料
+await storage.set('tasks', [
+  { id: 1, text: '學習 NIP-78', done: true },
+  { id: 2, text: '建立應用程式', done: false },
+]);
+
+// 讀取資料
+const tasks = await storage.get&lt;Array&lt;{ id: number; text: string; done: boolean }&gt;&gt;('tasks');
+
+// 列出所有鍵
+const keys = await storage.list();
+console.log('儲存的資料:', keys);</code></pre>
+
+  <h3>加密資料儲存</h3>
+  <pre><code class="language-typescript">import { nip44, getPublicKey } from 'nostr-tools';
+
+class EncryptedNostrStorage extends NostrAppStorage {
+  private conversationKey: Uint8Array;
+
+  constructor(
+    appId: string,
+    secretKey: Uint8Array,
+    relays: string[]
+  ) {
+    super(appId, secretKey, relays);
+    // 使用自己的公鑰進行加密（自我加密）
+    const pubkey = getPublicKey(secretKey);
+    this.conversationKey = nip44.getConversationKey(secretKey, pubkey);
+  }
+
+  async setEncrypted&lt;T&gt;(key: string, value: T): Promise&lt;void&gt; {
+    const plaintext = JSON.stringify(value);
+    const encrypted = nip44.encrypt(plaintext, this.conversationKey);
+    await this.set(key, { encrypted, version: 'nip44' });
+  }
+
+  async getEncrypted&lt;T&gt;(key: string): Promise&lt;T | null&gt; {
+    const data = await this.get&lt;{ encrypted: string; version: string }&gt;(key);
+
+    if (!data || !data.encrypted) {
+      return null;
+    }
+
+    try {
+      const decrypted = nip44.decrypt(data.encrypted, this.conversationKey);
+      return JSON.parse(decrypted) as T;
+    } catch {
+      return null;
+    }
+  }
+}
+
+// 使用範例：儲存敏感資料
+const encryptedStorage = new EncryptedNostrStorage(
+  'com.example.vault',
+  sk,
+  ['wss://relay.damus.io']
+);
+
+await encryptedStorage.setEncrypted('passwords', [
+  { site: 'example.com', username: 'user', password: 'secret123' },
+]);
+
+const passwords = await encryptedStorage.getEncrypted&lt;Array&lt;any&gt;&gt;('passwords');</code></pre>
+
+  <h2 id="query-examples">查詢範例</h2>
+
+  <h3>查詢特定應用程式的所有資料</h3>
+  <pre><code class="language-typescript">const pool = new SimplePool();
+
+// 查詢所有以特定前綴開頭的資料
+const allAppData = await pool.querySync(relays, {
+  kinds: [30078],
+  authors: [pubkey],
+});
+
+// 過濾特定應用程式的資料
+const myAppData = allAppData.filter((event) => {
+  const dTag = event.tags.find((t) => t[0] === 'd')?.[1];
+  return dTag?.startsWith('com.example.myapp/');
+});</code></pre>
+
+  <h3>查詢特定資料</h3>
+  <pre><code class="language-typescript">const settings = await pool.querySync(relays, {
+  kinds: [30078],
+  authors: [pubkey],
+  '#d': ['com.example.myapp/settings'],
+});</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用明確的命名空間</strong>：用反向域名格式（如 <code>com.example.app</code>）避免衝突</li>
+    <li><strong>版本控制</strong>：在資料結構變更時加入版本標識</li>
+    <li><strong>加密敏感資料</strong>：使用 NIP-44 加密私密資訊</li>
+    <li><strong>合理的資料大小</strong>：避免儲存過大的資料，考慮分割或壓縮</li>
+    <li><strong>選擇可靠的中繼器</strong>：使用支援長期儲存的中繼器</li>
+    <li><strong>錯誤處理</strong>：處理資料解析失敗和中繼器不可用的情況</li>
+  </ul>
+
+  <h2 id="limitations">限制與考量</h2>
+  <ul>
+    <li><strong>無互操作性</strong>：資料格式由應用程式自訂，不同應用程式無法共享</li>
+    <li><strong>儲存限制</strong>：中繼器可能有大小限制或儲存政策</li>
+    <li><strong>無即時同步</strong>：需要主動查詢更新，不像傳統資料庫有推送機制</li>
+    <li><strong>公開性</strong>：未加密的資料對中繼器和其他用戶可見</li>
+  </ul>
+
+  <h2 id="related-nips">相關 NIPs</h2>
+  <ul>
+    <li><a href="/tech/nostr/nip-01">NIP-01</a>：基本協議 - 可定址事件的基礎</li>
+    <li><a href="/tech/nostr/nip-44">NIP-44</a>：加密訊息 - 用於加密資料</li>
+    <li><a href="/tech/nostr/nip-51">NIP-51</a>：列表 - 另一種儲存用戶資料的方式</li>
+  </ul>
+
+  <h2 id="references">參考資源</h2>
+  <ul>
+    <li><a href="https://github.com/nostr-protocol/nips/blob/master/78.md" target="_blank" rel="noopener noreferrer">NIP-78 規範</a></li>
+    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener noreferrer">nostr-tools</a></li>
+  </ul>
+</ArticleLayout>
