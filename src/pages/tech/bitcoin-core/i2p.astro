@@ -1,0 +1,364 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="I2P Integration"
+  description="深入了解 Bitcoin Core 的 I2P（Invisible Internet Project）整合，增強網路隱私。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'I2P Integration' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'ZeroMQ', href: '/tech/bitcoin-core/zmq' }}
+  nextPage={{ title: 'Chain State', href: '/tech/bitcoin-core/chain-state' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 I2P？</h2>
+    <p class="text-[var(--text-secondary)]">
+      I2P（Invisible Internet Project）是一個匿名網路層，類似於 Tor，但採用不同的架構。
+      Bitcoin Core 從 v22.0 開始支持 I2P，提供額外的網路隱私選項。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">I2P vs Tor</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">I2P</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Tor</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">路由類型</td>
+              <td class="py-2">大蒜路由</td>
+              <td class="py-2">洋蔥路由</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">連接方向</td>
+              <td class="py-2">雙向隧道</td>
+              <td class="py-2">單向電路</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">地址格式</td>
+              <td class="py-2">.b32.i2p</td>
+              <td class="py-2">.onion</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">延遲</td>
+              <td class="py-2">較高</td>
+              <td class="py-2">較低</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">適用場景</td>
+              <td class="py-2">內部服務</td>
+              <td class="py-2">出口流量</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="setup" class="text-2xl font-bold text-[var(--text-primary)]">設置 I2P</h2>
+
+    <h3 id="install-i2p" class="text-xl font-semibold text-[var(--text-primary)]">安裝 I2P Router</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Ubuntu/Debian - 安裝 i2pd（C++ 實現）
+sudo apt-get install i2pd
+
+# 或使用官方 Java 實現
+# 下載：https://geti2p.net/en/download
+
+# macOS
+brew install i2pd
+
+# 啟動 i2pd
+sudo systemctl start i2pd
+sudo systemctl enable i2pd
+
+# 檢查狀態
+sudo systemctl status i2pd
+
+# 確認 SAM 端口運行（預設 7656）
+ss -tlnp | grep 7656</code></pre>
+    </div>
+
+    <h3 id="configure-i2pd" class="text-xl font-semibold text-[var(--text-primary)]">配置 i2pd</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># /etc/i2pd/i2pd.conf
+
+# 啟用 SAM（Simple Anonymous Messaging）接口
+# Bitcoin Core 使用 SAM 與 I2P 通訊
+
+[sam]
+enabled = true
+address = 127.0.0.1
+port = 7656
+
+# 隧道配置
+[ntcp2]
+enabled = true
+published = true
+
+[ssu2]
+enabled = true
+published = true</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="bitcoin-config" class="text-2xl font-bold text-[var(--text-primary)]">配置 Bitcoin Core</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# I2P SAM 代理地址
+i2psam=127.0.0.1:7656
+
+# 接受 I2P 入站連接
+i2pacceptincoming=1
+
+# 可選：只使用 I2P（最大隱私）
+# onlynet=i2p
+
+# 可選：同時使用多個網路
+# onlynet=i2p
+# onlynet=onion
+# onlynet=ipv4
+
+# Debug 日誌
+debug=i2p</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        首次連接 I2P 網路需要一些時間來建立隧道。請耐心等待。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="verification" class="text-2xl font-bold text-[var(--text-primary)]">驗證連接</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查網路資訊
+bitcoin-cli getnetworkinfo
+
+# 輸出中應該看到 I2P 網路
+{
+  "networks": [
+    {
+      "name": "ipv4",
+      "limited": false,
+      "reachable": true
+    },
+    {
+      "name": "i2p",
+      "limited": false,
+      "reachable": true,
+      "proxy": "127.0.0.1:7656",
+      "proxy_randomize_credentials": false
+    }
+  ],
+  "localaddresses": [
+    {
+      "address": "ukeu3k5oycgaauneqgtnvselmt4yemvoilkln7jpvamvfx7dnkdq.b32.i2p",
+      "port": 0,
+      "score": 4
+    }
+  ]
+}
+
+# 查看 I2P 連接的節點
+bitcoin-cli getpeerinfo | jq '.[] | select(.network == "i2p") | {addr, network}'
+
+# 查看本地 I2P 地址
+bitcoin-cli getnetworkinfo | jq '.localaddresses[] | select(.address | endswith(".b32.i2p"))'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="architecture" class="text-2xl font-bold text-[var(--text-primary)]">技術架構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>I2P 連接流程：
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Bitcoin Core   │────▶│   I2P Router    │────▶│  I2P Network    │
+│                 │     │   (i2pd/i2p)    │     │                 │
+│  - SAM Client   │     │  - SAM Server   │     │  - 隧道路由     │
+│  - Port 7656    │     │  - 隧道管理     │     │  - 加密傳輸     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                                                         │
+                                                         ▼
+                                                ┌─────────────────┐
+                                                │  遠端 Bitcoin   │
+                                                │     Node        │
+                                                │  xxx.b32.i2p    │
+                                                └─────────────────┘
+
+地址格式：
+Base32 編碼的 256-bit 目的地雜湊
+例如：ukeu3k5oycgaauneqgtnvselmt4yemvoilkln7jpvamvfx7dnkdq.b32.i2p</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// SAM 協議簡化實現
+interface SAMSession {
+  // 創建會話
+  async createSession(style: 'STREAM'): Promise<string>;
+
+  // 連接到遠端目的地
+  async connect(destination: string): Promise<Socket>;
+
+  // 接受入站連接
+  async accept(): Promise<{socket: Socket, from: string}>;
+}
+
+// Bitcoin Core 使用 SAM 3.1 協議
+class I2PConnection {
+  private samSocket: Socket;
+
+  async connect(destination: string): Promise<void> {
+    // HELLO VERSION
+    await this.send('HELLO VERSION MIN=3.1 MAX=3.1\n');
+
+    // SESSION CREATE
+    await this.send('SESSION CREATE STYLE=STREAM ID=Bitcoin...\n');
+
+    // STREAM CONNECT
+    await this.send(`STREAM CONNECT ID=Bitcoin DESTINATION=${destination}\n`);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="privacy" class="text-2xl font-bold text-[var(--text-primary)]">隱私考慮</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">優點</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• IP 地址完全隱藏</li>
+          <li>• 抗流量分析</li>
+          <li>• 分散式網路</li>
+          <li>• 雙向隧道更高效</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">考慮事項</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 延遲較高</li>
+          <li>• I2P 節點較少</li>
+          <li>• 初始連接慢</li>
+          <li>• 需要額外運行 i2pd</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">最大隱私配置</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - 最大隱私模式
+
+# 只使用匿名網路
+onlynet=i2p
+onlynet=onion
+
+# I2P 配置
+i2psam=127.0.0.1:7656
+i2pacceptincoming=1
+
+# Tor 配置
+proxy=127.0.0.1:9050
+listen=1
+
+# 禁用 DNS
+dnsseed=0
+dns=0
+
+# 手動添加種子節點
+addnode=xxx.b32.i2p
+addnode=yyy.onion</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="troubleshooting" class="text-2xl font-bold text-[var(--text-primary)]">故障排除</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 i2pd 是否運行
+pgrep -a i2pd
+
+# 檢查 SAM 端口
+ss -tlnp | grep 7656
+
+# 查看 i2pd 日誌
+sudo journalctl -u i2pd -f
+
+# 查看 Bitcoin Core I2P 日誌
+tail -f ~/.bitcoin/debug.log | grep -i i2p
+
+# 常見錯誤：
+# "SAM session failed" - i2pd 未運行或 SAM 未啟用
+# "I2P not reachable" - 隧道尚未建立，等待幾分鐘
+
+# 重啟服務
+sudo systemctl restart i2pd
+bitcoin-cli stop && sleep 5 && bitcoind</code></pre>
+    </div>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">常見問題</h4>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">1.</span>
+          <span><strong>無法連接：</strong>確認 i2pd 運行並啟用 SAM</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">2.</span>
+          <span><strong>節點很少：</strong>I2P 網路上的 Bitcoin 節點有限，正常現象</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">3.</span>
+          <span><strong>延遲高：</strong>I2P 設計優先考慮隱私而非速度</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">隱私增強：</strong>隱藏真實 IP 地址</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">SAM 協議：</strong>透過 i2pd 的 SAM 接口連接</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">補充 Tor：</strong>可與 Tor 同時使用增加多樣性</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>延遲較高，節點較少</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

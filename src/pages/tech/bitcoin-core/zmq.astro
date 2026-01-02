@@ -1,0 +1,379 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="ZeroMQ"
+  description="深入了解 Bitcoin Core 的 ZeroMQ 通知系統，實時接收區塊和交易事件。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'ZeroMQ' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'REST API', href: '/tech/bitcoin-core/rest-api' }}
+  nextPage={{ title: 'I2P', href: '/tech/bitcoin-core/i2p' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 ZeroMQ？</h2>
+    <p class="text-[var(--text-secondary)]">
+      ZeroMQ（ZMQ）是 Bitcoin Core 提供的實時通知系統，允許外部應用程序
+      在區塊或交易事件發生時立即接收通知，無需輪詢 RPC 接口。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">通知類型</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">主題</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">內容</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">觸發時機</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">hashblock</td>
+              <td class="py-2">區塊雜湊（32 bytes）</td>
+              <td class="py-2">新區塊加入最佳鏈</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">hashtx</td>
+              <td class="py-2">交易雜湊（32 bytes）</td>
+              <td class="py-2">交易加入 mempool 或區塊</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">rawblock</td>
+              <td class="py-2">完整區塊（序列化）</td>
+              <td class="py-2">新區塊加入最佳鏈</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">rawtx</td>
+              <td class="py-2">完整交易（序列化）</td>
+              <td class="py-2">交易加入 mempool 或區塊</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">sequence</td>
+              <td class="py-2">序列通知</td>
+              <td class="py-2">mempool 變化、區塊連接/斷開</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 區塊雜湊通知
+zmqpubhashblock=tcp://127.0.0.1:28332
+
+# 交易雜湊通知
+zmqpubhashtx=tcp://127.0.0.1:28333
+
+# 原始區塊通知
+zmqpubrawblock=tcp://127.0.0.1:28334
+
+# 原始交易通知
+zmqpubrawtx=tcp://127.0.0.1:28335
+
+# 序列通知
+zmqpubsequence=tcp://127.0.0.1:28336
+
+# 高水位標記（消息隊列大小）
+zmqpubhashblockhwm=1000
+zmqpubhashtxhwm=1000</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        ZMQ 需要在編譯時啟用。使用 <code>bitcoin-cli getzmqnotifications</code> 檢查是否可用。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="subscription" class="text-2xl font-bold text-[var(--text-primary)]">訂閱示例</h2>
+
+    <h3 id="python" class="text-xl font-semibold text-[var(--text-primary)]">Python</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>import zmq
+import binascii
+
+# 創建 ZMQ 上下文
+context = zmq.Context()
+socket = context.socket(zmq.SUB)
+
+# 連接到 Bitcoin Core
+socket.connect("tcp://127.0.0.1:28332")
+
+# 訂閱所有消息（空字串 = 訂閱所有）
+socket.setsockopt_string(zmq.SUBSCRIBE, "hashblock")
+
+print("等待區塊通知...")
+
+while True:
+    # 接收多部分消息
+    topic = socket.recv()
+    body = socket.recv()
+    sequence = socket.recv()
+
+    # 解析區塊雜湊（小端序）
+    block_hash = binascii.hexlify(body[::-1]).decode()
+    seq_num = int.from_bytes(sequence, 'little')
+
+    print(f"新區塊: {block_hash}")
+    print(f"序列號: {seq_num}")</code></pre>
+    </div>
+
+    <h3 id="nodejs" class="text-xl font-semibold text-[var(--text-primary)]">Node.js</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>import * as zmq from 'zeromq';
+
+async function subscribeToBlocks() {
+  const socket = new zmq.Subscriber();
+
+  socket.connect('tcp://127.0.0.1:28332');
+  socket.subscribe('hashblock');
+
+  console.log('等待區塊通知...');
+
+  for await (const [topic, body, sequence] of socket) {
+    // 反轉字節順序（小端 -> 大端）
+    const blockHash = Buffer.from(body)
+      .reverse()
+      .toString('hex');
+
+    const seqNum = sequence.readUInt32LE(0);
+
+    console.log(`新區塊: ${blockHash}`);
+    console.log(`序列號: ${seqNum}`);
+  }
+}
+
+subscribeToBlocks();</code></pre>
+    </div>
+
+    <h3 id="rust" class="text-xl font-semibold text-[var(--text-primary)]">Rust</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-rust" is:raw>use zmq;
+
+fn main() {
+    let context = zmq::Context::new();
+    let socket = context.socket(zmq::SUB).unwrap();
+
+    socket.connect("tcp://127.0.0.1:28332").unwrap();
+    socket.set_subscribe(b"hashblock").unwrap();
+
+    println!("等待區塊通知...");
+
+    loop {
+        let topic = socket.recv_bytes(0).unwrap();
+        let body = socket.recv_bytes(0).unwrap();
+        let sequence = socket.recv_bytes(0).unwrap();
+
+        // 反轉字節順序
+        let mut hash = body.clone();
+        hash.reverse();
+        let block_hash = hex::encode(&hash);
+
+        let seq_num = u32::from_le_bytes(
+            sequence[..4].try_into().unwrap()
+        );
+
+        println!("新區塊: {}", block_hash);
+        println!("序列號: {}", seq_num);
+    }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="sequence" class="text-2xl font-bold text-[var(--text-primary)]">序列通知</h2>
+    <p class="text-[var(--text-secondary)]">
+      <code>sequence</code> 主題提供更詳細的 mempool 和區塊鏈狀態變化通知。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>序列消息格式：
+
+| 字段 | 長度 | 描述 |
+|------|------|------|
+| hash | 32   | 區塊/交易雜湊 |
+| label| 1    | 事件類型 |
+| sequence | 4 | 序列號 |
+
+事件類型（label）：
+'A' = 交易加入 mempool
+'R' = 交易從 mempool 移除
+'C' = 區塊連接
+'D' = 區塊斷開（重組）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 訂閱序列通知
+socket.setsockopt_string(zmq.SUBSCRIBE, "sequence")
+
+while True:
+    topic = socket.recv()
+    body = socket.recv()
+
+    hash_bytes = body[:32]
+    label = chr(body[32])
+    sequence = int.from_bytes(body[33:37], 'little')
+
+    hash_hex = binascii.hexlify(hash_bytes[::-1]).decode()
+
+    events = {
+        'A': '交易加入 mempool',
+        'R': '交易移除 mempool',
+        'C': '區塊連接',
+        'D': '區塊斷開'
+    }
+
+    print(f"{events.get(label, '未知')}: {hash_hex[:16]}...")</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="use-cases" class="text-2xl font-bold text-[var(--text-primary)]">應用場景</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">區塊瀏覽器</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          實時更新區塊和交易信息，無需輪詢。
+        </p>
+      </div>
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">交易監控</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          監控特定地址或交易的確認狀態。
+        </p>
+      </div>
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">閃電網路節點</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          監控通道相關交易，及時響應鏈上事件。
+        </p>
+      </div>
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">挖礦軟體</h4>
+        <p class="text-sm text-[var(--text-secondary)]">
+          立即收到新區塊通知，更新工作模板。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="reliability" class="text-2xl font-bold text-[var(--text-primary)]">可靠性考慮</h2>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">注意事項</h4>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">!</span>
+          <span>ZMQ 使用 PUB/SUB 模式，消息可能丟失</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">!</span>
+          <span>重組時可能收到相同交易的多次通知</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">!</span>
+          <span>應用程序重啟時需要重新同步狀態</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 使用序列號檢測丟失的消息
+last_sequence = None
+
+while True:
+    topic = socket.recv()
+    body = socket.recv()
+    sequence = socket.recv()
+
+    seq_num = int.from_bytes(sequence, 'little')
+
+    if last_sequence is not None:
+        if seq_num != last_sequence + 1:
+            print(f"警告：可能丟失消息 {last_sequence + 1} - {seq_num - 1}")
+            # 需要通過 RPC 重新同步
+
+    last_sequence = seq_num
+
+    # 處理消息...</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="cli" class="text-2xl font-bold text-[var(--text-primary)]">命令行工具</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 ZMQ 配置
+bitcoin-cli getzmqnotifications
+
+# 輸出示例
+[
+  {
+    "type": "pubhashblock",
+    "address": "tcp://127.0.0.1:28332",
+    "hwm": 1000
+  },
+  {
+    "type": "pubhashtx",
+    "address": "tcp://127.0.0.1:28333",
+    "hwm": 1000
+  }
+]
+
+# 使用 Python 快速測試
+python3 -c "
+import zmq
+ctx = zmq.Context()
+s = ctx.socket(zmq.SUB)
+s.connect('tcp://127.0.0.1:28332')
+s.subscribe('')
+print('收到:', s.recv(), s.recv())
+"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">實時通知：</strong>無需輪詢，事件驅動</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">多種主題：</strong>區塊、交易、序列通知</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">跨語言：</strong>支持 Python、Node.js、Rust 等</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>消息可能丟失，需要處理重連</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,398 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Download"
+  description="深入了解 Bitcoin Core 的區塊下載策略，並行下載和 IBD 優化。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Download' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Chain State', href: '/tech/bitcoin-core/chain-state' }}
+  nextPage={{ title: 'Headers First', href: '/tech/bitcoin-core/headers-first' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">區塊下載概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 使用 Headers-First 同步策略，先下載所有區塊頭，
+      然後並行從多個節點下載區塊數據。這大大加快了初始區塊下載（IBD）速度。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">同步階段</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">階段</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">描述</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">並行</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">1. Headers</td>
+              <td class="py-2">下載所有區塊頭</td>
+              <td class="py-2">單一節點</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">2. Blocks</td>
+              <td class="py-2">下載區塊數據</td>
+              <td class="py-2">多節點並行</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">3. Validation</td>
+              <td class="py-2">驗證和處理區塊</td>
+              <td class="py-2">順序處理</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="headers-first" class="text-2xl font-bold text-[var(--text-primary)]">Headers-First 同步</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Headers-First 流程：
+
+1. 請求區塊頭
+   Node A ──getheaders──▶ Peer
+   Node A ◀──headers────── Peer   # 最多 2000 個區塊頭
+
+2. 驗證區塊頭鏈
+   - 檢查 PoW
+   - 檢查時間戳
+   - 建立區塊樹
+
+3. 選擇最佳鏈
+   - 累積工作量最大的鏈
+
+4. 並行下載區塊
+   Node A ──getdata(block1)──▶ Peer1
+   Node A ──getdata(block2)──▶ Peer2
+   Node A ──getdata(block3)──▶ Peer3
+   ...
+
+優點：
+✓ 可以驗證鏈的有效性再下載數據
+✓ 可以並行從多個節點下載
+✓ 防止惡意節點浪費頻寬</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="parallel-download" class="text-2xl font-bold text-[var(--text-primary)]">並行下載</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class BlockDownloadManager {
+  // 每個節點的飛行中請求
+  private mapBlocksInFlight: Map<NodeId, Set<BlockHash>>;
+
+  // 下載窗口大小
+  private readonly BLOCK_DOWNLOAD_WINDOW = 1024;
+
+  // 每個節點最大並行請求
+  private readonly MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
+
+  // 請求區塊
+  requestBlocks(nodeId: NodeId, headers: BlockHeader[]): void {
+    const inFlight = this.mapBlocksInFlight.get(nodeId) || new Set();
+
+    // 檢查節點容量
+    if (inFlight.size >= this.MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+      return;
+    }
+
+    // 選擇要請求的區塊
+    const toRequest: BlockHash[] = [];
+
+    for (const header of headers) {
+      // 跳過已有的區塊
+      if (this.hasBlock(header.hash)) continue;
+
+      // 跳過已在飛行中的請求
+      if (this.isInFlight(header.hash)) continue;
+
+      // 檢查是否在下載窗口內
+      if (!this.withinDownloadWindow(header.height)) continue;
+
+      toRequest.push(header.hash);
+      inFlight.add(header.hash);
+
+      if (inFlight.size >= this.MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+        break;
+      }
+    }
+
+    if (toRequest.length > 0) {
+      this.sendGetData(nodeId, toRequest);
+    }
+
+    this.mapBlocksInFlight.set(nodeId, inFlight);
+  }
+
+  // 下載窗口檢查
+  withinDownloadWindow(height: number): boolean {
+    const currentHeight = this.chainTip.height;
+    return height <= currentHeight + this.BLOCK_DOWNLOAD_WINDOW;
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">並行下載可視化</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊下載窗口：
+
+已處理    │ 下載中/待下載                     │ 超出窗口
+──────────┼───────────────────────────────────┼──────────
+[✓][✓][✓] │ [↓][↓][↓][·][·][·][·][·][·][·][·] │ [?][?][?]
+   ↑      │  ↑  ↑  ↑                          │
+鏈尖端    │ 從不同節點並行下載                 │ 等待窗口移動
+
+節點分配示例：
+Peer 1: Block 100, 101, 102, 103 (4 blocks in flight)
+Peer 2: Block 104, 105, 106, 107 (4 blocks in flight)
+Peer 3: Block 108, 109, 110, 111 (4 blocks in flight)
+...</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="stall-detection" class="text-2xl font-bold text-[var(--text-primary)]">停滯檢測</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class StallDetection {
+  // 停滯超時時間（秒）
+  private readonly BLOCK_STALLING_TIMEOUT = 2;
+
+  // 下載超時（秒）
+  private readonly BLOCK_DOWNLOAD_TIMEOUT_BASE = 60;
+  private readonly BLOCK_DOWNLOAD_TIMEOUT_PER_PEER = 5;
+
+  // 檢查停滯的節點
+  checkStalling(): void {
+    const now = Date.now();
+
+    // 找到需要的下一個區塊
+    const nextBlock = this.getNextBlockToProcess();
+
+    for (const [nodeId, blocks] of this.mapBlocksInFlight) {
+      for (const blockHash of blocks) {
+        const request = this.getBlockRequest(nodeId, blockHash);
+        const elapsed = (now - request.timestamp) / 1000;
+
+        // 計算超時時間
+        const peerCount = this.connectedPeers.length;
+        const timeout = this.BLOCK_DOWNLOAD_TIMEOUT_BASE +
+                        this.BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * peerCount;
+
+        if (elapsed > timeout) {
+          // 超時，斷開節點
+          this.disconnectNode(nodeId, 'block download timeout');
+          break;
+        }
+
+        // 檢查停滯（下一個需要的區塊長時間未到）
+        if (blockHash === nextBlock &&
+            elapsed > this.BLOCK_STALLING_TIMEOUT) {
+          // 標記為停滯，從其他節點請求
+          this.markStalling(nodeId);
+          this.requestFromOtherPeer(blockHash);
+        }
+      }
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="compact-blocks" class="text-2xl font-bold text-[var(--text-primary)]">緊湊區塊</h2>
+    <p class="text-[var(--text-secondary)]">
+      BIP-152 緊湊區塊用於快速傳播新區塊，減少頻寬使用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 緊湊區塊格式
+interface CompactBlock {
+  header: BlockHeader;      // 80 bytes
+  nonce: bigint;           // 8 bytes
+  shortids: ShortTxId[];   // 6 bytes each
+  prefilledtxn: PrefilledTx[]; // 預填充的交易（如 coinbase）
+}
+
+// 接收緊湊區塊
+async onCompactBlock(cmpctblock: CompactBlock): Promise<void> {
+  // 1. 使用 mempool 交易重建區塊
+  const block = new Block();
+  block.header = cmpctblock.header;
+
+  // 2. 從 mempool 匹配交易
+  const missing: number[] = [];
+
+  for (let i = 0; i < cmpctblock.shortids.length; i++) {
+    const shortid = cmpctblock.shortids[i];
+    const tx = this.mempool.findByShortId(shortid, cmpctblock.nonce);
+
+    if (tx) {
+      block.transactions[i] = tx;
+    } else {
+      missing.push(i);
+    }
+  }
+
+  // 3. 請求缺少的交易
+  if (missing.length > 0) {
+    this.sendGetBlockTxn(cmpctblock.header.hash, missing);
+  } else {
+    // 區塊完整，可以處理
+    this.processBlock(block);
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>緊湊區塊 vs 完整區塊：
+
+完整區塊：~1-2 MB
+┌────────────────────────────────────┐
+│ Header (80 bytes)                  │
+│ TX Count                           │
+│ TX 1 (完整交易數據)                 │
+│ TX 2 (完整交易數據)                 │
+│ TX 3 (完整交易數據)                 │
+│ ...（約 2000-3000 筆交易）          │
+└────────────────────────────────────┘
+
+緊湊區塊：~20-30 KB
+┌────────────────────────────────────┐
+│ Header (80 bytes)                  │
+│ Nonce (8 bytes)                    │
+│ ShortID 1 (6 bytes)                │
+│ ShortID 2 (6 bytes)                │
+│ ShortID 3 (6 bytes)                │
+│ ...                                │
+│ Prefilled: Coinbase TX             │
+└────────────────────────────────────┘
+
+節省頻寬：~98%（大多數交易已在 mempool）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 最大連接數（影響並行下載）
+maxconnections=125
+
+# 最大上傳流量（MB/天）
+maxuploadtarget=5000
+
+# 禁用 compact blocks（調試用）
+# blocksonly=1
+
+# assumevalid（跳過舊區塊的腳本驗證）
+# 大幅加速 IBD
+assumevalid=000000000000000000...
+
+# 設置 dbcache（MB）
+# 更大的快取 = 更快的 IBD
+dbcache=4096
+
+# 並行腳本驗證線程
+par=4</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控下載進度</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看同步進度
+bitcoin-cli getblockchaininfo | jq '{
+  blocks: .blocks,
+  headers: .headers,
+  progress: .verificationprogress,
+  ibd: .initialblockdownload
+}'
+
+# 查看節點連接和下載狀態
+bitcoin-cli getpeerinfo | jq '.[] | {
+  addr: .addr,
+  synced_headers: .synced_headers,
+  synced_blocks: .synced_blocks,
+  inflight: .inflight | length
+}'
+
+# 查看網路資訊
+bitcoin-cli getnettotals
+
+# 查看 debug.log 中的下載進度
+tail -f ~/.bitcoin/debug.log | grep "UpdateTip"
+
+# 輸出示例
+# UpdateTip: new best=000000... height=800000 version=0x20000000
+#   log2_work=94.123456 tx=876543210 date='2023-07-25T12:00:00Z'
+#   progress=0.999999 cache=450.0MiB(3456789txo)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="optimization" class="text-2xl font-bold text-[var(--text-primary)]">IBD 優化技巧</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">建議配置</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• dbcache=4096 或更高</li>
+          <li>• 使用 SSD 存儲</li>
+          <li>• 確保穩定網路連接</li>
+          <li>• 保持預設 assumevalid</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">避免事項</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 不要頻繁重啟節點</li>
+          <li>• 避免低 dbcache 設置</li>
+          <li>• 不要使用 blocksonly（除非必要）</li>
+          <li>• 避免在 HDD 上運行</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Headers-First：</strong>先下載區塊頭，再並行下載區塊</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">並行下載：</strong>從多個節點同時下載不同區塊</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">緊湊區塊：</strong>BIP-152 大幅減少新區塊傳播頻寬</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">優化：</strong>增加 dbcache 和使用 SSD 加速 IBD</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

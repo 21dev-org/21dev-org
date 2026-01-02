@@ -1,0 +1,422 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Chain State"
+  description="深入了解 Bitcoin Core 的鏈狀態管理，UTXO 集合儲存和 chainstate 資料庫。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Chain State' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'I2P', href: '/tech/bitcoin-core/i2p' }}
+  nextPage={{ title: 'Block Download', href: '/tech/bitcoin-core/block-download' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Chain State？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Chain State（鏈狀態）是 Bitcoin Core 維護的當前區塊鏈狀態，主要包含 UTXO 集合。
+      它儲存在 <code>chainstate/</code> 目錄中，使用 LevelDB 資料庫。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">資料目錄結構</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/
+├── blocks/
+│   ├── blk00000.dat      # 原始區塊數據
+│   ├── blk00001.dat
+│   ├── rev00000.dat      # Undo 數據
+│   └── index/            # 區塊索引（LevelDB）
+│
+├── chainstate/           # UTXO 集合（LevelDB）
+│   ├── CURRENT
+│   ├── LOCK
+│   ├── LOG
+│   ├── MANIFEST-*
+│   └── *.ldb
+│
+└── indexes/              # 可選索引
+    ├── txindex/
+    └── coinstatsindex/</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="utxo-set" class="text-2xl font-bold text-[var(--text-primary)]">UTXO 集合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// UTXO 集合中的每個條目
+interface UTXOEntry {
+  // 鍵：txid + vout
+  key: {
+    txid: Buffer;  // 32 bytes
+    vout: number;  // 4 bytes（varint）
+  };
+
+  // 值：Coin 數據
+  value: {
+    height: number;       // 創建區塊高度
+    coinbase: boolean;    // 是否來自 coinbase
+    amount: bigint;       // 金額（satoshis）
+    scriptPubKey: Buffer; // 輸出腳本
+  };
+}
+
+// LevelDB 中的鍵格式
+// 'C' + txid + vout -> Coin（壓縮格式）
+
+// 統計資訊
+interface ChainStateStats {
+  height: number;           // 當前高度
+  bestblock: Buffer;        // 最佳區塊雜湊
+  total_transactions: number;
+  total_outputs: number;    // UTXO 數量
+  total_amount: bigint;     // 總金額
+  size_on_disk: number;     // 磁碟大小
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 UTXO 集統計
+bitcoin-cli gettxoutsetinfo
+
+# 輸出
+{
+  "height": 800000,
+  "bestblock": "00000000000000000002a7c4c1e48d76c5a37902165a270156b7a8d72728a054",
+  "txouts": 89000000,
+  "bogosize": 6700000000,
+  "muhash": "...",
+  "total_amount": 19500000.00000000,
+  "transactions": 65000000,
+  "disk_size": 5600000000
+}
+
+# 查看特定 UTXO
+bitcoin-cli gettxout "txid" vout
+
+# 驗證 UTXO 集完整性
+bitcoin-cli gettxoutsetinfo "muhash"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="coin-cache" class="text-2xl font-bold text-[var(--text-primary)]">Coin Cache</h2>
+    <p class="text-[var(--text-secondary)]">
+      為了提高性能，Bitcoin Core 在記憶體中維護一個 UTXO 快取（dbcache）。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CCoinsViewCache {
+  // 快取的 UTXO
+  private cacheCoins: Map<OutPoint, CCoin>;
+
+  // 父視圖（最終是 LevelDB）
+  private base: CCoinsView;
+
+  // 快取大小估算
+  private cachedCoinsUsage: number;
+
+  // 獲取 UTXO
+  async getCoin(outpoint: OutPoint): Promise<CCoin | null> {
+    // 1. 先查快取
+    if (this.cacheCoins.has(outpoint)) {
+      const coin = this.cacheCoins.get(outpoint);
+      return coin.isSpent ? null : coin;
+    }
+
+    // 2. 從父視圖獲取
+    const coin = await this.base.getCoin(outpoint);
+    if (coin) {
+      // 加入快取
+      this.cacheCoins.set(outpoint, coin);
+    }
+    return coin;
+  }
+
+  // 花費 UTXO
+  spendCoin(outpoint: OutPoint): boolean {
+    const coin = this.cacheCoins.get(outpoint);
+    if (!coin || coin.isSpent) {
+      return false;
+    }
+    coin.isSpent = true;
+    return true;
+  }
+
+  // 添加 UTXO
+  addCoin(outpoint: OutPoint, coin: CCoin): void {
+    this.cacheCoins.set(outpoint, coin);
+  }
+
+  // 刷新到磁碟
+  async flush(): Promise<boolean> {
+    // 批量寫入 LevelDB
+    const batch = new LevelDBBatch();
+
+    for (const [outpoint, coin] of this.cacheCoins) {
+      if (coin.isSpent) {
+        batch.delete(outpoint.key);
+      } else if (coin.isDirty) {
+        batch.put(outpoint.key, coin.serialize());
+      }
+    }
+
+    await this.base.writeBatch(batch);
+    this.cacheCoins.clear();
+    return true;
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">快取層次</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>UTXO 存取層次：
+
+┌─────────────────────────────────────────┐
+│         CCoinsViewCache                 │  ← 記憶體快取（最快）
+│         (記憶體中的髒數據)                │     dbcache 設定
+├─────────────────────────────────────────┤
+│         CCoinsViewCache                 │  ← 中間層快取
+│         (乾淨的讀取快取)                  │
+├─────────────────────────────────────────┤
+│         CCoinsViewDB                    │  ← LevelDB
+│         (chainstate/)                   │     磁碟存儲
+└─────────────────────────────────────────┘
+
+刷新觸發條件：
+1. 快取達到 dbcache 限制
+2. 區塊鏈重組
+3. 節點關閉
+4. 定期刷新（約每小時）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="block-index" class="text-2xl font-bold text-[var(--text-primary)]">區塊索引</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊索引條目
+interface CBlockIndex {
+  // 區塊頭數據
+  hash: Buffer;           // 區塊雜湊
+  hashPrev: Buffer;       // 前一區塊
+  height: number;         // 高度
+  nTime: number;          // 時間戳
+  nBits: number;          // 難度目標
+  nNonce: number;         // Nonce
+
+  // 狀態
+  nStatus: number;        // 驗證狀態標誌
+  nTx: number;            // 交易數量
+  nChainWork: bigint;     // 累積工作量
+
+  // 檔案位置
+  nFile: number;          // blk 檔案編號
+  nDataPos: number;       // 數據偏移
+  nUndoPos: number;       // Undo 數據偏移
+}
+
+// 狀態標誌
+enum BlockStatus {
+  BLOCK_VALID_HEADER = 1,      // 區塊頭有效
+  BLOCK_VALID_TREE = 2,        // 父區塊已知
+  BLOCK_VALID_TRANSACTIONS = 3, // 交易可解析
+  BLOCK_VALID_CHAIN = 4,       // 腳本有效
+  BLOCK_VALID_SCRIPTS = 5,     // 完全驗證
+  BLOCK_HAVE_DATA = 8,         // 有區塊數據
+  BLOCK_HAVE_UNDO = 16,        // 有 undo 數據
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 區塊索引存儲在 blocks/index/
+ls -la ~/.bitcoin/blocks/index/
+
+# 查看區塊資訊
+bitcoin-cli getblock "blockhash"
+
+# 查看區塊頭
+bitcoin-cli getblockheader "blockhash"
+
+# 查看區塊鏈資訊
+bitcoin-cli getblockchaininfo</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="validation" class="text-2xl font-bold text-[var(--text-primary)]">區塊驗證</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class BlockValidator {
+  private chainstate: CCoinsViewCache;
+
+  // 驗證並連接區塊
+  async connectBlock(block: CBlock, index: CBlockIndex): Promise<boolean> {
+    // 1. 基本檢查
+    if (!this.checkBlockHeader(block)) {
+      return false;
+    }
+
+    // 2. 上下文檢查
+    if (!this.contextualCheckBlock(block, index)) {
+      return false;
+    }
+
+    // 3. 處理每筆交易
+    const blockUndo: CBlockUndo = { vtxundo: [] };
+
+    for (let i = 0; i < block.vtx.length; i++) {
+      const tx = block.vtx[i];
+
+      if (i === 0) {
+        // Coinbase 交易
+        this.addCoins(tx, index.height);
+      } else {
+        // 一般交易
+        const txUndo = await this.updateCoins(tx, index.height);
+        blockUndo.vtxundo.push(txUndo);
+      }
+    }
+
+    // 4. 寫入 undo 數據
+    await this.writeUndoData(index, blockUndo);
+
+    // 5. 更新鏈狀態
+    this.chainstate.setBestBlock(index.hash);
+
+    return true;
+  }
+
+  // 更新 UTXO 集
+  async updateCoins(tx: CTransaction, height: number): Promise<CTxUndo> {
+    const txUndo: CTxUndo = { vprevout: [] };
+
+    // 花費輸入
+    for (const input of tx.vin) {
+      const coin = await this.chainstate.getCoin(input.prevout);
+      txUndo.vprevout.push(coin);  // 保存用於回滾
+      this.chainstate.spendCoin(input.prevout);
+    }
+
+    // 添加輸出
+    this.addCoins(tx, height);
+
+    return txUndo;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="reorg" class="text-2xl font-bold text-[var(--text-primary)]">鏈重組</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ChainReorganizer {
+  // 處理區塊鏈重組
+  async reorganize(newTip: CBlockIndex): Promise<boolean> {
+    const currentTip = this.chainstate.getBestBlock();
+
+    // 找到共同祖先
+    const fork = this.findForkPoint(currentTip, newTip);
+
+    // 收集要斷開的區塊
+    const disconnect: CBlockIndex[] = [];
+    let block = currentTip;
+    while (block !== fork) {
+      disconnect.push(block);
+      block = block.prev;
+    }
+
+    // 收集要連接的區塊
+    const connect: CBlockIndex[] = [];
+    block = newTip;
+    while (block !== fork) {
+      connect.unshift(block);
+      block = block.prev;
+    }
+
+    // 斷開舊區塊
+    for (const blockIndex of disconnect) {
+      const undo = await this.readUndoData(blockIndex);
+      await this.disconnectBlock(blockIndex, undo);
+
+      // 交易返回 mempool
+      this.readdToMempool(blockIndex);
+    }
+
+    // 連接新區塊
+    for (const blockIndex of connect) {
+      const block = await this.readBlock(blockIndex);
+      if (!await this.connectBlock(block, blockIndex)) {
+        // 連接失敗，回滾
+        throw new Error('Failed to connect block');
+      }
+    }
+
+    console.log(`重組完成: -${disconnect.length} +${connect.length}`);
+    return true;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="maintenance" class="text-2xl font-bold text-[var(--text-primary)]">維護命令</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 chainstate 大小
+du -sh ~/.bitcoin/chainstate/
+
+# 驗證區塊鏈
+bitcoin-cli verifychain 4 1000  # 深度 4，檢查 1000 個區塊
+
+# 重建索引（需要重啟）
+bitcoind -reindex
+
+# 只重建 chainstate
+bitcoind -reindex-chainstate
+
+# 查看快取使用情況
+bitcoin-cli getmemoryinfo
+
+# 手動刷新快取
+# （無直接命令，關閉節點時自動刷新）</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">警告：</strong>
+        不要直接修改 chainstate 目錄中的檔案。如果數據損壞，使用 <code>-reindex-chainstate</code> 重建。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">UTXO 集合：</strong>當前所有未花費輸出</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">LevelDB：</strong>高效的鍵值存儲</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">快取層：</strong>dbcache 提高性能</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">重建：</strong>使用 -reindex-chainstate 修復損壞</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

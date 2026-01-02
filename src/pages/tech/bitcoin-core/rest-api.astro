@@ -1,0 +1,359 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="REST API"
+  description="深入了解 Bitcoin Core 的 REST 接口，無需認證即可查詢區塊鏈數據。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'REST API' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'RPC Network', href: '/tech/bitcoin-core/rpc-network' }}
+  nextPage={{ title: 'ZeroMQ', href: '/tech/bitcoin-core/zmq' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 REST API？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 提供一個 REST（REpresentational State Transfer）接口，
+      允許無需認證即可查詢區塊鏈數據。REST API 是只讀的，適合公開數據查詢。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">REST vs RPC</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">REST</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">RPC</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">認證</td>
+              <td class="py-2">不需要</td>
+              <td class="py-2">需要</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">操作類型</td>
+              <td class="py-2">只讀</td>
+              <td class="py-2">讀寫</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">輸出格式</td>
+              <td class="py-2">JSON/HEX/BIN</td>
+              <td class="py-2">JSON</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">預設端口</td>
+              <td class="py-2">8332</td>
+              <td class="py-2">8332</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 啟用 REST 接口
+rest=1
+
+# RPC 綁定地址（REST 共用）
+rpcbind=127.0.0.1
+
+# 允許的 IP（REST 共用）
+rpcallowip=127.0.0.1</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">安全提示：</strong>
+        REST 接口不需要認證，請勿暴露到公網。生產環境應使用反向代理。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="endpoints" class="text-2xl font-bold text-[var(--text-primary)]">端點列表</h2>
+
+    <h3 id="block" class="text-xl font-semibold text-[var(--text-primary)]">區塊查詢</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取區塊（JSON 格式）
+curl http://localhost:8332/rest/block/BLOCKHASH.json
+
+# 獲取區塊（十六進制）
+curl http://localhost:8332/rest/block/BLOCKHASH.hex
+
+# 獲取區塊（二進制）
+curl http://localhost:8332/rest/block/BLOCKHASH.bin
+
+# 獲取區塊頭
+curl http://localhost:8332/rest/headers/COUNT/BLOCKHASH.json
+
+# 範例：獲取創世區塊
+GENESIS=000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+curl http://localhost:8332/rest/block/$GENESIS.json | jq '.hash, .height'</code></pre>
+    </div>
+
+    <h3 id="blockhash" class="text-xl font-semibold text-[var(--text-primary)]">區塊雜湊</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 根據高度獲取區塊雜湊
+curl http://localhost:8332/rest/blockhashbyheight/HEIGHT.json
+
+# 範例：獲取高度 100 的區塊
+curl http://localhost:8332/rest/blockhashbyheight/100.json
+
+# 輸出
+{
+  "blockhash": "000000007bc154e0fa7ea32218a72fe2c1bb9f86cf8c9ebf9a715ed27fdb229a"
+}</code></pre>
+    </div>
+
+    <h3 id="transaction" class="text-xl font-semibold text-[var(--text-primary)]">交易查詢</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取交易（需要 txindex=1）
+curl http://localhost:8332/rest/tx/TXID.json
+
+# 獲取交易（十六進制）
+curl http://localhost:8332/rest/tx/TXID.hex
+
+# 範例
+TXID=4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+curl http://localhost:8332/rest/tx/$TXID.json | jq '.txid, .size'</code></pre>
+    </div>
+
+    <h3 id="utxo" class="text-xl font-semibold text-[var(--text-primary)]">UTXO 查詢</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查詢 UTXO（POST 請求）
+# 請求體格式：checkmempool/TXID-VOUT/TXID-VOUT/...
+
+# 檢查特定 UTXO 是否存在
+curl -X GET "http://localhost:8332/rest/getutxos/checkmempool/TXID-0.json"
+
+# 批量查詢多個 UTXO
+curl -X GET "http://localhost:8332/rest/getutxos/TXID1-0/TXID2-1.json"
+
+# 輸出格式
+{
+  "chainHeight": 800000,
+  "chaintipHash": "...",
+  "bitmap": "1",  # 位圖表示哪些 UTXO 存在
+  "utxos": [
+    {
+      "height": 700000,
+      "value": 1.5,
+      "scriptPubKey": {...}
+    }
+  ]
+}</code></pre>
+    </div>
+
+    <h3 id="mempool" class="text-xl font-semibold text-[var(--text-primary)]">Mempool</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取 mempool 資訊
+curl http://localhost:8332/rest/mempool/info.json
+
+# 輸出
+{
+  "loaded": true,
+  "size": 5432,
+  "bytes": 3456789,
+  "usage": 12345678,
+  "total_fee": 0.12345678,
+  "maxmempool": 300000000,
+  "mempoolminfee": 0.00001000,
+  "minrelaytxfee": 0.00001000,
+  "incrementalrelayfee": 0.00001000
+}
+
+# 獲取 mempool 內容
+curl http://localhost:8332/rest/mempool/contents.json</code></pre>
+    </div>
+
+    <h3 id="chaininfo" class="text-xl font-semibold text-[var(--text-primary)]">區塊鏈資訊</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取區塊鏈資訊
+curl http://localhost:8332/rest/chaininfo.json
+
+# 輸出
+{
+  "chain": "main",
+  "blocks": 800000,
+  "headers": 800000,
+  "bestblockhash": "...",
+  "difficulty": 53911173001054.59,
+  "time": 1690000000,
+  "mediantime": 1689999000,
+  "verificationprogress": 0.9999999,
+  "initialblockdownload": false,
+  "chainwork": "...",
+  "size_on_disk": 500000000000,
+  "pruned": false
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="formats" class="text-2xl font-bold text-[var(--text-primary)]">輸出格式</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">格式</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">擴展名</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Content-Type</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">JSON</td>
+              <td class="py-2 font-mono">.json</td>
+              <td class="py-2 font-mono">application/json</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">十六進制</td>
+              <td class="py-2 font-mono">.hex</td>
+              <td class="py-2 font-mono">text/plain</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">二進制</td>
+              <td class="py-2 font-mono">.bin</td>
+              <td class="py-2 font-mono">application/octet-stream</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="examples" class="text-2xl font-bold text-[var(--text-primary)]">實用範例</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取最新區塊
+BEST=$(curl -s http://localhost:8332/rest/chaininfo.json | jq -r '.bestblockhash')
+curl -s "http://localhost:8332/rest/block/$BEST.json" | jq '.height, .tx | length'
+
+# 獲取最近 5 個區塊頭
+curl -s "http://localhost:8332/rest/headers/5/$BEST.json" | jq '.[].height'
+
+# 檢查區塊鏈同步狀態
+curl -s http://localhost:8332/rest/chaininfo.json | jq '{
+  height: .blocks,
+  synced: (.verificationprogress > 0.9999),
+  pruned: .pruned
+}'
+
+# 獲取 mempool 統計
+curl -s http://localhost:8332/rest/mempool/info.json | jq '{
+  tx_count: .size,
+  total_size_mb: (.bytes / 1048576),
+  min_fee: .mempoolminfee
+}'</code></pre>
+    </div>
+
+    <h3 id="python-example" class="text-xl font-semibold text-[var(--text-primary)]">Python 範例</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>import requests
+
+class BitcoinREST:
+    def __init__(self, host='localhost', port=8332):
+        self.base_url = f'http://{host}:{port}/rest'
+
+    def get_chaininfo(self):
+        r = requests.get(f'{self.base_url}/chaininfo.json')
+        return r.json()
+
+    def get_block(self, blockhash, format='json'):
+        r = requests.get(f'{self.base_url}/block/{blockhash}.{format}')
+        return r.json() if format == 'json' else r.text
+
+    def get_block_by_height(self, height):
+        r = requests.get(f'{self.base_url}/blockhashbyheight/{height}.json')
+        blockhash = r.json()['blockhash']
+        return self.get_block(blockhash)
+
+    def get_mempool_info(self):
+        r = requests.get(f'{self.base_url}/mempool/info.json')
+        return r.json()
+
+# 使用
+api = BitcoinREST()
+info = api.get_chaininfo()
+print(f"區塊高度: {info['blocks']}")
+
+block = api.get_block_by_height(100)
+print(f"區塊 100 有 {len(block['tx'])} 筆交易")</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="limitations" class="text-2xl font-bold text-[var(--text-primary)]">限制</h2>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>只讀接口，無法發送交易或修改錢包</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>交易查詢需要啟用 <code>txindex=1</code></span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>無法查詢錢包相關數據</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>無速率限制，需自行實現</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">無需認證：</strong>適合公開數據查詢</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">多種格式：</strong>JSON、HEX、BIN</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">區塊鏈查詢：</strong>區塊、交易、UTXO、mempool</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">只讀：</strong>無法執行寫入操作</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
