@@ -1,0 +1,373 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Route Blinding 路徑盲化"
+  description="了解路徑盲化如何隱藏閃電網路支付的接收方身份，保護接收方的節點位置和通道資訊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Route Blinding' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Trampoline Routing', href: '/tech/lightning/trampoline' }}
+  nextPage={{ title: 'Eltoo', href: '/tech/lightning/eltoo' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Route Blinding？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Route Blinding（路徑盲化，也稱為 Blinded Paths）是一種隱私保護技術，
+    允許接收方隱藏自己在網路中的位置。發送方可以將支付路由到接收方，
+    但無法知道接收方的真實節點 ID 或其直接連接的通道。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>為什麼重要：</strong>
+      傳統的閃電網路發票會暴露接收方的節點公鑰。這讓任何人都可以追蹤誰在收款，
+      監控節點活動，甚至進行針對性攻擊。Route Blinding 解決了這個隱私問題。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統發票的隱私洩露：
+
+BOLT 11 發票內容：
+lnbc100u1p...
+├── 金額：100,000 sats
+├── 目的地：03abc123...def（接收方公鑰）
+├── 過期時間：3600 秒
+└── 路由提示：
+    └── pubkey: 02xyz...
+        scid: 123x456x0
+        fee: 1 sat
+        cltv: 40
+
+問題：
+1. 目的地公鑰暴露接收方身份
+2. 路由提示暴露接收方的直接連接
+3. 可以追蹤特定節點的收款活動
+4. 可以分析接收方的通道結構
+
+攻擊場景：
+- 競爭對手監控商家收款
+- 追蹤用戶消費習慣
+- 針對高價值節點進行攻擊`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Blinded Path 原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Blinded Path 結構：
+
+接收方 Bob 創建 blinded path：
+
+真實路徑：
+  Node E ──> Node F ──> Node G ──> Bob
+  (入口)                          (接收方)
+
+盲化後：
+  ┌───────────────────────────────────────────────────┐
+  │ Blinded Path:                                     │
+  │   introduction_node: E (公開的入口點)              │
+  │   blinding_point: B = b·G                         │
+  │   blinded_hops:                                   │
+  │     ├── blinded_node_id: E' = HMAC(E, B)          │
+  │     │   encrypted_data: [to F, encrypted]         │
+  │     ├── blinded_node_id: F' = HMAC(F, B')         │
+  │     │   encrypted_data: [to G, encrypted]         │
+  │     ├── blinded_node_id: G' = HMAC(G, B'')        │
+  │     │   encrypted_data: [to Bob, encrypted]       │
+  │     └── blinded_node_id: Bob' = HMAC(Bob, B''')   │
+  │         encrypted_data: [final payload]           │
+  └───────────────────────────────────────────────────┘
+
+發送方只知道：
+- 入口節點 E 的真實 ID
+- 一系列無意義的 blinded_node_id
+- 無法推斷出 F, G, Bob 的身份`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密碼學機制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Blinding 密碼學：
+
+1. 接收方選擇隨機 blinding secret: b
+   計算 blinding point: B = b·G
+
+2. 對每個節點 N_i，計算：
+
+   共享密鑰：
+   ss_i = SHA256(b · N_i)  // b 與節點公鑰的 ECDH
+
+   盲化節點 ID：
+   N_i' = N_i + SHA256("blinded_node_id", ss_i)·G
+
+   加密數據密鑰：
+   key_i = SHA256("encrypted_data", ss_i)
+
+   下一跳的 blinding point：
+   B_{i+1} = SHA256("blinding", ss_i) · B
+
+3. 每個節點收到支付時：
+   - 使用自己的私鑰和 B 計算 ss
+   - 解密 encrypted_data
+   - 計算下一跳的 B'
+   - 轉發給下一個 blinded_node_id
+
+關鍵：
+- 每個節點只能解密自己的數據
+- 無法推斷其他節點的身份
+- 發送方完全不知道路徑細節`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`使用 Blinded Path 的支付：
+
+1. Bob 創建包含 blinded path 的 Offer/Invoice
+   ┌─────────────────────────────────────────┐
+   │ Offer:                                  │
+   │   amount: 100,000 sats                  │
+   │   paths:                                │
+   │     - introduction_node: 02abc...       │
+   │       blinding_point: 03xyz...          │
+   │       blinded_hops: [...]               │
+   └─────────────────────────────────────────┘
+
+2. Alice 計算路由
+   Alice → ... → 入口節點 E → [blinded path] → Bob
+
+   Alice 構建洋蔥：
+   ├── 普通跳：Alice 到 E 的路徑
+   └── 盲化跳：直接使用 blinded_hops
+
+3. E 收到支付
+   - 識別這是 blinded path
+   - 使用 blinding_point 解密
+   - 發現下一跳是 F（從 encrypted_data）
+   - 計算新的 blinding_point
+   - 轉發
+
+4. F, G 同樣處理
+
+5. Bob 收到支付
+   - 解密最終 payload
+   - 驗證並接受支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 整合</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Route Blinding 是 BOLT 12 Offers 的核心組件：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">BOLT 11（傳統）</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 公開接收方節點 ID</li>
+        <li>• 路由提示暴露通道</li>
+        <li>• 單次使用發票</li>
+        <li>• 接收方必須在線生成</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">BOLT 12 + Blinding</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 隱藏接收方身份</li>
+        <li>• 通道資訊加密</li>
+        <li>• 可重複使用 Offers</li>
+        <li>• 支援回覆路徑</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Reply Path（回覆路徑）</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Reply Path 使用場景：
+
+BOLT 12 Offers 流程：
+1. Bob 發布 Offer（包含 blinded reply path）
+2. Alice 使用 Onion Message 請求發票
+3. Bob 通過 reply path 返回發票
+4. Alice 支付發票
+
+Reply Path 結構：
+┌─────────────────────────────────────────────────────────┐
+│ alice_offer_request:                                    │
+│   offer_id: ...                                         │
+│   amount: 100000                                        │
+│   reply_path:                                           │
+│     introduction_node: Alice 附近的節點                  │
+│     blinding_point: ...                                 │
+│     blinded_hops: [... → Alice]                         │
+└─────────────────────────────────────────────────────────┘
+
+好處：
+- Alice 發送請求時也可以保護自己的隱私
+- Bob 可以回覆而不知道 Alice 是誰
+- 雙向隱私保護`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">入口節點洩露</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        入口節點的身份是公開的。攻擊者可能推斷接收方與入口節點有關係。
+        解決方案：使用多個不同的入口節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">路徑長度分析</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Blinded path 的跳數可能洩露資訊。解決方案：添加虛擬跳來混淆路徑長度。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">時序攻擊</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果攻擊者控制入口節點，可能通過時序分析推斷接收方。
+        解決方案：使用不可信的中間節點。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Onion Messages</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Route Blinding 依賴 Onion Messages（BOLT 提案）來傳遞無支付的訊息：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Onion Messages vs HTLC：
+
+HTLC（傳統）：
+- 用於支付
+- 需要鎖定資金
+- 有時間限制
+- 需要通道
+
+Onion Messages：
+- 用於通訊
+- 不鎖定資金
+- 無時間限制
+- 不需要直接通道
+
+用途：
+- BOLT 12 發票請求
+- BOLT 12 發票回覆
+- 未來可能：支付證明、聊天等
+
+訊息類型：513 (onion_message)
+功能位：38/39 (option_onion_messages)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        CLN 完整支援 Route Blinding 和 BOLT 12，是該功能的主要推動者。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LDK</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Dev Kit 支援 Route Blinding 和 Onion Messages。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-yellow-700 dark:text-yellow-400">開發中</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 正在開發 BOLT 12 和 Route Blinding 支援。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Eclair</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Eclair 支援 Route Blinding，用於 Phoenix 錢包的隱私功能。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/765"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Route Blinding BOLT 提案</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 12 Offers</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt-onion"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">洋蔥路由</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/eltoo"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Eltoo</a
+      >
+      如何改進通道狀態更新機制。
+    </p>
+  </div>
+</ArticleLayout>

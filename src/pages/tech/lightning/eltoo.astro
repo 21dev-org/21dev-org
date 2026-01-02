@@ -1,0 +1,357 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Eltoo / LN-Symmetry"
+  description="了解 Eltoo（也稱為 LN-Symmetry）如何通過對稱狀態更新簡化閃電網路通道機制，消除懲罰交易的需求。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Eltoo' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Route Blinding', href: '/tech/lightning/route-blinding' }}
+  nextPage={{ title: 'Multi-Path Payments', href: '/tech/lightning/mpp' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Eltoo？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Eltoo（發音類似 "L2"）是一種新的閃電網路通道更新機制，由 Christian Decker
+    等人於 2018 年提出。它使用「對稱」的狀態更新取代了當前的「LN-Penalty」機制，
+    大幅簡化了通道設計，並消除了對懲罰交易的需求。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>前置條件：</strong>
+      Eltoo 需要 Bitcoin 添加 SIGHASH_ANYPREVOUT（APO）操作碼，這是一個尚未激活的軟分叉提案。
+      因此 Eltoo 目前只是理論設計，無法在主網使用。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">當前機制的問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LN-Penalty（當前機制）問題：
+
+1. 非對稱狀態
+   ┌─────────────────────────────────────────────────────┐
+   │ Alice 的 commitment tx ≠ Bob 的 commitment tx       │
+   │                                                     │
+   │ 每次更新都產生兩個不同的交易                          │
+   │ 增加了複雜性和潛在錯誤                               │
+   └─────────────────────────────────────────────────────┘
+
+2. 狀態存儲負擔
+   每次通道更新需要存儲：
+   - 新的 commitment tx
+   - 對方的撤銷密鑰
+   - 所有 HTLC 的超時/成功交易
+
+   10,000 次更新 ≈ 幾 GB 的資料！
+
+3. 懲罰機制風險
+   - 必須存儲所有舊狀態
+   - 舊狀態丟失 = 無法懲罰作惡者
+   - Watchtower 需要大量存儲
+
+4. 有毒狀態
+   - 意外廣播舊狀態可能導致資金全部損失
+   - 硬件故障可能導致災難
+   - 複雜的備份需求`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo 設計</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Eltoo 核心概念：
+
+對稱狀態：
+  Alice 和 Bob 使用相同的 update tx 和 settle tx
+  ┌─────────────────────────────────────────┐
+  │         Funding TX                      │
+  │         (2-of-2 multisig)               │
+  └────────────────┬────────────────────────┘
+                   │
+                   ▼
+  ┌─────────────────────────────────────────┐
+  │         Update TX (state n)             │
+  │   可以被更新的 state n+1 覆蓋            │
+  └────────────────┬────────────────────────┘
+                   │
+                   ▼
+  ┌─────────────────────────────────────────┐
+  │         Settlement TX                   │
+  │   最終分配餘額給 Alice 和 Bob           │
+  └─────────────────────────────────────────┘
+
+關鍵特性：
+- 任何人都可以用更新的狀態「覆蓋」舊狀態
+- 不需要懲罰機制
+- 只需存儲最新狀態`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SIGHASH_ANYPREVOUT</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Eltoo 的關鍵是 SIGHASH_ANYPREVOUT（APO），一種新的簽名哈希標誌：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`SIGHASH_ANYPREVOUT 解釋：
+
+傳統簽名（SIGHASH_ALL）：
+  簽名承諾 = Hash(
+    所有輸入（包括 txid 和 vout）+
+    所有輸出
+  )
+  → 簽名綁定到特定的輸入 UTXO
+
+ANYPREVOUT：
+  簽名承諾 = Hash(
+    輸入的 scriptPubKey（不包括 txid/vout）+
+    所有輸出
+  )
+  → 簽名不綁定到特定 UTXO，可以附加到任何兼容輸出
+
+這意味著：
+  Update TX n+1 的簽名可以花費：
+  - Funding TX 的輸出
+  - 或 Update TX n 的輸出
+  - 或任何更早的 Update TX 的輸出
+
+  只要輸出腳本兼容！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">狀態更新流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Eltoo 狀態轉換：
+
+初始狀態：
+Funding TX ──[state 0]──> Update TX 0 ──> Settlement TX 0
+                          Alice: 5 BTC
+                          Bob:   5 BTC
+
+Alice 支付 1 BTC 給 Bob：
+Funding TX ──[state 1]──> Update TX 1 ──> Settlement TX 1
+                          Alice: 4 BTC
+                          Bob:   6 BTC
+
+Bob 支付 2 BTC 給 Alice：
+Funding TX ──[state 2]──> Update TX 2 ──> Settlement TX 2
+                          Alice: 6 BTC
+                          Bob:   4 BTC
+
+關閉通道（正常）：
+  1. 雙方同意使用最新狀態
+  2. 廣播 Update TX 2
+  3. 等待時間鎖
+  4. 廣播 Settlement TX 2
+
+關閉通道（有人作惡）：
+  1. Alice 廣播舊的 Update TX 0
+  2. Bob 發現後，廣播 Update TX 2
+  3. Update TX 2 「覆蓋」Update TX 0
+  4. 結算使用 Settlement TX 2
+
+沒有懲罰！只是恢復到正確狀態。`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Eltoo 交易結構：
+
+Funding TX:
+┌─────────────────────────────────────────────────────────┐
+│ Output:                                                 │
+│   2-of-2 MuSig (Alice + Bob)                           │
+│   或 Taproot 輸出                                       │
+└─────────────────────────────────────────────────────────┘
+
+Update TX (state n):
+┌─────────────────────────────────────────────────────────┐
+│ Input:                                                  │
+│   使用 SIGHASH_ANYPREVOUT 簽名                          │
+│   可以花費 Funding TX 或任何更早的 Update TX            │
+│                                                         │
+│ Output:                                                 │
+│   <state_n+1 pubkey> CHECKSIG                          │
+│   或在 CSV 時間鎖後：                                   │
+│   <settlement pubkey> CHECKSIG                          │
+│                                                         │
+│ nLockTime: state number (確保順序)                      │
+└─────────────────────────────────────────────────────────┘
+
+Settlement TX:
+┌─────────────────────────────────────────────────────────┐
+│ Input:                                                  │
+│   花費 Update TX 的輸出（在 CSV 後）                    │
+│                                                         │
+│ Outputs:                                                │
+│   Alice: X BTC                                          │
+│   Bob:   Y BTC                                          │
+│   (根據最新狀態分配)                                     │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo vs LN-Penalty</h2>
+
+  <div class="overflow-x-auto mb-8">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-3 px-4 text-[var(--text-primary)]">LN-Penalty（當前）</th>
+          <th class="text-left py-3 px-4 text-[var(--text-primary)]">Eltoo</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">狀態對稱性</td>
+          <td class="py-3 px-4 text-red-500">非對稱</td>
+          <td class="py-3 px-4 text-green-500">對稱</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">存儲需求</td>
+          <td class="py-3 px-4 text-red-500">O(n) - 所有舊狀態</td>
+          <td class="py-3 px-4 text-green-500">O(1) - 只需最新</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">作惡懲罰</td>
+          <td class="py-3 px-4">全額沒收</td>
+          <td class="py-3 px-4">只是更正狀態</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">有毒備份</td>
+          <td class="py-3 px-4 text-red-500">是（舊備份危險）</td>
+          <td class="py-3 px-4 text-green-500">否（任何備份安全）</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Watchtower 存儲</td>
+          <td class="py-3 px-4 text-red-500">每次更新都要存</td>
+          <td class="py-3 px-4 text-green-500">只存最新</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">多方通道</td>
+          <td class="py-3 px-4 text-red-500">極其複雜</td>
+          <td class="py-3 px-4 text-green-500">自然支持</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Bitcoin 要求</td>
+          <td class="py-3 px-4 text-green-500">當前已支援</td>
+          <td class="py-3 px-4 text-yellow-500">需要 APO 軟分叉</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Channel Factories</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Eltoo 的一個重要應用是實現 Channel Factories（通道工廠）：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Channel Factory 概念：
+
+傳統模式：每個通道需要一筆鏈上交易
+  Alice──Bob: 1 tx
+  Alice──Carol: 1 tx
+  Bob──Carol: 1 tx
+  共 3 筆鏈上交易
+
+Channel Factory：
+  ┌─────────────────────────────────────────┐
+  │           Factory Funding TX            │
+  │          (N-of-N multisig)              │
+  │     Alice + Bob + Carol + ...           │
+  └────────────────┬────────────────────────┘
+                   │
+          ┌────────┴────────┐
+          │                 │
+   ┌──────┴──────┐   ┌──────┴──────┐
+   │ Alice-Bob   │   │ Bob-Carol   │
+   │  Channel    │   │  Channel    │
+   └─────────────┘   └─────────────┘
+
+  只需 1 筆鏈上交易開設多個通道！
+
+Eltoo 的優勢：
+- 多方協調更簡單（對稱狀態）
+- 任何人離線不會導致懲罰風險
+- 可以動態調整 Factory 內的通道`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">APO 軟分叉進展</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">BIP 118: SIGHASH_ANYPREVOUT</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        原名 SIGHASH_NOINPUT，由 Christian Decker 提出。定義了新的簽名哈希模式。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">社群討論中</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        APO 提案已存在多年，但尚未進入激活流程。一些開發者擔心潛在的安全風險。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-purple-500/30 bg-purple-500/10">
+      <h4 class="font-semibold text-purple-700 dark:text-purple-400 mb-2">替代方案</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        OP_CHECKTEMPLATEVERIFY (CTV) 和 OP_CAT 也可能實現類似功能，但設計不同。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://blockstream.com/eltoo.pdf"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Eltoo 論文</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0118.mediawiki"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BIP 118: SIGHASH_ANYPREVOUT</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易（當前機制）</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/mpp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">多路徑支付</a
+      >
+      如何提高大額支付的成功率。
+    </p>
+  </div>
+</ArticleLayout>

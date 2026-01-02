@@ -1,0 +1,330 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Zero-Conf Channels 零確認通道"
+  description="了解零確認通道如何讓用戶在 funding 交易確認前就開始使用通道，實現即時的閃電網路體驗。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Zero-Conf Channels' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Dual-Funded Channels', href: '/tech/lightning/dual-funded' }}
+  nextPage={{ title: 'Channel Jamming', href: '/tech/lightning/channel-jamming' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是零確認通道？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    零確認通道（Zero-Conf Channels，也稱為 Turbo Channels）允許在 funding 交易
+    尚未被區塊鏈確認時就開始使用通道。這意味著用戶可以在開通道後立即發送和接收支付，
+    而不需要等待典型的 3-6 個區塊確認。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>安全警告：</strong>
+      零確認通道存在雙花風險。只有當你信任通道對手不會雙花 funding 交易時才應使用。
+      通常只適用於與 LSP 或已知可信節點開設的通道。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`標準通道開設流程：
+
+時間線：
+T0      T1             T2              T3
+│       │              │               │
+▼       ▼              ▼               ▼
+開始    Funding TX     等待確認        通道可用
+協商    廣播           (3-6 區塊)
+        │              │               │
+        └──────────────┴───────────────┘
+              約 30-60 分鐘
+
+────────────────────────────────────────────
+
+零確認通道流程：
+
+時間線：
+T0      T1
+│       │
+▼       ▼
+開始    Funding TX 廣播 + 通道立即可用!
+協商
+        │
+        └─────> 立即可以發送/接收支付
+
+優勢：從開始到可用只需幾秒鐘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">信任模型</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">接受方風險低</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果 Alice 開通道給 Bob，Bob 接受零確認：
+      </p>
+      <ul class="text-sm text-[var(--text-secondary)] mt-2 space-y-1">
+        <li>• Bob 不提供任何資金</li>
+        <li>• 如果 Alice 雙花，Bob 只損失通道</li>
+        <li>• Bob 收到的支付可能失效</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">開啟方風險高</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果通道開啟者嘗試雙花自己的 funding tx：
+      </p>
+      <ul class="text-sm text-[var(--text-secondary)] mt-2 space-y-1">
+        <li>• 可以「撤銷」已開的通道</li>
+        <li>• 可以取回 funding 中的資金</li>
+        <li>• 任何透過通道路由的支付都會失效</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SCID Alias</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    零確認通道需要 SCID Alias 功能，因為真正的 Short Channel ID
+    要等到 funding tx 確認後才能確定：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Short Channel ID (SCID) 結構：
+
+標準 SCID（確認後）：
+┌─────────────┬─────────────┬─────────────┐
+│ Block Height │ TX Index    │ Output Index│
+│ (3 bytes)    │ (3 bytes)   │ (2 bytes)   │
+└─────────────┴─────────────┴─────────────┘
+例如：700000x1234x0
+
+零確認問題：
+- 未確認交易沒有 block height
+- 無法計算真正的 SCID
+
+SCID Alias 解決方案：
+┌─────────────────────────────────────────┐
+│ 使用臨時的 alias SCID                    │
+│ 格式：隨機生成的 8 字節標識符             │
+│ 功能位：option_scid_alias (bit 46/47)   │
+└─────────────────────────────────────────┘
+
+通道確認後：
+- 仍可使用 alias 引用通道
+- 也可使用真正的 SCID
+- 對於私有通道，alias 可以隱藏區塊資訊`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Option Zero Conf</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`option_zeroconf 協商：
+
+功能位：option_zeroconf (bit 50/51)
+
+流程：
+1. 雙方在 init 訊息中宣告支援 option_zeroconf
+2. 開啟者在 open_channel/open_channel2 中請求 zero-conf
+3. 接受者在 accept_channel/accept_channel2 中同意
+
+訊息結構變化：
+open_channel2:
+  ...
+  channel_type:
+    - option_zeroconf
+    - option_scid_alias
+    - option_anchors_zero_fee_htlc_tx
+  ...
+
+接受零確認的條件：
+- 接受者信任開啟者不會雙花
+- 通常只與已知的 LSP 或合作夥伴使用
+- 可設定白名單節點`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 使用場景</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    零確認通道最常見的應用是 LSP（Lightning Service Provider）為用戶即時開通道：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LSP 即時開通道場景：
+
+1. 用戶首次收款
+   ┌──────────┐         ┌──────────┐         ┌──────────┐
+   │  Sender  │ ──────> │   LSP    │ ──────> │   User   │
+   └──────────┘         └────┬─────┘         └──────────┘
+                             │
+                             │ 用戶沒有通道！
+                             │ LSP 即時開啟零確認通道
+                             ▼
+   ┌───────────────────────────────────────────────────────┐
+   │ 1. LSP 創建 funding tx（LSP 資金）                     │
+   │ 2. LSP 廣播 funding tx                                │
+   │ 3. 立即創建通道（零確認）                              │
+   │ 4. 通過新通道路由支付給用戶                            │
+   │ 5. 用戶立即收到款項！                                  │
+   └───────────────────────────────────────────────────────┘
+
+安全性：
+- LSP 是 funding 提供者，不會自己雙花
+- 用戶可以信任 LSP
+- 即使 LSP 雙花，用戶損失的只是剛收到的款項
+
+2. JIT (Just-In-Time) 通道
+   - 只在需要時才開通道
+   - 節省區塊空間
+   - 改善用戶體驗`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Phoenix 錢包實例</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    ACINQ 的 Phoenix 錢包是零確認通道最成功的實現之一：
+  </p>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">工作流程</h4>
+      <ol class="text-sm text-[var(--text-secondary)] space-y-1 list-decimal list-inside">
+        <li>用戶安裝 Phoenix，生成節點</li>
+        <li>用戶創建收款發票（此時沒有通道）</li>
+        <li>發送方支付發票</li>
+        <li>ACINQ 節點攔截支付</li>
+        <li>即時開啟零確認通道</li>
+        <li>通過新通道轉發支付</li>
+        <li>用戶收到款項（總耗時 &lt; 10 秒）</li>
+      </ol>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">費用模型</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Phoenix 從收款金額中扣除開通道費用（約 1%），包括鏈上交易手續費和服務費。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對於節點運營者</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 只與可信節點使用零確認</li>
+        <li>• 維護白名單</li>
+        <li>• 設定最大零確認金額</li>
+        <li>• 監控雙花嘗試</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對於用戶</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 只與知名 LSP 使用零確認</li>
+        <li>• 理解資金在確認前有風險</li>
+        <li>• 大額交易等待確認</li>
+        <li>• 不要轉發零確認通道的大額支付</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND v0.15+ 支援 option_zeroconf 和 option_scid_alias。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Eclair</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Eclair 全面支援，Phoenix 錢包廣泛使用此功能。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        CLN 支援零確認通道，可通過配置啟用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LDK</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Dev Kit 支援零確認，被多個錢包採用。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/910"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT: Zero-conf channels 提案</a>
+    </li>
+    <li>
+      • <a
+        href="https://phoenix.acinq.co/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Phoenix 錢包</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/liquidity"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/channel-jamming"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道堵塞</a
+      >
+      問題以及可能的解決方案。
+    </p>
+  </div>
+</ArticleLayout>

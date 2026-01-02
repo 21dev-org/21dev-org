@@ -1,0 +1,330 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Trampoline Routing 蹦床路由"
+  description="了解蹦床路由如何讓輕量級閃電網路客戶端委託路徑計算給更強大的節點，同時保持隱私。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Trampoline Routing' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: '路由與尋路', href: '/tech/lightning/routing' }}
+  nextPage={{ title: 'Route Blinding', href: '/tech/lightning/route-blinding' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Trampoline Routing？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Trampoline Routing（蹦床路由）是一種路由委託機制。輕量級客戶端（如手機錢包）
+    不需要維護完整的網路圖譜，而是將支付發送給一個或多個「蹦床節點」，
+    由它們負責計算到目的地的路徑。這大幅降低了移動設備的資源需求。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心價值：</strong>
+      完整的閃電網路圖譜需要數十 MB 的存儲空間和持續的同步。蹦床路由讓手機錢包
+      可以在不知道完整網路拓撲的情況下發送支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">傳統路由的問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統源路由（Source Routing）：
+
+發送方需要：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 完整的網路圖譜（~50-100 MB）                          │
+│ 2. 持續同步 gossip 訊息                                  │
+│ 3. 計算到目的地的最佳路徑                                │
+│ 4. 構建完整的洋蔥封包                                    │
+└─────────────────────────────────────────────────────────┘
+
+對手機錢包的影響：
+- 存儲空間：需要大量存儲圖譜
+- 頻寬：持續下載 channel_update
+- 電量：路徑計算消耗 CPU
+- 時間：首次同步需要很長時間
+- 過時：離線後圖譜可能過期
+
+問題示例：
+用戶打開 App → 需要同步 → 等待數分鐘 → 終於可以支付
+這對用戶體驗是災難性的！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Trampoline 解決方案</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Trampoline 路由架構：
+
+┌──────────┐    ┌───────────┐    ┌───────────┐    ┌──────────┐
+│  Alice   │───>│Trampoline │───>│Trampoline │───>│   Bob    │
+│ (手機)   │    │  Node 1   │    │  Node 2   │    │ (接收方) │
+└──────────┘    └───────────┘    └───────────┘    └──────────┘
+      │               │                │                │
+      │  只知道       │   計算路徑      │   計算路徑      │
+      │  T1 的位置    │   到 T2        │   到 Bob       │
+      └───────────────┴────────────────┴────────────────┘
+
+Alice 只需要知道：
+1. 自己的直接連接節點
+2. 一些知名的 Trampoline 節點
+3. Bob 的節點 ID（不需要知道 Bob 的位置）
+
+Trampoline 節點負責：
+1. 維護完整的網路圖譜
+2. 計算到下一跳的路徑
+3. 轉發支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">洋蔥結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Trampoline 使用嵌套的洋蔥結構來保護隱私：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`嵌套洋蔥結構：
+
+外層洋蔥（傳統 BOLT 4）：
+┌─────────────────────────────────────────────────────────┐
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ Hop 1: Alice → 直接連接節點 A                       │ │
+│ │   payload: forward to Node B                        │ │
+│ ├─────────────────────────────────────────────────────┤ │
+│ │ Hop 2: Node A → Node B                              │ │
+│ │   payload: forward to Trampoline T1                 │ │
+│ ├─────────────────────────────────────────────────────┤ │
+│ │ Hop 3: Node B → Trampoline T1                       │ │
+│ │   payload: [內層 Trampoline 洋蔥]                   │ │
+│ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+
+內層洋蔥（Trampoline）：
+┌─────────────────────────────────────────────────────────┐
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ T-Hop 1: T1 → T2                                    │ │
+│ │   payload: amount, expiry, next trampoline          │ │
+│ ├─────────────────────────────────────────────────────┤ │
+│ │ T-Hop 2: T2 → Bob                                   │ │
+│ │   payload: final payment details                    │ │
+│ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+
+T1 收到後：
+1. 解密外層洋蔥，發現是 Trampoline 支付
+2. 解密內層洋蔥第一層
+3. 發現需要轉發給 T2
+4. 計算到 T2 的路徑
+5. 構建新的外層洋蔥到 T2
+6. 保持內層洋蔥（剝掉一層）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">發送方隱私</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• T1 不知道 Alice 是發送方還是中間節點</li>
+        <li>• 可以使用多個 Trampoline 節點增加混淆</li>
+        <li>• 洋蔥路由保護路徑隱私</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">接收方隱私</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• Trampoline 節點只知道下一個 Trampoline</li>
+        <li>• 最終目的地隱藏在內層洋蔥中</li>
+        <li>• 可結合 Route Blinding 進一步保護</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用計算</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Trampoline 費用結構：
+
+傳統路由：
+  總費用 = Σ(每跳的路由費)
+  發送方精確知道每一跳的費用
+
+Trampoline 路由：
+  總費用 = Alice→T1 費用 + T1 預算 + T2 預算 + ...
+
+  ┌─────────────────────────────────────────┐
+  │ Alice 指定：                            │
+  │   T1 預算：1000 sats（最多用這麼多）     │
+  │   T2 預算：800 sats                     │
+  └─────────────────────────────────────────┘
+
+  T1 實際路由到 T2 花費 500 sats
+  → T1 保留 500 sats 作為服務費
+
+挑戰：
+  - 預算設太低：支付失敗
+  - 預算設太高：多付費用
+  - 需要經驗來設定合理預算
+
+優化：
+  - Trampoline 節點可以返回估算費用
+  - 客戶端可以逐步調整預算
+  - 使用歷史數據優化`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 格式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Trampoline Onion TLV 欄位：
+
+在 hop_payload 中添加：
+
+trampoline_onion_packet (type 66100)
+├── version: 0
+├── public_key: 33 bytes
+├── hop_payloads: encrypted
+└── hmac: 32 bytes
+
+trampoline_hop_payload:
+├── amt_to_forward (type 2)
+├── outgoing_cltv_value (type 4)
+├── outgoing_node_id (type 14)  // 下一個 Trampoline
+├── invoice_features (type 66102)
+└── invoice_routing_info (type 66103)
+
+功能位：
+- trampoline_routing_optional: bit 56
+- trampoline_routing_required: bit 57`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">移動錢包</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        手機錢包不需要同步完整圖譜，只需知道幾個 Trampoline 節點即可發送支付。
+        Phoenix、Breez 等錢包使用此技術。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">瀏覽器擴展</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        WebLN 錢包如 Alby 可以使用 Trampoline 來減少資源佔用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">非同步支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Trampoline 節點可以持有支付直到接收方上線，實現非同步支付。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Eclair</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        ACINQ 的 Eclair 是 Trampoline 的主要推動者，Phoenix 錢包使用 ACINQ 節點作為 Trampoline。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-yellow-700 dark:text-yellow-400">部分支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 可以轉發 Trampoline 支付，但不能作為 Trampoline 節點主動路由。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-blue-500/20 text-blue-600 dark:text-blue-400"
+          >CLN</span
+        >
+        <span class="text-sm font-semibold text-blue-700 dark:text-blue-400">計劃中</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Core Lightning 計劃支援 Trampoline，但尚未正式實現。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與其他技術的關係</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Route Blinding</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以結合使用，接收方使用 blinded path，Trampoline 節點負責路由到 blinded 入口點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">BOLT 12 Offers</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Offers 可以包含 Trampoline 節點資訊，讓輕量級客戶端知道如何路由。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/829"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Trampoline BOLT 提案</a>
+    </li>
+    <li>
+      • <a
+        href="https://medium.com/@ACINQ/introducing-phoenix-5c5cc76c7f9e"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Phoenix 介紹</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/routing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路由與尋路</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/route-blinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Route Blinding</a
+      >
+      如何保護接收方的隱私。
+    </p>
+  </div>
+</ArticleLayout>

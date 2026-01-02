@@ -1,0 +1,333 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Jamming 通道堵塞"
+  description="了解閃電網路的通道堵塞攻擊，這是一個嚴重的可用性問題，以及社群正在研究的各種解決方案。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Jamming' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Zero-Conf Channels', href: '/tech/lightning/zero-conf' }}
+  nextPage={{ title: 'Async Payments', href: '/tech/lightning/async-payments' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是通道堵塞？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    通道堵塞（Channel Jamming）是閃電網路面臨的一個嚴重可用性問題。
+    攻擊者可以通過佔用通道的流動性或 HTLC 槽位，使節點無法正常處理支付，
+    而且這種攻擊的成本極低——只需要發送一些最終會失敗的支付。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>當前狀態：</strong>
+      通道堵塞是閃電網路最重要的未解決問題之一。目前沒有完美的解決方案，
+      社群正在積極研究和討論各種緩解措施。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">攻擊類型</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">流動性堵塞 (Liquidity Jamming)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        攻擊者發送大額支付並故意不完成（不揭示 preimage），佔用通道的流動性直到 HTLC 超時。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">槽位堵塞 (Slot Jamming)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        攻擊者發送大量小額支付，耗盡通道的 HTLC 槽位（通常限制為 483 個），阻止正常支付。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">攻擊機制詳解</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`流動性堵塞攻擊：
+
+攻擊者控制兩個節點 A 和 Z：
+
+A ──> B ──> C ──> D ──> Z
+│                       │
+└───── 攻擊者控制 ───────┘
+
+攻擊流程：
+1. A 發送支付給 Z（通過 B-C-D 路由）
+2. HTLC 一路傳播到 Z
+3. Z 故意不揭示 preimage
+4. 所有中間通道的流動性被鎖定
+5. 等待 HTLC 超時（可能數小時到數天）
+6. 攻擊者不損失任何資金（支付最終失敗）
+
+成本分析：
+- 攻擊者成本：僅需路由費（幾 sats）
+- 受害者損失：流動性被鎖定，無法處理其他支付
+- 時間：可以持續到 HTLC 超時（默認最長約 2 周）
+
+────────────────────────────────────────────
+
+槽位堵塞攻擊：
+
+HTLC 槽位限制：
+┌─────────────────────────────────────────┐
+│ 每個通道方向最多 483 個 pending HTLCs   │
+│ 這是為了確保 commitment tx 不超過       │
+│ Bitcoin 的最大交易大小限制              │
+└─────────────────────────────────────────┘
+
+攻擊流程：
+1. 攻擊者創建 483+ 個小額支付
+2. 每個支付只有 1 sat
+3. 所有 HTLC 槽位被佔滿
+4. 正常支付無法通過
+
+成本：483 sats × 路由費 ≈ 幾百 sats`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼很難解決？</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">1. 無法區分攻擊和正常失敗</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        支付失敗是閃電網路的正常現象（路由問題、離線節點等）。節點無法區分惡意攻擊和正常失敗。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">2. 洋蔥路由隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中間節點不知道支付的發送者和接收者，無法建立信譽系統或追究責任。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">3. 去中心化網路</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        沒有中央權威可以封鎖攻擊者。任何人都可以匿名加入網路並發起攻擊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">4. 經濟不對稱</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        攻擊者成本極低（只需路由費），但可以造成大量資金被鎖定。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">提議的解決方案</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 預付費用 (Upfront Fees)</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`預付費用機制：
+
+當前模式（只有成功才付費）：
+  支付成功：路由節點收取費用
+  支付失敗：路由節點一無所獲
+
+預付費用模式：
+  發送支付時：立即支付小額「持有費」
+  成功：正常路由費
+  失敗：路由節點仍保留持有費
+
+優點：
+- 增加攻擊成本
+- 補償路由節點的資源佔用
+
+缺點：
+- 增加正常用戶成本
+- 路由節點可能故意延遲
+- 實現複雜`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 本地信譽系統</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`本地信譽系統：
+
+每個節點維護自己的信譽數據庫：
+┌─────────────────────────────────────────┐
+│ Peer      │ Success Rate │ Reputation  │
+├───────────┼──────────────┼─────────────┤
+│ Node A    │ 95%          │ Good        │
+│ Node B    │ 30%          │ Suspicious  │
+│ Node C    │ 5%           │ Bad         │
+└─────────────────────────────────────────┘
+
+行為：
+- 來自低信譽節點的 HTLC：限制槽位/金額
+- 來自高信譽節點的 HTLC：正常處理
+- 新節點：逐漸建立信譽
+
+挑戰：
+- 攻擊者可以先建立信譽
+- 信譽無法跨節點共享（隱私問題）
+- 可能導致網路分裂`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. Circuit Breaker</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Circuit Breaker 插件（CLN）：
+
+設定每個對等節點的限制：
+┌─────────────────────────────────────────┐
+│ max_pending_htlcs_per_peer: 30          │
+│ max_htlc_value_per_peer: 100000 sat     │
+│ max_pending_duration: 1 hour            │
+└─────────────────────────────────────────┘
+
+當達到限制時：
+- 拒絕新的 HTLC
+- 優先處理小額快速支付
+- 記錄可疑行為
+
+限制：
+- 只是緩解措施，不能完全防止
+- 可能影響正常大額支付`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">4. 信譽憑證 (Reputation Credentials)</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`信譽憑證系統（研究中）：
+
+概念：
+1. 節點購買「信譽代幣」（使用閃電網路支付）
+2. 發送支付時附帶代幣
+3. 支付失敗：代幣被銷毀
+4. 支付成功：代幣可以回收
+
+特性：
+- 購買成本 = 攻擊成本
+- 匿名憑證（隱私保護）
+- 可轉讓
+
+挑戰：
+- 增加正常支付複雜度
+- 代幣經濟設計
+- 需要廣泛採用`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">5. 時間鎖降級</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`縮短 HTLC 超時時間：
+
+當前默認：
+  最長 HTLC 超時 ≈ 2016 區塊 ≈ 2 週
+
+降低超時：
+  最長 HTLC 超時 = 144 區塊 = 1 天
+
+好處：
+- 攻擊持續時間縮短
+- 流動性恢復更快
+
+問題：
+- 長路徑支付更容易超時
+- 降低了對離線節點的容錯
+- 需要更快的區塊監控`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">當前緩解措施</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">節點層面</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 設定 max_htlc_value_in_flight</li>
+        <li>• 限制每個對等的 pending HTLCs</li>
+        <li>• 使用 Circuit Breaker 插件</li>
+        <li>• 監控異常模式</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">網路層面</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 減少默認 HTLC 超時</li>
+        <li>• 增加最小 HTLC 金額</li>
+        <li>• 社群信息共享</li>
+        <li>• 持續研究新方案</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">研究進展</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">2022: 堵塞問題被系統性研究</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        多篇學術論文分析了堵塞攻擊的經濟成本和可行性，引起社群廣泛關注。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">2023: 信譽憑證提案</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Clara Shikhelman 和 Sergei Tikhomirov 提出基於 Chaumian eCash 的信譽系統。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-purple-500/30 bg-purple-500/10">
+      <h4 class="font-semibold text-purple-700 dark:text-purple-400 mb-2">持續進行: 多種方案並行研究</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        社群正在評估多種方案的權衡，可能最終採用組合策略。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/issues/1066"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Channel Jamming 討論</a>
+    </li>
+    <li>
+      • <a
+        href="https://lists.linuxfoundation.org/pipermail/lightning-dev/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning-dev 郵件列表</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/lightningd/plugins/tree/master/circuitbreaker"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Circuit Breaker 插件</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/async-payments"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">非同步支付</a
+      >
+      如何實現離線接收功能。
+    </p>
+  </div>
+</ArticleLayout>

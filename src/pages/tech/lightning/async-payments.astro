@@ -1,0 +1,358 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Async Payments 非同步支付"
+  description="了解非同步支付如何讓離線用戶也能接收閃電網路支付，解決移動設備的在線要求問題。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Async Payments' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Channel Jamming', href: '/tech/lightning/channel-jamming' }}
+  nextPage={{ title: 'LNURL', href: '/tech/lightning/lnurl' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">在線要求問題</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路的設計假設雙方在支付時都在線。接收方需要在線來生成發票、揭示 preimage、
+    更新通道狀態。這對服務器節點沒問題，但對移動設備用戶是個挑戰——
+    你不能要求用戶的手機 24/7 在線才能收款。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心問題：</strong>
+      傳統閃電網路需要接收方在線來完成支付。非同步支付的目標是讓離線用戶也能「收款」，
+      然後在上線時完成結算。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">當前解決方案的局限</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`現有方案及其問題：
+
+1. 託管錢包
+   ✓ 簡單，隨時可收款
+   ✗ 資金由第三方控制
+   ✗ 隱私風險
+   ✗ 交易對手風險
+
+2. LSP 代理接收
+   ✓ 資金最終到達用戶
+   ✓ 較好的用戶體驗
+   ✗ LSP 需要暫時持有資金
+   ✗ 仍有信任要求
+   ✗ LSP 可能審查支付
+
+3. HODL Invoices
+   ✓ 支付可以等待
+   ✗ 佔用發送方流動性
+   ✗ 增加堵塞風險
+   ✗ 有時間限制
+
+理想方案：
+- 接收方離線時可以「承諾」收款
+- 上線後無信任地結算
+- 不佔用他人流動性`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Async Payments 概念</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`非同步支付設計目標：
+
+┌─────────────────────────────────────────────────────────┐
+│                    發送方 (Alice)                        │
+│                         │                               │
+│                    發起支付                              │
+│                         │                               │
+│                         ▼                               │
+│   ┌─────────────────────────────────────────────┐       │
+│   │              LSP / 中間節點                  │       │
+│   │                                              │       │
+│   │  持有支付，等待接收方上線                     │       │
+│   │  (不需要持有實際資金)                        │       │
+│   └─────────────────────────────────────────────┘       │
+│                         │                               │
+│                    接收方上線                            │
+│                         │                               │
+│                         ▼                               │
+│                    接收方 (Bob)                          │
+│                    完成結算                              │
+└─────────────────────────────────────────────────────────┘
+
+關鍵特性：
+- 接收方離線時不佔用流動性
+- 上線後完成實際的 HTLC 交換
+- 無需信任中間節點持有資金`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術方案</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. Trampoline + Async</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Trampoline 路由 + 非同步支付：
+
+概念：
+- 發送方將支付委託給 Trampoline 節點
+- Trampoline 節點負責找到接收方
+- 如果接收方離線，Trampoline 可以等待
+
+流程：
+1. Alice 創建支付，指定 Bob 的靜態 ID
+2. Alice 發送給 Trampoline 節點 T
+3. T 發現 Bob 離線
+4. T 保存「支付意圖」（不是實際資金）
+5. Bob 上線，連接 T
+6. T 將支付路由給 Bob
+7. Bob 揭示 preimage
+8. 支付完成
+
+優點：
+- 不需要鏈上交易
+- Bob 離線時 Alice 的資金不被鎖定
+- 基於現有 Trampoline 提案
+
+限制：
+- 需要 Trampoline 節點支援
+- 仍有一定信任要求（T 可能不轉發）`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. PTLCs + Async</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`PTLC 實現非同步支付：
+
+使用適配器簽名的優勢：
+
+傳統 HTLC：
+- 接收方必須在線生成 preimage
+- 無法提前創建「可重用」的支付方式
+
+PTLC：
+- 接收方可以提前發布公開點 P = p·G
+- 發送方使用 P 創建支付
+- 接收方上線後用 p 解鎖
+
+流程：
+1. Bob 發布靜態支付點 P（類似靜態地址）
+2. Alice 創建 PTLC 鎖定到 P
+3. Alice 發送支付到 Bob 的 LSP
+4. LSP 持有支付（PTLC 形式）
+5. Bob 上線，用 p 解鎖 PTLC
+6. 支付完成
+
+挑戰：
+- 需要 PTLC 廣泛部署
+- 依賴 Taproot channels`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 靜態發票 (Static Invoices)</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 12 Offers 實現靜態發票：
+
+傳統 BOLT 11：
+- 每次收款需要生成新發票
+- 發票有過期時間
+- 接收方需要在線
+
+BOLT 12 Offers：
+┌─────────────────────────────────────────┐
+│ Offer: lno1...                           │
+│                                          │
+│ - 靜態的支付「要約」                      │
+│ - 可重複使用                             │
+│ - 不需要每次在線生成發票                  │
+└─────────────────────────────────────────┘
+
+流程：
+1. Bob 創建 Offer 並發布
+2. Alice 使用 Offer 請求發票
+3. 發票請求通過洋蔥路由
+4. Bob 的節點/LSP 返回發票
+5. Alice 支付
+
+非同步場景：
+- Bob 離線時，LSP 可以代理
+- 使用 Bob 預先授權的密鑰
+- 或等待 Bob 上線`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 輔助非同步</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    目前最實用的方案依賴 LSP 的輔助：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">Phoenix 的方案</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• ACINQ 節點代理接收</li>
+        <li>• 支付暫存在 LSP</li>
+        <li>• 用戶上線後自動完成</li>
+        <li>• 使用加密的支付數據</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">Breez 的方案</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• LSP 持有 HODL invoices</li>
+        <li>• 推送通知喚醒 App</li>
+        <li>• 在線時即時結算</li>
+        <li>• 有超時限制</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">挑戰與權衡</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">信任最小化</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如何確保中間方不能偷取資金或審查支付？理想方案應該是「持有意圖」而非「持有資金」。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">超時處理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果接收方長時間不上線怎麼辦？需要有明確的超時和退款機制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">通道堵塞</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果使用 HODL invoices，長時間等待會佔用流動性。需要與堵塞防護措施配合。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私保護</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LSP 會知道誰在接收支付。需要設計機制保護接收方隱私。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來展望</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`非同步支付的路線圖：
+
+近期（已實現）：
+├── LSP 代理接收
+├── HODL invoices
+└── 推送通知喚醒
+
+中期（開發中）：
+├── BOLT 12 Offers
+├── Trampoline routing
+└── 更好的 LSP 標準
+
+長期（研究中）：
+├── PTLC-based async
+├── 完全無信任方案
+└── 跨 LSP 互操作
+
+理想目標：
+- 接收方可以完全離線
+- 不佔用網路流動性
+- 最小化信任要求
+- 保護隱私`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Phoenix</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">部分實現</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        支援離線接收，使用 ACINQ 節點作為代理，支付會在 App 啟動時完成。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Breez</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">部分實現</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 HODL invoices 和推送通知實現離線接收。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >BOLT 12</span
+        >
+        <span class="text-sm font-semibold text-yellow-700 dark:text-yellow-400">開發中</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        靜態 Offers 可以改善非同步支付體驗，CLN 已支援，其他實現正在跟進。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lists.linuxfoundation.org/pipermail/lightning-dev/2021-October/003307.html"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Async Payments 郵件列表討論</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/ptlcs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">PTLCs</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/lnurl"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL</a
+      >
+      協議如何簡化閃電網路的用戶體驗。
+    </p>
+  </div>
+</ArticleLayout>
