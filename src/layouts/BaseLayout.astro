@@ -28,13 +28,31 @@ interface Props {
 const {
   title = siteConfig.title,
   description = siteConfig.description,
-  ogImage = siteConfig.ogImage,
+  ogImage: customOgImage,
   noIndex = false,
   article,
   schemas = [],
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, siteConfig.url);
+
+// Determine OG image path - use custom if provided, otherwise try page-specific, fallback to default
+function getOgImagePath() {
+  if (customOgImage) return customOgImage;
+
+  // Generate path for page-specific OG image
+  const pathname = Astro.url.pathname;
+  const cleanPath = pathname.replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+
+  if (cleanPath && cleanPath !== '') {
+    // Check if page-specific OG exists (will be generated at build time)
+    return `/og/${cleanPath}.png`;
+  }
+
+  return siteConfig.ogImage;
+}
+
+const ogImage = getOgImagePath();
 const fullTitle = title === siteConfig.title ? title : `${title} | ${siteConfig.name}`;
 
 // JSON-LD structured data
