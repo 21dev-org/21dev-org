@@ -37,34 +37,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統限制：
+      class="text-[var(--text-secondary)]">{`Traditional Limits:
 
-┌─────────────────────────────────────────────────────────┐
-│ 最大通道容量：2^24 - 1 satoshis                         │
-│              = 16,777,215 sats                          │
-│              ≈ 0.16777215 BTC                           │
-│                                                         │
-│ 最大 HTLC 大小：通道容量的一部分                        │
-│                                                         │
-│ 原因：                                                   │
-│ ├── 限制早期階段的風險                                  │
-│ ├── 使用 3 字節編碼金額欄位                             │
-│ └── 鼓勵多通道分散風險                                  │
-└─────────────────────────────────────────────────────────┘
+Maximum channel capacity: 2^24 - 1 satoshis
+                        = 16,777,215 sats
+                        = ~0.16777215 BTC
 
-Wumbo 通道（option_support_large_channel）：
+Maximum HTLC size: A portion of channel capacity
 
-┌─────────────────────────────────────────────────────────┐
-│ 最大通道容量：2^64 - 1 satoshis（理論上）               │
-│              = 實際上受限於 Bitcoin 總供應量            │
-│                                                         │
-│ 實際限制：                                               │
-│ ├── 節點可用資金                                        │
-│ ├── 對手方願意接受的風險                                │
-│ └── 軟體實現的限制                                      │
-│                                                         │
-│ 常見大額通道：1-10 BTC                                  │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Reasons:
+• Limit risk during early stages
+• Using 3-byte encoding for amount field
+• Encourage risk distribution across multiple channels
+
+Wumbo Channels (option_support_large_channel):
+
+Maximum channel capacity: 2^64 - 1 satoshis (theoretical)
+                        = Actually limited by Bitcoin total supply
+
+Practical limits:
+• Node's available funds
+• Risk counterparty is willing to accept
+• Software implementation limits
+
+Common large channels: 1-10 BTC`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能位與協商</h2>
@@ -73,34 +69,33 @@ Wumbo 通道（option_support_large_channel）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`option_support_large_channel（功能位 18/19）：
+      class="text-[var(--text-secondary)]">{`option_support_large_channel (Feature Bits 18/19)
 
-功能協商：
-┌─────────────────────────────────────────────────────────┐
-│ Alice                                 Bob               │
-│   │                                    │                │
-│   │──── init ─────────────────────────>│                │
-│   │     features: ...18/19...          │                │
-│   │                                    │                │
-│   │<─── init ──────────────────────────│                │
-│   │     features: ...18/19...          │                │
-│   │                                    │                │
-│   │ [雙方都支援 Wumbo]                 │                │
-│   │                                    │                │
-│   │──── open_channel ─────────────────>│                │
-│   │     funding_satoshis: 500000000    │  (5 BTC)       │
-│   │                                    │                │
-└─────────────────────────────────────────────────────────┘
+Feature Negotiation:
 
-要求：
-├── 雙方節點都必須支援 option_support_large_channel
-├── 功能位在 init 訊息中交換
-└── 只有當雙方都支援時才能開大額通道
+Alice                                 Bob
+  |                                    |
+  |---- init ----------------------->  |
+  |     features: ...18/19...          |
+  |                                    |
+  |<--- init -------------------------  |
+  |     features: ...18/19...          |
+  |                                    |
+  | [Both support Wumbo]               |
+  |                                    |
+  |---- open_channel ----------------> |
+  |     funding_satoshis: 500000000    |  (5 BTC)
+  |                                    |
 
-相容性：
-├── 位 18（偶數）：強制要求
-├── 位 19（奇數）：可選支援
-└── 大多數現代節點使用可選模式`}</pre>
+Requirements:
+• Both nodes must support option_support_large_channel
+• Feature bits exchanged in init message
+• Can only open large channel when both support it
+
+Compatibility:
+• Bit 18 (even): Compulsory
+• Bit 19 (odd): Optional support
+• Most modern nodes use optional mode`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">啟用 Wumbo 通道</h2>
@@ -173,36 +168,35 @@ lncli getnodeinfo <pubkey> | jq '.node.features["19"]'`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`大額通道的風險管理：
+      class="text-[var(--text-secondary)]">{`Risk Management for Large Channels
 
-對手方選擇：
-├── 選擇可靠、知名的節點
-├── 確認對方有良好的 uptime 歷史
-├── 避免與不熟悉的節點開大額通道
-└── 考慮分散到多個對手方
+Counterparty Selection:
+• Choose reliable, well-known nodes
+• Confirm good uptime history
+• Avoid large channels with unfamiliar nodes
+• Consider distributing across multiple counterparties
 
-運營要求：
-├── 持續監控通道狀態
-├── 使用瞭望塔保護
-├── 定期備份通道狀態
-├── 確保節點高可用性
-└── 準備足夠的緊急資金處理強制關閉
+Operational Requirements:
+• Continuous channel state monitoring
+• Use watchtower protection
+• Regular channel state backups
+• Ensure high node availability
+• Prepare sufficient emergency funds for force closes
 
-風險量化：
+Risk Quantification:
 
-假設 5 BTC 通道，對方作惡或離線：
-┌─────────────────────────────────────────────────────────┐
-│ 最壞情況：強制關閉                                      │
-│                                                         │
-│ 損失：                                                   │
-│ ├── 強制關閉費用：~0.001-0.01 BTC                       │
-│ ├── 資金鎖定時間：最多 2 週                             │
-│ ├── HTLC 可能損失：取決於未結算金額                     │
-│ └── 機會成本：鎖定期間無法使用                          │
-│                                                         │
-│ 如果對方發布舊狀態且你沒有瞭望塔：                      │
-│ └── 可能損失全部通道資金                                │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Assume 5 BTC channel, counterparty acts maliciously or goes offline:
+
+Worst case: Force close
+
+Losses:
+• Force close fees: ~0.001-0.01 BTC
+• Funds lock time: Up to 2 weeks
+• Potential HTLC losses: Depends on unsettled amounts
+• Opportunity cost: Cannot use during lock period
+
+If counterparty publishes old state and you have no watchtower:
+• May lose all channel funds`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
@@ -211,37 +205,37 @@ lncli getnodeinfo <pubkey> | jq '.node.features["19"]'`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`適合使用 Wumbo 通道的場景：
+      class="text-[var(--text-secondary)]">{`Suitable Scenarios for Wumbo Channels
 
-1. 交易所/大型商家
-├── 高交易量需求
-├── 專業運維能力
-├── 可承受較高風險
-└── 減少通道管理開銷
+1. Exchanges/Large Merchants
+   • High transaction volume needs
+   • Professional operations capability
+   • Can tolerate higher risk
+   • Reduce channel management overhead
 
-2. 路由節點運營者
-├── 提供大額支付路由
-├── 成為網路骨幹
-├── 賺取更多路由費
-└── 與其他大型節點互聯
+2. Routing Node Operators
+   • Provide large payment routing
+   • Become network backbone
+   • Earn more routing fees
+   • Interconnect with other large nodes
 
-3. LSP（Lightning Service Provider）
-├── 為用戶提供流動性
-├── 減少開通道成本
-├── 批量處理用戶需求
-└── 專業流動性管理
+3. LSP (Lightning Service Provider)
+   • Provide liquidity for users
+   • Reduce channel opening costs
+   • Batch process user needs
+   • Professional liquidity management
 
-4. 企業間結算
-├── B2B 大額支付
-├── 定期結算需求
-├── 信任關係已建立
-└── 減少頻繁開關通道
+4. Enterprise Settlement
+   • B2B large payments
+   • Regular settlement needs
+   • Trust relationship established
+   • Reduce frequent channel opens/closes
 
-不適合的場景：
-├── 個人小額用戶
-├── 新手節點運營者
-├── 沒有 24/7 監控能力
-└── 與不熟悉的節點`}</pre>
+Not Suitable For:
+• Individual small users
+• Beginner node operators
+• No 24/7 monitoring capability
+• With unfamiliar nodes`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
@@ -258,32 +252,28 @@ lncli getnodeinfo <pubkey> | jq '.node.features["19"]'`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Wumbo + MPP 策略：
+      class="text-[var(--text-secondary)]">{`Wumbo + MPP Strategy
 
-不用 Wumbo（傳統方法）：
-┌─────────────────────────────────────────────────────────┐
-│ 發送 1 BTC 支付                                          │
-│                                                         │
-│ 通道 1 (0.15 BTC) ─┐                                    │
-│ 通道 2 (0.15 BTC) ─┼─► 使用 MPP 拆分成 7+ 部分          │
-│ 通道 3 (0.15 BTC) ─┤    複雜度高                         │
-│ 通道 4 (0.15 BTC) ─┤    可能部分失敗                     │
-│ ...                ─┘                                    │
-└─────────────────────────────────────────────────────────┘
+Without Wumbo (Traditional Method):
+Sending 1 BTC payment
 
-使用 Wumbo：
-┌─────────────────────────────────────────────────────────┐
-│ 發送 1 BTC 支付                                          │
-│                                                         │
-│ Wumbo 通道 (5 BTC) ─► 單一路徑完成                      │
-│                        簡單、快速                        │
-└─────────────────────────────────────────────────────────┘
+Channel 1 (0.15 BTC) --+
+Channel 2 (0.15 BTC) --+--> Use MPP to split into 7+ parts
+Channel 3 (0.15 BTC) --+    High complexity
+Channel 4 (0.15 BTC) --+    Parts may fail
+...                  --+
 
-混合策略（推薦）：
-├── 1-2 個 Wumbo 通道處理大額支付
-├── 多個小通道提供冗餘和隱私
-├── MPP 在需要時提供額外容量
-└── 平衡風險和便利性`}</pre>
+Using Wumbo:
+Sending 1 BTC payment
+
+Wumbo channel (5 BTC) --> Single path completion
+                          Simple, fast
+
+Hybrid Strategy (Recommended):
+• 1-2 Wumbo channels for large payments
+• Multiple small channels for redundancy and privacy
+• MPP provides extra capacity when needed
+• Balance risk and convenience`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>

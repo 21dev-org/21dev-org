@@ -1,0 +1,145 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="HTLC Limits HTLC 限制"
+  description="了解閃電網路中 HTLC 的數量和金額限制，以及這些限制的安全考量。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'HTLC Limits' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Dust Limits', href: '/tech/lightning/dust-limits' }}
+  nextPage={{ title: 'Channel Capacity', href: '/tech/lightning/channel-capacity' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要限制？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    HTLC 限制保護節點免受資源耗盡攻擊，並確保承諾交易可以在合理的費用內上鏈。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>攻擊向量：</strong>
+      沒有限制的話，攻擊者可以用大量小額 HTLC 堵塞通道，或創建巨大的承諾交易。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">主要限制類型</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC Limit Parameters
+
+Count Limit (max_accepted_htlcs):
+
+BOLT 規範限制：每方向最多 483 個 HTLC
+
+為什麼是 483？
+  • 比特幣交易最大 400,000 weight units
+  • 每個 HTLC 輸出約 172 bytes
+  • 483 x 2 方向 = 966 個 HTLC
+  • 加上其他輸出，剛好在限制內
+
+實際配置：
+  • LND 預設：483
+  • CLN 預設：30（保守設定）
+
+Amount Limits:
+
+max_htlc_value_in_flight_msat:
+  • 同時在途的最大 HTLC 總額
+  • 預設通常是通道容量的某個百分比
+
+htlc_minimum_msat:
+  • 單個 HTLC 的最小金額
+  • 用於避免粉塵攻擊
+
+htlc_maximum_msat:
+  • 單個 HTLC 的最大金額
+  • 用於流動性管理`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道協商</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Channel Open Negotiation
+
+open_channel message:
+{
+  "max_htlc_value_in_flight_msat": 990000000,
+  "max_accepted_htlcs": 30,
+  "htlc_minimum_msat": 1000
+}
+
+accept_channel response:
+  • 對方可以設定不同的限制
+  • 最終限制 = min(雙方各自的限制)
+
+channel_update dynamic update:
+  • htlc_maximum_msat 可以通過 channel_update 更新
+  • 用於動態流動性管理`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Attack Scenarios and Defenses
+
+HTLC Jamming Attack:
+  Attack: 發送大量 HTLC 但不解決
+  Defense: max_accepted_htlcs 限制
+  Best Practice: 設定合理的上限（如 30-100）
+
+Transaction Bloat Attack:
+  Attack: 創建巨大的承諾交易，使強制關閉成本高昂
+  Defense:
+    • HTLC 數量限制
+    • Anchor Outputs（可動態加費）
+
+Fund Locking Attack:
+  Attack: 用大額 HTLC 鎖定通道容量
+  Defense:
+    • max_htlc_value_in_flight 限制
+    • 分散通道連接`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">路由節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        設定較高的 HTLC 限制以提供更好的路由服務。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">終端用戶</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        保守設定減少攻擊面，降低複雜性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/dust-limits" class="text-yellow-600 dark:text-yellow-400 hover:underline">粉塵限制</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/channel-jamming" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道堵塞</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/htlc" class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 詳解</a>
+    </li>
+  </ul>
+</ArticleLayout>

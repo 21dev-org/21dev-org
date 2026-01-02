@@ -47,23 +47,21 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`詐騙攻擊時間線：
+      class="text-[var(--text-secondary)]">{`Fraud Attack Timeline:
 
-時間 T0: Alice 廣播舊的 commitment tx
-        ┌─────────────────────────────────┐
-        │  to_local (Alice): 0.6 BTC      │
-        │  to_remote (Bob):  0.4 BTC      │  <- 過時狀態！
-        └─────────────────────────────────┘
-                    │
-                    ▼
-時間 T0 ~ T0+CSV:  爭議期間
-        Bob 必須在 CSV 時間鎖到期前發現並懲罰
+Time T0: Alice broadcasts old commitment tx
+  to_local (Alice): 0.6 BTC
+  to_remote (Bob):  0.4 BTC  <- Outdated state!
+           |
+           v
+Time T0 ~ T0+CSV: Dispute period
+  Bob must detect and punish before CSV timelock expires
 
-時間 T0+CSV: 如果 Bob 沒有反應
-        Alice 可以花費 to_local 輸出
+Time T0+CSV: If Bob doesn't respond
+  Alice can spend to_local output
 
-威脅：如果 Bob 離線超過 CSV 時間（通常 144~2016 區塊）
-      Bob 將損失資金`}</pre>
+Threat: If Bob offline longer than CSV time (144~2016 blocks)
+  Bob will lose funds`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Watchtower 運作原理</h2>
@@ -72,28 +70,28 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Watchtower 架構：
+      class="text-[var(--text-secondary)]">{`Watchtower Architecture:
 
 ┌─────────────────┐         ┌─────────────────┐
-│   你的節點       │         │   Watchtower    │
+│   Your Node     │         │   Watchtower    │
 │                 │         │                 │
-│  每次狀態更新時  │ ──────> │  儲存加密的      │
-│  發送 hint +    │         │  懲罰交易        │
-│  加密懲罰交易    │         │                 │
+│ On state update │ ──────> │ Store encrypted │
+│ send hint +     │         │ justice tx      │
+│ encrypted blob  │         │                 │
 └─────────────────┘         └────────┬────────┘
                                      │
-                                     │ 監控區塊鏈
-                                     ▼
+                                     │ Monitor blockchain
+                                     v
                             ┌─────────────────┐
                             │   Bitcoin       │
                             │   Blockchain    │
                             └─────────────────┘
                                      │
-                                     │ 發現詐騙？
-                                     ▼
+                                     │ Fraud detected?
+                                     v
                             ┌─────────────────┐
-                            │ 廣播懲罰交易     │
-                            │ 沒收詐騙者資金   │
+                            │ Broadcast       │
+                            │ justice tx      │
                             └─────────────────┘`}</pre>
   </div>
 
@@ -108,11 +106,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Watchtower Blob 結構：
+      class="text-[var(--text-secondary)]">{`Watchtower Blob Structure:
 
-客戶端生成：
-  txid = commitment_tx 的 txid
-  hint = txid 的前 16 bytes（用於匹配）
+Client generates:
+  txid = commitment_tx txid
+  hint = first 16 bytes of txid (for matching)
 
   encryption_key = SHA256(txid)
   blob = AES-GCM-256(
@@ -120,17 +118,15 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     plaintext: justice_tx + sweep_address
   )
 
-發送給 Watchtower：
-  ┌────────────────┬─────────────────────┐
-  │  hint (16 B)   │  encrypted_blob     │
-  └────────────────┴─────────────────────┘
+Sent to Watchtower:
+  hint (16 B) | encrypted_blob
 
-Watchtower 操作：
-  1. 儲存 (hint, blob) 對
-  2. 監控每個新區塊的交易
-  3. 如果發現匹配的 hint：
-     - 使用 txid 作為 key 解密 blob
-     - 廣播 justice_tx`}</pre>
+Watchtower operation:
+1. Store (hint, blob) pairs
+2. Monitor each new block's transactions
+3. If matching hint found:
+   • Use txid as key to decrypt blob
+   • Broadcast justice_tx`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 隱私保護</h3>
@@ -245,30 +241,26 @@ wt_state_update_reply
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Anchor Outputs 與 Watchtower：
+      class="text-[var(--text-secondary)]">{`Anchor Outputs and Watchtowers:
 
-傳統模式問題：
-- 懲罰交易的手續費是預先簽名的
-- 如果鏈上手續費飆升，懲罰交易可能被卡住
+Traditional mode problem:
+• Justice tx fees are pre-signed
+• If on-chain fees spike, justice tx may get stuck
 
-Anchor Outputs 改進：
-┌─────────────────────────────────────────┐
-│         Commitment Transaction          │
-├─────────────────────────────────────────┤
-│  to_local (with revocation)             │
-│  to_remote                              │
-│  anchor_local (330 sats)                │
-│  anchor_remote (330 sats)               │
-└─────────────────────────────────────────┘
-              │
-              ▼
-Watchtower 可以使用 CPFP (Child-Pays-For-Parent)
-動態增加懲罰交易的手續費
+Anchor Outputs improvement:
+Commitment Transaction contains:
+• to_local (with revocation)
+• to_remote
+• anchor_local (330 sats)
+• anchor_remote (330 sats)
 
-新挑戰：
-- Watchtower 需要自己的 UTXO 來支付 CPFP 費用
-- 需要更複雜的費用管理
-- 可能需要報酬機制來覆蓋成本`}</pre>
+Watchtower can use CPFP (Child-Pays-For-Parent)
+to dynamically increase justice tx fee
+
+New challenges:
+• Watchtower needs its own UTXOs for CPFP fees
+• Requires more complex fee management
+• May need reward mechanism to cover costs`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>

@@ -34,21 +34,16 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`洋蔥封包 (1366 bytes)：
+      class="text-[var(--text-secondary)]">{`Onion Packet (1366 bytes):
 
-┌────────────────────────────────────────────────┐
-│ version (1 byte): 0x00                         │
-├────────────────────────────────────────────────┤
-│ public_key (33 bytes): 會話公鑰               │
-├────────────────────────────────────────────────┤
-│ hop_payloads (1300 bytes):                     │
-│   ├── hop 1 payload (加密)                     │
-│   ├── hop 2 payload (加密)                     │
-│   ├── ...                                      │
-│   └── 填充至 1300 bytes                        │
-├────────────────────────────────────────────────┤
-│ hmac (32 bytes): 完整性驗證                    │
-└────────────────────────────────────────────────┘`}</pre>
+• version (1 byte): 0x00
+• public_key (33 bytes): session public key
+• hop_payloads (1300 bytes):
+  - hop 1 payload (encrypted)
+  - hop 2 payload (encrypted)
+  - ...
+  - padding to 1300 bytes
+• hmac (32 bytes): integrity verification`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密流程</h2>
@@ -60,29 +55,27 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`加密過程：
+      class="text-[var(--text-secondary)]">{`Encryption Process:
 
-1. 生成會話私鑰 (session_key)
-2. 對每一跳計算共享密鑰：
+1. Generate session_key
+2. Compute shared secret for each hop:
    shared_secret[i] = SHA256(ECDH(session_key, node_pubkey[i]))
 
-3. 從最後一跳開始，向前加密：
+3. Encrypt from last hop backwards:
 
-   ┌─────────────────────────────────────────────────┐
-   │ 最內層（接收方 Carol）:                         │
-   │   payload_carol = [amt, cltv, payment_secret]  │
-   │   加密: encrypt(payload_carol, key_carol)      │
-   ├─────────────────────────────────────────────────┤
-   │ 中間層（Bob）:                                  │
-   │   payload_bob = [amt, cltv, next_channel]      │
-   │   + 已加密的內層                                │
-   │   加密: encrypt(all, key_bob)                  │
-   ├─────────────────────────────────────────────────┤
-   │ 最外層（Alice 的下一跳）:                       │
-   │   payload = [amt, cltv, next_channel]          │
-   │   + 已加密的所有內層                            │
-   │   加密: encrypt(all, key_hop1)                 │
-   └─────────────────────────────────────────────────┘`}</pre>
+   Innermost layer (receiver Carol):
+     payload_carol = [amt, cltv, payment_secret]
+     encrypt(payload_carol, key_carol)
+
+   Middle layer (Bob):
+     payload_bob = [amt, cltv, next_channel]
+     + encrypted inner layer
+     encrypt(all, key_bob)
+
+   Outermost layer (Alice's next hop):
+     payload = [amt, cltv, next_channel]
+     + all encrypted inner layers
+     encrypt(all, key_hop1)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">每跳 Payload</h2>
@@ -91,26 +84,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`TLV Payload 格式（現代格式）：
+      class="text-[var(--text-secondary)]">{`TLV Payload Format (modern):
 
 hop_payload:
-├── amt_to_forward (type 2): 轉發金額 (毫聰)
-├── outgoing_cltv_value (type 4): 出站 CLTV
-├── short_channel_id (type 6): 下一通道 ID
-│   （最後一跳可選）
-├── payment_data (type 8): 支付數據
+├── amt_to_forward (type 2): forward amount (msat)
+├── outgoing_cltv_value (type 4): outgoing CLTV
+├── short_channel_id (type 6): next channel ID
+│   (optional for final hop)
+├── payment_data (type 8): payment data
 │   ├── payment_secret (32 bytes)
 │   └── total_msat (8 bytes)
-└── 其他可選 TLV...
+└── other optional TLVs...
 
-非最後一跳範例：
+Non-final hop example:
 {
   amt_to_forward: 100000,
   outgoing_cltv_value: 700000,
   short_channel_id: 123x456x0
 }
 
-最後一跳範例：
+Final hop example:
 {
   amt_to_forward: 100000,
   outgoing_cltv_value: 700000,
@@ -127,22 +120,22 @@ hop_payload:
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`節點處理洋蔥封包：
+      class="text-[var(--text-secondary)]">{`Node Processing Onion Packet:
 
-1. 從封包提取 public_key
-2. 計算共享密鑰：
+1. Extract public_key from packet
+2. Compute shared secret:
    shared_secret = SHA256(ECDH(node_privkey, public_key))
 
-3. 驗證 HMAC
-4. 解密 hop_payloads 的第一層
-5. 讀取自己的 payload
-6. 移除自己的 payload，左移其餘內容
-7. 填充尾部以保持長度
-8. 更新 public_key（橢圓曲線盲化）
-9. 計算新的 HMAC
-10. 轉發給下一跳
+3. Verify HMAC
+4. Decrypt first layer of hop_payloads
+5. Read own payload
+6. Remove own payload, shift remaining content left
+7. Pad tail to maintain length
+8. Update public_key (elliptic curve blinding)
+9. Compute new HMAC
+10. Forward to next hop
 
-橢圓曲線盲化：
+Elliptic Curve Blinding:
 new_pubkey = old_pubkey * SHA256(shared_secret)`}</pre>
   </div>
 
@@ -182,23 +175,23 @@ new_pubkey = old_pubkey * SHA256(shared_secret)`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錯誤封包結構：
+      class="text-[var(--text-secondary)]">{`Failure Packet Structure:
 
 failure_packet:
-├── hmac (32 bytes): 完整性驗證
+├── hmac (32 bytes): integrity verification
 ├── length (2 bytes)
-├── error_code (2 bytes): 錯誤類型
+├── error_code (2 bytes): error type
 ├── data_length (2 bytes)
-└── data: 額外錯誤資訊
+└── data: additional error info
 
-每一跳加密回傳：
-Carol 發現錯誤 → 加密 → Bob
-Bob 收到 → 再加密 → Alice
+Each hop encrypts backwards:
+Carol finds error -> encrypt -> Bob
+Bob receives -> re-encrypt -> Alice
 
-Alice 嘗試用每一跳的密鑰解密：
-1. 用 hop1 密鑰解密 → 失敗
-2. 用 hop2 密鑰解密 → 失敗
-3. 用 hop3 密鑰解密 → 成功！錯誤來自 hop3`}</pre>
+Alice tries decrypting with each hop's key:
+1. Decrypt with hop1 key -> fail
+2. Decrypt with hop2 key -> fail
+3. Decrypt with hop3 key -> success! Error from hop3`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見錯誤碼</h2>
@@ -207,24 +200,24 @@ Alice 嘗試用每一跳的密鑰解密：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`節點產生的錯誤：
+      class="text-[var(--text-secondary)]">{`Node Errors:
 0x400F: temporary_node_failure
 0x4010: permanent_node_failure
 0x4011: required_node_feature_missing
 
-通道產生的錯誤：
+Channel Errors:
 0x1007: temporary_channel_failure
 0x1008: permanent_channel_failure
 0x1009: required_channel_feature_missing
 0x100A: unknown_next_peer
 
-更新建議的錯誤：
+Update Suggested Errors:
 0x100B: amount_below_minimum
 0x100C: fee_insufficient
 0x100D: incorrect_cltv_expiry
 0x100E: expiry_too_soon
 
-最終節點錯誤：
+Final Node Errors:
 0x400D: incorrect_or_unknown_payment_details
 0x400E: incorrect_payment_amount
 0x400F: final_incorrect_cltv_expiry`}</pre>
@@ -239,24 +232,22 @@ Alice 嘗試用每一跳的密鑰解密：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`盲化路徑結構：
+      class="text-[var(--text-secondary)]">{`Blinded Path Structure:
 
-接收方 Carol 創建盲化路徑：
-1. 選擇引入節點 (introduction node)
-2. 盲化後續節點 ID
-3. 提供 blinded_payloads
+Receiver Carol creates blinded path:
+1. Choose introduction node
+2. Blind subsequent node IDs
+3. Provide blinded_payloads
 
-┌─────────────────────────────────────────────┐
-│ 發送方看到：                                │
-│   Alice → ... → Intro → [盲化] → [盲化]    │
-│                   ↑                         │
-│              明文公開     不知道是誰         │
-└─────────────────────────────────────────────┘
+Sender sees:
+Alice -> ... -> Intro -> [blinded] -> [blinded]
+                  ^
+             public         unknown
 
-盲化路徑中：
-- 每一跳只知道下一個盲化點
-- 發送方無法識別真正的接收方
-- 引入節點知道第一跳，但不知道終點`}</pre>
+In blinded path:
+• Each hop only knows next blinded point
+• Sender cannot identify real receiver
+• Introduction node knows first hop, not destination`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Trampoline 路由</h2>
@@ -268,25 +259,25 @@ Alice 嘗試用每一跳的密鑰解密：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Trampoline 路由：
+      class="text-[var(--text-secondary)]">{`Trampoline Routing:
 
-傳統路由：
-Alice → B → C → D → E → Carol
-(Alice 需要知道完整網路拓撲)
+Traditional routing:
+Alice -> B -> C -> D -> E -> Carol
+(Alice needs full network topology)
 
-Trampoline 路由：
-Alice → [Trampoline1] → [Trampoline2] → Carol
-        ↓                ↓
-    T1 找路到 T2    T2 找路到 Carol
+Trampoline routing:
+Alice -> [Trampoline1] -> [Trampoline2] -> Carol
+         |                 |
+     T1 routes to T2   T2 routes to Carol
 
-優點：
-- 輕客戶端不需儲存完整網路圖
-- 減少資源消耗
-- 仍保持隱私（Trampoline 節點不知道發送方）
+Advantages:
+• Light clients don't need full network graph
+• Reduced resource consumption
+• Still preserves privacy (Trampoline doesn't know sender)
 
-缺點：
-- 需要信任 Trampoline 節點可用
-- 手續費可能較高`}</pre>
+Disadvantages:
+• Need to trust Trampoline node availability
+• Fees may be higher`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私限制</h2>

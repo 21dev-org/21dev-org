@@ -36,29 +36,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道容量示意：
+      class="text-[var(--text-secondary)]">{`Channel Capacity Diagram
 
-┌─────────────────────────────────────────────────────────┐
-│ 你的節點              通道容量 1 BTC           對方節點 │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  你的餘額 ◄────────────────────────────► 對方餘額      │
-│                                                         │
-│  ███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
-│  0.8 BTC                                    0.2 BTC    │
-│                                                         │
-│  出站容量: 0.8 BTC         入站容量: 0.2 BTC           │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+Your Node              Channel Capacity 1 BTC           Peer Node
 
-新開通道時（你出資 1 BTC）：
-┌─────────────────────────────────────────────────────────┐
-│  ██████████████████████████████████████████████████░░  │
-│  1.0 BTC                                    0 BTC      │
-│                                                         │
-│  出站容量: ~1 BTC           入站容量: 0               │
-│  → 可以發送支付              → 無法接收支付            │
-└─────────────────────────────────────────────────────────┘`}</pre>
+  Your Balance <-------------------------> Peer Balance
+
+  [=============================]..........
+  0.8 BTC                                    0.2 BTC
+
+  Outbound capacity: 0.8 BTC    Inbound capacity: 0.2 BTC
+
+When opening new channel (you fund 1 BTC):
+
+  [===============================================]..
+  1.0 BTC                                    0 BTC
+
+  Outbound capacity: ~1 BTC     Inbound capacity: 0
+  -> Can send payments          -> Cannot receive payments`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">獲取入站容量的方法</h2>
@@ -69,25 +64,23 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`被動獲取入站容量：
+      class="text-[var(--text-secondary)]">{`Passively Acquiring Inbound Capacity
 
-當其他節點向你開通道時：
-┌─────────────────────────────────────────────────────────┐
-│ 對方出資 0.5 BTC 開通道                                 │
-│                                                         │
-│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████████████    │
-│  0 BTC                                    0.5 BTC      │
-│                                                         │
-│  你的入站容量: 0.5 BTC（可以接收）                      │
-│  你的出站容量: 0 BTC（需要先接收）                      │
-└─────────────────────────────────────────────────────────┘
+When other nodes open channel to you:
+Peer funds 0.5 BTC to open channel
 
-如何吸引入站通道：
-├── 運行可靠的節點（高 uptime）
-├── 設置合理的路由費率
-├── 連接到網路中心節點
-├── 在論壇/社群公布節點
-└── 提供有價值的服務（路由、流動性）`}</pre>
+  ..........................[==================]
+  0 BTC                                    0.5 BTC
+
+  Your inbound capacity: 0.5 BTC (can receive)
+  Your outbound capacity: 0 BTC (need to receive first)
+
+How to Attract Inbound Channels:
+• Run a reliable node (high uptime)
+• Set reasonable routing fees
+• Connect to network hub nodes
+• Announce node in forums/communities
+• Provide valuable services (routing, liquidity)`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 花費出站容量</h3>
@@ -96,28 +89,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通過支付轉換容量：
+      class="text-[var(--text-secondary)]">{`Converting Capacity Through Payments
 
-初始狀態：
-┌─────────────────────────────────────────────────────────┐
-│  ██████████████████████████████████████████████████░░  │
-│  1.0 BTC                                    0 BTC      │
-└─────────────────────────────────────────────────────────┘
+Initial state:
+  [===============================================]..
+  1.0 BTC                                    0 BTC
 
-你發送 0.3 BTC 支付後：
-┌─────────────────────────────────────────────────────────┐
-│  █████████████████████████████████░░░░░░░░░░░░░░░░░░  │
-│  0.7 BTC                                    0.3 BTC    │
-│                                                         │
-│  出站容量: 0.7 BTC          入站容量: 0.3 BTC          │
-└─────────────────────────────────────────────────────────┘
+After you send 0.3 BTC payment:
+  [================================]..............
+  0.7 BTC                                    0.3 BTC
 
-方法：
-├── 購買商品/服務
-├── Bitrefill 購買禮品卡
-├── Loop Out 到鏈上
-├── 支付到自己的其他通道（環形支付）
-└── 購買入站容量服務`}</pre>
+  Outbound capacity: 0.7 BTC     Inbound capacity: 0.3 BTC
+
+Methods:
+• Buy goods/services
+• Bitrefill gift cards
+• Loop Out to on-chain
+• Pay to your other channels (circular payment)
+• Purchase inbound capacity service`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 購買入站容量</h3>
@@ -159,34 +148,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Dual-Funded Channels：
+      class="text-[var(--text-secondary)]">{`Dual-Funded Channels
 
-開通道時雙方都出資：
-┌─────────────────────────────────────────────────────────┐
-│ 你出資 0.5 BTC + 對方出資 0.5 BTC = 1 BTC 通道         │
-│                                                         │
-│  █████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░  │
-│  0.5 BTC                                    0.5 BTC    │
-│                                                         │
-│  出站容量: 0.5 BTC          入站容量: 0.5 BTC          │
-│                                                         │
-│ 優點：一開始就有雙向流動性                               │
-│ 需要：雙方都支援 option_dual_fund                       │
-└─────────────────────────────────────────────────────────┘
+Both parties fund when opening channel:
+You fund 0.5 BTC + Peer funds 0.5 BTC = 1 BTC channel
 
-流動性廣告（Liquidity Ads）：
-┌─────────────────────────────────────────────────────────┐
-│ 節點可以公告願意提供的流動性和價格                       │
-│                                                         │
-│ 廣告內容：                                               │
-│ ├── 最小/最大金額                                       │
-│ ├── 租賃期限（區塊數）                                  │
-│ ├── 費率（每 sat 每區塊）                               │
-│ └── 基礎費用                                            │
-│                                                         │
-│ CLN 支援：                                               │
-│ lightning-cli funderupdate ...                          │
-└─────────────────────────────────────────────────────────┘`}</pre>
+  [======================]........................
+  0.5 BTC                                    0.5 BTC
+
+  Outbound capacity: 0.5 BTC     Inbound capacity: 0.5 BTC
+
+Advantages: Have bidirectional liquidity from the start
+Requires: Both support option_dual_fund
+
+Liquidity Ads:
+Nodes can advertise liquidity they're willing to provide and pricing
+
+Ad contents:
+• Min/max amount
+• Lease duration (in blocks)
+• Rate (per sat per block)
+• Base fee
+
+CLN Support:
+lightning-cli funderupdate ...`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">5. Submarine Swaps</h3>
@@ -195,29 +180,25 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Loop Out（鏈下→鏈上）：
+      class="text-[var(--text-secondary)]">{`Loop Out (Off-chain -> On-chain)
 
-將閃電網路餘額轉換為鏈上比特幣，同時獲得入站容量：
+Convert Lightning balance to on-chain Bitcoin while gaining inbound capacity:
 
-初始狀態：
-┌─────────────────────────────────────────────────────────┐
-│  你 ──(1 BTC)──► Loop 節點                              │
-│  出站容量: 1 BTC                                        │
-└─────────────────────────────────────────────────────────┘
+Initial state:
+  You --(1 BTC)--> Loop Node
+  Outbound capacity: 1 BTC
 
-Loop Out 0.5 BTC 後：
-┌─────────────────────────────────────────────────────────┐
-│  你 ◄──(0.5 BTC)── Loop 節點                            │
-│  + 0.5 BTC 在鏈上（減去手續費）                         │
-│                                                         │
-│  入站容量: 0.5 BTC                                      │
-└─────────────────────────────────────────────────────────┘
+After Loop Out 0.5 BTC:
+  You <--(0.5 BTC)-- Loop Node
+  + 0.5 BTC on-chain (minus fees)
 
-服務提供商：
-├── Loop by Lightning Labs
-├── Boltz Exchange
-├── Deezy
-└── Breez（集成在錢包中）`}</pre>
+  Inbound capacity: 0.5 BTC
+
+Service Providers:
+• Loop by Lightning Labs
+• Boltz Exchange
+• Deezy
+• Breez (integrated in wallet)`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">6. LSP 服務</h3>
@@ -226,30 +207,28 @@ Loop Out 0.5 BTC 後：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Lightning Service Provider 提供即時入站容量：
+      class="text-[var(--text-secondary)]">{`Lightning Service Provider Provides Instant Inbound Capacity
 
-JIT（Just-In-Time）通道：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 你收到一筆支付請求                                   │
-│ 2. LSP 攔截支付                                         │
-│ 3. LSP 即時開通道給你                                   │
-│ 4. 支付通過新通道完成                                   │
-│ 5. LSP 從支付中扣除開通道費用                           │
-│                                                         │
-│ 用戶體驗：無需預先設置，自動獲得入站容量                │
-└─────────────────────────────────────────────────────────┘
+JIT (Just-In-Time) Channels:
+1. You receive a payment request
+2. LSP intercepts payment
+3. LSP instantly opens channel to you
+4. Payment completes through new channel
+5. LSP deducts channel opening fee from payment
 
-常見 LSP：
-├── Phoenix (ACINQ)
-├── Breez
-├── Blixt
-├── Zeus (Olympus)
-└── Mutiny (Mutiny LSP)
+User experience: No pre-setup needed, automatically get inbound capacity
 
-成本考量：
-├── JIT 通道費用通常從支付中扣除
-├── 零確認通道減少等待時間
-└── 適合小額用戶，大額用戶自己管理更經濟`}</pre>
+Common LSPs:
+• Phoenix (ACINQ)
+• Breez
+• Blixt
+• Zeus (Olympus)
+• Mutiny (Mutiny LSP)
+
+Cost Considerations:
+• JIT channel fees usually deducted from payment
+• Zero-conf channels reduce waiting time
+• Suitable for small users; large users save by self-managing`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">入站容量策略</h2>
@@ -258,31 +237,31 @@ JIT（Just-In-Time）通道：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`不同場景的建議策略：
+      class="text-[var(--text-secondary)]">{`Recommended Strategies for Different Scenarios
 
-個人用戶（主要接收）：
-├── 使用 LSP 錢包（Phoenix、Breez）
-├── 讓 LSP 自動管理入站容量
-└── 成本從收款中扣除
+Individual Users (primarily receiving):
+• Use LSP wallets (Phoenix, Breez)
+• Let LSP auto-manage inbound capacity
+• Costs deducted from received payments
 
-小型商家：
-├── 向大型節點購買入站容量
-├── 使用 Loop Out 定期轉換
-├── 考慮 Lightning Pool 租賃
-└── 維持多個入站通道分散風險
+Small Merchants:
+• Purchase inbound capacity from large nodes
+• Use Loop Out for periodic conversion
+• Consider Lightning Pool rental
+• Maintain multiple inbound channels for risk distribution
 
-路由節點：
-├── 雙向注資通道優先
-├── 使用流動性廣告
-├── 主動平衡通道
-├── 與其他路由節點互開通道
-└── 監控並優化入站/出站比例
+Routing Nodes:
+• Prioritize dual-funded channels
+• Use liquidity ads
+• Actively balance channels
+• Mutually open channels with other routing nodes
+• Monitor and optimize inbound/outbound ratio
 
-大型商家/交易所：
-├── 專業流動性管理
-├── 自建流動性基礎設施
-├── 與多個大型節點建立關係
-└── 考慮運行多個節點`}</pre>
+Large Merchants/Exchanges:
+• Professional liquidity management
+• Build own liquidity infrastructure
+• Establish relationships with multiple large nodes
+• Consider running multiple nodes`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

@@ -1,0 +1,146 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Data Loss Protection 數據丟失保護"
+  description="了解閃電網路的數據丟失保護機制，如何在節點數據損失後安全恢復。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Data Loss Protection' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Channel Backup', href: '/tech/lightning/channel-backup' }}
+  nextPage={{ title: 'Watchtowers', href: '/tech/lightning/watchtowers' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">數據丟失的風險</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電節點需要保存每個通道的最新狀態。如果丟失數據並使用舊狀態，可能會被視為作弊而損失資金。
+    Data Loss Protection（DLP）協議幫助安全恢復。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>功能位：</strong>
+      option_data_loss_protect（bit 0/1）現在幾乎是必需的功能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">DLP 協議原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`channel_reestablish 訊息：
+
+重連時交換：
+channel_reestablish {
+  channel_id,
+  next_commitment_number,        // 我期望的下一個承諾編號
+  next_revocation_number,        // 我期望的下一個撤銷編號
+  your_last_per_commitment_secret, // 你最後給我的 secret
+  my_current_per_commitment_point  // 我當前的承諾點
+}
+
+正常情況：
+A 發送：next_commitment=100, next_revocation=99
+B 發送：next_commitment=100, next_revocation=99
+→ 雙方同步，繼續正常操作
+
+數據丟失檢測：
+A（丟失數據）：next_commitment=50, next_revocation=49
+B（正常）：    next_commitment=100, next_revocation=99
+
+B 檢測到：A 的狀態比我知道的舊
+→ 觸發 DLP 恢復流程`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">恢復流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`DLP 恢復選項：
+
+選項 1：對方協助關閉
+1. 對方發送：your_last_per_commitment_secret
+2. 丟失方可以驗證這是自己的 secret
+3. 對方發起協商關閉（mutual close）
+4. 雙方按最新餘額分配資金
+
+這是最好的結果：沒有懲罰，費用最低
+
+選項 2：對方強制關閉
+1. 對方廣播自己的承諾交易
+2. 丟失方等待 to_remote 輸出（無時間鎖）
+3. 使用 static_remotekey 可以直接花費
+
+結果：丟失進行中的 HTLC，但主餘額安全
+
+最壞情況：丟失方廣播舊狀態
+如果丟失方錯誤地廣播舊承諾交易：
+• 對方持有撤銷密鑰
+• 可以執行懲罰交易
+• 丟失方損失全部資金！
+
+DLP 的目的就是防止這種情況`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Static Remote Key</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`static_remotekey 增強：
+
+傳統問題：
+• to_remote 輸出的密鑰每次承諾都變化
+• 丟失數據 → 不知道當前密鑰 → 無法花費
+
+static_remotekey 解決方案：
+• to_remote 輸出始終使用固定的 payment_basepoint
+• 只需要種子就能恢復密鑰
+• 即使數據丟失也能取回資金`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">SCB 備份</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Static Channel Backup 配合 DLP 使用，提供通道恢復資訊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">瞭望塔</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        即使你離線，瞭望塔也能檢測作弊並執行懲罰。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>關鍵提醒：</strong>
+      永遠不要從備份恢復後直接嘗試使用通道！應該讓對方關閉通道。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/channel-backup" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道備份</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/static-remote-key" class="text-yellow-600 dark:text-yellow-400 hover:underline">Static Remote Key</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/watchtowers" class="text-yellow-600 dark:text-yellow-400 hover:underline">瞭望塔</a>
+    </li>
+  </ul>
+</ArticleLayout>

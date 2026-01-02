@@ -1,0 +1,150 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Key Derivation 密鑰派生"
+  description="了解閃電網路節點的密鑰派生機制，從種子到各種用途的密鑰。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Key Derivation' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Channel Backup', href: '/tech/lightning/channel-backup' }}
+  nextPage={{ title: 'Revocation', href: '/tech/lightning/revocation' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰層次結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路節點從單一種子派生出多種用途的密鑰，確保所有密鑰都可以從種子恢復。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>確定性派生：</strong>
+      使用 BIP 32/39 標準，從 24 個助記詞可以恢復所有密鑰。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LND 密鑰路徑</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Key Family 結構：
+
+種子 → Master Key → 各種密鑰家族
+m/1017'/coin_type'/key_family/0/index
+
+1017' = Lightning 專用 BIP
+coin_type' = 0' (mainnet) / 1' (testnet)
+
+Key Families：
+├── 0: MultiSig（多簽，用於資金輸出）
+├── 1: RevocationBase（撤銷基礎密鑰）
+├── 2: HtlcBase（HTLC 基礎密鑰）
+├── 3: PaymentBase（支付基礎密鑰）
+├── 4: DelayBase（延遲基礎密鑰）
+├── 5: RevocationRoot（撤銷根密鑰）
+├── 6: NodeKey（節點身份密鑰）
+└── 7+: 自定義用途`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道密鑰</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`每個通道使用的密鑰：
+
+Funding 多簽：
+funding_pubkey = derive(MultiSig, channel_index)
+2-of-2 多簽：local_funding + remote_funding
+
+Commitment 交易密鑰：
+per_commitment_point = 每次更新變化
+
+派生的密鑰：
+├── local_delayedpubkey（延遲輸出）
+├── remote_pubkey（對方輸出）
+├── local_htlcpubkey（本地 HTLC）
+├── remote_htlcpubkey（對方 HTLC）
+└── revocationpubkey（撤銷密鑰）
+
+公式：
+pubkey = basepoint + SHA256(per_commitment || basepoint) × G
+
+撤銷密鑰派生：
+revocation_pubkey = revocation_basepoint × SHA256(...) +
+                    per_commitment_point × SHA256(...)
+
+只有知道 per_commitment_secret 才能花費撤銷輸出`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Per-Commitment Secrets</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Shachain 高效存儲：
+
+問題：每個承諾交易需要一個 secret
+1000 萬次更新 = 需要存儲 1000 萬個 secrets？
+
+解決方案：Shachain
+使用二叉樹結構派生 secrets
+
+             root
+            /    \\
+          s0      s1
+         /  \\    /  \\
+       s00  s01 s10  s11
+
+特性：
+• 可以從父節點派生所有子節點
+• 只需存儲 O(log n) 個值
+• 48 個元素可覆蓋 2^48 次更新
+
+派生：secret_i = SHA256(secret_{parent} || direction)`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">備份重要性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        種子詞語是恢復節點的唯一方式，必須安全備份。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">通道狀態</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        種子無法恢復通道狀態，需要額外的 SCB 備份。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>Aezeed vs BIP39：</strong>
+      LND 使用 Aezeed 格式（包含版本和生日），與標準 BIP39 不完全兼容。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/channel-backup" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道備份</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/revocation" class="text-yellow-600 dark:text-yellow-400 hover:underline">撤銷機制</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/commitment-tx" class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+  </ul>
+</ArticleLayout>

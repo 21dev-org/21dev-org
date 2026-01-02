@@ -36,34 +36,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`兩種多路徑支付比較：
+      class="text-[var(--text-secondary)]">{`Two Multi-Path Payment Types Compared
 
-基礎 MPP（Basic Multi-Path Payments）：
-┌──────────────────────────────────────────────────────────┐
-│ 需要發票：是                                             │
-│ 原像來源：接收者生成                                     │
-│ 所有部分使用：相同的 payment_hash                        │
-│ 結算方式：接收者揭露原像給所有部分                       │
-│                                                          │
-│ 問題：                                                   │
-│ ├── 中間節點可以看到相同的 payment_hash                  │
-│ ├── 可以識別出屬於同一筆支付的不同部分                   │
-│ └── 隱私較差                                             │
-└──────────────────────────────────────────────────────────┘
+Basic MPP (Multi-Path Payments):
+• Requires invoice: Yes
+• Preimage source: Receiver generates
+• All parts use: Same payment_hash
+• Settlement: Receiver reveals preimage for all parts
 
-AMP（Atomic Multi-Path Payments）：
-┌──────────────────────────────────────────────────────────┐
-│ 需要發票：否（自發支付）                                 │
-│ 原像來源：發送者生成並分割                               │
-│ 每個部分使用：不同的 payment_hash                        │
-│ 結算方式：接收者重組原像後結算所有部分                   │
-│                                                          │
-│ 優點：                                                   │
-│ ├── 每個部分有不同的 payment_hash                        │
-│ ├── 中間節點無法關聯不同部分                             │
-│ ├── 更強的隱私保護                                       │
-│ └── 無需預先請求發票                                     │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Problems:
+• Intermediate nodes see the same payment_hash
+• Can identify different parts of the same payment
+• Poor privacy
+
+AMP (Atomic Multi-Path Payments):
+• Requires invoice: No (spontaneous payment)
+• Preimage source: Sender generates and splits
+• Each part uses: Different payment_hash
+• Settlement: Receiver reconstructs preimage then settles all parts
+
+Advantages:
+• Each part has different payment_hash
+• Intermediate nodes cannot correlate parts
+• Stronger privacy protection
+• No need to pre-request invoice`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">AMP 工作原理</h2>
@@ -72,37 +68,33 @@ AMP（Atomic Multi-Path Payments）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP 密鑰分割機制：
+      class="text-[var(--text-secondary)]">{`AMP Key Splitting Mechanism
 
-發送者（Alice）生成：
-┌──────────────────────────────────────────────────────────┐
-│ 1. 生成根密鑰（root_share）                              │
-│    root_share = random_bytes(32)                         │
-│                                                          │
-│ 2. 為每個部分生成子密鑰                                  │
-│    child_share[i] = HMAC(root_share, i)                  │
-│                                                          │
-│ 3. 計算每個部分的 payment_hash                           │
-│    preimage[i] = child_share[i] XOR (Σ child_share[j])   │
-│    payment_hash[i] = SHA256(preimage[i])                 │
-│                                                          │
-│ 4. 通過洋蔥傳遞 child_share 給接收者                     │
-└──────────────────────────────────────────────────────────┘
+Sender (Alice) generates:
+1. Generate root key (root_share)
+   root_share = random_bytes(32)
 
-三部分支付示例：
-┌──────────────────────────────────────────────────────────┐
-│ root_share = R                                           │
-│                                                          │
-│ 部分 1: child_share[1] = HMAC(R, 1) = S1                │
-│ 部分 2: child_share[2] = HMAC(R, 2) = S2                │
-│ 部分 3: child_share[3] = HMAC(R, 3) = S3                │
-│                                                          │
-│ 接收者收到所有部分後：                                   │
-│ ├── 重組：root = S1 XOR S2 XOR S3                        │
-│ ├── 驗證所有 child_share 來自同一 root                  │
-│ ├── 計算所有 preimage                                    │
-│ └── 結算所有 HTLC                                        │
-└──────────────────────────────────────────────────────────┘`}</pre>
+2. Generate child key for each part
+   child_share[i] = HMAC(root_share, i)
+
+3. Calculate payment_hash for each part
+   preimage[i] = child_share[i] XOR (sum of child_share[j])
+   payment_hash[i] = SHA256(preimage[i])
+
+4. Pass child_share to receiver via onion
+
+Three-Part Payment Example:
+root_share = R
+
+Part 1: child_share[1] = HMAC(R, 1) = S1
+Part 2: child_share[2] = HMAC(R, 2) = S2
+Part 3: child_share[3] = HMAC(R, 3) = S3
+
+After receiver gets all parts:
+• Reconstruct: root = S1 XOR S2 XOR S3
+• Verify all child_shares are from same root
+• Calculate all preimages
+• Settle all HTLCs`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 載荷</h2>
@@ -111,24 +103,23 @@ AMP（Atomic Multi-Path Payments）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP 洋蔥 TLV 欄位：
+      class="text-[var(--text-secondary)]">{`AMP Onion TLV Fields
 
-最終跳的 TLV 載荷：
-┌──────────────────────────────────────────────────────────┐
-│ TLV Type 8: amp_record                                   │
-│ ├── root_share: 32 bytes（子密鑰分片）                   │
-│ ├── set_id: 32 bytes（識別這組支付）                     │
-│ └── child_index: 4 bytes（這是第幾個部分）               │
-│                                                          │
-│ TLV Type 16: payment_metadata（可選）                    │
-│ └── 額外的支付資料                                       │
-└──────────────────────────────────────────────────────────┘
+Final Hop TLV Payload:
 
-set_id 的作用：
-├── 識別屬於同一筆 AMP 支付的所有部分
-├── 接收者用它來收集和匹配所有部分
-├── 由發送者隨機生成
-└── 對中間節點不可見（在洋蔥加密層內）`}</pre>
+TLV Type 8: amp_record
+• root_share: 32 bytes (child key shard)
+• set_id: 32 bytes (identifies this payment set)
+• child_index: 4 bytes (which part number)
+
+TLV Type 16: payment_metadata (optional)
+• Extra payment data
+
+set_id Purpose:
+• Identifies all parts belonging to the same AMP payment
+• Receiver uses it to collect and match all parts
+• Randomly generated by sender
+• Invisible to intermediate nodes (inside onion encryption)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">原子性保證</h2>
@@ -137,33 +128,28 @@ set_id 的作用：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP 的原子性：
+      class="text-[var(--text-secondary)]">{`AMP Atomicity
 
-為什麼是原子的？
-┌──────────────────────────────────────────────────────────┐
-│ 接收者只有收到所有部分才能計算原像                       │
-│                                                          │
-│ 假設 3 部分支付，只收到 2 部分：                         │
-│ ├── 有 S1, S2                                            │
-│ ├── 無法計算 root = S1 XOR S2 XOR S3                     │
-│ ├── 無法計算任何 preimage                                │
-│ └── 無法領取任何部分                                     │
-│                                                          │
-│ 收到所有 3 部分：                                        │
-│ ├── 有 S1, S2, S3                                        │
-│ ├── 計算 root = S1 XOR S2 XOR S3                         │
-│ ├── 計算所有 preimage                                    │
-│ └── 同時領取所有部分                                     │
-└──────────────────────────────────────────────────────────┘
+Why is it atomic?
+Receiver can only calculate preimage after receiving all parts.
 
-失敗處理：
-┌──────────────────────────────────────────────────────────┐
-│ 如果某個部分路由失敗：                                   │
-│ ├── 發送者可以重試該部分                                 │
-│ ├── 或放棄整筆支付                                       │
-│ ├── 接收者無法部分領取                                   │
-│ └── 所有未領取的 HTLC 最終超時退回                       │
-└──────────────────────────────────────────────────────────┘`}</pre>
+If 3-part payment, only 2 parts received:
+• Have S1, S2
+• Cannot calculate root = S1 XOR S2 XOR S3
+• Cannot calculate any preimage
+• Cannot claim any part
+
+When all 3 parts received:
+• Have S1, S2, S3
+• Calculate root = S1 XOR S2 XOR S3
+• Calculate all preimages
+• Claim all parts simultaneously
+
+Failure Handling:
+• If a part fails to route: sender can retry that part
+• Or abandon entire payment
+• Receiver cannot partially claim
+• All unclaimed HTLCs eventually timeout and refund`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
@@ -239,25 +225,22 @@ lncli listinvoices
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP 發票（可選）：
+      class="text-[var(--text-secondary)]">{`AMP Invoices (Optional)
 
-雖然 AMP 不需要發票，但也可以創建 AMP 發票：
-┌──────────────────────────────────────────────────────────┐
-│ # 創建 AMP 發票                                          │
-│ lncli addinvoice --amt 100000 --amp                      │
-│                                                          │
-│ 特點：                                                   │
-│ ├── 發票不包含 payment_hash（接收者不預先生成）          │
-│ ├── 包含 AMP 功能標記                                    │
-│ ├── 發送者生成 payment_hash                              │
-│ └── 可以被多次支付（可重複使用）                         │
-└──────────────────────────────────────────────────────────┘
+Although AMP doesn't require invoices, you can create AMP invoices:
 
-AMP 發票的功能位：
-┌──────────────────────────────────────────────────────────┐
-│ BOLT 11 發票中的 '9' 標籤包含 AMP 功能位                 │
-│ 發送者看到後使用 AMP 協議                                │
-└──────────────────────────────────────────────────────────┘`}</pre>
+# Create AMP invoice
+lncli addinvoice --amt 100000 --amp
+
+Features:
+• Invoice doesn't contain payment_hash (receiver doesn't pre-generate)
+• Contains AMP feature flag
+• Sender generates payment_hash
+• Can be paid multiple times (reusable)
+
+AMP Invoice Feature Bits:
+• BOLT 11 invoice's '9' tag contains AMP feature bits
+• Sender sees this and uses AMP protocol`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考慮</h2>
@@ -266,35 +249,31 @@ AMP 發票的功能位：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP 安全性：
+      class="text-[var(--text-secondary)]">{`AMP Security
 
-優勢：
-┌──────────────────────────────────────────────────────────┐
-│ 1. 不可關聯性                                            │
-│    每個部分有不同的 payment_hash                         │
-│    路由節點無法識別同一筆支付的不同部分                  │
-│                                                          │
-│ 2. 無需互動                                              │
-│    發送者無需等待接收者生成發票                          │
-│    減少隱私洩露機會                                      │
-│                                                          │
-│ 3. 原子性                                                │
-│    數學上保證所有部分同時結算                            │
-│    不存在部分支付成功的情況                              │
-└──────────────────────────────────────────────────────────┘
+Advantages:
+1. Unlinkability
+   • Each part has different payment_hash
+   • Routing nodes cannot identify different parts of same payment
 
-注意事項：
-┌──────────────────────────────────────────────────────────┐
-│ 1. 接收者必須支援 AMP（功能位 30/31）                    │
-│                                                          │
-│ 2. 沒有傳統的支付證明                                    │
-│    發送者生成原像，無法證明接收者已收到                  │
-│    適合不需要收據的場景                                  │
-│                                                          │
-│ 3. 超時處理                                              │
-│    如果部分未到達，需要等待所有 HTLC 超時                │
-│    可能鎖定資金較長時間                                  │
-└──────────────────────────────────────────────────────────┘`}</pre>
+2. No interaction required
+   • Sender doesn't need to wait for receiver to generate invoice
+   • Reduces privacy leakage opportunities
+
+3. Atomicity
+   • Mathematically guarantees all parts settle simultaneously
+   • No partial payment success scenarios
+
+Considerations:
+1. Receiver must support AMP (feature bits 30/31)
+
+2. No traditional proof of payment
+   • Sender generates preimage, cannot prove receiver received
+   • Suitable for scenarios not requiring receipts
+
+3. Timeout handling
+   • If parts don't arrive, must wait for all HTLCs to timeout
+   • May lock funds for extended time`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

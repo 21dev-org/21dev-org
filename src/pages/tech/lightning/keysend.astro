@@ -36,35 +36,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統發票流程：
+      class="text-[var(--text-secondary)]">{`Traditional Invoice Flow:
 
-1. Bob 生成 preimage (32 bytes random)
-2. Bob 計算 payment_hash = SHA256(preimage)
-3. Bob 創建發票，包含 payment_hash
-4. Bob 將發票發送給 Alice
-5. Alice 支付發票（HTLC 鎖定到 payment_hash）
-6. Bob 揭示 preimage 結算
+1. Bob generates preimage (32 bytes random)
+2. Bob calculates payment_hash = SHA256(preimage)
+3. Bob creates invoice containing payment_hash
+4. Bob sends invoice to Alice
+5. Alice pays invoice (HTLC locked to payment_hash)
+6. Bob reveals preimage to settle
 
-問題：
-- 需要雙向通訊
-- Bob 必須在線生成發票
-- 每次支付需要新發票
+Problems:
+• Requires bidirectional communication
+• Bob must be online to generate invoice
+• New invoice needed for each payment
 
-────────────────────────────────────────────
+--------------------------------------------
 
-Keysend 流程：
+Keysend Flow:
 
-1. Alice 生成 preimage (32 bytes random)
-2. Alice 計算 payment_hash = SHA256(preimage)
-3. Alice 將 preimage 加密在洋蔥包中
-4. Alice 發送 HTLC（鎖定到 payment_hash）
-5. Bob 解密洋蔥包，獲得 preimage
-6. Bob 使用 preimage 結算
+1. Alice generates preimage (32 bytes random)
+2. Alice calculates payment_hash = SHA256(preimage)
+3. Alice encrypts preimage in onion packet
+4. Alice sends HTLC (locked to payment_hash)
+5. Bob decrypts onion packet, gets preimage
+6. Bob uses preimage to settle
 
-優勢：
-- 單向通訊
-- 無需事先互動
-- 可以主動付款`}</pre>
+Advantages:
+• Unidirectional communication
+• No prior interaction needed
+• Can proactively pay`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術實現</h2>
@@ -73,28 +73,26 @@ Keysend 流程：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Keysend 洋蔥 Payload：
+      class="text-[var(--text-secondary)]">{`Keysend Onion Payload:
 
-使用 TLV（Type-Length-Value）擴展：
+Uses TLV (Type-Length-Value) extension:
 
-最終跳的 payload:
-┌─────────────────────────────────────────────────────────┐
-│ amt_to_forward (type 2): 支付金額                       │
-│ outgoing_cltv_value (type 4): CLTV 時間鎖               │
-│ keysend_preimage (type 5482373484): preimage            │
-│   └── 32 bytes: 發送方生成的 preimage                   │
-└─────────────────────────────────────────────────────────┘
+Final hop payload:
+  amt_to_forward (type 2): payment amount
+  outgoing_cltv_value (type 4): CLTV timelock
+  keysend_preimage (type 5482373484): preimage
+    32 bytes: sender-generated preimage
 
-TLV Type 5482373484 的由來：
-- 這是非標準的實驗性類型
-- 奇數類型 = 可選（接收方不認識可以忽略）
-- 已成為事實標準
+TLV Type 5482373484 origin:
+• Non-standard experimental type
+• Odd type = optional (receiver can ignore if unknown)
+• Has become de facto standard
 
-接收方處理：
-1. 解密洋蔥 payload
-2. 發現 keysend_preimage TLV
-3. 驗證 SHA256(preimage) == payment_hash
-4. 如果匹配，使用 preimage 結算 HTLC`}</pre>
+Receiver processing:
+1. Decrypt onion payload
+2. Find keysend_preimage TLV
+3. Verify SHA256(preimage) == payment_hash
+4. If matches, use preimage to settle HTLC`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自定義數據</h2>
@@ -106,31 +104,29 @@ TLV Type 5482373484 的由來：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`自定義 TLV 記錄：
+      class="text-[var(--text-secondary)]">{`Custom TLV Records:
 
-常用的自定義類型：
-┌─────────────────────────────────────────────────────────┐
-│ Type 34349334: text message (文字訊息)                  │
-│ Type 34349337: sender pubkey (發送方公鑰，用於回覆)     │
-│ Type 34349339: timestamp (時間戳)                       │
-│ Type 34349343: content type (內容類型)                  │
-│ Type 7629169: podcast info (播客資訊)                   │
-└─────────────────────────────────────────────────────────┘
+Commonly used custom types:
+  Type 34349334: text message
+  Type 34349337: sender pubkey (for replies)
+  Type 34349339: timestamp
+  Type 34349343: content type
+  Type 7629169: podcast info
 
-應用示例 - 播客 2.0 價值傳遞：
+Application example - Podcasting 2.0 value transfer:
 {
   "keysend_preimage": "...",
   "7629169": {
     "podcast": "Bitcoin Audible",
     "episode": "Read 123",
-    "ts": 1234,           // 播放位置（秒）
+    "ts": 1234,           // playback position (seconds)
     "action": "boost",
     "value_msat": 5000000,
     "sender_name": "Alice"
   }
 }
 
-這讓聽眾可以在收聽時直接打賞創作者！`}</pre>
+This lets listeners tip creators directly while listening!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
@@ -196,31 +192,31 @@ TLV Type 5482373484 的由來：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP Keysend（LND）：
+      class="text-[var(--text-secondary)]">{`AMP Keysend (LND):
 
-結合 AMP 和 Keysend 的優勢：
+Combines advantages of AMP and Keysend:
 
-傳統 Keysend:
-- 單路徑
-- 受限於單一通道流動性
+Traditional Keysend:
+• Single path
+• Limited by single channel liquidity
 
 AMP Keysend:
-- 多路徑
-- 可以發送大額 Keysend
-- 更好的隱私（每個分片不同 hash）
+• Multi-path
+• Can send large Keysend payments
+• Better privacy (each shard has different hash)
 
-使用方式（lncli）：
+Usage (lncli):
 lncli sendpayment \\
   --dest <pubkey> \\
   --amt 100000 \\
   --amp \\
   --data 34349334=$(echo -n "Hello!" | xxd -p)
 
-這會：
-1. 生成 AMP 根密鑰
-2. 拆分成多個分片
-3. 每個分片攜帶 keysend TLV
-4. 接收方收齊後結算`}</pre>
+This will:
+1. Generate AMP root key
+2. Split into multiple shards
+3. Each shard carries keysend TLV
+4. Receiver settles after collecting all`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

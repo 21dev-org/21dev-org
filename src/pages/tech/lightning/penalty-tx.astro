@@ -36,29 +36,27 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`欺詐嘗試示例：
+      class="text-[var(--text-secondary)]">{`Fraud Attempt Example:
 
-通道歷史：
-State #0: Alice 1.0 BTC, Bob 0 BTC      (開通道)
-State #1: Alice 0.8 BTC, Bob 0.2 BTC    (Alice 付給 Bob)
-State #2: Alice 0.5 BTC, Bob 0.5 BTC    (Alice 再付 0.3)
-State #3: Alice 0.3 BTC, Bob 0.7 BTC    (當前狀態)
+Channel History:
+State #0: Alice 1.0 BTC, Bob 0 BTC      (channel open)
+State #1: Alice 0.8 BTC, Bob 0.2 BTC    (Alice pays Bob)
+State #2: Alice 0.5 BTC, Bob 0.5 BTC    (Alice pays 0.3 more)
+State #3: Alice 0.3 BTC, Bob 0.7 BTC    (current state)
 
-Alice 試圖作弊：
-┌─────────────────────────────────────────────────────────┐
-│ Alice 廣播 State #1 的承諾交易                          │
-│ 試圖取得 0.8 BTC 而不是當前的 0.3 BTC                   │
-├─────────────────────────────────────────────────────────┤
-│ 結果：                                                  │
-│ ✗ Bob 發現這是舊狀態                                    │
-│ ✗ Bob 使用懲罰交易沒收 Alice 的全部資金                 │
-│ ✗ Alice 失去整個 1.0 BTC 通道容量！                     │
-└─────────────────────────────────────────────────────────┘
+Alice attempts to cheat:
+• Alice broadcasts State #1 commitment tx
+• Trying to get 0.8 BTC instead of current 0.3 BTC
 
-教訓：
-├── Alice 試圖多拿 0.5 BTC (0.8 - 0.3)
-├── Alice 反而失去全部 1.0 BTC
-└── 作弊的預期收益為負！`}</pre>
+Result:
+• Bob detects old state
+• Bob uses penalty tx to seize all of Alice's funds
+• Alice loses entire 1.0 BTC channel capacity!
+
+Lesson:
+• Alice tried to gain 0.5 BTC (0.8 - 0.3)
+• Alice instead loses all 1.0 BTC
+• Expected return of cheating is negative!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">撤銷密鑰機制</h2>
@@ -67,40 +65,37 @@ Alice 試圖作弊：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`撤銷密鑰的工作原理：
+      class="text-[var(--text-secondary)]">{`How Revocation Keys Work:
 
-每個狀態更新時：
-1. 雙方創建新的承諾交易
-2. 雙方交換舊狀態的撤銷密鑰
-3. 舊狀態被「撤銷」，新狀態生效
+On each state update:
+1. Both parties create new commitment tx
+2. Both parties exchange revocation keys for old state
+3. Old state is "revoked", new state becomes valid
 
-撤銷密鑰生成（簡化）：
-┌─────────────────────────────────────────────────────────┐
-│ 每一方有：                                              │
-│ - revocation_basepoint（基點）                          │
-│ - per_commitment_point（每狀態點）                      │
-│                                                         │
-│ revocation_pubkey = f(revocation_basepoint,             │
-│                       per_commitment_point)              │
-│                                                         │
-│ 只有知道對應私鑰才能花費撤銷輸出                        │
-└─────────────────────────────────────────────────────────┘
+Revocation Key Generation (simplified):
+Each party has:
+• revocation_basepoint
+• per_commitment_point
 
-密鑰交換流程：
-State N → State N+1 時：
+revocation_pubkey = f(revocation_basepoint,
+                      per_commitment_point)
+
+Only knowing the corresponding private key allows spending the revocation output
+
+Key Exchange Flow (State N -> State N+1):
 
 Alice                           Bob
-  │                              │
-  │──── commit_sig (N+1) ───────>│
-  │                              │
-  │<─── revoke_and_ack (N) ──────│  Bob 撤銷 State N
-  │                              │
-  │<─── commit_sig (N+1) ────────│
-  │                              │
-  │──── revoke_and_ack (N) ─────>│  Alice 撤銷 State N
-  │                              │
+  |                              |
+  |---- commit_sig (N+1) ------->|
+  |                              |
+  |<--- revoke_and_ack (N) ------|  Bob revokes State N
+  |                              |
+  |<--- commit_sig (N+1) --------|
+  |                              |
+  |---- revoke_and_ack (N) ----->|  Alice revokes State N
+  |                              |
 
-此後，任一方廣播 State N 都可被懲罰`}</pre>
+After this, broadcasting State N can be penalized`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰交易結構</h2>
@@ -109,7 +104,7 @@ Alice                           Bob
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`承諾交易的 to_local 輸出腳本：
+      class="text-[var(--text-secondary)]">{`Commitment tx to_local output script:
 
 OP_IF
     <revocationpubkey>
@@ -121,30 +116,29 @@ OP_ELSE
 OP_ENDIF
 OP_CHECKSIG
 
-解釋：
-路徑 1 (IF): 持有撤銷密鑰可立即花費
-路徑 2 (ELSE): 所有者需等待 to_self_delay 區塊
+Explanation:
+• Path 1 (IF): Holder of revocation key can spend immediately
+• Path 2 (ELSE): Owner must wait to_self_delay blocks
 
-懲罰交易構建：
-┌─────────────────────────────────────────────────────────┐
-│ Alice 廣播舊承諾交易後...                               │
-├─────────────────────────────────────────────────────────┤
-│ 舊承諾交易輸出：                                        │
-│ ├── to_local_alice (有延遲)                             │
-│ ├── to_remote_bob (Bob 可直接花費)                      │
-│ └── HTLCs (如果有)                                      │
-├─────────────────────────────────────────────────────────┤
-│ Bob 的懲罰交易：                                        │
-│                                                         │
-│ Inputs:                                                 │
-│   └── to_local_alice (使用撤銷密鑰，無需等待)           │
-│                                                         │
-│ Outputs:                                                │
-│   └── Bob 的地址 (扣除手續費)                           │
-│                                                         │
-│ Witness:                                                │
-│   └── <signature> <revocation_privkey> 1                │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Penalty Transaction Construction:
+
+After Alice broadcasts old commitment tx...
+
+Old commitment tx outputs:
+• to_local_alice (delayed)
+• to_remote_bob (Bob can spend directly)
+• HTLCs (if any)
+
+Bob's penalty transaction:
+
+Inputs:
+  to_local_alice (using revocation key, no wait needed)
+
+Outputs:
+  Bob's address (minus fees)
+
+Witness:
+  <signature> <revocation_privkey> 1`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間窗口競賽</h2>
@@ -153,38 +147,38 @@ OP_CHECKSIG
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`懲罰時間窗口：
+      class="text-[var(--text-secondary)]">{`Penalty Time Window:
 
-to_self_delay 參數（例如 144 區塊 ≈ 1 天）
+to_self_delay parameter (e.g., 144 blocks ~ 1 day)
 
-時間線：
-T0: Alice 廣播舊承諾交易
-    │
-    │ 區塊確認
-    ▼
-T1: 承諾交易被確認
-    │
-    │ to_self_delay 延遲開始
-    │ (Bob 有 144 區塊來執行懲罰)
-    │
-    ├── Bob 在線：發現欺詐，廣播懲罰交易 ✓
-    │   └── Bob 獲得 Alice 的全部資金
-    │
-    │   或
-    │
-    ├── Bob 離線：但有 Watchtower 監控 ✓
-    │   └── Watchtower 代為廣播懲罰交易
-    │
-    │   或
-    │
-    └── T1 + 144 區塊：延遲結束
-        └── Alice 可以花費 to_local 輸出
-            (如果 Bob 沒反應，Alice 成功作弊)
+Timeline:
+T0: Alice broadcasts old commitment tx
+    |
+    | Block confirmation
+    v
+T1: Commitment tx confirmed
+    |
+    | to_self_delay begins
+    | (Bob has 144 blocks to execute penalty)
+    |
+    +-- Bob online: detects fraud, broadcasts penalty tx
+    |   Result: Bob gets all of Alice's funds
+    |
+    |   OR
+    |
+    +-- Bob offline: but Watchtower monitoring
+    |   Result: Watchtower broadcasts penalty tx
+    |
+    |   OR
+    |
+    +-- T1 + 144 blocks: delay ends
+        Result: Alice can spend to_local output
+                (If Bob doesn't respond, Alice succeeds)
 
-關鍵：
-- 受害者必須在延遲期內響應
-- 延遲越長越安全，但關閉通道也越慢
-- 常見設置：144-2016 區塊（1天到2週）`}</pre>
+Key Points:
+• Victim must respond within delay period
+• Longer delay = more secure but slower channel close
+• Common settings: 144-2016 blocks (1 day to 2 weeks)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰 HTLC</h2>
@@ -193,43 +187,39 @@ T1: 承諾交易被確認
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC 輸出也可被懲罰：
+      class="text-[var(--text-secondary)]">{`HTLC outputs can also be penalized:
 
-舊承諾交易中的 HTLC 輸出腳本（簡化）：
+HTLC output script in old commitment tx (simplified):
 
-Offered HTLC (Alice 提供):
+Offered HTLC (from Alice):
 OP_IF
-    # 撤銷路徑
+    # Revocation path
     <revocationpubkey>
 OP_ELSE
     OP_IF
-        # 成功路徑 (Bob 提供 preimage)
+        # Success path (Bob provides preimage)
         <remote_htlcpubkey>
         OP_CHECKSIGVERIFY
         OP_HASH160 <payment_hash> OP_EQUALVERIFY
     OP_ELSE
-        # 超時路徑 (Alice 取回)
+        # Timeout path (Alice reclaims)
         <to_self_delay> OP_CSV OP_DROP
         <local_htlcpubkey>
     OP_ENDIF
 OP_ENDIF
 OP_CHECKSIG
 
-懲罰所有輸出：
-┌─────────────────────────────────────────────────────────┐
-│ 舊承諾交易的所有輸出都有撤銷路徑：                      │
-│                                                         │
-│ to_local        → 可懲罰 ✓                              │
-│ Offered HTLCs   → 可懲罰 ✓                              │
-│ Received HTLCs  → 可懲罰 ✓                              │
-│                                                         │
-│ to_remote       → Bob 直接所有，無需懲罰                │
-└─────────────────────────────────────────────────────────┘
+All outputs from old commitment tx have revocation paths:
 
-Bob 需要創建多個懲罰交易：
-├── 懲罰 to_local
-├── 懲罰每個 Offered HTLC
-└── 懲罰每個 Received HTLC（二級交易）`}</pre>
+• to_local        -> can be penalized
+• Offered HTLCs   -> can be penalized
+• Received HTLCs  -> can be penalized
+• to_remote       -> owned by Bob directly, no penalty needed
+
+Bob needs to create multiple penalty transactions:
+• Penalize to_local
+• Penalize each Offered HTLC
+• Penalize each Received HTLC (second-stage tx)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Watchtower 角色</h2>
@@ -255,31 +245,31 @@ Bob 需要創建多個懲罰交易：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Watchtower 工作流程：
+      class="text-[var(--text-secondary)]">{`Watchtower Workflow:
 
-設置階段：
-1. 用戶為每個舊狀態創建懲罰交易
-2. 加密懲罰交易：
+Setup Phase:
+1. User creates penalty tx for each old state
+2. Encrypt penalty tx:
    encrypted_blob = encrypt(penalty_tx, breach_txid[:16])
-3. 發送給 Watchtower：
+3. Send to Watchtower:
    (breach_hint, encrypted_blob)
    breach_hint = sha256(breach_txid)[:16]
 
-監控階段：
-Watchtower 監控每個新區塊：
+Monitoring Phase:
+Watchtower monitors each new block:
 for each tx in block:
     hint = sha256(tx.txid)[:16]
     if hint in stored_hints:
-        # 發現可能的欺詐！
+        # Potential fraud detected!
         key = tx.txid[:16]
         penalty_tx = decrypt(stored_blob, key)
         broadcast(penalty_tx)
 
-隱私保護：
-├── Watchtower 不知道用戶身份
-├── Watchtower 不知道通道詳情
-├── 只有在欺詐發生時才能解密
-└── 即使 Watchtower 被入侵也不洩露信息`}</pre>
+Privacy Protection:
+• Watchtower doesn't know user identity
+• Watchtower doesn't know channel details
+• Can only decrypt when fraud occurs
+• Even if Watchtower is compromised, no info is leaked`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰交易費用</h2>
@@ -288,40 +278,38 @@ for each tx in block:
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`懲罰交易的費用考量：
+      class="text-[var(--text-secondary)]">{`Penalty Transaction Fee Considerations:
 
-問題：預簽的懲罰交易費率可能過時
+Problem: Pre-signed penalty tx fee rate may become outdated
 
-情況 1：費率太低
-├── 懲罰交易可能無法及時確認
-├── 作弊者可能贏得時間競賽
-└── 資金可能損失！
+Case 1: Fee rate too low
+• Penalty tx may not confirm in time
+• Cheater may win the time race
+• Funds could be lost!
 
-情況 2：費率太高
-├── 從懲罰金額中扣除過多
-├── 小額通道可能不值得懲罰
-└── 經濟效率低下
+Case 2: Fee rate too high
+• Deducts too much from penalty amount
+• Small channels may not be worth penalizing
+• Economically inefficient
 
-解決方案：
+Solutions:
 
-1. CPFP（Child-Pays-For-Parent）
-   └── 用額外 UTXO 提升費率
+1. CPFP (Child-Pays-For-Parent)
+   Use additional UTXO to boost fee rate
 
-2. Anchor Outputs（錨定輸出）
-   └── 專門設計用於 CPFP 加速
+2. Anchor Outputs
+   Specifically designed for CPFP acceleration
 
-3. 動態費用估算
-   └── Watchtower 在廣播時決定費率
+3. Dynamic Fee Estimation
+   Watchtower decides fee rate at broadcast time
 
-4. 預簽多個費率版本
-   └── 低/中/高費率的懲罰交易
+4. Pre-sign Multiple Fee Versions
+   Low/medium/high fee rate penalty transactions
 
-現代實現（使用 Anchor Outputs）：
-┌────────────────────────────────────────────────────────┐
-│ 懲罰交易費率 = 最低費率                                │
-│ 實際費用通過 CPFP 動態調整                             │
-│ 需要額外 UTXO 用於 CPFP                                │
-└────────────────────────────────────────────────────────┘`}</pre>
+Modern Implementation (with Anchor Outputs):
+• Penalty tx fee rate = minimum fee rate
+• Actual fee adjusted dynamically via CPFP
+• Requires additional UTXO for CPFP`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰機制的局限</h2>
@@ -354,30 +342,30 @@ for each tx in block:
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Eltoo (LN-Symmetry) 模式：
+      class="text-[var(--text-secondary)]">{`Eltoo (LN-Symmetry) Mode:
 
-不使用懲罰，使用狀態替換：
+Uses state replacement instead of penalties:
 
-傳統懲罰模式：
-State N (舊) → 被廣播 → 懲罰 → 作弊者損失全部
+Traditional Penalty Mode:
+State N (old) -> broadcast -> penalty -> cheater loses all
 
-Eltoo 模式：
-State N (舊) → 被廣播 → State N+1 覆蓋 → 正確結算
-                         ↑
-                      無需懲罰
+Eltoo Mode:
+State N (old) -> broadcast -> State N+1 overwrites -> correct settlement
+                                 ^
+                            No penalty needed
 
-優點：
-├── 更簡單，無需存儲所有撤銷密鑰
-├── 意外廣播舊狀態不會被懲罰
-├── 更適合多方通道
-└── 狀態更新更高效
+Advantages:
+• Simpler, no need to store all revocation keys
+• Accidentally broadcasting old state won't be penalized
+• Better suited for multi-party channels
+• More efficient state updates
 
-缺點：
-├── 需要 SIGHASH_ANYPREVOUT（尚未激活）
-├── 作弊者無經濟損失（除了手續費）
-└── 可能鼓勵更多作弊嘗試？
+Disadvantages:
+• Requires SIGHASH_ANYPREVOUT (not yet activated)
+• Cheater has no economic loss (except fees)
+• May encourage more cheating attempts?
 
-詳見：/tech/lightning/eltoo`}</pre>
+See: /tech/lightning/eltoo`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

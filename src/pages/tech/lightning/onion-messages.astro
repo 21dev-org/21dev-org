@@ -36,29 +36,25 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC vs Onion Messages：
+      class="text-[var(--text-secondary)]">{`HTLC vs Onion Messages:
 
-HTLC（支付）：
-┌─────────────────────────────────────────────────────────┐
-│ ✓ 傳遞價值（sats）                                      │
-│ ✓ 需要通道和流動性                                      │
-│ ✓ 資金會被鎖定直到結算                                  │
-│ ✓ 有時間限制（CLTV）                                    │
-│ ✓ 失敗會回滾                                            │
-│ ✗ 無法發送純訊息                                        │
-└─────────────────────────────────────────────────────────┘
+HTLC (Payments):
+• Transfers value (sats)
+• Requires channels and liquidity
+• Funds locked until settlement
+• Has time limits (CLTV)
+• Failures roll back
+• Cannot send pure messages
 
-Onion Messages：
-┌─────────────────────────────────────────────────────────┐
-│ ✓ 只傳遞數據（無價值轉移）                               │
-│ ✓ 不需要通道（只需知道節點公鑰）                         │
-│ ✓ 不鎖定任何資金                                        │
-│ ✓ 沒有時間限制                                          │
-│ ✓ 即發即忘（fire and forget）                           │
-│ ✗ 無法傳遞 sats                                         │
-└─────────────────────────────────────────────────────────┘
+Onion Messages:
+• Only transfers data (no value transfer)
+• No channel needed (just need node pubkey)
+• No funds locked
+• No time limits
+• Fire and forget
+• Cannot transfer sats
 
-兩者都使用洋蔥路由保護隱私！`}</pre>
+Both use onion routing for privacy!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息結構</h2>
@@ -67,30 +63,25 @@ Onion Messages：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Onion Message 結構：
+      class="text-[var(--text-secondary)]">{`Onion Message Structure:
 
-訊息類型：513 (onion_message)
+Message type: 513 (onion_message)
 
-┌─────────────────────────────────────────────────────────┐
-│ onion_message:                                          │
-│   blinding_point: 33 bytes (用於 route blinding)        │
-│   onion_routing_packet:                                 │
-│     ├── version: 0                                     │
-│     ├── public_key: 33 bytes                           │
-│     ├── hop_payloads: 1300 bytes (加密的路由信息)       │
-│     └── hmac: 32 bytes                                 │
-└─────────────────────────────────────────────────────────┘
+onion_message:
+  blinding_point: 33 bytes (for route blinding)
+  onion_routing_packet:
+    version: 0
+    public_key: 33 bytes
+    hop_payloads: 1300 bytes (encrypted routing info)
+    hmac: 32 bytes
 
-每跳的 Payload：
-┌─────────────────────────────────────────────────────────┐
-│ hop_payload (TLV):                                      │
-│   encrypted_recipient_data (type 4): 加密的路由數據     │
-│   next_node_id (type 6): 下一跳的節點 ID               │
-│   path_id (type 8): 用於回覆路徑識別                    │
-│   message (type 64): 最終訊息內容                       │
-│   invoice_request (type 66): BOLT 12 發票請求           │
-│   invoice (type 68): BOLT 12 發票                       │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Per-hop Payload (TLV):
+  encrypted_recipient_data (type 4): encrypted routing data
+  next_node_id (type 6): next hop node ID
+  path_id (type 8): for reply path identification
+  message (type 64): final message content
+  invoice_request (type 66): BOLT 12 invoice request
+  invoice (type 68): BOLT 12 invoice`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由與轉發</h2>
@@ -99,32 +90,31 @@ Onion Messages：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Onion Message 路由：
+      class="text-[var(--text-secondary)]">{`Onion Message Routing:
 
-不需要通道的路由：
-  Alice ──> Bob ──> Carol ──> Dave
-     │         │        │
-     │    沒有通道也能轉發！
-     │
-     └── 只需知道網路拓撲
+Routing without channels:
+  Alice --> Bob --> Carol --> Dave
+     |         |        |
+     |    Can forward without channels!
+     |
+     +-- Only need to know network topology
 
-發送流程：
-1. Alice 知道 Dave 的公鑰
-2. Alice 從 gossip 網路找到一條路徑
-3. Alice 構建洋蔥包
-4. 每個節點解密自己的層，轉發給下一跳
-5. Dave 收到最終訊息
+Send flow:
+1. Alice knows Dave's public key
+2. Alice finds a path from gossip network
+3. Alice builds onion packet
+4. Each node decrypts its layer, forwards to next hop
+5. Dave receives final message
 
-無連接轉發：
-┌─────────────────────────────────────────────────────────┐
-│ Bob 收到 onion_message：                                │
-│ 1. 使用 blinding_point 解密自己的 payload               │
-│ 2. 找到 next_node_id                                   │
-│ 3. 計算新的 blinding_point                              │
-│ 4. 轉發給下一跳                                         │
-│                                                         │
-│ Bob 不需要和 Alice 或 Dave 有通道！                      │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Connectionless forwarding:
+
+Bob receives onion_message:
+1. Uses blinding_point to decrypt his payload
+2. Finds next_node_id
+3. Calculates new blinding_point
+4. Forwards to next hop
+
+Bob doesn't need channels with Alice or Dave!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Reply Path（回覆路徑）</h2>
@@ -133,31 +123,29 @@ Onion Messages：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Reply Path 機制：
+      class="text-[var(--text-secondary)]">{`Reply Path Mechanism:
 
-問題：如何回覆匿名的發送方？
+Problem: How to reply to an anonymous sender?
 
-解決方案：發送方包含 blinded reply path
+Solution: Sender includes blinded reply path
 
-┌─────────────────────────────────────────────────────────┐
-│ Alice 的請求訊息：                                       │
-│   destination: Dave (或 blinded path 到 Dave)           │
-│   reply_path:                                           │
-│     introduction_node: Bob                              │
-│     blinding_point: ...                                 │
-│     blinded_hops: [..., ..., Alice]                    │
-│   message: "請給我發票"                                  │
-└─────────────────────────────────────────────────────────┘
+Alice's request message:
+  destination: Dave (or blinded path to Dave)
+  reply_path:
+    introduction_node: Bob
+    blinding_point: ...
+    blinded_hops: [..., ..., Alice]
+  message: "Please send me an invoice"
 
-Dave 回覆：
-1. Dave 解密訊息
-2. Dave 使用 reply_path 發送回覆
-3. 回覆通過盲化路徑到達 Alice
-4. Dave 不知道 Alice 是誰！
+Dave replies:
+1. Dave decrypts message
+2. Dave uses reply_path to send reply
+3. Reply reaches Alice through blinded path
+4. Dave doesn't know who Alice is!
 
-雙向隱私：
-- Alice 不知道 Dave 的真實位置（如果用 blinded path）
-- Dave 不知道 Alice 的真實位置（通過 reply path）`}</pre>
+Bidirectional privacy:
+• Alice doesn't know Dave's real location (if using blinded path)
+• Dave doesn't know Alice's real location (through reply path)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 整合</h2>
@@ -169,35 +157,31 @@ Dave 回覆：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 12 流程使用 Onion Messages：
+      class="text-[var(--text-secondary)]">{`BOLT 12 Flow Using Onion Messages:
 
-1. Bob 發布 Offer
-   lno1...（包含 blinded path 到 Bob）
+1. Bob publishes Offer
+   lno1... (contains blinded path to Bob)
 
-2. Alice 發送 invoice_request（Onion Message）
-   ┌──────────────────────────────────────────┐
-   │ onion_message:                           │
-   │   destination: Bob's blinded path        │
-   │   payload:                               │
-   │     invoice_request:                     │
-   │       offer_id: ...                      │
-   │       amount: 100000                     │
-   │       payer_key: Alice's key             │
-   │     reply_path: [... → Alice]            │
-   └──────────────────────────────────────────┘
+2. Alice sends invoice_request (Onion Message)
+   onion_message:
+     destination: Bob's blinded path
+     payload:
+       invoice_request:
+         offer_id: ...
+         amount: 100000
+         payer_key: Alice's key
+       reply_path: [... -> Alice]
 
-3. Bob 回覆 invoice（Onion Message）
-   ┌──────────────────────────────────────────┐
-   │ onion_message:                           │
-   │   destination: Alice's reply_path        │
-   │   payload:                               │
-   │     invoice:                             │
-   │       amount: 100000                     │
-   │       payment_hash: ...                  │
-   │       paths: [blinded paths to Bob]      │
-   └──────────────────────────────────────────┘
+3. Bob replies with invoice (Onion Message)
+   onion_message:
+     destination: Alice's reply_path
+     payload:
+       invoice:
+         amount: 100000
+         payment_hash: ...
+         paths: [blinded paths to Bob]
 
-4. Alice 使用發票中的 blinded paths 支付`}</pre>
+4. Alice pays using blinded paths from invoice`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">DoS 保護</h2>

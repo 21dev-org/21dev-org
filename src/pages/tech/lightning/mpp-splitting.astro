@@ -1,0 +1,151 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="MPP Splitting 多路徑分割"
+  description="了解閃電網路多路徑支付的分割策略，如何將大額支付分成多個小額部分。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'MPP Splitting' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'MPP', href: '/tech/lightning/mpp' }}
+  nextPage={{ title: 'AMP', href: '/tech/lightning/amp' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">分割策略的重要性</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    多路徑支付（MPP）允許將大額支付分割成多個較小的 HTLC。
+    如何分割直接影響支付成功率和費用成本。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心權衡：</strong>
+      分割越多，單個 HTLC 越小容易路由，但總費用和複雜度增加。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">分割演算法</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`常見分割策略：
+
+1. 均勻分割：
+總額 = 1,000,000 sats
+分割數 = 4
+每份 = 250,000 sats
+
+優點：簡單
+缺點：可能不匹配可用流動性
+
+2. 基於流動性的分割：
+分析可用路徑的估計流動性：
+• 路徑 A：估計容量 400,000 sats
+• 路徑 B：估計容量 300,000 sats
+• 路徑 C：估計容量 500,000 sats
+
+分割：按比例分配
+• A: 333,333 sats
+• B: 250,000 sats
+• C: 416,667 sats
+
+3. 二分法分割（Binary Split）：
+嘗試完整金額
+├── 成功 → 完成
+└── 失敗 → 分成兩半，遞歸嘗試
+
+優點：最大化單路徑使用
+缺點：失敗探測增加延遲`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LND 分割實現</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Mission Control 分割：
+
+配置參數：
+[routerrpc]
+routerrpc.maxparts=16              # 最大分片數
+routerrpc.minrtprob=0.01           # 最小成功概率
+
+SendPaymentV2 參數：
+• max_parts: 限制分片數量
+• max_shard_size_msat: 最大分片大小
+
+分割決策流程：
+1. 計算所有可能路徑
+2. 評估每條路徑的成功概率
+3. 計算期望成本：
+   cost = (fees + timelock_penalty) / success_prob
+4. 選擇最優路徑組合
+5. 根據路徑容量限制分配金額`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">分割限制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`實際限制因素：
+
+接收者限制：
+• max_accepted_htlcs：同時接受的 HTLC 數量上限
+• 通常 30-483 個
+• 所有分片必須同時待處理
+
+費用影響：
+假設路徑費用：base_fee=1000 + fee_rate=100ppm
+
+單路徑 1M sats：
+fee = 1000 + 100 = 1100 msat
+
+4 路徑各 250k sats：
+fee = 4 × (1000 + 25) = 4100 msat
+
+base_fee 是固定成本，分割越多費用越高！
+
+最小分片大小：
+• 受 htlc_minimum_msat 限制
+• 太小的分片不經濟
+• 建議最小 10,000 sats`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">原子性保證</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有分片使用相同的 payment_hash，要麼全部成功，要麼全部失敗。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">超時協調</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有分片必須在發票過期前到達，否則接收者會拒絕。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/mpp" class="text-yellow-600 dark:text-yellow-400 hover:underline">多路徑支付</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/pathfinding" class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑搜索</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/channel-scoring" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道評分</a>
+    </li>
+  </ul>
+</ArticleLayout>

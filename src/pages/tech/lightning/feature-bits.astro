@@ -36,34 +36,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`功能位編碼規則：
+      class="text-[var(--text-secondary)]">{`Feature Bit Encoding Rules
 
-┌─────────────────────────────────────────────────────────┐
-│ 每個功能使用連續的一對位元：                            │
-│                                                         │
-│ 位元 2N（偶數）：強制支援                               │
-│   └── 如果對方不支援，必須斷開連接                      │
-│                                                         │
-│ 位元 2N+1（奇數）：可選支援                             │
-│   └── 如果對方不支援，仍可連接                          │
-└─────────────────────────────────────────────────────────┘
+Each feature uses a consecutive pair of bits:
 
-示例：data_loss_protect（功能 0/1）
+Bit 2N (even): Compulsory support
+  -> If peer doesn't support, must disconnect
 
-位元 0（偶數）設為 1：
-├── 表示：我強制要求此功能
-└── 結果：對方必須支援，否則斷開
+Bit 2N+1 (odd): Optional support
+  -> If peer doesn't support, can still connect
 
-位元 1（奇數）設為 1：
-├── 表示：我可選支援此功能
-└── 結果：如果對方也支援則使用
+Example: data_loss_protect (feature 0/1)
 
-功能位向量（從低位到高位）：
-┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
-│0 │1 │2 │3 │4 │5 │6 │7 │8 │9 │10│11│...
-├──┴──┼──┴──┼──┴──┼──┴──┼──┴──┼──┴──┤
-│功能0 │功能1 │功能2 │功能3 │功能4 │功能5 │...
-└─────┴─────┴─────┴─────┴─────┴─────┘`}</pre>
+Bit 0 (even) set to 1:
+• Means: I require this feature
+• Result: Peer must support, otherwise disconnect
+
+Bit 1 (odd) set to 1:
+• Means: I optionally support this feature
+• Result: Use if peer also supports
+
+Feature Bit Vector (from low to high bits):
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10| 11| ...
+|-------|-------|-------|-------|-------|-------|
+|Feat 0 |Feat 1 |Feat 2 |Feat 3 |Feat 4 |Feat 5 | ...`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能位使用場景</h2>
@@ -72,24 +68,22 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`功能位出現在不同上下文：
+      class="text-[var(--text-secondary)]">{`Feature Bits Appear in Different Contexts
 
-┌─────────────────────────────────────────────────────────┐
-│ 上下文          │ 訊息/位置              │ 用途        │
-├─────────────────────────────────────────────────────────┤
-│ init (I)        │ init 訊息              │ 節點連接時  │
-│ node (N)        │ node_announcement      │ 網路公告    │
-│ channel (C)     │ channel_announcement   │ 通道公告    │
-│ invoice (9)     │ BOLT 11 發票           │ 支付要求    │
-│ bolt12 (B)      │ BOLT 12 offer/invoice  │ Offer 系統  │
-└─────────────────────────────────────────────────────────┘
+Context     | Message/Location       | Usage
+------------|------------------------|------------------
+init (I)    | init message           | Node connection
+node (N)    | node_announcement      | Network gossip
+channel (C) | channel_announcement   | Channel gossip
+invoice (9) | BOLT 11 invoice        | Payment request
+bolt12 (B)  | BOLT 12 offer/invoice  | Offer system
 
-不同場景有不同的功能子集：
-├── init：所有節點功能
-├── node：要公告的節點功能
-├── channel：通道特定功能
-├── invoice：支付相關功能
-└── bolt12：Offer 相關功能`}</pre>
+Different contexts have different feature subsets:
+• init: All node features
+• node: Features to announce for node
+• channel: Channel-specific features
+• invoice: Payment-related features
+• bolt12: Offer-related features`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">已定義的功能</h2>
@@ -193,42 +187,40 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`連接時的功能協商：
+      class="text-[var(--text-secondary)]">{`Feature Negotiation on Connection
 
 Alice                                 Bob
-  │                                    │
-  │──────── init ─────────────────────>│
-  │         features: 0x02aaa2         │
-  │                                    │
-  │<─────── init ──────────────────────│
-  │         features: 0x028a2a         │
-  │                                    │
-  │ [計算共同支援的功能]               │
-  │                                    │
+  |                                    |
+  |-------- init --------------------->|
+  |         features: 0x02aaa2         |
+  |                                    |
+  |<------- init ----------------------|
+  |         features: 0x028a2a         |
+  |                                    |
+  | [Calculate commonly supported]     |
+  |                                    |
 
-功能位比較：
+Feature Bit Comparison:
 Alice: 0x02aaa2 = 0000 0010 1010 1010 1010 0010
 Bob:   0x028a2a = 0000 0010 1000 1010 0010 1010
 
-分析：
-├── 功能 0/1（data_loss_protect）：雙方都支援
-├── 功能 4/5（upfront_shutdown）：Alice 有，Bob 沒有
-├── 功能 8/9（var_onion）：雙方都支援
-└── ...
+Analysis:
+• Feature 0/1 (data_loss_protect): Both support
+• Feature 4/5 (upfront_shutdown): Alice has, Bob doesn't
+• Feature 8/9 (var_onion): Both support
+• ...
 
-結果：使用雙方共同支援的功能
+Result: Use mutually supported features
 
-強制功能檢查：
-┌─────────────────────────────────────────────────────────┐
-│ 如果對方缺少我們要求的強制功能（偶數位）：              │
-│   → 斷開連接                                            │
-│                                                         │
-│ 如果對方有我們不認識的強制功能（偶數位）：              │
-│   → 斷開連接                                            │
-│                                                         │
-│ 可選功能（奇數位）不匹配：                              │
-│   → 繼續連接，但不使用該功能                            │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Compulsory Feature Check:
+• If peer lacks our required compulsory feature (even bit):
+  -> Disconnect
+
+• If peer has compulsory feature we don't recognize (even bit):
+  -> Disconnect
+
+• Optional feature (odd bit) mismatch:
+  -> Continue connection, but don't use that feature`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看節點功能</h2>
@@ -271,29 +263,27 @@ lightning-cli listnodes <node_id> | jq '.[0].features'
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`option_channel_type (44/45)：
+      class="text-[var(--text-secondary)]">{`option_channel_type (44/45)
 
-問題：隱式通道類型協商可能導致不一致
-解決：在開通道時顯式指定通道類型
+Problem: Implicit channel type negotiation may cause inconsistency
+Solution: Explicitly specify channel type when opening channel
 
-open_channel 訊息中的 channel_type：
-┌─────────────────────────────────────────────────────────┐
-│ channel_type TLV：                                      │
-│   └── 包含通道要使用的功能位向量                        │
-│                                                         │
-│ 示例通道類型：                                          │
-│ ├── 基本通道：無特殊功能                                │
-│ ├── static_remotekey：option_static_remotekey           │
-│ ├── anchor：option_anchors_zero_fee_htlc_tx             │
-│ ├── anchors+scid_alias：上面 + option_scid_alias        │
-│ └── 零確認錨點：+ option_zeroconf                       │
-└─────────────────────────────────────────────────────────┘
+channel_type in open_channel message:
+channel_type TLV:
+  -> Contains feature bit vector for channel to use
 
-協商流程：
-1. 發起方在 open_channel 中提議 channel_type
-2. 接收方在 accept_channel 中確認或提議替代
-3. 雙方同意後使用該類型
-4. 通道生命週期內類型不變`}</pre>
+Example channel types:
+• Basic channel: No special features
+• static_remotekey: option_static_remotekey
+• anchor: option_anchors_zero_fee_htlc_tx
+• anchors+scid_alias: above + option_scid_alias
+• Zero-conf anchor: + option_zeroconf
+
+Negotiation flow:
+1. Initiator proposes channel_type in open_channel
+2. Receiver confirms or proposes alternative in accept_channel
+3. Both agree, then use that type
+4. Type doesn't change during channel lifetime`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票中的功能</h2>
@@ -302,25 +292,23 @@ open_channel 訊息中的 channel_type：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 11 發票功能位：
+      class="text-[var(--text-secondary)]">{`BOLT 11 Invoice Feature Bits
 
-發票可以包含 "9" 標籤指定功能要求：
-┌─────────────────────────────────────────────────────────┐
-│ lnbc...                                                 │
-│   9 = feature bits                                      │
-│                                                         │
-│ 常見發票功能：                                          │
-│ ├── var_onion_optin (8/9)：必須使用 TLV 洋蔥           │
-│ ├── payment_secret (14/15)：必須包含 payment_secret    │
-│ ├── basic_mpp (16/17)：接受 MPP                         │
-│ └── amp (30/31)：接受 AMP                               │
-└─────────────────────────────────────────────────────────┘
+Invoices can include "9" tag to specify feature requirements:
+lnbc...
+  9 = feature bits
 
-發送者處理：
-├── 檢查發票功能位
-├── 如果有不認識的強制功能 → 無法支付
-├── 如果支援可選功能 → 使用該功能
-└── 構建符合功能要求的支付`}</pre>
+Common invoice features:
+• var_onion_optin (8/9): Must use TLV onion
+• payment_secret (14/15): Must include payment_secret
+• basic_mpp (16/17): Accept MPP
+• amp (30/31): Accept AMP
+
+Sender handling:
+• Check invoice feature bits
+• If unrecognized compulsory feature -> Cannot pay
+• If supports optional feature -> Use that feature
+• Build payment conforming to feature requirements`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

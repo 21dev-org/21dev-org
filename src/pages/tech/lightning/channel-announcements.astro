@@ -36,44 +36,38 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`三種主要 gossip 訊息：
+      class="text-[var(--text-secondary)]">{`Three Main Gossip Message Types
 
 1. node_announcement
-┌──────────────────────────────────────────────────────────┐
-│ 用途：公告節點的存在和連接資訊                           │
-│ 發送者：節點自己                                         │
-│ 內容：                                                   │
-│ ├── signature: 節點簽名                                  │
-│ ├── features: 支援的功能                                 │
-│ ├── timestamp: 時間戳                                    │
-│ ├── node_id: 節點公鑰                                    │
-│ ├── rgb_color: 節點顏色                                  │
-│ ├── alias: 節點別名（最多 32 字節）                      │
-│ └── addresses: IP/Tor 地址列表                           │
-└──────────────────────────────────────────────────────────┘
+Purpose: Announce node existence and connection info
+Sender: Node itself
+Contents:
+• signature: node signature
+• features: supported features
+• timestamp
+• node_id: node public key
+• rgb_color: node color
+• alias: node alias (max 32 bytes)
+• addresses: IP/Tor address list
 
 2. channel_announcement
-┌──────────────────────────────────────────────────────────┐
-│ 用途：公告通道的存在                                     │
-│ 發送者：通道雙方共同簽名                                 │
-│ 內容：見下方詳細結構                                     │
-└──────────────────────────────────────────────────────────┘
+Purpose: Announce channel existence
+Sender: Both channel parties co-sign
+Contents: See detailed structure below
 
 3. channel_update
-┌──────────────────────────────────────────────────────────┐
-│ 用途：更新通道的路由參數                                 │
-│ 發送者：通道一方                                         │
-│ 內容：                                                   │
-│ ├── signature: 發送方簽名                                │
-│ ├── short_channel_id: 通道 ID                            │
-│ ├── timestamp: 時間戳                                    │
-│ ├── channel_flags: 方向和狀態                            │
-│ ├── cltv_expiry_delta: CLTV 差值                         │
-│ ├── htlc_minimum_msat: 最小 HTLC                         │
-│ ├── fee_base_msat: 基礎費用                              │
-│ ├── fee_proportional_millionths: 比例費用                │
-│ └── htlc_maximum_msat: 最大 HTLC                         │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Purpose: Update channel routing parameters
+Sender: One channel party
+Contents:
+• signature: sender's signature
+• short_channel_id: channel ID
+• timestamp
+• channel_flags: direction and status
+• cltv_expiry_delta: CLTV delta
+• htlc_minimum_msat: minimum HTLC
+• fee_base_msat: base fee
+• fee_proportional_millionths: proportional fee
+• htlc_maximum_msat: maximum HTLC`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">channel_announcement 結構</h2>
@@ -82,39 +76,38 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`channel_announcement 詳細結構：
+      class="text-[var(--text-secondary)]">{`channel_announcement Detailed Structure
 
-┌──────────────────────────────────────────────────────────┐
-│ 欄位                      大小      描述                 │
-├──────────────────────────────────────────────────────────┤
-│ node_signature_1          64 bytes  節點 1 簽名          │
-│ node_signature_2          64 bytes  節點 2 簽名          │
-│ bitcoin_signature_1       64 bytes  Bitcoin 密鑰 1 簽名  │
-│ bitcoin_signature_2       64 bytes  Bitcoin 密鑰 2 簽名  │
-│ features                  var       功能位向量           │
-│ chain_hash                32 bytes  區塊鏈識別           │
-│ short_channel_id          8 bytes   通道短 ID            │
-│ node_id_1                 33 bytes  節點 1 公鑰          │
-│ node_id_2                 33 bytes  節點 2 公鑰          │
-│ bitcoin_key_1             33 bytes  Bitcoin 公鑰 1       │
-│ bitcoin_key_2             33 bytes  Bitcoin 公鑰 2       │
-└──────────────────────────────────────────────────────────┘
+┌───────────────────────┬──────────┬────────────────────────┐
+│ Field                 │ Size     │ Description            │
+├───────────────────────┼──────────┼────────────────────────┤
+│ node_signature_1      │ 64 bytes │ Node 1 signature       │
+│ node_signature_2      │ 64 bytes │ Node 2 signature       │
+│ bitcoin_signature_1   │ 64 bytes │ Bitcoin key 1 sig      │
+│ bitcoin_signature_2   │ 64 bytes │ Bitcoin key 2 sig      │
+│ features              │ var      │ Feature bit vector     │
+│ chain_hash            │ 32 bytes │ Blockchain identifier  │
+│ short_channel_id      │ 8 bytes  │ Channel short ID       │
+│ node_id_1             │ 33 bytes │ Node 1 pubkey          │
+│ node_id_2             │ 33 bytes │ Node 2 pubkey          │
+│ bitcoin_key_1         │ 33 bytes │ Bitcoin pubkey 1       │
+│ bitcoin_key_2         │ 33 bytes │ Bitcoin pubkey 2       │
+└───────────────────────┴──────────┴────────────────────────┘
 
-簽名驗證：
-┌──────────────────────────────────────────────────────────┐
-│ 被簽名的資料：                                           │
-│ SHA256(SHA256(                                           │
-│   features || chain_hash || short_channel_id ||          │
-│   node_id_1 || node_id_2 ||                              │
-│   bitcoin_key_1 || bitcoin_key_2                         │
-│ ))                                                       │
-│                                                          │
-│ 需要驗證：                                               │
-│ ├── 4 個簽名都有效                                       │
-│ ├── node_id 對應活躍節點                                 │
-│ ├── bitcoin_key 對應注資交易輸出                         │
-│ └── 注資交易已確認且未花費                               │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Signature Verification:
+
+Signed data:
+SHA256(SHA256(
+  features || chain_hash || short_channel_id ||
+  node_id_1 || node_id_2 ||
+  bitcoin_key_1 || bitcoin_key_2
+))
+
+Must verify:
+• All 4 signatures valid
+• node_id corresponds to active node
+• bitcoin_key corresponds to funding tx output
+• Funding tx confirmed and unspent`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">公告流程</h2>
@@ -123,35 +116,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道公告時序：
+      class="text-[var(--text-secondary)]">{`Channel Announcement Sequence
 
 Alice                                 Bob
-  │                                    │
-  │ [通道開設完成，等待確認]           │
-  │                                    │
-  │ [注資交易獲得足夠確認]             │
-  │                                    │
-  │──── announcement_signatures ──────>│
-  │     short_channel_id               │
-  │     node_signature                 │
-  │     bitcoin_signature              │
-  │                                    │
-  │<─── announcement_signatures ───────│
-  │     short_channel_id               │
-  │     node_signature                 │
-  │     bitcoin_signature              │
-  │                                    │
-  │ [雙方組合成 channel_announcement]  │
-  │                                    │
-  │ [廣播 channel_announcement]        │
-  │ [廣播 channel_update (方向 0)]     │
-  │ [廣播 channel_update (方向 1)]     │
-  │                                    │
+  |                                    |
+  | [Channel open complete, waiting]   |
+  |                                    |
+  | [Funding tx gets enough confirms]  |
+  |                                    |
+  |---- announcement_signatures ------>|
+  |     short_channel_id               |
+  |     node_signature                 |
+  |     bitcoin_signature              |
+  |                                    |
+  |<--- announcement_signatures -------|
+  |     short_channel_id               |
+  |     node_signature                 |
+  |     bitcoin_signature              |
+  |                                    |
+  | [Both combine into channel_announcement]
+  |                                    |
+  | [Broadcast channel_announcement]   |
+  | [Broadcast channel_update (dir 0)] |
+  | [Broadcast channel_update (dir 1)] |
 
-確認要求：
-├── 標準：6 個確認
-├── 可配置：minimum_depth 參數
-└── 零確認通道不發送 announcement（私有）`}</pre>
+Confirmation Requirements:
+• Standard: 6 confirmations
+• Configurable: minimum_depth parameter
+• Zero-conf channels don't send announcement (private)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">鏈上驗證</h2>
@@ -160,35 +152,31 @@ Alice                                 Bob
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`接收節點驗證步驟：
+      class="text-[var(--text-secondary)]">{`Receiving Node Verification Steps
 
-1. 簽名驗證
-┌──────────────────────────────────────────────────────────┐
-│ 驗證 4 個簽名：                                          │
-│ ├── node_signature_1 by node_id_1                        │
-│ ├── node_signature_2 by node_id_2                        │
-│ ├── bitcoin_signature_1 by bitcoin_key_1                 │
-│ └── bitcoin_signature_2 by bitcoin_key_2                 │
-└──────────────────────────────────────────────────────────┘
+1. Signature Verification
+Verify 4 signatures:
+• node_signature_1 by node_id_1
+• node_signature_2 by node_id_2
+• bitcoin_signature_1 by bitcoin_key_1
+• bitcoin_signature_2 by bitcoin_key_2
 
-2. 鏈上驗證
-┌──────────────────────────────────────────────────────────┐
-│ 使用 short_channel_id 找到注資交易：                     │
-│ ├── 區塊高度 → 區塊                                      │
-│ ├── 交易索引 → 交易                                      │
-│ └── 輸出索引 → 輸出                                      │
-│                                                          │
-│ 驗證：                                                   │
-│ ├── 輸出存在且未花費                                     │
-│ ├── 輸出是 P2WSH 2-of-2 多簽                             │
-│ ├── 腳本使用 bitcoin_key_1 和 bitcoin_key_2              │
-│ └── 公鑰順序正確（字典序）                               │
-└──────────────────────────────────────────────────────────┘
+2. On-Chain Verification
+Use short_channel_id to find funding tx:
+• Block height -> block
+• Transaction index -> transaction
+• Output index -> output
 
-3. 存儲到路由圖
-├── 添加通道到本地 graph
-├── 記錄雙方節點
-└── 等待 channel_update 獲取路由參數`}</pre>
+Verify:
+• Output exists and unspent
+• Output is P2WSH 2-of-2 multisig
+• Script uses bitcoin_key_1 and bitcoin_key_2
+• Pubkeys in correct order (lexicographic)
+
+3. Store in Routing Graph
+• Add channel to local graph
+• Record both nodes
+• Wait for channel_update to get routing params`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">channel_update</h2>
@@ -197,38 +185,35 @@ Alice                                 Bob
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`channel_update 欄位：
+      class="text-[var(--text-secondary)]">{`channel_update Fields
 
-┌──────────────────────────────────────────────────────────┐
-│ channel_flags 位元：                                     │
-│ ├── bit 0 (direction): 0=node_1→node_2, 1=node_2→node_1 │
-│ └── bit 1 (disabled): 0=啟用, 1=停用                    │
-│                                                          │
-│ 每個通道需要兩個 channel_update：                        │
-│ ├── 方向 0：node_1 發送，描述 node_1→node_2 的參數      │
-│ └── 方向 1：node_2 發送，描述 node_2→node_1 的參數      │
-└──────────────────────────────────────────────────────────┘
+channel_flags bits:
+• bit 0 (direction): 0=node_1->node_2, 1=node_2->node_1
+• bit 1 (disabled): 0=enabled, 1=disabled
 
-路由參數含義：
-┌──────────────────────────────────────────────────────────┐
-│ cltv_expiry_delta：                                      │
-│   每跳需要的 CLTV 差值                                   │
-│                                                          │
-│ htlc_minimum_msat：                                      │
-│   接受的最小 HTLC 金額                                   │
-│                                                          │
-│ htlc_maximum_msat：                                      │
-│   接受的最大 HTLC 金額                                   │
-│                                                          │
-│ fee_base_msat + fee_proportional_millionths：            │
-│   路由費用 = base + (amount × proportional / 1,000,000)  │
-└──────────────────────────────────────────────────────────┘
+Each channel needs two channel_updates:
+• Direction 0: sent by node_1, describes node_1->node_2 params
+• Direction 1: sent by node_2, describes node_2->node_1 params
 
-更新觸發：
-├── 定期更新（保持活躍）
-├── 參數變更
-├── 通道啟用/停用
-└── 對方節點狀態變化`}</pre>
+Routing Parameter Meanings:
+
+cltv_expiry_delta:
+  CLTV delta required per hop
+
+htlc_minimum_msat:
+  Minimum accepted HTLC amount
+
+htlc_maximum_msat:
+  Maximum accepted HTLC amount
+
+fee_base_msat + fee_proportional_millionths:
+  Routing fee = base + (amount * proportional / 1,000,000)
+
+Update Triggers:
+• Periodic updates (stay active)
+• Parameter changes
+• Channel enable/disable
+• Peer node status changes`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 傳播</h2>
@@ -270,32 +255,29 @@ Alice                                 Bob
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`私有通道不公告：
+      class="text-[var(--text-secondary)]">{`Private Channels (Unannounced)
 
-私有通道（Unannounced Channel）：
-┌──────────────────────────────────────────────────────────┐
-│ 不發送 channel_announcement                              │
-│ 不發送 channel_update 到 gossip                          │
-│ 不出現在網路路由圖中                                     │
-│                                                          │
-│ 但仍可使用：                                             │
-│ ├── 直接支付給對方                                       │
-│ └── 通過發票路由提示接收支付                             │
-└──────────────────────────────────────────────────────────┘
+Private Channel Behavior:
+• No channel_announcement sent
+• No channel_update to gossip
+• Does not appear in network routing graph
 
-發票路由提示：
-┌──────────────────────────────────────────────────────────┐
-│ BOLT 11 發票的 'r' 標籤：                                │
-│                                                          │
-│ route_hints:                                             │
-│   - pubkey: 入口節點公鑰                                 │
-│     short_channel_id: 通道 ID（可用別名）                │
-│     fee_base_msat: 費用                                  │
-│     fee_proportional_millionths: 費用                    │
-│     cltv_expiry_delta: CLTV 差值                         │
-│                                                          │
-│ 發送者使用這些資訊構建最後一跳                           │
-└──────────────────────────────────────────────────────────┘`}</pre>
+But can still be used:
+• Direct payments to peer
+• Receive payments via invoice route hints
+
+Invoice Route Hints:
+
+BOLT 11 invoice 'r' tag:
+
+route_hints:
+  - pubkey: entry node pubkey
+    short_channel_id: channel ID (can use alias)
+    fee_base_msat: fee
+    fee_proportional_millionths: fee
+    cltv_expiry_delta: CLTV delta
+
+Sender uses this info to construct final hop`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

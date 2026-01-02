@@ -53,45 +53,43 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`流動性堵塞攻擊：
+      class="text-[var(--text-secondary)]">{`Liquidity Jamming Attack:
 
-攻擊者控制兩個節點 A 和 Z：
+Attacker controls two nodes A and Z:
 
 A ──> B ──> C ──> D ──> Z
 │                       │
-└───── 攻擊者控制 ───────┘
+└── Attacker controls ──┘
 
-攻擊流程：
-1. A 發送支付給 Z（通過 B-C-D 路由）
-2. HTLC 一路傳播到 Z
-3. Z 故意不揭示 preimage
-4. 所有中間通道的流動性被鎖定
-5. 等待 HTLC 超時（可能數小時到數天）
-6. 攻擊者不損失任何資金（支付最終失敗）
+Attack flow:
+1. A sends payment to Z (via B-C-D route)
+2. HTLC propagates all the way to Z
+3. Z intentionally doesn't reveal preimage
+4. All intermediate channel liquidity locked
+5. Wait for HTLC timeout (hours to days)
+6. Attacker loses no funds (payment fails)
 
-成本分析：
-- 攻擊者成本：僅需路由費（幾 sats）
-- 受害者損失：流動性被鎖定，無法處理其他支付
-- 時間：可以持續到 HTLC 超時（默認最長約 2 周）
+Cost analysis:
+• Attacker cost: only routing fees (few sats)
+• Victim loss: liquidity locked, can't process payments
+• Duration: up to HTLC timeout (~2 weeks max)
 
 ────────────────────────────────────────────
 
-槽位堵塞攻擊：
+Slot Jamming Attack:
 
-HTLC 槽位限制：
-┌─────────────────────────────────────────┐
-│ 每個通道方向最多 483 個 pending HTLCs   │
-│ 這是為了確保 commitment tx 不超過       │
-│ Bitcoin 的最大交易大小限制              │
-└─────────────────────────────────────────┘
+HTLC slot limit:
+• Max 483 pending HTLCs per channel direction
+• Required to keep commitment tx under
+  Bitcoin's max transaction size limit
 
-攻擊流程：
-1. 攻擊者創建 483+ 個小額支付
-2. 每個支付只有 1 sat
-3. 所有 HTLC 槽位被佔滿
-4. 正常支付無法通過
+Attack flow:
+1. Attacker creates 483+ small payments
+2. Each payment only 1 sat
+3. All HTLC slots filled
+4. Normal payments can't go through
 
-成本：483 sats × 路由費 ≈ 幾百 sats`}</pre>
+Cost: 483 sats x routing fee = few hundred sats`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼很難解決？</h2>
@@ -131,25 +129,25 @@ HTLC 槽位限制：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`預付費用機制：
+      class="text-[var(--text-secondary)]">{`Upfront Fee Mechanism:
 
-當前模式（只有成功才付費）：
-  支付成功：路由節點收取費用
-  支付失敗：路由節點一無所獲
+Current model (pay only on success):
+  Payment success: routing node collects fee
+  Payment failure: routing node gets nothing
 
-預付費用模式：
-  發送支付時：立即支付小額「持有費」
-  成功：正常路由費
-  失敗：路由節點仍保留持有費
+Upfront fee model:
+  When sending: immediately pay small "hold fee"
+  Success: normal routing fee
+  Failure: routing node keeps hold fee
 
-優點：
-- 增加攻擊成本
-- 補償路由節點的資源佔用
+Advantages:
+• Increases attack cost
+• Compensates routing nodes for resource use
 
-缺點：
-- 增加正常用戶成本
-- 路由節點可能故意延遲
-- 實現複雜`}</pre>
+Disadvantages:
+• Increases cost for normal users
+• Routing nodes might intentionally delay
+• Complex implementation`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 本地信譽系統</h3>
@@ -158,26 +156,25 @@ HTLC 槽位限制：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`本地信譽系統：
+      class="text-[var(--text-secondary)]">{`Local Reputation System:
 
-每個節點維護自己的信譽數據庫：
-┌─────────────────────────────────────────┐
-│ Peer      │ Success Rate │ Reputation  │
-├───────────┼──────────────┼─────────────┤
-│ Node A    │ 95%          │ Good        │
-│ Node B    │ 30%          │ Suspicious  │
-│ Node C    │ 5%           │ Bad         │
-└─────────────────────────────────────────┘
+Each node maintains its own reputation database:
 
-行為：
-- 來自低信譽節點的 HTLC：限制槽位/金額
-- 來自高信譽節點的 HTLC：正常處理
-- 新節點：逐漸建立信譽
+Peer     | Success Rate | Reputation
+---------|--------------|------------
+Node A   | 95%          | Good
+Node B   | 30%          | Suspicious
+Node C   | 5%           | Bad
 
-挑戰：
-- 攻擊者可以先建立信譽
-- 信譽無法跨節點共享（隱私問題）
-- 可能導致網路分裂`}</pre>
+Behavior:
+• HTLCs from low-rep nodes: limit slots/amount
+• HTLCs from high-rep nodes: process normally
+• New nodes: gradually build reputation
+
+Challenges:
+• Attackers can build reputation first
+• Reputation can't be shared (privacy issues)
+• May cause network fragmentation`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. Circuit Breaker</h3>
@@ -186,23 +183,21 @@ HTLC 槽位限制：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Circuit Breaker 插件（CLN）：
+      class="text-[var(--text-secondary)]">{`Circuit Breaker Plugin (CLN):
 
-設定每個對等節點的限制：
-┌─────────────────────────────────────────┐
-│ max_pending_htlcs_per_peer: 30          │
-│ max_htlc_value_per_peer: 100000 sat     │
-│ max_pending_duration: 1 hour            │
-└─────────────────────────────────────────┘
+Per-peer limit settings:
+  max_pending_htlcs_per_peer: 30
+  max_htlc_value_per_peer: 100000 sat
+  max_pending_duration: 1 hour
 
-當達到限制時：
-- 拒絕新的 HTLC
-- 優先處理小額快速支付
-- 記錄可疑行為
+When limits reached:
+• Reject new HTLCs
+• Prioritize small fast payments
+• Log suspicious behavior
 
-限制：
-- 只是緩解措施，不能完全防止
-- 可能影響正常大額支付`}</pre>
+Limitations:
+• Only mitigation, not complete prevention
+• May affect normal large payments`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">4. 信譽憑證 (Reputation Credentials)</h3>
@@ -211,23 +206,23 @@ HTLC 槽位限制：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`信譽憑證系統（研究中）：
+      class="text-[var(--text-secondary)]">{`Reputation Credentials (research):
 
-概念：
-1. 節點購買「信譽代幣」（使用閃電網路支付）
-2. 發送支付時附帶代幣
-3. 支付失敗：代幣被銷毀
-4. 支付成功：代幣可以回收
+Concept:
+1. Nodes buy "reputation tokens" (pay via LN)
+2. Attach tokens when sending payment
+3. Payment failure: tokens destroyed
+4. Payment success: tokens can be recovered
 
-特性：
-- 購買成本 = 攻擊成本
-- 匿名憑證（隱私保護）
-- 可轉讓
+Features:
+• Purchase cost = attack cost
+• Anonymous credentials (privacy protection)
+• Transferable
 
-挑戰：
-- 增加正常支付複雜度
-- 代幣經濟設計
-- 需要廣泛採用`}</pre>
+Challenges:
+• Increases normal payment complexity
+• Token economics design
+• Requires widespread adoption`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">5. 時間鎖降級</h3>
@@ -236,22 +231,22 @@ HTLC 槽位限制：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`縮短 HTLC 超時時間：
+      class="text-[var(--text-secondary)]">{`Shorten HTLC Timeout:
 
-當前默認：
-  最長 HTLC 超時 ≈ 2016 區塊 ≈ 2 週
+Current default:
+  Max HTLC timeout = 2016 blocks = ~2 weeks
 
-降低超時：
-  最長 HTLC 超時 = 144 區塊 = 1 天
+Reduced timeout:
+  Max HTLC timeout = 144 blocks = ~1 day
 
-好處：
-- 攻擊持續時間縮短
-- 流動性恢復更快
+Benefits:
+• Attack duration shortened
+• Liquidity recovers faster
 
-問題：
-- 長路徑支付更容易超時
-- 降低了對離線節點的容錯
-- 需要更快的區塊監控`}</pre>
+Problems:
+• Long-path payments more likely to timeout
+• Reduces tolerance for offline nodes
+• Requires faster block monitoring`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">當前緩解措施</h2>

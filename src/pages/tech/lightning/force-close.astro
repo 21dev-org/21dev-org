@@ -71,41 +71,39 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`強制關閉的交易結構：
+      class="text-[var(--text-secondary)]">{`Force Close Transaction Structure:
 
-步驟 1：廣播承諾交易
-┌─────────────────────────────────────────────────────────┐
-│ Commitment Transaction                                  │
-├─────────────────────────────────────────────────────────┤
-│ Input:                                                  │
-│   └── Funding TX output (2-of-2 multisig)              │
-├─────────────────────────────────────────────────────────┤
-│ Outputs:                                                │
-│   ├── to_local (發起方餘額，有時間鎖)                   │
-│   ├── to_remote (對方餘額，可立即花費)                  │
-│   ├── Offered HTLCs (發起方提供的)                      │
-│   ├── Received HTLCs (發起方接收的)                     │
-│   └── Anchor outputs (如果啟用)                         │
-└─────────────────────────────────────────────────────────┘
+Step 1: Broadcast Commitment Transaction
++-------------------------------------------------------+
+| Commitment Transaction                                |
++-------------------------------------------------------+
+| Input:                                                |
+|   - Funding TX output (2-of-2 multisig)               |
++-------------------------------------------------------+
+| Outputs:                                              |
+|   - to_local (initiator balance, timelocked)          |
+|   - to_remote (counterparty, immediately spendable)   |
+|   - Offered HTLCs                                     |
+|   - Received HTLCs                                    |
+|   - Anchor outputs (if enabled)                       |
++-------------------------------------------------------+
 
-步驟 2：等待確認
-├── 承諾交易需要被礦工確認
-├── 確認後開始計時時間鎖
-└── 通常需要 1-6 個確認
+Step 2: Wait for Confirmation
+  - Commitment TX needs miner confirmation
+  - Timelock starts after confirmation
+  - Usually needs 1-6 confirmations
 
-步驟 3：處理 to_local 輸出
-┌─────────────────────────────────────────────────────────┐
-│ to_local 有 to_self_delay 時間鎖                        │
-│ 例如：144 區塊 ≈ 1 天                                   │
-│                                                         │
-│ 必須等待時間鎖過期才能花費                              │
-│ 這給對方時間檢測和懲罰欺詐                              │
-└─────────────────────────────────────────────────────────┘
+Step 3: Handle to_local Output
+  to_local has to_self_delay timelock
+  Example: 144 blocks = ~1 day
 
-步驟 4：處理 HTLC 輸出
-├── HTLC-Success TX：用 preimage 領取收到的 HTLC
-├── HTLC-Timeout TX：超時後取回發出的 HTLC
-└── 這些都是二級交易，需要額外的鏈上費用`}</pre>
+  Must wait for timelock to expire before spending.
+  This gives counterparty time to detect and punish fraud.
+
+Step 4: Handle HTLC Outputs
+  - HTLC-Success TX: claim received HTLC with preimage
+  - HTLC-Timeout TX: reclaim sent HTLC after timeout
+  - These are second-level TXs requiring additional on-chain fees`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖機制</h2>
@@ -114,34 +112,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`to_self_delay 時間鎖：
+      class="text-[var(--text-secondary)]">{`to_self_delay Timelock:
 
-目的：
-├── 給對方時間發現欺詐
-├── 如果你廣播的是舊狀態
-└── 對方可以在這段時間內廣播懲罰交易
+Purpose:
+  - Give counterparty time to detect fraud
+  - If you broadcast old state
+  - Counterparty can broadcast penalty TX in this window
 
-典型設置：
-├── 小額通道：144 區塊（~1 天）
-├── 中額通道：288 區塊（~2 天）
-└── 大額通道：1008-2016 區塊（1-2 週）
+Typical Settings:
+  - Small channels: 144 blocks (~1 day)
+  - Medium channels: 288 blocks (~2 days)
+  - Large channels: 1008-2016 blocks (1-2 weeks)
 
-時間線示例：
-T0: 你廣播承諾交易
-T1: 交易被確認（T0 + ~10 分鐘）
-T2: 時間鎖開始（T1）
-T3: 時間鎖結束（T1 + 144 區塊 ≈ T1 + 1 天）
-T4: 你可以花費 to_local 輸出
+Timeline Example:
+  T0: You broadcast commitment TX
+  T1: TX confirmed (T0 + ~10 min)
+  T2: Timelock starts (T1)
+  T3: Timelock ends (T1 + 144 blocks = T1 + ~1 day)
+  T4: You can spend to_local output
 
-如果對方發現你作弊（廣播舊狀態）：
-├── 對方在 T1-T3 期間廣播懲罰交易
-├── 懲罰交易沒有時間鎖限制
-└── 你的所有資金被對方沒收
+If counterparty detects cheating (old state broadcast):
+  - They broadcast penalty TX during T1-T3
+  - Penalty TX has no timelock restriction
+  - All your funds confiscated by counterparty
 
-誠實關閉沒有問題：
-├── 你廣播的是最新狀態
-├── 等待時間鎖只是不便
-└── 最終資金正確結算`}</pre>
+Honest close is fine:
+  - You broadcast latest state
+  - Waiting for timelock is just inconvenient
+  - Funds settle correctly in the end`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 處理</h2>
@@ -150,36 +148,36 @@ T4: 你可以花費 to_local 輸出
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`強制關閉時的 HTLC 處理：
+      class="text-[var(--text-secondary)]">{`HTLC Handling During Force Close:
 
-場景：通道有未結算的 HTLC
+Scenario: Channel has pending HTLCs
 
-Offered HTLC（你發出的）：
-┌─────────────────────────────────────────────────────────┐
-│ 你 ──HTLC──> 對方                                       │
-│                                                         │
-│ 可能的結果：                                            │
-│ 1. 對方知道 preimage → 對方用 HTLC-Success TX 領取     │
-│ 2. HTLC 超時 → 你用 HTLC-Timeout TX 取回               │
-│                                                         │
-│ HTLC-Timeout TX 也有時間鎖！                            │
-└─────────────────────────────────────────────────────────┘
+Offered HTLC (you sent):
+  You --HTLC--> Counterparty
 
-Received HTLC（你接收的）：
-┌─────────────────────────────────────────────────────────┐
-│ 對方 ──HTLC──> 你                                       │
-│                                                         │
-│ 可能的結果：                                            │
-│ 1. 你知道 preimage → 你用 HTLC-Success TX 領取         │
-│ 2. HTLC 超時 → 對方用 HTLC-Timeout TX 取回             │
-│                                                         │
-│ 必須在超時前用 preimage 領取！                          │
-└─────────────────────────────────────────────────────────┘
+  Possible outcomes:
+    1. Counterparty knows preimage
+       -> They claim with HTLC-Success TX
+    2. HTLC times out
+       -> You reclaim with HTLC-Timeout TX
 
-費用考量：
-├── 每個 HTLC 輸出需要單獨的交易來解決
-├── 小額 HTLC 可能因費用太高而不值得領取
-└── 這就是為什麼有 HTLC 粉塵限制`}</pre>
+  Note: HTLC-Timeout TX also has timelock!
+
+Received HTLC (you received):
+  Counterparty --HTLC--> You
+
+  Possible outcomes:
+    1. You know preimage
+       -> You claim with HTLC-Success TX
+    2. HTLC times out
+       -> Counterparty reclaims with HTLC-Timeout TX
+
+  Must claim with preimage before timeout!
+
+Fee Considerations:
+  - Each HTLC output needs separate TX to resolve
+  - Small HTLCs may not be worth claiming due to fees
+  - This is why HTLC dust limits exist`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor Outputs 的影響</h2>
@@ -207,45 +205,45 @@ Received HTLC（你接收的）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`強制關閉成本分析：
+      class="text-[var(--text-secondary)]">{`Force Close Cost Analysis:
 
-1. 承諾交易費用
-   ├── 由發起關閉方支付（從通道餘額扣除）
-   ├── 費率在簽署時固定（或用 Anchor 調整）
-   └── 典型大小：500-1000 vB
+1. Commitment TX Fee
+   - Paid by initiator (from channel balance)
+   - Fee rate fixed at signing (or adjusted with Anchor)
+   - Typical size: 500-1000 vB
 
-2. to_local 花費交易費用
-   ├── 等時間鎖後花費需要另一筆交易
-   └── 由你支付
+2. to_local Spending TX Fee
+   - Another TX needed after timelock expires
+   - Paid by you
 
-3. HTLC 解決費用
-   ├── 每個 HTLC 需要單獨的二級交易
-   ├── HTLC-Success: ~150 vB
-   ├── HTLC-Timeout: ~150 vB
-   └── 如果有多個 HTLC，費用累加
+3. HTLC Resolution Fees
+   - Each HTLC needs separate second-level TX
+   - HTLC-Success: ~150 vB
+   - HTLC-Timeout: ~150 vB
+   - Multiple HTLCs = cumulative fees
 
-4. 時間成本
-   ├── 等待承諾交易確認
-   ├── 等待 to_self_delay 時間鎖
-   └── 資金被鎖定無法使用
+4. Time Cost
+   - Wait for commitment TX confirmation
+   - Wait for to_self_delay timelock
+   - Funds locked and unusable
 
-成本對比示例（假設 50 sat/vB）：
+Cost Comparison (assuming 50 sat/vB):
 
-協商關閉：
-├── 1 筆交易 ~350 vB = 17,500 sats
-└── 即時結算
+Cooperative Close:
+  - 1 TX ~350 vB = 17,500 sats
+  - Immediate settlement
 
-強制關閉（無 HTLC）：
-├── 承諾交易 ~700 vB = 35,000 sats
-├── to_local 花費 ~200 vB = 10,000 sats
-├── 等待 1 天
-└── 總計：45,000 sats + 時間
+Force Close (no HTLC):
+  - Commitment TX ~700 vB = 35,000 sats
+  - to_local spend ~200 vB = 10,000 sats
+  - Wait ~1 day
+  - Total: 45,000 sats + time
 
-強制關閉（有 3 個 HTLC）：
-├── 承諾交易 ~1000 vB = 50,000 sats
-├── 3 個 HTLC 交易 ~450 vB = 22,500 sats
-├── to_local 花費 ~200 vB = 10,000 sats
-└── 總計：82,500 sats + 時間`}</pre>
+Force Close (3 HTLCs):
+  - Commitment TX ~1000 vB = 50,000 sats
+  - 3 HTLC TXs ~450 vB = 22,500 sats
+  - to_local spend ~200 vB = 10,000 sats
+  - Total: 82,500 sats + time`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>

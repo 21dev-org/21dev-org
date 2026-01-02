@@ -36,37 +36,36 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Balance Probing（餘額探測）：
+      class="text-[var(--text-secondary)]">{`Balance Probing:
 
-攻擊者想知道 Alice-Bob 通道的餘額分佈
+Attacker wants to know Alice-Bob channel balance distribution
 
-方法：發送故意失敗的支付
-┌─────────────────────────────────────────────────────────┐
-│ 攻擊者 → ... → Alice → Bob → 不存在的目的地            │
-│                                                         │
-│ 使用錯誤的 payment_hash，支付必定失敗                   │
-│ 但失敗的位置揭示了信息！                                │
-└─────────────────────────────────────────────────────────┘
+Method: Send intentionally failing payments
 
-探測過程：
-1. 發送 1 BTC 的探測支付
-   → 失敗：TEMPORARY_CHANNEL_FAILURE（Alice→Bob 容量不足）
-   → 結論：Alice 方餘額 < 1 BTC
+  Attacker -> ... -> Alice -> Bob -> non-existent destination
 
-2. 發送 0.5 BTC 的探測支付
-   → 失敗：UNKNOWN_PAYMENT_HASH（到達目的地後失敗）
-   → 結論：Alice 方餘額 >= 0.5 BTC
+  Using wrong payment_hash, payment will definitely fail.
+  But the failure location reveals information!
 
-3. 發送 0.75 BTC...
-   → 繼續二分搜索
+Probing Process:
+  1. Send 1 BTC probe payment
+     -> Fails: TEMPORARY_CHANNEL_FAILURE (Alice->Bob insufficient)
+     -> Conclusion: Alice's balance < 1 BTC
 
-4. 經過 ~10 次探測
-   → 精確知道餘額到 sat 級別！
+  2. Send 0.5 BTC probe payment
+     -> Fails: UNKNOWN_PAYMENT_HASH (reached destination, then failed)
+     -> Conclusion: Alice's balance >= 0.5 BTC
 
-問題：
-├── 完全免費（失敗的支付不收費）
-├── 難以阻止（看起來像正常失敗）
-└── 可以大規模進行`}</pre>
+  3. Send 0.75 BTC...
+     -> Continue binary search
+
+  4. After ~10 probes
+     -> Know exact balance to sat level!
+
+Problems:
+  - Completely free (failed payments have no fee)
+  - Hard to prevent (looks like normal failures)
+  - Can be done at scale`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付關聯</h2>
@@ -75,38 +74,37 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Payment Correlation（支付關聯）攻擊：
+      class="text-[var(--text-secondary)]">{`Payment Correlation Attack:
 
-HTLC 跨跳使用相同的 payment_hash：
+HTLCs use same payment_hash across hops:
 
-A → B → C → D
-    │       │
-    └───────┴─ 相同的 payment_hash
+A -> B -> C -> D
+     |        |
+     +--------+-- same payment_hash
 
-如果攻擊者控制 B 和 D：
-┌─────────────────────────────────────────────────────────┐
-│ B 看到：from A, hash=abc123, amount=100k               │
-│ D 看到：to ?, hash=abc123, amount=99k (扣除費用)       │
-│                                                         │
-│ 關聯！同一筆支付                                        │
-│ 知道：A 支付給 D 後面的某人                             │
-│ 金額：約 100k sats                                      │
-└─────────────────────────────────────────────────────────┘
+If attacker controls B and D:
 
-更糟的情況：首尾節點控制
-如果攻擊者控制 A 和 D 的對手方：
-├── 知道發送方確切身份
-├── 知道接收方確切身份
-├── 知道確切金額
-└── 完全去匿名化！
+  B sees: from A, hash=abc123, amount=100k
+  D sees: to ?, hash=abc123, amount=99k (minus fees)
 
-PTLCs 解決方案：
-使用不同的 point 代替相同的 hash：
-A → B: point_AB
-B → C: point_BC (不同!)
-C → D: point_CD (不同!)
+  Correlation! Same payment.
+  Knows: A is paying someone after D
+  Amount: ~100k sats
 
-無法通過 point 關聯支付`}</pre>
+Worse case: First and last node control
+If attacker controls A and D's counterparties:
+  - Knows exact sender identity
+  - Knows exact receiver identity
+  - Knows exact amount
+  - Complete de-anonymization!
+
+PTLCs Solution:
+Use different points instead of same hash:
+  A -> B: point_AB
+  B -> C: point_BC (different!)
+  C -> D: point_CD (different!)
+
+Cannot correlate payments via point`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時序分析</h2>
@@ -115,32 +113,30 @@ C → D: point_CD (不同!)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Timing Analysis（時序分析）：
+      class="text-[var(--text-secondary)]">{`Timing Analysis:
 
-攻擊者可以通過時間關聯支付：
+Attacker can correlate payments via timing:
 
-場景：攻擊者控制入口和出口附近的節點
+Scenario: Attacker controls nodes near entry and exit
 
-入口時間：T₀
-中間延遲：~100ms（網路延遲）
-出口時間：T₀ + ~100ms
+Entry time: T0
+Intermediate delay: ~100ms (network latency)
+Exit time: T0 + ~100ms
 
-┌─────────────────────────────────────────────────────────┐
-│ 如果在 T₀ 只有一個入站 HTLC                             │
-│ 在 T₀+100ms 只有一個對應大小的出站 HTLC                │
-│ → 很可能是同一筆支付                                   │
-└─────────────────────────────────────────────────────────┘
+If at T0 there's only one inbound HTLC,
+and at T0+100ms only one matching outbound HTLC,
+-> Very likely the same payment
 
-緩解措施：
-├── 增加隨機延遲（但增加支付時間）
-├── 批量處理 HTLC（複雜度高）
-└── 使用 Tor 增加網路層匿名
+Mitigations:
+  - Add random delays (but increases payment time)
+  - Batch HTLC processing (high complexity)
+  - Use Tor for network layer anonymity
 
-路徑長度推斷：
-CLTV 時間鎖遞減可以揭示路徑位置：
-├── 入口節點看到大的 CLTV
-├── 出口節點看到小的 CLTV
-└── 差值 ÷ delta = 大致跳數`}</pre>
+Path Length Inference:
+CLTV timelock decrement reveals path position:
+  - Entry node sees large CLTV
+  - Exit node sees small CLTV
+  - Difference / delta = approximate hop count`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路圖分析</h2>
@@ -217,39 +213,37 @@ CLTV 時間鎖遞減可以揭示路徑位置：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`防禦餘額探測的方法：
+      class="text-[var(--text-secondary)]">{`Balance Probing Defense Methods:
 
-1. 影子路由（Shadow Routing）
-   ├── 在真實路徑後添加虛假跳
-   ├── CLTV 看起來更長
-   └── 難以判斷真實目的地位置
+1. Shadow Routing
+   - Add fake hops after real path
+   - CLTV appears longer
+   - Hard to determine real destination
 
-2. 隨機化錯誤
-   ├── 即使餘額充足也隨機返回失敗
-   ├── 增加探測不確定性
-   └── 但會影響正常支付成功率
+2. Randomized Errors
+   - Return failure even with sufficient balance
+   - Increases probing uncertainty
+   - But affects normal payment success rate
 
-3. 費用速率限制
-   ├── 限制失敗支付的頻率
-   ├── 減慢探測速度
-   └── 需要平衡正常使用
+3. Fee Rate Limiting
+   - Limit frequency of failed payments
+   - Slows down probing
+   - Need to balance normal usage
 
-4. 最小 HTLC 設定
-   ├── 設定較高的最小值
-   ├── 減少精確探測能力
-   └── 但限制小額支付
+4. Minimum HTLC Setting
+   - Set higher minimum value
+   - Reduces precise probing ability
+   - But limits small payments
 
-5. 定期再平衡
-   ├── 主動改變餘額分佈
-   ├── 探測結果快速過時
-   └── 有成本
+5. Regular Rebalancing
+   - Actively change balance distribution
+   - Probe results quickly outdated
+   - Has cost
 
-現實：
-┌─────────────────────────────────────────────────────────┐
-│ 目前沒有完美的探測防禦方案                              │
-│ 最佳策略是接受一定程度的餘額洩露                        │
-│ 並使用私有通道減少可探測的通道數量                      │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Reality:
+  Currently no perfect probing defense exists.
+  Best strategy is to accept some balance leakage
+  and use private channels to reduce probeable channels.`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發送方 vs 接收方隱私</h2>
@@ -258,29 +252,29 @@ CLTV 時間鎖遞減可以揭示路徑位置：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`隱私不對稱性：
+      class="text-[var(--text-secondary)]">{`Privacy Asymmetry:
 
-發送方隱私（較好）：
-├── 選擇路徑，控制更多信息
-├── 可以選擇經過哪些節點
-├── 接收方不知道發送方身份（除非發票中包含）
-└── 可以使用 Trampoline 減少暴露
+Sender Privacy (better):
+  - Chooses path, controls more info
+  - Can choose which nodes to route through
+  - Receiver doesn't know sender identity (unless in invoice)
+  - Can use Trampoline to reduce exposure
 
-接收方隱私（較差）：
-├── 必須提供聯繫方式（發票/BOLT12）
-├── Route hints 洩露私有通道信息
-├── 節點 ID 是接收支付的前提
-└── 發送方至少知道最後一跳
+Receiver Privacy (worse):
+  - Must provide contact method (invoice/BOLT12)
+  - Route hints leak private channel info
+  - Node ID is prerequisite to receive payments
+  - Sender knows at least the last hop
 
-Route Blinding 改善接收方隱私：
-├── 隱藏真實節點 ID
-├── 隱藏最後幾跳路徑
-└── 發送方只知道入口點
+Route Blinding Improves Receiver Privacy:
+  - Hides real node ID
+  - Hides last few hops of path
+  - Sender only knows entry point
 
-最佳實踐：
-├── 發送方：使用多跳路徑，避免直接連接目標
-├── 接收方：使用 Route Blinding + 私有通道
-└── 雙方：使用 Tor，定期更換節點/通道`}</pre>
+Best Practices:
+  - Sender: Use multi-hop paths, avoid direct connection
+  - Receiver: Use Route Blinding + private channels
+  - Both: Use Tor, periodically rotate nodes/channels`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私威脅模型</h2>

@@ -101,30 +101,28 @@ T0      T1
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Short Channel ID (SCID) 結構：
+      class="text-[var(--text-secondary)]">{`Short Channel ID (SCID) Structure:
 
-標準 SCID（確認後）：
-┌─────────────┬─────────────┬─────────────┐
-│ Block Height │ TX Index    │ Output Index│
-│ (3 bytes)    │ (3 bytes)   │ (2 bytes)   │
-└─────────────┴─────────────┴─────────────┘
-例如：700000x1234x0
+Standard SCID (after confirmation):
+┌──────────────┬──────────────┬──────────────┐
+│ Block Height │ TX Index     │ Output Index │
+│ (3 bytes)    │ (3 bytes)    │ (2 bytes)    │
+└──────────────┴──────────────┴──────────────┘
+Example: 700000x1234x0
 
-零確認問題：
-- 未確認交易沒有 block height
-- 無法計算真正的 SCID
+Zero-conf issue:
+• Unconfirmed tx has no block height
+• Cannot calculate real SCID
 
-SCID Alias 解決方案：
-┌─────────────────────────────────────────┐
-│ 使用臨時的 alias SCID                    │
-│ 格式：隨機生成的 8 字節標識符             │
-│ 功能位：option_scid_alias (bit 46/47)   │
-└─────────────────────────────────────────┘
+SCID Alias solution:
+• Use temporary alias SCID
+• Format: randomly generated 8-byte identifier
+• Feature bit: option_scid_alias (bit 46/47)
 
-通道確認後：
-- 仍可使用 alias 引用通道
-- 也可使用真正的 SCID
-- 對於私有通道，alias 可以隱藏區塊資訊`}</pre>
+After channel confirmation:
+• Can still use alias to reference channel
+• Can also use real SCID
+• For private channels, alias hides block info`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Option Zero Conf</h2>
@@ -133,16 +131,16 @@ SCID Alias 解決方案：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`option_zeroconf 協商：
+      class="text-[var(--text-secondary)]">{`option_zeroconf negotiation:
 
-功能位：option_zeroconf (bit 50/51)
+Feature bit: option_zeroconf (bit 50/51)
 
-流程：
-1. 雙方在 init 訊息中宣告支援 option_zeroconf
-2. 開啟者在 open_channel/open_channel2 中請求 zero-conf
-3. 接受者在 accept_channel/accept_channel2 中同意
+Flow:
+1. Both parties announce option_zeroconf in init message
+2. Opener requests zero-conf in open_channel/open_channel2
+3. Acceptor agrees in accept_channel/accept_channel2
 
-訊息結構變化：
+Message structure changes:
 open_channel2:
   ...
   channel_type:
@@ -151,10 +149,10 @@ open_channel2:
     - option_anchors_zero_fee_htlc_tx
   ...
 
-接受零確認的條件：
-- 接受者信任開啟者不會雙花
-- 通常只與已知的 LSP 或合作夥伴使用
-- 可設定白名單節點`}</pre>
+Conditions for accepting zero-conf:
+• Acceptor trusts opener not to double-spend
+• Usually only with known LSP or partners
+• Can set node whitelist`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 使用場景</h2>
@@ -166,33 +164,32 @@ open_channel2:
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LSP 即時開通道場景：
+      class="text-[var(--text-secondary)]">{`LSP Instant Channel Opening:
 
-1. 用戶首次收款
+1. User's first incoming payment
    ┌──────────┐         ┌──────────┐         ┌──────────┐
    │  Sender  │ ──────> │   LSP    │ ──────> │   User   │
    └──────────┘         └────┬─────┘         └──────────┘
                              │
-                             │ 用戶沒有通道！
-                             │ LSP 即時開啟零確認通道
+                             │ User has no channel!
+                             │ LSP opens zero-conf channel
                              ▼
-   ┌───────────────────────────────────────────────────────┐
-   │ 1. LSP 創建 funding tx（LSP 資金）                     │
-   │ 2. LSP 廣播 funding tx                                │
-   │ 3. 立即創建通道（零確認）                              │
-   │ 4. 通過新通道路由支付給用戶                            │
-   │ 5. 用戶立即收到款項！                                  │
-   └───────────────────────────────────────────────────────┘
+   Process:
+   1. LSP creates funding tx (LSP funds)
+   2. LSP broadcasts funding tx
+   3. Channel created immediately (zero-conf)
+   4. Payment routed to user via new channel
+   5. User receives payment instantly!
 
-安全性：
-- LSP 是 funding 提供者，不會自己雙花
-- 用戶可以信任 LSP
-- 即使 LSP 雙花，用戶損失的只是剛收到的款項
+Security:
+• LSP provides funding, won't double-spend itself
+• User can trust the LSP
+• Even if LSP double-spends, user only loses recent payment
 
-2. JIT (Just-In-Time) 通道
-   - 只在需要時才開通道
-   - 節省區塊空間
-   - 改善用戶體驗`}</pre>
+2. JIT (Just-In-Time) Channels
+   • Only open channel when needed
+   • Saves block space
+   • Improves user experience`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Phoenix 錢包實例</h2>

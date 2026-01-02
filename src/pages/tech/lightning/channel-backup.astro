@@ -36,33 +36,32 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道狀態的動態性：
+      class="text-[var(--text-secondary)]">{`Dynamic Nature of Channel State:
 
-問題：通道狀態持續變化
+Problem: Channel state keeps changing
 
-時間線：
-T0: 開通道，狀態 0
+Timeline:
+T0: Open channel, state 0
     Alice: 1 BTC, Bob: 0 BTC
 
-T1: 備份狀態 0
+T1: Backup state 0
 
-T2: 支付 0.3 BTC 給 Bob，狀態 1
+T2: Pay 0.3 BTC to Bob, state 1
     Alice: 0.7 BTC, Bob: 0.3 BTC
 
-T3: 支付 0.2 BTC 給 Bob，狀態 2
+T3: Pay 0.2 BTC to Bob, state 2
     Alice: 0.5 BTC, Bob: 0.5 BTC
 
-T4: 硬盤故障！
+T4: Disk failure!
 
-恢復備份（狀態 0）會發生什麼？
-┌─────────────────────────────────────────────────────────┐
-│ Alice 嘗試廣播 commitment tx 0                          │
-│ → Bob 發現這是舊狀態                                    │
-│ → Bob 廣播懲罰交易                                      │
-│ → Alice 損失全部 1 BTC！                                 │
-└─────────────────────────────────────────────────────────┘
+What happens when restoring backup (state 0)?
 
-這比完全丟失備份還糟糕！`}</pre>
+Alice tries to broadcast commitment tx 0
+-> Bob detects this is an old state
+-> Bob broadcasts penalty transaction
+-> Alice loses entire 1 BTC!
+
+This is worse than losing the backup entirely!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Static Channel Backup (SCB)</h2>
@@ -74,36 +73,34 @@ T4: 硬盤故障！
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Static Channel Backup (SCB) 原理：
+      class="text-[var(--text-secondary)]">{`Static Channel Backup (SCB) Principle:
 
-SCB 不包含通道狀態！
+SCB does NOT contain channel state!
 
-SCB 內容：
-┌─────────────────────────────────────────────────────────┐
-│ version: 備份格式版本                                   │
-│ channels: [                                             │
-│   {                                                     │
-│     channel_point: funding txid:vout                   │
-│     remote_pubkey: 對方節點公鑰                         │
-│     capacity: 通道容量                                  │
-│     addresses: 對方節點地址                             │
-│   },                                                    │
-│   ...                                                   │
-│ ]                                                       │
-└─────────────────────────────────────────────────────────┘
+SCB Contents:
+  version: backup format version
+  channels: [
+    {
+      channel_point: funding txid:vout
+      remote_pubkey: peer node public key
+      capacity: channel capacity
+      addresses: peer node addresses
+    },
+    ...
+  ]
 
-恢復流程：
-1. 使用種子詞恢復錢包
-2. 導入 SCB 文件
-3. 節點連接到每個通道對手
-4. 請求對方發起合作關閉
-5. 對方使用最新狀態關閉
-6. 資金返回鏈上
+Recovery Flow:
+1. Restore wallet using seed words
+2. Import SCB file
+3. Node connects to each channel peer
+4. Request peer to initiate cooperative close
+5. Peer uses latest state to close
+6. Funds return on-chain
 
-關鍵：
-- 不嘗試恢復狀態（避免有毒備份）
-- 依賴對方誠實合作
-- 資金會返回，但需要等待鏈上確認`}</pre>
+Key Points:
+• Does not attempt to restore state (avoids toxic backup)
+• Relies on peer's honest cooperation
+• Funds will return, but must wait for on-chain confirmation`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Data Loss Protection (DLP)</h2>
@@ -112,34 +109,31 @@ SCB 內容：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`option_data_loss_protect (BOLT 功能)：
+      class="text-[var(--text-secondary)]">{`option_data_loss_protect (BOLT feature):
 
-當節點重連時檢測數據丟失：
+Detects data loss when nodes reconnect:
 
-正常情況：
-┌─────────┐                    ┌─────────┐
-│  Alice  │──channel_reestablish──>│   Bob   │
-│         │  my_current_per_commitment_point   │
-│         │  your_last_per_commitment_secret   │
-└─────────┘<──────────────────────└─────────┘
+Normal case:
+  Alice ---channel_reestablish---> Bob
+         my_current_per_commitment_point
+         your_last_per_commitment_secret
+  Alice <------------------------- Bob
 
-如果 Alice 丟失數據：
-┌─────────┐                    ┌─────────┐
-│  Alice  │  發送過時的 commitment point       │
-│ (恢復後) │──────────────────────────────────>│   Bob   │
-│         │                    │ 發現不匹配！   │
-│         │<── 發送最新 per_commitment_secret  │
-│         │    + 建議關閉通道                  │
-└─────────┘                    └─────────┘
+If Alice loses data:
+  Alice (after recovery) sends outdated commitment point
+       ----------------------------------> Bob
+                                           Bob detects mismatch!
+  Alice <-- sends latest per_commitment_secret
+            + suggests closing channel
 
-Bob 的選項：
-1. 發起合作關閉（友好）
-2. 強制關閉（使用最新狀態）
+Bob's options:
+1. Initiate cooperative close (friendly)
+2. Force close (using latest state)
 
-Alice 可以驗證 Bob 的狀態是否比她的新，
-確保 Bob 沒有惡意使用舊狀態。
+Alice can verify if Bob's state is newer than hers,
+ensuring Bob isn't maliciously using an old state.
 
-功能位: option_data_loss_protect (bit 0/1)`}</pre>
+Feature bit: option_data_loss_protect (bit 0/1)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">option_static_remotekey</h2>
@@ -151,31 +145,29 @@ Alice 可以驗證 Bob 的狀態是否比她的新，
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`option_static_remotekey：
+      class="text-[var(--text-secondary)]">{`option_static_remotekey:
 
-傳統模式：
-  to_remote 輸出使用派生密鑰
-  每次狀態更新，密鑰都不同
-  恢復需要知道確切的狀態編號
+Traditional mode:
+  to_remote output uses derived keys
+  Key differs with each state update
+  Recovery requires knowing exact state number
 
-static_remotekey 模式：
-  to_remote 輸出使用固定的 payment_basepoint
-  無論哪個狀態被廣播，輸出都是同一個地址
+static_remotekey mode:
+  to_remote output uses fixed payment_basepoint
+  Regardless of which state is broadcast, output is same address
 
-好處：
-┌─────────────────────────────────────────────────────────┐
-│ 即使對方單方面關閉通道，                                 │
-│ 你只需要種子詞就能花費 to_remote 輸出！                  │
-│                                                         │
-│ 不需要：                                                │
-│ - 知道當前狀態編號                                       │
-│ - 保存任何通道數據                                       │
-│ - 對方合作                                               │
-└─────────────────────────────────────────────────────────┘
+Benefits:
+Even if peer unilaterally closes channel,
+you only need seed words to spend to_remote output!
 
-注意：to_local 和 HTLCs 仍然需要額外數據恢復
+Not required:
+• Knowing current state number
+• Saving any channel data
+• Peer cooperation
 
-功能位: option_static_remotekey (bit 12/13)`}</pre>
+Note: to_local and HTLCs still need extra data for recovery
+
+Feature bit: option_static_remotekey (bit 12/13)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">各實現的備份機制</h2>
@@ -242,24 +234,24 @@ static_remotekey 模式：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Watchtower 作為備份補充：
+      class="text-[var(--text-secondary)]">{`Watchtower as Backup Supplement:
 
-場景：你丟失數據，對方惡意廣播舊狀態
+Scenario: You lose data, peer maliciously broadcasts old state
 
-沒有 Watchtower：
-  - 你無法懲罰（沒有撤銷密鑰）
-  - 只能接受對方聲稱的狀態
-  - 可能損失資金
+Without Watchtower:
+• You cannot penalize (no revocation key)
+• Can only accept peer's claimed state
+• May lose funds
 
-有 Watchtower：
-  - Watchtower 存有懲罰交易
-  - 即使你離線/丟失數據
-  - Watchtower 可以保護你
+With Watchtower:
+• Watchtower has penalty transactions stored
+• Even if you're offline/lost data
+• Watchtower can protect you
 
-但是：
-  - Watchtower 需要每次更新都上傳新數據
-  - 存儲需求可能很大
-  - 需要信任 Watchtower 在線且可靠`}</pre>
+However:
+• Watchtower needs new data uploaded on each update
+• Storage requirements can be large
+• Must trust Watchtower is online and reliable`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo 的改進</h2>

@@ -36,31 +36,28 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`流動性廣告機制：
+      class="text-[var(--text-secondary)]">{`Liquidity Ads Mechanism
 
-賣方公告流動性：
-┌──────────────────────────────────────────────────────────┐
-│ node_announcement 擴展欄位：                             │
-│                                                          │
-│ will_fund (TLV)：                                        │
-│ ├── lease_fee_base_sat: 基礎費用（satoshis）             │
-│ ├── lease_fee_basis: 比例費用（每萬分之一）              │
-│ ├── funding_weight: 預期的交易權重貢獻                   │
-│ ├── channel_fee_max_base_msat: 最大基礎路由費            │
-│ ├── channel_fee_max_proportional_millionths: 最大比例費  │
-│ └── compact_lease: 租賃條款的緊湊編碼                    │
-└──────────────────────────────────────────────────────────┘
+Seller Announces Liquidity:
 
-買方購買流程：
-┌──────────────────────────────────────────────────────────┐
-│ 1. 買方發現賣方的流動性廣告（通過 gossip）               │
-│ 2. 買方發起 dual-funded 通道開設                         │
-│ 3. 買方請求賣方貢獻資金                                  │
-│ 4. 賣方計算費用並要求支付                                │
-│ 5. 買方接受條款                                          │
-│ 6. 執行互動式交易構建                                    │
-│ 7. 通道開設完成                                          │
-└──────────────────────────────────────────────────────────┘`}</pre>
+node_announcement extended fields:
+
+will_fund (TLV):
+• lease_fee_base_sat: base fee (satoshis)
+• lease_fee_basis: proportional fee (per 10,000)
+• funding_weight: expected tx weight contribution
+• channel_fee_max_base_msat: max base routing fee
+• channel_fee_max_proportional_millionths: max proportional fee
+• compact_lease: compact encoding of lease terms
+
+Buyer Purchase Flow:
+1. Buyer discovers seller's liquidity ad (via gossip)
+2. Buyer initiates dual-funded channel open
+3. Buyer requests seller to contribute funds
+4. Seller calculates fee and requests payment
+5. Buyer accepts terms
+6. Execute interactive tx construction
+7. Channel open complete`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用結構</h2>
@@ -69,35 +66,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`流動性廣告費用計算：
+      class="text-[var(--text-secondary)]">{`Liquidity Ads Fee Calculation
 
-租賃費用公式：
-┌──────────────────────────────────────────────────────────┐
-│ lease_fee = lease_fee_base_sat                           │
-│           + (amount × lease_fee_basis / 10000)           │
-│                                                          │
-│ 示例：                                                   │
-│ ├── lease_fee_base_sat: 1000 sats                        │
-│ ├── lease_fee_basis: 50（0.5%）                          │
-│ ├── amount: 1,000,000 sats                               │
-│ └── 費用 = 1000 + (1,000,000 × 50 / 10000)              │
-│         = 1000 + 5000 = 6000 sats                        │
-└──────────────────────────────────────────────────────────┘
+Lease Fee Formula:
+lease_fee = lease_fee_base_sat + (amount * lease_fee_basis / 10000)
 
-路由費承諾：
-┌──────────────────────────────────────────────────────────┐
-│ 賣方承諾在租賃期內：                                     │
-│ ├── 基礎費 ≤ channel_fee_max_base_msat                   │
-│ └── 比例費 ≤ channel_fee_max_proportional_millionths     │
-│                                                          │
-│ 這確保買方獲得的通道有合理的路由費用                     │
-│ 防止賣方開通道後設置極高費率                             │
-└──────────────────────────────────────────────────────────┘
+Example:
+• lease_fee_base_sat: 1000 sats
+• lease_fee_basis: 50 (0.5%)
+• amount: 1,000,000 sats
+• Fee = 1000 + (1,000,000 * 50 / 10000)
+      = 1000 + 5000 = 6000 sats
 
-租賃期限：
-├── 標準租賃期：4032 區塊（約 4 週）
-├── 可協商其他期限
-└── 期限通過 compact_lease 編碼`}</pre>
+Routing Fee Commitment:
+Seller commits during lease period:
+• Base fee <= channel_fee_max_base_msat
+• Proportional fee <= channel_fee_max_proportional_millionths
+
+This ensures buyer gets reasonable routing fees
+Prevents seller from setting extremely high fees after opening
+
+Lease Duration:
+• Standard lease: 4032 blocks (~4 weeks)
+• Other durations negotiable
+• Duration encoded via compact_lease`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置流動性廣告</h2>
@@ -142,37 +134,33 @@ lightning-cli fundchannel \\
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`流動性廣告依賴 Dual-Funded Channels：
+      class="text-[var(--text-secondary)]">{`Liquidity Ads + Dual-Funded Channels
 
-訊息流程：
-┌──────────────────────────────────────────────────────────┐
-│ 買方                                  賣方               │
-│   │                                    │                 │
-│   │ [看到賣方的 will_fund 廣告]        │                 │
-│   │                                    │                 │
-│   │──── open_channel2 ────────────────>│                 │
-│   │     (request_funds)                │                 │
-│   │                                    │                 │
-│   │<─── accept_channel2 ───────────────│                 │
-│   │     (will_fund: terms)             │                 │
-│   │                                    │                 │
-│   │ [互動式交易構建]                   │                 │
-│   │←──── tx_add_input ────────────────>│                 │
-│   │←──── tx_add_output ───────────────>│                 │
-│   │                                    │                 │
-│   │ [簽名交換]                         │                 │
-│   │←──── tx_signatures ───────────────>│                 │
-│   │                                    │                 │
-│   │ [通道開設，租賃生效]               │                 │
-│   │                                    │                 │
-└──────────────────────────────────────────────────────────┘
+Message Flow:
 
-租賃證明（Lease Proof）：
-┌──────────────────────────────────────────────────────────┐
-│ 賣方在 channel_ready 中提供租賃簽名                      │
-│ 證明其承諾在租賃期內維持服務                             │
-│ 買方可以保存作為違約證據                                 │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Buyer                                 Seller
+  |                                    |
+  | [Sees seller's will_fund ad]       |
+  |                                    |
+  |---- open_channel2 ---------------->|
+  |     (request_funds)                |
+  |                                    |
+  |<--- accept_channel2 ---------------|
+  |     (will_fund: terms)             |
+  |                                    |
+  | [Interactive tx construction]      |
+  |<--- tx_add_input ----------------->|
+  |<--- tx_add_output ---------------->|
+  |                                    |
+  | [Signature exchange]               |
+  |<--- tx_signatures ---------------->|
+  |                                    |
+  | [Channel opens, lease begins]      |
+
+Lease Proof:
+• Seller provides lease signature in channel_ready
+• Proves commitment to maintain service during lease
+• Buyer can save as evidence of breach`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Pool vs Liquidity Ads</h2>
@@ -181,36 +169,32 @@ lightning-cli fundchannel \\
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`兩種流動性市場比較：
+      class="text-[var(--text-secondary)]">{`Comparing Two Liquidity Markets
 
-Lightning Pool：
-┌──────────────────────────────────────────────────────────┐
-│ 優點：                                                   │
-│ ├── 價格發現機制（拍賣）                                 │
-│ ├── 節點評級系統                                         │
-│ ├── 批次執行節省鏈上費用                                 │
-│ └── Sidecar 通道支援                                     │
-│                                                          │
-│ 缺點：                                                   │
-│ ├── 需要中央協調者                                       │
-│ ├── 只有 LND 原生支援                                    │
-│ └── 拍賣週期有延遲                                       │
-└──────────────────────────────────────────────────────────┘
+Lightning Pool:
+Pros:
+• Price discovery mechanism (auction)
+• Node rating system
+• Batch execution saves on-chain fees
+• Sidecar channel support
 
-Liquidity Ads：
-┌──────────────────────────────────────────────────────────┐
-│ 優點：                                                   │
-│ ├── 完全去中心化                                         │
-│ ├── 標準協議（BOLT 規範）                                │
-│ ├── 即時執行                                             │
-│ ├── 無需信任第三方                                       │
-│ └── 跨實現相容                                           │
-│                                                          │
-│ 缺點：                                                   │
-│ ├── 無價格發現機制                                       │
-│ ├── 需要自己評估賣方                                     │
-│ └── 採用率還在成長中                                     │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Cons:
+• Requires central coordinator
+• Only LND native support
+• Auction cycle delays
+
+Liquidity Ads:
+Pros:
+• Fully decentralized
+• Standard protocol (BOLT spec)
+• Instant execution
+• No third-party trust required
+• Cross-implementation compatible
+
+Cons:
+• No price discovery mechanism
+• Must evaluate sellers yourself
+• Adoption still growing`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">尋找流動性賣家</h2>

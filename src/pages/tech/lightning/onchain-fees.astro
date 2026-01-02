@@ -1,0 +1,154 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Onchain Fees 鏈上費用"
+  description="了解閃電網路中涉及的鏈上交易費用，包括開關通道和強制關閉的費用管理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Onchain Fees' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Fees', href: '/tech/lightning/fees' }}
+  nextPage={{ title: 'Anchor Outputs', href: '/tech/lightning/anchor-outputs' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">鏈上操作類型</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路最小化鏈上交易，但某些操作仍需要與比特幣主鏈互動。
+    理解費用結構對於成本控制至關重要。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>費用波動：</strong>
+      比特幣網路費用變化很大，選擇適當時機進行鏈上操作可以節省大量費用。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">各類交易費用</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道開設費用：
+
+Funding 交易：
+大小：約 150-250 vbytes
+• 1-2 個輸入（取決於 UTXO）
+• 1 個 funding 輸出（P2WSH/P2TR）
+• 0-1 個找零輸出
+
+費用估算（10 sat/vB）：
+• 單輸入無找零：~1,500 sats
+• 雙輸入有找零：~2,500 sats
+
+誰付費：通道發起者
+Dual-Funded：雙方按比例分擔
+
+協商關閉費用：
+大小：約 170 vbytes
+• 1 個 funding 輸入（2-of-2 multisig）
+• 2 個 P2WPKH 輸出
+
+費用估算（10 sat/vB）：~1,700 sats
+誰付費：從通道餘額扣除，雙方協商分配
+
+強制關閉費用：
+承諾交易大小：~300-1000+ vbytes
+• 取決於進行中的 HTLC 數量
+• 每個 HTLC 輸出約 +43 vbytes
+
+第二階段交易：
+• HTLC-Success/Timeout：~170 vbytes 每個
+• to_local 掃描：~110 vbytes
+
+總費用可能高達數萬 sats！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用管理策略</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Anchor Outputs 動態費用：
+
+傳統問題：
+• 承諾交易在創建時就固定了費率
+• 如果費率過低 → 交易無法確認
+• 如果費率過高 → 浪費資金
+
+Anchor 解決方案：
+• 承諾交易使用低費率
+• 添加 330 sat 的 anchor 輸出
+• 廣播時用 CPFP 加速
+
+優點：
+• 費率可以動態調整
+• 不會因費率估計錯誤而卡住
+
+缺點：
+• 需要保留額外 UTXO 用於 CPFP
+• anchor 輸出增加交易大小
+
+LND 錢包預留：
+--maxbtcfees=0.5        # 最大 BTC 交易費占比
+--sweeper.maxfeerate=1000  # 最大費率（sat/vB）
+
+預留 UTXO 用於 anchor CPFP`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用優化技巧</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">批量開通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用一筆交易開多個通道，分攤費用。LND 支援 batchopenchannel。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">低費率時段</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        週末和夜間通常費率較低，適合進行非緊急操作。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">UTXO 管理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        合併小額 UTXO 在低費率時，減少未來交易大小。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Splicing</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 Splicing 調整通道大小，避免開關通道的雙重費用。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>費用預算：</strong>
+      運營閃電節點時，應該為鏈上費用預留足夠的預算，尤其是在高費率環境中。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/anchor-outputs" class="text-yellow-600 dark:text-yellow-400 hover:underline">Anchor Outputs</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/force-close" class="text-yellow-600 dark:text-yellow-400 hover:underline">強制關閉</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/splicing" class="text-yellow-600 dark:text-yellow-400 hover:underline">Splicing</a>
+    </li>
+  </ul>
+</ArticleLayout>

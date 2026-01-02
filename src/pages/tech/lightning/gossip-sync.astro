@@ -1,0 +1,150 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Gossip Sync Gossip 同步"
+  description="了解閃電網路的 Gossip 同步機制，節點如何獲取和更新網路拓撲資訊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Gossip Sync' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Gossip Protocol', href: '/tech/lightning/gossip' }}
+  nextPage={{ title: 'Network Topology', href: '/tech/lightning/network-topology' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">同步挑戰</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    新節點加入網路時需要獲取完整的網路拓撲。隨著網路增長，完整同步變得越來越昂貴。
+    各種優化技術被開發出來解決這個問題。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>數據量：</strong>
+      完整的閃電網路圖可能超過 100MB，包含數萬個通道。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">同步方法</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`1. 完整同步（Full Sync）：
+
+init 訊息協商：
+A → B: init { features, networks }
+B → A: init { features, networks }
+
+如果需要完整圖：
+A → B: query_channel_range {
+  chain_hash,
+  first_blocknum: 0,
+  number_of_blocks: 0xFFFFFFFF
+}
+
+B → A: reply_channel_range {
+  complete: true/false,
+  encoded_short_ids: [scid1, scid2, ...]
+}
+
+2. 時間戳過濾同步：
+A → B: gossip_timestamp_filter {
+  chain_hash,
+  first_timestamp: <last_sync_time>,
+  timestamp_range: 0xFFFFFFFF
+}
+
+B 只發送 timestamp > first_timestamp 的更新
+大大減少同步數據量`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Rapid Gossip Sync</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`RGS（Rapid Gossip Sync）：
+
+原理：
+• 中心化服務器預處理 gossip 數據
+• 客戶端下載壓縮的快照
+• 大幅減少同步時間和帶寬
+
+LDK 實現：
+1. 服務器維護網路圖快照
+2. 定期生成差異更新
+3. 客戶端請求：GET /snapshot/<timestamp>
+4. 返回二進制編碼的更新
+
+優點：
+• 同步時間從分鐘級降到秒級
+• 適合移動設備和輕客戶端
+
+缺點：
+• 依賴中心化服務
+• 需要信任服務提供者`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢協議</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`詳細資訊查詢：
+
+query_short_channel_ids：
+A → B: query_short_channel_ids {
+  chain_hash,
+  encoded_short_ids: [scid1, scid2, ...],
+  query_flags: WANT_ANNOUNCE | WANT_UPDATES_1 | WANT_UPDATES_2
+}
+
+B → A:
+• channel_announcement（如果請求）
+• channel_update（方向 1）
+• channel_update（方向 2）
+• reply_short_channel_ids_end
+
+壓縮編碼：
+• encoding_type = 0: 無壓縮
+• encoding_type = 1: zlib 壓縮
+
+大量 SCID 時使用壓縮可節省 50%+ 帶寬`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">同步策略</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        連接多個 peer 並行同步，選擇最新最完整的數據。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">驗證</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有 gossip 訊息都有簽名，可以獨立驗證真實性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/gossip" class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/channel-announcements" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道公告</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/neutrino" class="text-yellow-600 dark:text-yellow-400 hover:underline">Neutrino 輕客戶端</a>
+    </li>
+  </ul>
+</ArticleLayout>

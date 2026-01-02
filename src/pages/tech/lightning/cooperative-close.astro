@@ -36,24 +36,22 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`對比：
+      class="text-[var(--text-secondary)]">{`Comparison Table:
 
-┌─────────────────────────────────────────────────────────┐
-│ 特性              │ 協商關閉        │ 強制關閉        │
-├─────────────────────────────────────────────────────────┤
-│ 需要對方配合      │ 是              │ 否              │
-│ 交易大小          │ ~350 vB         │ ~700+ vB        │
-│ 費用              │ 低              │ 高              │
-│ 時間鎖            │ 無              │ 有（1天-2週）   │
-│ HTLC 處理         │ 鏈下結算        │ 需要鏈上交易    │
-│ 資金可用性        │ 立即            │ 延遲            │
-│ 二級交易          │ 無              │ 可能需要        │
-└─────────────────────────────────────────────────────────┘
+Feature                 Cooperative     Force Close
+-------------------------------------------------------
+Requires cooperation    Yes             No
+Transaction size        ~350 vB         ~700+ vB
+Fee                     Low             High
+Timelock                None            1 day - 2 weeks
+HTLC handling           Off-chain       On-chain TX
+Fund availability       Immediate       Delayed
+Secondary TX            None            May need
 
-示例費用對比（50 sat/vB）：
-├── 協商關閉：~17,500 sats
-├── 強制關閉（無 HTLC）：~45,000 sats
-└── 強制關閉（有 HTLC）：~80,000+ sats`}</pre>
+Fee Example (50 sat/vB):
+  - Cooperative close: ~17,500 sats
+  - Force close (no HTLC): ~45,000 sats
+  - Force close (with HTLC): ~80,000+ sats`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協商關閉流程</h2>
@@ -62,44 +60,44 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`協商關閉訊息流：
+      class="text-[var(--text-secondary)]">{`Message Flow:
 
 Alice                              Bob
-  │                                 │
-  │───── shutdown ─────────────────>│  Alice 發起關閉
-  │      (scriptpubkey_a)           │
-  │                                 │
-  │<──── shutdown ──────────────────│  Bob 同意關閉
-  │      (scriptpubkey_b)           │
-  │                                 │
-  │ (雙方停止接受新的 HTLC)         │
-  │ (等待現有 HTLC 結算)            │
-  │                                 │
-  │<──── closing_signed ────────────│  Bob 提議費用
-  │      (fee_satoshis, signature)  │
-  │                                 │
-  │───── closing_signed ───────────>│  Alice 接受或反提議
-  │      (fee_satoshis, signature)  │
-  │                                 │
-  │ (重複直到費用達成一致)          │
-  │                                 │
-  │ [廣播 closing transaction]      │
-  │                                 │
+  |                                 |
+  |───── shutdown ─────────────────>|  Alice initiates
+  |      (scriptpubkey_a)           |
+  |                                 |
+  |<──── shutdown ──────────────────|  Bob agrees
+  |      (scriptpubkey_b)           |
+  |                                 |
+  | (Both stop accepting new HTLCs) |
+  | (Wait for existing HTLCs)       |
+  |                                 |
+  |<──── closing_signed ────────────|  Bob proposes fee
+  |      (fee_satoshis, signature)  |
+  |                                 |
+  |───── closing_signed ───────────>|  Alice accepts/counters
+  |      (fee_satoshis, signature)  |
+  |                                 |
+  | (Repeat until fee agreed)       |
+  |                                 |
+  | [Broadcast closing transaction] |
+  |                                 |
 
-結算交易結構：
-┌─────────────────────────────────────────────────────────┐
-│ Closing Transaction                                     │
-├─────────────────────────────────────────────────────────┤
-│ Input:                                                  │
-│   └── Funding TX output (2-of-2 multisig)              │
-│       簽名：Alice + Bob                                 │
-├─────────────────────────────────────────────────────────┤
-│ Outputs:                                                │
-│   ├── Alice's output: scriptpubkey_a (無時間鎖)        │
-│   └── Bob's output: scriptpubkey_b (無時間鎖)          │
-└─────────────────────────────────────────────────────────┘
+Closing Transaction Structure:
++-------------------------------------------------------+
+| Closing Transaction                                   |
++-------------------------------------------------------+
+| Input:                                                |
+|   - Funding TX output (2-of-2 multisig)               |
+|   - Signatures: Alice + Bob                           |
++-------------------------------------------------------+
+| Outputs:                                              |
+|   - Alice's output: scriptpubkey_a (no timelock)      |
+|   - Bob's output: scriptpubkey_b (no timelock)        |
++-------------------------------------------------------+
 
-注意：沒有 to_local 的時間鎖限制！`}</pre>
+Note: No to_local timelock restriction!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用協商</h2>
@@ -108,37 +106,34 @@ Alice                              Bob
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`費用協商機制：
+      class="text-[var(--text-secondary)]">{`Fee Negotiation:
 
-規則：
-├── 費用由發起關閉方支付（從其餘額扣除）
-├── 雙方需要就費率達成一致
-└── 使用二分法收斂
+Rules:
+  - Fee paid by initiator (deducted from their balance)
+  - Both parties must agree on fee rate
+  - Uses binary search convergence
 
-協商示例：
+Example:
+  Bob proposes: fee = 10,000 sats
+  Alice counters: fee = 5,000 sats
+  Bob counters: fee = 7,500 sats
+  Alice accepts: fee = 7,500 sats
+  -> Agreement reached, broadcast TX
 
-Bob 提議：fee = 10,000 sats
-Alice 覺得太高，反提議：fee = 5,000 sats
-Bob 反提議：fee = 7,500 sats
-Alice 接受：fee = 7,500 sats
-→ 達成一致，廣播交易
+BOLT Recommendation:
+  If fee difference < 10% of counterparty's proposal,
+  the receiver should accept.
 
-BOLT 規範的建議：
-┌─────────────────────────────────────────────────────────┐
-│ 如果雙方的費用提議差異小於對方提議的 10%              │
-│ 接收方應該接受對方的提議                               │
-│                                                         │
-│ 示例：                                                  │
-│ Bob 提議：10,000 sats                                  │
-│ Alice 提議：9,500 sats                                 │
-│ 差異：5% < 10%                                         │
-│ → Alice 應該接受 Bob 的 10,000                         │
-└─────────────────────────────────────────────────────────┘
+  Example:
+    Bob proposes: 10,000 sats
+    Alice proposes: 9,500 sats
+    Difference: 5% < 10%
+    -> Alice should accept Bob's 10,000
 
-費用範圍限制：
-├── 最低費用：dust_limit（避免粉塵輸出）
-├── 最高費用：不能讓任一方餘額變成粉塵
-└── 必須在合理範圍內`}</pre>
+Fee Range Limits:
+  - Minimum: dust_limit (avoid dust outputs)
+  - Maximum: cannot make either balance dust
+  - Must be within reasonable range`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 處理</h2>
@@ -166,30 +161,29 @@ BOLT 規範的建議：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`shutdown 訊息中的 scriptpubkey：
+      class="text-[var(--text-secondary)]">{`Scriptpubkey in shutdown message:
 
-允許的腳本類型：
-├── P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
-├── P2SH: OP_HASH160 <20 bytes> OP_EQUAL
-├── P2WPKH: OP_0 <20 bytes>
-├── P2WSH: OP_0 <32 bytes>
-└── P2TR: OP_1 <32 bytes>（如果支持 option_shutdown_anysegwit）
+Allowed script types:
+  - P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
+  - P2SH: OP_HASH160 <20 bytes> OP_EQUAL
+  - P2WPKH: OP_0 <20 bytes>
+  - P2WSH: OP_0 <32 bytes>
+  - P2TR: OP_1 <32 bytes> (if option_shutdown_anysegwit)
 
-upfront_shutdown_script：
-┌─────────────────────────────────────────────────────────┐
-│ 開通道時可以預先設定關閉地址                            │
-│                                                         │
-│ open_channel/accept_channel 中：                        │
-│   upfront_shutdown_script: <預設地址>                   │
-│                                                         │
-│ 好處：                                                  │
-│ ├── 防止資金被發送到錯誤地址                           │
-│ ├── 即使節點被入侵也能保護資金                         │
-│ └── 強制資金只能發到預設地址                           │
-│                                                         │
-│ 如果設定了 upfront_shutdown_script：                    │
-│ shutdown 中的 scriptpubkey 必須匹配                     │
-└─────────────────────────────────────────────────────────┘`}</pre>
+upfront_shutdown_script:
+
+  Can pre-set close address when opening channel.
+
+  In open_channel/accept_channel:
+    upfront_shutdown_script: <preset_address>
+
+  Benefits:
+    - Prevents funds sent to wrong address
+    - Protects funds even if node compromised
+    - Forces funds to preset address only
+
+  If upfront_shutdown_script is set:
+    shutdown scriptpubkey must match`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>

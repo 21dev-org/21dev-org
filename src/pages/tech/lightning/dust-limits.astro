@@ -1,0 +1,145 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Dust Limits 粉塵限制"
+  description="了解閃電網路中的粉塵限制，為什麼小額 HTLC 無法上鏈結算。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Dust Limits' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Channel Reserve', href: '/tech/lightning/channel-reserve' }}
+  nextPage={{ title: 'HTLC Limits', href: '/tech/lightning/htlc-limits' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是粉塵限制？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    粉塵（Dust）指的是金額太小、不值得在區塊鏈上結算的輸出。
+    在閃電網路中，低於粉塵限制的 HTLC 不會出現在承諾交易中。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>經濟考量：</strong>
+      如果花費一個輸出的手續費超過輸出本身的價值，這個輸出就是「粉塵」。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">粉塵限制計算</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Bitcoin Dust Limits
+
+P2PKH Output:
+  • 輸出大小：34 bytes
+  • 花費輸入：148 bytes
+  • 總計：182 bytes
+  • 粉塵限制 = 182 x 3 x minRelayTxFee
+            = 546 satoshis（預設 1 sat/vB）
+
+P2WPKH Output:
+  • 輸出大小：31 bytes
+  • 花費輸入：67.75 vbytes
+  • 總計：98.75 vbytes
+  • 粉塵限制 = 294 satoshis
+
+P2TR Output:
+  • 粉塵限制 = 330 satoshis`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">閃電網路中的處理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Dust HTLC Handling
+
+Commitment Transaction Structure:
+  Input: funding_tx
+
+  Outputs:
+    to_local:  500,000 sats
+    to_remote: 400,000 sats
+    HTLC #1:    50,000 sats  (normal output)
+    HTLC #2:       200 sats  (dust - not in tx)
+    HTLC #3:       100 sats  (dust - not in tx)
+
+粉塵 HTLC 的處理：
+  • 金額加到承諾交易手續費中
+  • 如果 HTLC 成功：礦工獲得這筆費用
+  • 如果 HTLC 失敗：同樣歸礦工
+
+Risk Analysis:
+小額 HTLC 的風險：
+  • 發送者：可能損失粉塵金額
+  • 路由節點：轉發費用可能不值得風險
+  • 接收者：強制關閉時損失小額支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置選項</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Configuration:
+
+# 設定 HTLC 最小金額
+[Application Options]
+minchansize=100000        # 最小通道大小
+min-htlc-out=1000         # 最小 HTLC 輸出（毫聰）
+
+CLN Configuration:
+# lightningd 選項
+--min-capacity-sat=10000  # 最小通道容量
+
+Dynamic Dust Limits:
+粉塵限制隨費率變化：
+  • 低費率環境：較低的粉塵限制
+  • 高費率環境：較高的粉塵限制
+  • 節點可以協商 dust_limit_satoshis`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">最佳實踐</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        設定合理的最小 HTLC 限制，避免處理太多粉塵支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">用戶影響</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        微支付（如每秒付費串流）需要考慮粉塵限制。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>Trimmed HTLCs：</strong>
+      低於粉塵限制的 HTLC 稱為「trimmed HTLCs」，它們仍然存在於通道狀態中，但不會出現在鏈上交易中。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/htlc-limits" class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 限制</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/commitment-tx" class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/fees" class="text-yellow-600 dark:text-yellow-400 hover:underline">費用結構</a>
+    </li>
+  </ul>
+</ArticleLayout>

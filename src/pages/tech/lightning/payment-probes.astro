@@ -35,31 +35,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`探測工作流程：
+      class="text-[var(--text-secondary)]">{`Probe Workflow:
 
-基本原理：
-┌──────────────────────────────────────────────────────────────┐
-│ 正常支付：                                                   │
-│ payment_hash = SHA256(preimage)                              │
-│ 接收者知道 preimage，可以結算                                │
-│                                                              │
-│ 探測：                                                       │
-│ payment_hash = random_32_bytes()                             │
-│ 沒有人知道 preimage，無法結算                                │
-│ → 必定在最終節點失敗                                         │
-└──────────────────────────────────────────────────────────────┘
+Basic Principle:
 
-探測流程：
-┌──────────────────────────────────────────────────────────────┐
-│ 發送者           中繼1          中繼2          目標          │
-│    │               │              │              │           │
-│    │─── HTLC ─────>│─── HTLC ────>│─── HTLC ───>│           │
-│    │               │              │    [無法識別]│           │
-│    │<── FAIL ──────│<── FAIL ─────│<── FAIL ────│           │
-│    │                                                         │
-│    │ 錯誤：INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS              │
-│    │ 結論：路由可行！                                        │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+• Normal Payment:
+  payment_hash = SHA256(preimage)
+  Receiver knows preimage, can settle
+
+• Probe:
+  payment_hash = random_32_bytes()
+  No one knows preimage, cannot settle
+  -> Always fails at final node
+
+Probe Flow:
+
+  Sender          Relay1         Relay2         Target
+     |               |              |              |
+     |--- HTLC ----->|--- HTLC ---->|--- HTLC ---->|
+     |               |              |   [Unknown]  |
+     |<-- FAIL ------|<-- FAIL -----|<-- FAIL -----|
+     |                                             |
+     |  Error: INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS
+     |  Conclusion: Route is viable!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤解讀</h2>
@@ -68,22 +66,20 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`探測結果分析：
+      class="text-[var(--text-secondary)]">{`Probe Result Analysis:
 
-成功到達目標：
-┌──────────────────────────────────────────────────────────────┐
-│ INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS                         │
-│ ├── 到達目標，payment_hash 未知                              │
-│ └── 結論：路由完全可行                                       │
-└──────────────────────────────────────────────────────────────┘
+Successfully Reached Target:
 
-中途失敗：
-┌──────────────────────────────────────────────────────────────┐
-│ TEMPORARY_CHANNEL_FAILURE → 通道暫時不可用                   │
-│ UNKNOWN_NEXT_PEER → 下一跳未知                               │
-│ CHANNEL_DISABLED → 通道已禁用                                │
-│ FEE_INSUFFICIENT → 費用過時                                  │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+  INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS
+  • Reached target, payment_hash unknown
+  • Conclusion: Route is fully viable
+
+Failed Midway:
+
+  TEMPORARY_CHANNEL_FAILURE  -> Channel temporarily unavailable
+  UNKNOWN_NEXT_PEER          -> Next hop unknown
+  CHANNEL_DISABLED           -> Channel disabled
+  FEE_INSUFFICIENT           -> Fee outdated`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

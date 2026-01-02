@@ -35,40 +35,38 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC Intercept 流程：
+      class="text-[var(--text-secondary)]">{`HTLC Intercept Flow:
 
-正常 HTLC 轉發（無攔截）：
-┌──────────────────────────────────────────────────────────────┐
-│ Incoming HTLC                                                │
-│      │                                                       │
-│      ▼                                                       │
-│ ┌─────────────┐                                              │
-│ │   節點      │───────> Outgoing HTLC（自動轉發）            │
-│ └─────────────┘                                              │
-└──────────────────────────────────────────────────────────────┘
+Normal HTLC Forwarding (no intercept):
 
-使用 HTLC Intercept：
-┌──────────────────────────────────────────────────────────────┐
-│ Incoming HTLC                                                │
-│      │                                                       │
-│      ▼                                                       │
-│ ┌─────────────┐     ┌─────────────────────┐                  │
-│ │   節點      │────>│   Interceptor       │                  │
-│ └─────────────┘     │   (外部程式)         │                  │
-│      ▲              └─────────────────────┘                  │
-│      │                       │                               │
-│      │                       ▼                               │
-│      │              ┌─────────────────────┐                  │
-│      │              │   決策邏輯          │                  │
-│      │              │   - 轉發？          │                  │
-│      │              │   - 拒絕？          │                  │
-│      │              │   - 結算？          │                  │
-│      │              │   - 修改？          │                  │
-│      │              └─────────────────────┘                  │
-│      │                       │                               │
-│      └───────────────────────┘                               │
-│         InterceptResponse                                    │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+  Incoming HTLC
+       |
+       v
+  +----------+
+  |   Node   |-------> Outgoing HTLC (auto forward)
+  +----------+
+
+With HTLC Intercept:
+
+  Incoming HTLC
+       |
+       v
+  +----------+      +------------------+
+  |   Node   |----->|   Interceptor    |
+  +----------+      | (external app)   |
+       ^            +------------------+
+       |                    |
+       |                    v
+       |            +------------------+
+       |            | Decision Logic   |
+       |            |  - Forward?      |
+       |            |  - Reject?       |
+       |            |  - Settle?       |
+       |            |  - Modify?       |
+       |            +------------------+
+       |                    |
+       +--------------------+
+          InterceptResponse`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LND 實現</h2>
@@ -77,68 +75,48 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LND HTLC Interceptor API：
+      class="text-[var(--text-secondary)]">{`LND HTLC Interceptor API:
 
-啟用攔截：
-┌──────────────────────────────────────────────────────────────┐
-│ # gRPC 流式 API                                              │
-│ rpc HtlcInterceptor(stream ForwardHtlcInterceptResponse)     │
-│     returns (stream ForwardHtlcInterceptRequest);            │
-│                                                              │
-│ 當建立連接後，所有轉發 HTLC 都會被攔截                       │
-└──────────────────────────────────────────────────────────────┘
+Enabling Intercept:
 
-InterceptRequest 結構：
-┌──────────────────────────────────────────────────────────────┐
-│ message ForwardHtlcInterceptRequest {                        │
-│     // 唯一標識符                                            │
-│     bytes incoming_circuit_key = 1;                          │
-│                                                              │
-│     // 入站通道 ID                                           │
-│     uint64 incoming_chan_id = 2;                             │
-│                                                              │
-│     // HTLC ID                                               │
-│     uint64 incoming_htlc_id = 3;                             │
-│                                                              │
-│     // 出站通道（如果已知）                                  │
-│     uint64 outgoing_requested_chan_id = 4;                   │
-│                                                              │
-│     // 支付金額                                              │
-│     uint64 incoming_amount_msat = 5;                         │
-│     uint64 outgoing_amount_msat = 6;                         │
-│                                                              │
-│     // 時間鎖                                                │
-│     uint32 incoming_expiry = 7;                              │
-│     uint32 outgoing_expiry = 8;                              │
-│                                                              │
-│     // 支付哈希                                              │
-│     bytes payment_hash = 9;                                  │
-│                                                              │
-│     // 洋蔥數據（TLV 格式）                                  │
-│     bytes onion_blob = 10;                                   │
-│                                                              │
-│     // 自定義記錄                                            │
-│     map<uint64, bytes> custom_records = 11;                  │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘
+# gRPC streaming API
+rpc HtlcInterceptor(stream ForwardHtlcInterceptResponse)
+    returns (stream ForwardHtlcInterceptRequest);
 
-InterceptResponse 選項：
-┌──────────────────────────────────────────────────────────────┐
-│ message ForwardHtlcInterceptResponse {                       │
-│     bytes incoming_circuit_key = 1;                          │
-│                                                              │
-│     ResolveHoldForwardAction action = 2;                     │
-│     // RESUME: 繼續正常轉發                                  │
-│     // FAIL: 拒絕並返回錯誤                                  │
-│     // SETTLE: 直接結算（提供 preimage）                     │
-│                                                              │
-│     bytes preimage = 3;  // 用於 SETTLE                      │
-│                                                              │
-│     // 失敗原因                                              │
-│     FailureCode failure_code = 4;                            │
-│     bytes failure_message = 5;                               │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Once connected, all forwarding HTLCs will be intercepted
+
+InterceptRequest Structure:
+
+message ForwardHtlcInterceptRequest {
+    bytes incoming_circuit_key = 1;   // Unique identifier
+    uint64 incoming_chan_id = 2;      // Inbound channel ID
+    uint64 incoming_htlc_id = 3;      // HTLC ID
+    uint64 outgoing_requested_chan_id = 4;  // Outbound channel (if known)
+    uint64 incoming_amount_msat = 5;  // Payment amount
+    uint64 outgoing_amount_msat = 6;
+    uint32 incoming_expiry = 7;       // Timelock
+    uint32 outgoing_expiry = 8;
+    bytes payment_hash = 9;           // Payment hash
+    bytes onion_blob = 10;            // Onion data (TLV format)
+    map<uint64, bytes> custom_records = 11;  // Custom records
+}
+
+InterceptResponse Options:
+
+message ForwardHtlcInterceptResponse {
+    bytes incoming_circuit_key = 1;
+
+    ResolveHoldForwardAction action = 2;
+    // RESUME: Continue normal forwarding
+    // FAIL: Reject and return error
+    // SETTLE: Settle directly (provide preimage)
+
+    bytes preimage = 3;  // For SETTLE
+
+    // Failure reason
+    FailureCode failure_code = 4;
+    bytes failure_message = 5;
+}`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
@@ -147,62 +125,58 @@ InterceptResponse 選項：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC Intercept 應用場景：
+      class="text-[var(--text-secondary)]">{`HTLC Intercept Use Cases:
 
-1. JIT (Just-In-Time) 通道：
-┌──────────────────────────────────────────────────────────────┐
-│ 場景：用戶沒有足夠的入站容量接收支付                         │
-│                                                              │
-│ 流程：                                                       │
-│ 1. 付款人 → LSP（HTLC 被攔截）                               │
-│ 2. Interceptor 檢測：目標用戶沒有通道                        │
-│ 3. LSP 開設新通道給用戶（扣除費用）                          │
-│ 4. 通道確認後，RESUME 轉發 HTLC                              │
-│ 5. 用戶收到支付                                              │
-│                                                              │
-│ 結果：用戶獲得新通道 + 支付（無需預先開設通道）              │
-└──────────────────────────────────────────────────────────────┘
+1. JIT (Just-In-Time) Channels:
 
-2. 動態費率調整：
-┌──────────────────────────────────────────────────────────────┐
-│ 場景：根據當前網絡狀況動態調整路由費用                       │
-│                                                              │
-│ 實現：                                                       │
-│ incoming_fee = incoming_amount - outgoing_amount             │
-│                                                              │
-│ if network_congestion > threshold:                           │
-│     if incoming_fee < dynamic_fee:                           │
-│         FAIL(FEE_INSUFFICIENT)                               │
-│     else:                                                    │
-│         RESUME                                               │
-└──────────────────────────────────────────────────────────────┘
+Scenario: User lacks sufficient inbound capacity to receive payment
 
-3. 支付驗證/過濾：
-┌──────────────────────────────────────────────────────────────┐
-│ 場景：只接受符合特定條件的支付                               │
-│                                                              │
-│ 檢查項目：                                                   │
-│ ├── payment_hash 是否在白名單                                │
-│ ├── 金額是否在允許範圍                                       │
-│ ├── 來源通道是否可信                                         │
-│ └── custom_records 是否包含必要資訊                          │
-│                                                              │
-│ if not validate(htlc):                                       │
-│     FAIL(INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS)               │
-└──────────────────────────────────────────────────────────────┘
+Flow:
+  1. Payer -> LSP (HTLC intercepted)
+  2. Interceptor detects: Target user has no channel
+  3. LSP opens new channel to user (deducting fee)
+  4. After channel confirms, RESUME to forward HTLC
+  5. User receives payment
 
-4. 虛擬通道路由：
-┌──────────────────────────────────────────────────────────────┐
-│ 場景：路由到沒有直接通道的目標                               │
-│                                                              │
-│ 實現：                                                       │
-│ 1. 攔截 HTLC                                                 │
-│ 2. 識別真實目標（from custom_records）                       │
-│ 3. 通過其他路徑轉發                                          │
-│ 4. 收到 preimage 後 SETTLE                                   │
-│                                                              │
-│ 這實現了「虛擬 SCID」和靈活的路由策略                        │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Result: User gets new channel + payment (no pre-opened channel needed)
+
+2. Dynamic Fee Adjustment:
+
+Scenario: Dynamically adjust routing fees based on network conditions
+
+Implementation:
+  incoming_fee = incoming_amount - outgoing_amount
+
+  if network_congestion > threshold:
+      if incoming_fee < dynamic_fee:
+          FAIL(FEE_INSUFFICIENT)
+      else:
+          RESUME
+
+3. Payment Validation/Filtering:
+
+Scenario: Only accept payments meeting specific criteria
+
+Checks:
+  • payment_hash in whitelist?
+  • Amount within allowed range?
+  • Source channel trusted?
+  • custom_records contain required info?
+
+  if not validate(htlc):
+      FAIL(INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS)
+
+4. Virtual Channel Routing:
+
+Scenario: Route to target without direct channel
+
+Implementation:
+  1. Intercept HTLC
+  2. Identify real target (from custom_records)
+  3. Forward via other path
+  4. SETTLE after receiving preimage
+
+This enables "virtual SCID" and flexible routing strategies`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Core Lightning 實現</h2>
@@ -211,46 +185,44 @@ InterceptResponse 選項：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`CLN 的 HTLC Hook：
+      class="text-[var(--text-secondary)]">{`CLN HTLC Hook:
 
-htlc_accepted hook：
-┌──────────────────────────────────────────────────────────────┐
-│ {                                                            │
-│   "onion": {                                                 │
-│     "payload": "<hex>",                                      │
-│     "type": "tlv",                                           │
-│     "forward_amount": "1000msat",                            │
-│     "outgoing_cltv_value": 800100,                           │
-│     "next_channel": "123x456x0",                             │
-│     "custom_records": { ... }                                │
-│   },                                                         │
-│   "htlc": {                                                  │
-│     "amount": "1010msat",                                    │
-│     "cltv_expiry": 800140,                                   │
-│     "cltv_expiry_relative": 40,                              │
-│     "payment_hash": "<hex>"                                  │
-│   },                                                         │
-│   "forward_to": "<node_id>"                                  │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘
+htlc_accepted hook:
 
-Hook 回應選項：
-┌──────────────────────────────────────────────────────────────┐
-│ 繼續處理：                                                   │
-│ { "result": "continue" }                                     │
-│                                                              │
-│ 拒絕：                                                       │
-│ {                                                            │
-│   "result": "fail",                                          │
-│   "failure_message": "<onion_failure_message>"               │
-│ }                                                            │
-│                                                              │
-│ 結算：                                                       │
-│ {                                                            │
-│   "result": "resolve",                                       │
-│   "payment_key": "<preimage_hex>"                            │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+{
+  "onion": {
+    "payload": "<hex>",
+    "type": "tlv",
+    "forward_amount": "1000msat",
+    "outgoing_cltv_value": 800100,
+    "next_channel": "123x456x0",
+    "custom_records": { ... }
+  },
+  "htlc": {
+    "amount": "1010msat",
+    "cltv_expiry": 800140,
+    "cltv_expiry_relative": 40,
+    "payment_hash": "<hex>"
+  },
+  "forward_to": "<node_id>"
+}
+
+Hook Response Options:
+
+Continue processing:
+  { "result": "continue" }
+
+Reject:
+  {
+    "result": "fail",
+    "failure_message": "<onion_failure_message>"
+  }
+
+Settle:
+  {
+    "result": "resolve",
+    "payment_key": "<preimage_hex>"
+  }`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
@@ -259,51 +231,48 @@ Hook 回應選項：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC Intercept 安全要點：
+      class="text-[var(--text-secondary)]">{`HTLC Intercept Security Considerations:
 
-超時風險：
-┌──────────────────────────────────────────────────────────────┐
-│ ⚠ HTLC 有過期時間！                                          │
-│                                                              │
-│ 如果 Interceptor：                                           │
-│ ├── 處理太慢                                                 │
-│ ├── 掛掉沒有回應                                             │
-│ └── 決策時間過長                                             │
-│                                                              │
-│ 後果：                                                       │
-│ ├── HTLC 過期，上游節點強制關閉通道                          │
-│ ├── 資金可能損失                                             │
-│ └── 節點聲譽受損                                             │
-│                                                              │
-│ 對策：                                                       │
-│ ├── 設定 Interceptor 超時                                    │
-│ ├── 超時後自動 RESUME 或 FAIL                                │
-│ └── 監控 HTLC 剩餘時間                                       │
-└──────────────────────────────────────────────────────────────┘
+Timeout Risk:
 
-連接中斷處理：
-┌──────────────────────────────────────────────────────────────┐
-│ 如果 Interceptor 連接斷開：                                  │
-│                                                              │
-│ LND 行為（可配置）：                                         │
-│ ├── 自動 FAIL 所有待處理 HTLC                                │
-│ └── 或自動 RESUME 所有待處理 HTLC                            │
-│                                                              │
-│ 建議：                                                       │
-│ ├── 使用高可用架構                                           │
-│ ├── 快速重連機制                                             │
-│ └── 監控 Interceptor 健康狀態                                │
-└──────────────────────────────────────────────────────────────┘
+WARNING: HTLCs have expiration times!
 
-惡意 Interceptor 防護：
-┌──────────────────────────────────────────────────────────────┐
-│ Interceptor 有完整控制權，可能：                             │
-│ ├── 延遲支付（griefing）                                     │
-│ ├── 選擇性拒絕                                               │
-│ └── 分析支付模式（隱私風險）                                 │
-│                                                              │
-│ 只應運行自己信任的 Interceptor 程式                          │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+If Interceptor:
+  • Processes too slowly
+  • Crashes without responding
+  • Takes too long to decide
+
+Consequences:
+  • HTLC expires, upstream node force-closes channel
+  • Funds may be lost
+  • Node reputation damaged
+
+Countermeasures:
+  • Set Interceptor timeout
+  • Auto RESUME or FAIL on timeout
+  • Monitor HTLC remaining time
+
+Disconnection Handling:
+
+If Interceptor connection drops:
+
+LND behavior (configurable):
+  • Auto FAIL all pending HTLCs
+  • Or auto RESUME all pending HTLCs
+
+Recommendations:
+  • Use high-availability architecture
+  • Fast reconnection mechanism
+  • Monitor Interceptor health
+
+Malicious Interceptor Protection:
+
+Interceptor has full control, could:
+  • Delay payments (griefing)
+  • Selectively reject
+  • Analyze payment patterns (privacy risk)
+
+Only run Interceptor programs you trust`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

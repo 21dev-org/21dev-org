@@ -35,35 +35,32 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道容量結構：
+      class="text-[var(--text-secondary)]">{`Channel Capacity Structure:
 
-容量分配示例（1,000,000 sats 通道）：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │        本地餘額              │        遠端餘額           │ │
-│ │        600,000 sats          │        400,000 sats       │ │
-│ │        (出站容量)            │        (入站容量)         │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-│ 總容量：1,000,000 sats                                       │
-│                                                              │
-│ 你可以發送：最多 600,000 sats（減去儲備金和費用）            │
-│ 你可以接收：最多 400,000 sats（減去儲備金）                  │
-└──────────────────────────────────────────────────────────────┘
+Capacity Allocation Example (1,000,000 sats channel):
 
-容量是固定的，餘額是動態的：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│ 發送 200,000 sats 後：                                       │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │        本地餘額              │        遠端餘額           │ │
-│ │        400,000 sats          │        600,000 sats       │ │
-│ │        (出站容量減少)        │        (入站容量增加)     │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-│ 總容量仍然是 1,000,000 sats                                  │
-└──────────────────────────────────────────────────────────────┘`}</pre>
++----------------------------+----------------------------+
+|      Local Balance         |      Remote Balance        |
+|      600,000 sats          |      400,000 sats          |
+|      (Outbound capacity)   |      (Inbound capacity)    |
++----------------------------+----------------------------+
+
+Total capacity: 1,000,000 sats
+
+You can send: Up to 600,000 sats (minus reserve and fees)
+You can receive: Up to 400,000 sats (minus reserve)
+
+Capacity is Fixed, Balance is Dynamic:
+
+After sending 200,000 sats:
+
++----------------------------+----------------------------+
+|      Local Balance         |      Remote Balance        |
+|      400,000 sats          |      600,000 sats          |
+|   (Outbound decreased)     |   (Inbound increased)      |
++----------------------------+----------------------------+
+
+Total capacity still 1,000,000 sats`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量限制</h2>
@@ -72,37 +69,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道容量限制：
+      class="text-[var(--text-secondary)]">{`Channel Capacity Limits:
 
-默認限制：
-┌──────────────────────────────────────────────────────────────┐
-│ 最小容量：~20,000 sats                                       │
-│   原因：太小的通道不實用（費用可能超過容量）                 │
-│                                                              │
-│ 標準最大容量：16,777,215 sats (~0.168 BTC)                   │
-│   原因：原始協議限制（2^24 - 1 satoshis）                    │
-│                                                              │
-│ Wumbo 最大容量：~10 BTC（視實現而定）                        │
-│   需要：option_support_large_channel 功能位                  │
-└──────────────────────────────────────────────────────────────┘
+Default Limits:
 
-實際限制因素：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 可用資金                                                  │
-│    └── 你有多少 BTC 可以鎖定                                 │
-│                                                              │
-│ 2. 鏈上費用                                                  │
-│    └── 開設和關閉通道需要礦工費                              │
-│                                                              │
-│ 3. 儲備金要求                                                │
-│    └── 雙方必須保留最小餘額                                  │
-│                                                              │
-│ 4. 對手節點限制                                              │
-│    └── 對方可能設置不同的限制                                │
-│                                                              │
-│ 5. 風險考量                                                  │
-│    └── 大通道意味著更大的風險暴露                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Minimum capacity: ~20,000 sats
+  Reason: Too small channels are impractical (fees may exceed capacity)
+
+Standard maximum: 16,777,215 sats (~0.168 BTC)
+  Reason: Original protocol limit (2^24 - 1 satoshis)
+
+Wumbo maximum: ~10 BTC (implementation dependent)
+  Requires: option_support_large_channel feature bit
+
+Practical Limiting Factors:
+
+1. Available funds
+   How much BTC you can lock up
+
+2. On-chain fees
+   Opening and closing channels require miner fees
+
+3. Reserve requirements
+   Both parties must maintain minimum balance
+
+4. Peer node limits
+   Counterparty may have different limits set
+
+5. Risk considerations
+   Larger channels mean greater risk exposure`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量規劃</h2>
@@ -111,40 +106,38 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`選擇合適的通道容量：
+      class="text-[var(--text-secondary)]">{`Choosing Appropriate Channel Capacity:
 
-根據使用場景：
-┌──────────────────────────────────────────────────────────────┐
-│ 個人日常使用：                                               │
-│ ├── 建議容量：100,000 - 500,000 sats                         │
-│ ├── 通道數量：2-5 個                                         │
-│ └── 考量：覆蓋日常小額支付                                   │
-│                                                              │
-│ 小型商家：                                                   │
-│ ├── 建議容量：500,000 - 2,000,000 sats                       │
-│ ├── 通道數量：3-10 個                                        │
-│ └── 考量：足夠的入站容量接收支付                             │
-│                                                              │
-│ 路由節點：                                                   │
-│ ├── 建議容量：2,000,000 - 16,777,215 sats                    │
-│ ├── 通道數量：10-100+ 個                                     │
-│ └── 考量：大額路由、雙向流動性                               │
-│                                                              │
-│ 大型企業：                                                   │
-│ ├── 建議容量：使用 Wumbo 通道                                │
-│ ├── 考量：專業節點運營、多重備份                             │
-│ └── 需要：Wumbo 支援的對手方                                 │
-└──────────────────────────────────────────────────────────────┘
+By Use Case:
 
-容量效率考量：
-┌──────────────────────────────────────────────────────────────┐
-│ 鏈上成本比：                                                 │
-│                                                              │
-│ 開設 100,000 sats 通道，費用 2,000 sats = 2% 成本            │
-│ 開設 1,000,000 sats 通道，費用 2,000 sats = 0.2% 成本        │
-│                                                              │
-│ → 較大通道的費用效率更高                                     │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Personal daily use:
+  • Recommended capacity: 100,000 - 500,000 sats
+  • Number of channels: 2-5
+  • Consideration: Cover daily small payments
+
+Small merchant:
+  • Recommended capacity: 500,000 - 2,000,000 sats
+  • Number of channels: 3-10
+  • Consideration: Sufficient inbound capacity to receive payments
+
+Routing node:
+  • Recommended capacity: 2,000,000 - 16,777,215 sats
+  • Number of channels: 10-100+
+  • Consideration: Large routing, bidirectional liquidity
+
+Large enterprise:
+  • Recommended capacity: Use Wumbo channels
+  • Consideration: Professional node operation, multiple backups
+  • Requires: Wumbo-supporting counterparty
+
+Capacity Efficiency Considerations:
+
+On-chain cost ratio:
+
+Opening 100,000 sats channel, fee 2,000 sats = 2% cost
+Opening 1,000,000 sats channel, fee 2,000 sats = 0.2% cost
+
+-> Larger channels are more fee-efficient`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">有效容量</h2>
@@ -153,42 +146,39 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`影響有效容量的因素：
+      class="text-[var(--text-secondary)]">{`Factors Affecting Effective Capacity:
 
-通道儲備金：
-┌──────────────────────────────────────────────────────────────┐
-│ 每方必須保留的最小餘額（防止作弊激勵）                       │
-│                                                              │
-│ 計算：reserve = max(dust_limit, capacity * 1%)               │
-│                                                              │
-│ 例如：1,000,000 sats 通道                                    │
-│ ├── 儲備金：10,000 sats 每方                                 │
-│ └── 有效可用：980,000 sats                                   │
-└──────────────────────────────────────────────────────────────┘
+Channel Reserve:
 
-HTLC 相關限制：
-┌──────────────────────────────────────────────────────────────┐
-│ 同時進行的 HTLC：                                            │
-│ ├── 數量限制：通常 483 個                                    │
-│ └── 金額限制：通常是容量的 99%                               │
-│                                                              │
-│ 最小 HTLC 金額：                                             │
-│ └── 低於此值的支付無法發送                                   │
-│                                                              │
-│ 塵埃限制：                                                   │
-│ └── 低於此值的輸出不會創建                                   │
-└──────────────────────────────────────────────────────────────┘
+Minimum balance each party must maintain (prevents cheating incentive)
 
-承諾交易費用：
-┌──────────────────────────────────────────────────────────────┐
-│ Anchor Outputs 之前：                                        │
-│ ├── 費用從通道資金支付                                       │
-│ └── 減少有效容量                                             │
-│                                                              │
-│ Anchor Outputs 之後：                                        │
-│ ├── 費用可以 CPFP 補充                                       │
-│ └── 對有效容量影響更小                                       │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Calculation: reserve = max(dust_limit, capacity * 1%)
+
+Example: 1,000,000 sats channel
+  • Reserve: 10,000 sats per party
+  • Effective available: 980,000 sats
+
+HTLC-Related Limits:
+
+Concurrent HTLCs:
+  • Quantity limit: Usually 483
+  • Amount limit: Usually 99% of capacity
+
+Minimum HTLC amount:
+  Payments below this cannot be sent
+
+Dust limit:
+  Outputs below this won't be created
+
+Commitment Transaction Fees:
+
+Before Anchor Outputs:
+  • Fees paid from channel funds
+  • Reduces effective capacity
+
+After Anchor Outputs:
+  • Fees can be supplemented via CPFP
+  • Smaller impact on effective capacity`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">
@@ -214,31 +204,33 @@ HTLC 相關限制：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`查看通道容量命令：
+      class="text-[var(--text-secondary)]">{`Viewing Channel Capacity Commands:
 
-LND：
-# 列出所有通道及容量
+LND:
+
+# List all channels with capacity
 lncli listchannels
 
-# 查看特定通道
+# View specific channel
 lncli getchaninfo <channel_id>
 
-# 查看總容量
+# View total capacity
 lncli getinfo | jq '.num_active_channels, .num_peers'
 
-Core Lightning：
-# 列出通道
+Core Lightning:
+
+# List channels
 lightning-cli listpeerchannels
 
-# 查看資金狀況
+# View funds status
 lightning-cli listfunds
 
-輸出欄位：
-├── capacity：總容量
-├── local_balance：本地餘額（出站）
-├── remote_balance：遠端餘額（入站）
-├── commit_fee：承諾交易費用
-└── unsettled_balance：待結算 HTLC`}</pre>
+Output Fields:
+  • capacity: Total capacity
+  • local_balance: Local balance (outbound)
+  • remote_balance: Remote balance (inbound)
+  • commit_fee: Commitment transaction fee
+  • unsettled_balance: Pending HTLC balance`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

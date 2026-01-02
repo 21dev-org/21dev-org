@@ -1,0 +1,144 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Invoice Expiry 發票過期"
+  description="了解閃電網路發票的過期機制，為什麼發票會過期以及如何處理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Invoice Expiry' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Invoice Encoding', href: '/tech/lightning/invoice-encoding' }}
+  nextPage={{ title: 'Hold Invoices', href: '/tech/lightning/hold-invoices' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼發票會過期？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電發票包含過期時間，這是出於安全和實用性的考量。
+    過期機制防止了多種潛在問題。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>預設過期：</strong>
+      BOLT 11 發票的預設過期時間是 1 小時（3600 秒）。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過期的原因</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`為什麼需要過期機制：
+
+安全考量：
+
+1. 匯率波動
+   • 發票金額以 satoshis 計價
+   • 法幣等值會隨時間變化
+   • 長期有效的發票可能導致價格爭議
+
+2. Payment Hash 安全
+   • 接收者需要保存 preimage
+   • 長期存儲增加洩漏風險
+   • 過期後可以安全刪除 preimage
+
+3. 路由資訊時效性
+   • 發票可能包含 route hints
+   • 通道狀態隨時間變化
+   • 舊的路由提示可能不再有效
+
+實用性考量：
+• 商家庫存管理
+• 訂單超時自動取消
+• 減少系統資源占用
+• 改善用戶體驗（明確的支付窗口）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 11 過期欄位</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發票過期編碼：
+
+Tagged Field 'x'（expiry）：
+格式：x + 數據長度 + 秒數（big-endian）
+
+範例：
+• x = 3600        → 1 小時後過期
+• x = 86400       → 24 小時後過期
+• x = 604800      → 7 天後過期
+
+過期時間 = timestamp + expiry
+
+常見設定：
+• 即時支付（POS）：60-300 秒
+• 線上購物：3600 秒（1 小時）
+• 捐款/打賞：86400 秒（24 小時）
+• 訂閱預付：604800 秒（7 天）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">過期處理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發送者行為：
+支付前檢查：
+if (current_time > invoice.timestamp + invoice.expiry) {
+  return ERROR_INVOICE_EXPIRED;
+}
+
+錢包通常會：
+• 顯示剩餘時間倒計時
+• 過期前發出警告
+• 過期後拒絕支付
+
+接收者行為：
+收到過期發票的支付：
+• 技術上：接收者可以選擇接受或拒絕
+• 實踐中：大多數實現會拒絕
+• 返回錯誤：INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS
+
+最佳實踐：
+• 過期後刪除 preimage
+• 或標記發票為已過期`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">BOLT 12 改進</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Offers 支持動態生成發票，解決了靜態發票的過期問題。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">無過期發票</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以省略 expiry 欄位，但不建議 — 會帶來前述的安全風險。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/invoice-encoding" class="text-yellow-600 dark:text-yellow-400 hover:underline">發票編碼</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/bolt12-offers" class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/hold-invoices" class="text-yellow-600 dark:text-yellow-400 hover:underline">Hold Invoices</a>
+    </li>
+  </ul>
+</ArticleLayout>

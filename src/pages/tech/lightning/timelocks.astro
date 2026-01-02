@@ -35,37 +35,33 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`時間鎖類型比較：
+      class="text-[var(--text-secondary)]">{`Timelock Type Comparison
 
-┌─────────────────────────────────────────────────────────┐
-│ CLTV (OP_CHECKLOCKTIMEVERIFY)                          │
-├─────────────────────────────────────────────────────────┤
-│ 類型：絕對時間鎖                                        │
-│ 含義：在區塊 N 之前不能花費                             │
-│ 用途：HTLC 超時、支付路由                               │
-│                                                         │
-│ 示例：                                                   │
-│ ├── cltv_expiry = 700000                                │
-│ └── 在區塊高度 700000 之前，HTLC 不能超時               │
-│                                                         │
-│ 腳本：                                                   │
-│ <expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP                 │
-└─────────────────────────────────────────────────────────┘
+CLTV (OP_CHECKLOCKTIMEVERIFY)
+-----------------------------
+Type: Absolute timelock
+Meaning: Cannot spend before block N
+Usage: HTLC timeout, payment routing
 
-┌─────────────────────────────────────────────────────────┐
-│ CSV (OP_CHECKSEQUENCEVERIFY)                           │
-├─────────────────────────────────────────────────────────┤
-│ 類型：相對時間鎖                                        │
-│ 含義：在父交易確認後 N 個區塊才能花費                   │
-│ 用途：to_local 延遲、懲罰機制                           │
-│                                                         │
-│ 示例：                                                   │
-│ ├── to_self_delay = 144（約 1 天）                      │
-│ └── 關閉通道後，本地資金需等待 144 區塊                 │
-│                                                         │
-│ 腳本：                                                   │
-│ <delay> OP_CHECKSEQUENCEVERIFY OP_DROP                  │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Example:
+• cltv_expiry = 700000
+• HTLC cannot timeout before block height 700000
+
+Script:
+<expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP
+
+CSV (OP_CHECKSEQUENCEVERIFY)
+----------------------------
+Type: Relative timelock
+Meaning: Can only spend N blocks after parent tx confirms
+Usage: to_local delay, penalty mechanism
+
+Example:
+• to_self_delay = 144 (~1 day)
+• After channel close, local funds must wait 144 blocks
+
+Script:
+<delay> OP_CHECKSEQUENCEVERIFY OP_DROP`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 中的時間鎖</h2>
@@ -74,37 +70,33 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC 使用 CLTV 保護支付：
+      class="text-[var(--text-secondary)]">{`HTLC Uses CLTV to Protect Payments
 
-多跳支付的 CLTV 遞減：
+Multi-hop payment CLTV decrement:
 
-Alice ──(CLTV: 700100)──► Carol ──(CLTV: 700050)──► Bob
+Alice --(CLTV: 700100)--> Carol --(CLTV: 700050)--> Bob
 
-┌─────────────────────────────────────────────────────────┐
-│ Alice → Carol:                                          │
-│   cltv_expiry = 700100                                  │
-│   "如果 Carol 在區塊 700100 前不領取，Alice 可取回"     │
-│                                                         │
-│ Carol → Bob:                                            │
-│   cltv_expiry = 700050                                  │
-│   "如果 Bob 在區塊 700050 前不領取，Carol 可取回"       │
-│                                                         │
-│ 差值 = 50 區塊（cltv_expiry_delta）                     │
-│   └── Carol 有 50 區塊時間來處理                        │
-└─────────────────────────────────────────────────────────┘
+Alice -> Carol:
+  cltv_expiry = 700100
+  "If Carol doesn't claim before block 700100, Alice can reclaim"
 
-為什麼需要遞減？
-┌─────────────────────────────────────────────────────────┐
-│ 假設 Bob 在區塊 700049 揭露原像：                       │
-│                                                         │
-│ 1. Bob 領取 Carol 的 HTLC（在 700050 之前）✓           │
-│ 2. Carol 獲得原像                                       │
-│ 3. Carol 需要時間領取 Alice 的 HTLC                     │
-│ 4. Carol 有 50 區塊（700100 - 700050）的緩衝時間        │
-│                                                         │
-│ 如果沒有遞減：                                          │
-│ Carol 可能因區塊確認延遲而損失資金                      │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Carol -> Bob:
+  cltv_expiry = 700050
+  "If Bob doesn't claim before block 700050, Carol can reclaim"
+
+Difference = 50 blocks (cltv_expiry_delta)
+  Carol has 50 blocks to process
+
+Why Decrement is Needed:
+
+Assume Bob reveals preimage at block 700049:
+1. Bob claims Carol's HTLC (before 700050) [checkmark]
+2. Carol obtains preimage
+3. Carol needs time to claim Alice's HTLC
+4. Carol has 50 blocks (700100 - 700050) buffer time
+
+Without decrement:
+Carol might lose funds due to block confirmation delays`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道中的時間鎖</h2>
@@ -113,36 +105,32 @@ Alice ──(CLTV: 700100)──► Carol ──(CLTV: 700050)──► Bob
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`承諾交易中的 CSV 時間鎖：
+      class="text-[var(--text-secondary)]">{`CSV Timelocks in Commitment Transactions
 
-to_local 輸出（本地餘額）：
-┌─────────────────────────────────────────────────────────┐
-│ OP_IF                                                   │
-│     <revocation_pubkey>                                 │
-│ OP_ELSE                                                 │
-│     <to_self_delay>                                     │
-│     OP_CSV                                              │
-│     OP_DROP                                             │
-│     <local_delayed_pubkey>                              │
-│ OP_ENDIF                                                │
-│ OP_CHECKSIG                                             │
-│                                                         │
-│ 含義：                                                   │
-│ ├── 對方可以用 revocation_key 立即花費（如果我作弊）    │
-│ └── 我需要等待 to_self_delay 區塊後才能花費             │
-└─────────────────────────────────────────────────────────┘
+to_local Output (local balance):
+OP_IF
+    <revocation_pubkey>
+OP_ELSE
+    <to_self_delay>
+    OP_CSV
+    OP_DROP
+    <local_delayed_pubkey>
+OP_ENDIF
+OP_CHECKSIG
 
-to_self_delay 的作用：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 給對方時間檢測和懲罰作弊                             │
-│ 2. 防止發布舊承諾交易後快速轉移資金                     │
-│ 3. 瞭望塔有足夠時間響應                                 │
-│                                                         │
-│ 典型值：                                                 │
-│ ├── 144 區塊（~1 天）：平衡安全和便利                   │
-│ ├── 1008 區塊（~1 週）：高安全需求                      │
-│ └── 2016 區塊（~2 週）：最大延遲                        │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Meaning:
+• Counterparty can spend immediately with revocation_key (if I cheat)
+• I must wait to_self_delay blocks before spending
+
+to_self_delay Purpose:
+1. Gives counterparty time to detect and punish cheating
+2. Prevents quick fund transfer after publishing old commitment tx
+3. Watchtower has sufficient time to respond
+
+Typical values:
+• 144 blocks (~1 day): Balance of security and convenience
+• 1008 blocks (~1 week): High security needs
+• 2016 blocks (~2 weeks): Maximum delay`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">cltv_expiry_delta</h2>
@@ -151,42 +139,38 @@ to_self_delay 的作用：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`cltv_expiry_delta 參數：
+      class="text-[var(--text-secondary)]">{`cltv_expiry_delta Parameter
 
-定義：每一跳的 CLTV 遞減量
-來源：channel_update 訊息中公告
+Definition: CLTV decrement per hop
+Source: Announced in channel_update message
 
-影響因素：
-┌─────────────────────────────────────────────────────────┐
-│ 太小的 delta：                                          │
-│ ├── 路由費用可能較低（更有競爭力）                      │
-│ ├── 但可能沒有足夠時間響應                              │
-│ └── 風險：資金可能損失                                  │
-│                                                         │
-│ 太大的 delta：                                          │
-│ ├── 更安全，有充足時間響應                              │
-│ ├── 但支付需要更長的總超時時間                          │
-│ └── 發送者可能選擇其他路徑                              │
-└─────────────────────────────────────────────────────────┘
+Impact Factors:
 
-典型值：
-├── 40 區塊（~7 小時）：激進設置
-├── 80 區塊（~13 小時）：常見設置
-├── 144 區塊（~1 天）：保守設置
-└── 最小值：18 區塊（BOLT 規範建議）
+Too small delta:
+• Routing fees may be lower (more competitive)
+• But may not have enough time to respond
+• Risk: Funds may be lost
 
-總超時時間計算：
-┌─────────────────────────────────────────────────────────┐
-│ total_cltv = min_final_cltv_expiry                      │
-│            + Σ(每跳的 cltv_expiry_delta)                │
-│                                                         │
-│ 示例（3 跳支付）：                                      │
-│ ├── min_final_cltv_expiry: 18 區塊                      │
-│ ├── hop1 delta: 80 區塊                                 │
-│ ├── hop2 delta: 80 區塊                                 │
-│ ├── hop3 delta: 80 區塊                                 │
-│ └── 總超時：18 + 80 + 80 + 80 = 258 區塊（~43 小時）    │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Too large delta:
+• Safer, sufficient time to respond
+• But payment needs longer total timeout
+• Sender may choose other paths
+
+Typical values:
+• 40 blocks (~7 hours): Aggressive setting
+• 80 blocks (~13 hours): Common setting
+• 144 blocks (~1 day): Conservative setting
+• Minimum: 18 blocks (BOLT spec recommendation)
+
+Total Timeout Calculation:
+total_cltv = min_final_cltv_expiry + sum(each hop's cltv_expiry_delta)
+
+Example (3-hop payment):
+• min_final_cltv_expiry: 18 blocks
+• hop1 delta: 80 blocks
+• hop2 delta: 80 blocks
+• hop3 delta: 80 blocks
+• Total timeout: 18 + 80 + 80 + 80 = 258 blocks (~43 hours)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖攻擊與防護</h2>

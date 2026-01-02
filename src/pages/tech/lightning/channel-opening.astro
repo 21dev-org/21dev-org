@@ -34,33 +34,32 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統通道開設流程：
+      class="text-[var(--text-secondary)]">{`Traditional Channel Opening Flow:
 
-訊息交換：
-┌──────────────────────────────────────────────────────────────┐
-│ 發起者（Funder）              回應者（Fundee）               │
-│     │                              │                         │
-│     │──── open_channel ───────────>│                         │
-│     │     (提議通道參數)           │                         │
-│     │                              │                         │
-│     │<─── accept_channel ──────────│                         │
-│     │     (接受或修改參數)         │                         │
-│     │                              │                         │
-│     │──── funding_created ────────>│                         │
-│     │     (注資交易 + 簽名)        │                         │
-│     │                              │                         │
-│     │<─── funding_signed ──────────│                         │
-│     │     (對方簽名)               │                         │
-│     │                              │                         │
-│     │ [廣播注資交易]               │                         │
-│     │                              │                         │
-│     │ [等待確認...]                │                         │
-│     │                              │                         │
-│     │──── channel_ready ──────────>│                         │
-│     │<─── channel_ready ───────────│                         │
-│     │                              │                         │
-│     │     [通道可用]               │                         │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Message Exchange:
+
+  Funder                           Fundee
+    |                                |
+    |---- open_channel ------------->|
+    |     (propose channel params)   |
+    |                                |
+    |<--- accept_channel ------------|
+    |     (accept or modify params)  |
+    |                                |
+    |---- funding_created ---------->|
+    |     (funding tx + signature)   |
+    |                                |
+    |<--- funding_signed ------------|
+    |     (counterparty signature)   |
+    |                                |
+    | [Broadcast funding tx]         |
+    |                                |
+    | [Wait for confirmations...]    |
+    |                                |
+    |---- channel_ready ------------>|
+    |<--- channel_ready -------------|
+    |                                |
+    |     [Channel ready to use]     |`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">open_channel 訊息</h2>
@@ -72,48 +71,47 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       class="text-[var(--text-secondary)]">{`open_channel 欄位：
 
 必要欄位：
-┌──────────────────────────────────────────────────────────────┐
-│ chain_hash: 32 bytes                                         │
-│   區塊鏈識別（主網、測試網等）                               │
-│                                                              │
-│ temporary_channel_id: 32 bytes                               │
-│   臨時通道 ID（最終 ID 由注資交易決定）                      │
-│                                                              │
-│ funding_satoshis: 8 bytes                                    │
-│   通道總容量                                                 │
-│                                                              │
-│ push_msat: 8 bytes                                           │
-│   初始贈送給對方的金額                                       │
-│                                                              │
-│ dust_limit_satoshis: 8 bytes                                 │
-│   灰塵限制（低於此值不創建輸出）                             │
-│                                                              │
-│ max_htlc_value_in_flight_msat: 8 bytes                       │
-│   同時進行中 HTLC 的最大總值                                 │
-│                                                              │
-│ channel_reserve_satoshis: 8 bytes                            │
-│   對方必須保留的最小餘額                                     │
-│                                                              │
-│ htlc_minimum_msat: 8 bytes                                   │
-│   最小 HTLC 金額                                             │
-│                                                              │
-│ feerate_per_kw: 4 bytes                                      │
-│   承諾交易費率（satoshis per 1000 weight）                   │
-│                                                              │
-│ to_self_delay: 2 bytes                                       │
-│   對方的 CSV 延遲（區塊數）                                  │
-│                                                              │
-│ max_accepted_htlcs: 2 bytes                                  │
-│   最大同時 HTLC 數量                                         │
-└──────────────────────────────────────────────────────────────┘
+
+• chain_hash: 32 bytes
+  區塊鏈識別（主網、測試網等）
+
+• temporary_channel_id: 32 bytes
+  臨時通道 ID（最終 ID 由注資交易決定）
+
+• funding_satoshis: 8 bytes
+  通道總容量
+
+• push_msat: 8 bytes
+  初始贈送給對方的金額
+
+• dust_limit_satoshis: 8 bytes
+  灰塵限制（低於此值不創建輸出）
+
+• max_htlc_value_in_flight_msat: 8 bytes
+  同時進行中 HTLC 的最大總值
+
+• channel_reserve_satoshis: 8 bytes
+  對方必須保留的最小餘額
+
+• htlc_minimum_msat: 8 bytes
+  最小 HTLC 金額
+
+• feerate_per_kw: 4 bytes
+  承諾交易費率（satoshis per 1000 weight）
+
+• to_self_delay: 2 bytes
+  對方的 CSV 延遲（區塊數）
+
+• max_accepted_htlcs: 2 bytes
+  最大同時 HTLC 數量
 
 公鑰欄位（各 33 bytes）：
-├── funding_pubkey：注資輸出公鑰
-├── revocation_basepoint：撤銷基點
-├── payment_basepoint：支付基點
-├── delayed_payment_basepoint：延遲支付基點
-├── htlc_basepoint：HTLC 基點
-└── first_per_commitment_point：首個承諾點`}</pre>
+• funding_pubkey：注資輸出公鑰
+• revocation_basepoint：撤銷基點
+• payment_basepoint：支付基點
+• delayed_payment_basepoint：延遲支付基點
+• htlc_basepoint：HTLC 基點
+• first_per_commitment_point：首個承諾點`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">accept_channel 訊息</h2>
@@ -125,31 +123,28 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       class="text-[var(--text-secondary)]">{`accept_channel 回應：
 
 回應者提供自己的參數：
-┌──────────────────────────────────────────────────────────────┐
-│ temporary_channel_id：必須匹配                               │
-│ dust_limit_satoshis：回應者的灰塵限制                        │
-│ max_htlc_value_in_flight_msat：回應者的限制                  │
-│ channel_reserve_satoshis：發起者必須保留的餘額               │
-│ htlc_minimum_msat：回應者的最小 HTLC                         │
-│ minimum_depth：需要的確認數                                  │
-│ to_self_delay：發起者的 CSV 延遲                             │
-│ max_accepted_htlcs：回應者接受的最大 HTLC 數                 │
-│                                                              │
-│ 加上回應者的公鑰集合                                         │
-└──────────────────────────────────────────────────────────────┘
+
+• temporary_channel_id：必須匹配
+• dust_limit_satoshis：回應者的灰塵限制
+• max_htlc_value_in_flight_msat：回應者的限制
+• channel_reserve_satoshis：發起者必須保留的餘額
+• htlc_minimum_msat：回應者的最小 HTLC
+• minimum_depth：需要的確認數
+• to_self_delay：發起者的 CSV 延遲
+• max_accepted_htlcs：回應者接受的最大 HTLC 數
+• 加上回應者的公鑰集合
 
 參數協商：
-┌──────────────────────────────────────────────────────────────┐
-│ 某些參數可以不同（各方設定自己的限制）：                     │
-│ ├── dust_limit：各方可以不同                                 │
-│ ├── channel_reserve：各方可以不同                            │
-│ ├── to_self_delay：各方可以不同                              │
-│ └── htlc_minimum：各方可以不同                               │
-│                                                              │
-│ 某些參數必須由發起者決定：                                   │
-│ ├── funding_satoshis                                         │
-│ └── feerate_per_kw                                           │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+
+某些參數可以不同（各方設定自己的限制）：
+• dust_limit：各方可以不同
+• channel_reserve：各方可以不同
+• to_self_delay：各方可以不同
+• htlc_minimum：各方可以不同
+
+某些參數必須由發起者決定：
+• funding_satoshis
+• feerate_per_kw`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">注資交易創建</h2>
@@ -161,31 +156,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       class="text-[var(--text-secondary)]">{`funding_created 訊息：
 
 發起者構建注資交易：
-┌──────────────────────────────────────────────────────────────┐
-│ 注資交易結構：                                               │
-│                                                              │
-│ 輸入：                                                       │
-│ └── 發起者的 UTXO（足夠支付 funding + 費用）                 │
-│                                                              │
-│ 輸出：                                                       │
-│ ├── [0] 注資輸出（P2WSH 2-of-2 多簽）                        │
-│ │       金額 = funding_satoshis                              │
-│ └── [1] 找零輸出（可選）                                     │
-└──────────────────────────────────────────────────────────────┘
+
+注資交易結構：
+
+輸入：
+  發起者的 UTXO（足夠支付 funding + 費用）
+
+輸出：
+  [0] 注資輸出（P2WSH 2-of-2 多簽）
+      金額 = funding_satoshis
+  [1] 找零輸出（可選）
 
 funding_created 欄位：
-┌──────────────────────────────────────────────────────────────┐
-│ temporary_channel_id: 32 bytes                               │
-│                                                              │
-│ funding_txid: 32 bytes                                       │
-│   注資交易的 txid                                            │
-│                                                              │
-│ funding_output_index: 2 bytes                                │
-│   注資輸出的索引（通常是 0）                                 │
-│                                                              │
-│ signature: 64 bytes                                          │
-│   對回應者承諾交易的簽名                                     │
-└──────────────────────────────────────────────────────────────┘
+
+• temporary_channel_id: 32 bytes
+
+• funding_txid: 32 bytes
+  注資交易的 txid
+
+• funding_output_index: 2 bytes
+  注資輸出的索引（通常是 0）
+
+• signature: 64 bytes
+  對回應者承諾交易的簽名
 
 重要：發起者先簽名對方的承諾交易，再發送
 這確保對方可以在任何時候單方面關閉通道`}</pre>
@@ -200,38 +193,35 @@ funding_created 欄位：
       class="text-[var(--text-secondary)]">{`通道 ID 格式：
 
 臨時通道 ID：
-┌──────────────────────────────────────────────────────────────┐
-│ temporary_channel_id = random 32 bytes                       │
-│ 在 funding_signed 之前使用                                   │
-└──────────────────────────────────────────────────────────────┘
+
+temporary_channel_id = random 32 bytes
+在 funding_signed 之前使用
 
 正式通道 ID：
-┌──────────────────────────────────────────────────────────────┐
-│ channel_id = funding_txid XOR funding_output_index           │
-│                                                              │
-│ 計算方式：                                                   │
-│ 1. 取 funding_txid（32 bytes）                               │
-│ 2. 將 funding_output_index 放入最後 2 bytes                  │
-│ 3. XOR 運算                                                  │
-│                                                              │
-│ 範例：                                                       │
-│ txid: 0x1234...（32 bytes）                                  │
-│ index: 0（2 bytes）                                          │
-│ channel_id: txid XOR (0...0 || index)                        │
-└──────────────────────────────────────────────────────────────┘
+
+channel_id = funding_txid XOR funding_output_index
+
+計算方式：
+1. 取 funding_txid（32 bytes）
+2. 將 funding_output_index 放入最後 2 bytes
+3. XOR 運算
+
+範例：
+txid: 0x1234...（32 bytes）
+index: 0（2 bytes）
+channel_id: txid XOR (0...0 || index)
 
 短通道 ID（SCID）：
-┌──────────────────────────────────────────────────────────────┐
-│ 8 bytes 編碼：                                               │
-│ ├── block_height: 3 bytes                                    │
-│ ├── tx_index: 3 bytes                                        │
-│ └── output_index: 2 bytes                                    │
-│                                                              │
-│ 格式：block_height:tx_index:output_index                     │
-│ 範例：700000:1234:0                                          │
-│                                                              │
-│ 用於 gossip 和路由                                           │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+
+8 bytes 編碼：
+• block_height: 3 bytes
+• tx_index: 3 bytes
+• output_index: 2 bytes
+
+格式：block_height:tx_index:output_index
+範例：700000:1234:0
+
+用於 gossip 和路由`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">等待確認</h2>
@@ -243,28 +233,26 @@ funding_created 欄位：
       class="text-[var(--text-secondary)]">{`確認過程：
 
 funding_signed 後：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 發起者廣播注資交易                                        │
-│ 2. 雙方監控區塊鏈                                            │
-│ 3. 等待 minimum_depth 個確認                                 │
-│    （回應者在 accept_channel 中指定）                        │
-│ 4. 達到確認數後發送 channel_ready                            │
-└──────────────────────────────────────────────────────────────┘
+
+1. 發起者廣播注資交易
+2. 雙方監控區塊鏈
+3. 等待 minimum_depth 個確認
+   （回應者在 accept_channel 中指定）
+4. 達到確認數後發送 channel_ready
 
 channel_ready 訊息：
-┌──────────────────────────────────────────────────────────────┐
-│ channel_id: 32 bytes                                         │
-│   正式通道 ID（不再是臨時 ID）                               │
-│                                                              │
-│ second_per_commitment_point: 33 bytes                        │
-│   第二個承諾交易的 per_commitment_point                      │
-│   （第一個在 open/accept 中交換）                            │
-└──────────────────────────────────────────────────────────────┘
+
+• channel_id: 32 bytes
+  正式通道 ID（不再是臨時 ID）
+
+• second_per_commitment_point: 33 bytes
+  第二個承諾交易的 per_commitment_point
+  （第一個在 open/accept 中交換）
 
 雙方都發送 channel_ready 後：
-├── 通道正式可用
-├── 可以開始發送/接收支付
-└── 如果啟用，可以發送 channel_announcement`}</pre>
+• 通道正式可用
+• 可以開始發送/接收支付
+• 如果啟用，可以發送 channel_announcement`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤處理</h2>

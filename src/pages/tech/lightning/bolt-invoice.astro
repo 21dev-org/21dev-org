@@ -25,18 +25,18 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 11 發票範例：
+      class="text-[var(--text-secondary)]">{`BOLT 11 Invoice Example:
 
 lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl
 2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5
 tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n
 7erqz25le42c4u4ecky03ylcqca784w
 
-結構：
-lnbc    - 前綴（mainnet）
-1       - 金額（可選）
-p...    - 標籤化資料
-8rkx... - 簽名`}</pre>
+Structure:
+lnbc    - prefix (mainnet)
+1       - amount (optional)
+p...    - tagged data
+8rkx... - signature`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票結構</h2>
@@ -45,34 +45,31 @@ p...    - 標籤化資料
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 11 發票結構：
+      class="text-[var(--text-secondary)]">{`BOLT 11 Invoice Structure:
 
-┌──────────────────────────────────────────────┐
-│ 前綴 (prefix)                                │
-│   ln + 網路:                                 │
-│   lnbc  - 比特幣主網                         │
-│   lntb  - 測試網                             │
-│   lnbcrt - regtest                           │
-│   lnsb  - signet                             │
-├──────────────────────────────────────────────┤
-│ 金額 (可選)                                  │
-│   數字 + 乘數:                               │
-│   m = milli (0.001)                          │
-│   u = micro (0.000001)                       │
-│   n = nano (0.000000001)                     │
-│   p = pico (0.000000000001)                  │
-│                                              │
-│   例: 2500u = 2500 micro = 250000 sats       │
-├──────────────────────────────────────────────┤
-│ 時間戳 (timestamp)                           │
-│   發票創建時間 (UNIX 秒)                     │
-├──────────────────────────────────────────────┤
-│ 標籤化資料 (tagged fields)                   │
-│   各種支付資訊...                            │
-├──────────────────────────────────────────────┤
-│ 簽名 (signature)                             │
-│   接收方節點簽名                             │
-└──────────────────────────────────────────────┘`}</pre>
+Prefix:
+  ln + network:
+  • lnbc  - Bitcoin mainnet
+  • lntb  - testnet
+  • lnbcrt - regtest
+  • lnsb  - signet
+
+Amount (optional):
+  number + multiplier:
+  • m = milli (0.001)
+  • u = micro (0.000001)
+  • n = nano (0.000000001)
+  • p = pico (0.000000000001)
+  Example: 2500u = 2500 micro = 250000 sats
+
+Timestamp:
+  Invoice creation time (UNIX seconds)
+
+Tagged Fields:
+  Various payment info...
+
+Signature:
+  Receiver node signature`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">標籤化欄位</h2>
@@ -81,40 +78,40 @@ p...    - 標籤化資料
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`標籤化欄位格式：
+      class="text-[var(--text-secondary)]">{`Tagged Field Format:
 type (5 bits) + data_length (10 bits) + data
 
-常用標籤：
+Common Tags:
 
 p (1): payment_hash (52 chars, 256 bits)
-       SHA256 支付哈希，必須
+       SHA256 payment hash, required
 
 s (16): payment_secret (52 chars, 256 bits)
-        防止探測攻擊
+        prevents probing attacks
 
 d (13): description (variable)
-        UTF-8 描述文字
+        UTF-8 description text
 
 h (23): description_hash (52 chars)
-        長描述的哈希
+        hash of long description
 
 x (6): expiry (variable)
-       過期秒數，預設 3600 (1 小時)
+       expiry seconds, default 3600 (1 hour)
 
 c (24): min_final_cltv_expiry (variable)
-        最小 CLTV 差值，預設 18
+        minimum CLTV delta, default 18
 
 n (19): payee node_id (53 chars)
-        接收方公鑰（可從簽名恢復）
+        receiver pubkey (recoverable from sig)
 
 r (3): routing hint
-       私有通道路由資訊
+       private channel routing info
 
 f (9): fallback address
-       鏈上備用地址
+       on-chain fallback address
 
 9 (5): feature bits
-       支援的功能`}</pre>
+       supported features`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由提示</h2>
@@ -126,30 +123,30 @@ f (9): fallback address
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`路由提示結構 (r 標籤)：
+      class="text-[var(--text-secondary)]">{`Routing Hint Structure (r tag):
 
-每個提示包含一個通道：
-├── pubkey (33 bytes): 入口節點公鑰
+Each hint contains one channel:
+├── pubkey (33 bytes): entry node pubkey
 ├── short_channel_id (8 bytes)
 ├── fee_base_msat (4 bytes)
 ├── fee_proportional_millionths (4 bytes)
 └── cltv_expiry_delta (2 bytes)
 
-範例場景：
-Carol 只有私有通道連到 Bob
+Example scenario:
+Carol only has private channel to Bob
 
-發票包含提示：
+Invoice includes hint:
 r = [
   {
-    pubkey: Bob 的公鑰,
-    short_channel_id: Bob-Carol 通道,
+    pubkey: Bob's pubkey,
+    short_channel_id: Bob-Carol channel,
     fee: ...,
     cltv: ...
   }
 ]
 
-發送方路由：
-Alice → ... → Bob → Carol (私有通道)`}</pre>
+Sender routing:
+Alice -> ... -> Bob -> Carol (private channel)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解析發票</h2>
@@ -158,7 +155,7 @@ Alice → ... → Bob → Carol (私有通道)`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`解析範例（使用 lncli）：
+      class="text-[var(--text-secondary)]">{`Decode Example (using lncli):
 
 $ lncli decodepayreq lnbc...
 
@@ -213,26 +210,26 @@ $ lncli decodepayreq lnbc...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 12 核心概念：
+      class="text-[var(--text-secondary)]">{`BOLT 12 Core Concepts:
 
-Offer (要約)：
-- 可重複使用的支付請求模板
-- 類似「捐款連結」
-- 不包含 payment_hash（每次請求時生成）
+Offer:
+• Reusable payment request template
+• Like a "donation link"
+• No payment_hash (generated per request)
 
 lno1qcp4256ypq...
 
-流程：
-1. 商家發布 Offer
-2. 付款人發送 invoice_request（通過洋蔥訊息）
-3. 商家回應 invoice（帶 payment_hash）
-4. 付款人支付
+Flow:
+1. Merchant publishes Offer
+2. Payer sends invoice_request (via onion message)
+3. Merchant responds with invoice (with payment_hash)
+4. Payer pays
 
-優點：
-- 可重複使用（訂閱、捐款）
-- 支持退款（refund 訊息）
-- 增強隱私（接收方可用盲化路徑）
-- 無需中心化服務器`}</pre>
+Advantages:
+• Reusable (subscriptions, donations)
+• Supports refunds (refund message)
+• Enhanced privacy (receiver can use blinded paths)
+• No centralized server needed`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offer 結構</h2>
@@ -241,28 +238,28 @@ lno1qcp4256ypq...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Offer TLV 欄位：
+      class="text-[var(--text-secondary)]">{`Offer TLV Fields:
 
-offer_chains (2): 支援的區塊鏈
-offer_metadata (4): 商家自訂資料
-offer_currency (6): 貨幣代碼 (如 USD)
-offer_amount (8): 金額（如使用法幣計價）
-offer_description (10): 描述
-offer_features (12): 功能位
-offer_absolute_expiry (14): 絕對過期時間
-offer_paths (16): 盲化路徑
-offer_issuer (18): 發行者名稱
-offer_quantity_max (20): 最大數量
-offer_node_id (22): 節點 ID
+offer_chains (2): supported blockchains
+offer_metadata (4): merchant custom data
+offer_currency (6): currency code (e.g. USD)
+offer_amount (8): amount (for fiat pricing)
+offer_description (10): description
+offer_features (12): feature bits
+offer_absolute_expiry (14): absolute expiry time
+offer_paths (16): blinded paths
+offer_issuer (18): issuer name
+offer_quantity_max (20): max quantity
+offer_node_id (22): node ID
 
-invoice_request 額外欄位：
-invreq_metadata (0): 請求者資料
-invreq_chain (80): 選擇的鏈
-invreq_amount (82): 支付金額
-invreq_features (84): 功能
-invreq_quantity (86): 數量
-invreq_payer_id (88): 付款人臨時公鑰
-invreq_payer_note (89): 付款人備註`}</pre>
+invoice_request Additional Fields:
+invreq_metadata (0): requester data
+invreq_chain (80): selected chain
+invreq_amount (82): payment amount
+invreq_features (84): features
+invreq_quantity (86): quantity
+invreq_payer_id (88): payer ephemeral pubkey
+invreq_payer_note (89): payer note`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 退款</h2>
@@ -271,25 +268,25 @@ invreq_payer_note (89): 付款人備註`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`退款流程：
+      class="text-[var(--text-secondary)]">{`Refund Flow:
 
-1. 原始支付
-   付款人 → 商家 (支付 invoice)
+1. Original Payment
+   Payer -> Merchant (pay invoice)
 
-2. 退款請求
-   商家創建 refund（類似 offer 的反向）
-   發送給原付款人
+2. Refund Request
+   Merchant creates refund (like reverse offer)
+   Sends to original payer
 
-3. 退款 invoice
-   付款人發送 invoice_request
-   商家回應 invoice
+3. Refund Invoice
+   Payer sends invoice_request
+   Merchant responds with invoice
 
-4. 退款支付
-   商家支付 invoice
+4. Refund Payment
+   Merchant pays invoice
 
-退款 TLV：
-refund_for: 原始 payment_hash
-refund_amount: 退款金額`}</pre>
+Refund TLV:
+refund_for: original payment_hash
+refund_amount: refund amount`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私增強</h2>
@@ -298,24 +295,24 @@ refund_amount: 退款金額`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 12 隱私特性：
+      class="text-[var(--text-secondary)]">{`BOLT 12 Privacy Features:
 
-1. 盲化路徑
-   - Offer 可包含盲化路徑
-   - 付款人無法識別接收方真實節點
-   - 適合匿名捐款
+1. Blinded Paths
+   • Offer can include blinded paths
+   • Payer cannot identify receiver's real node
+   • Suitable for anonymous donations
 
-2. 洋蔥訊息
-   - invoice_request 通過洋蔥網路傳送
-   - 不需要直接連接接收方
+2. Onion Messages
+   • invoice_request sent via onion network
+   • No direct connection to receiver needed
 
-3. 付款人臨時身份
-   - 每次請求使用新的 payer_id
-   - 不洩露付款人真實節點 ID
+3. Payer Ephemeral Identity
+   • Each request uses new payer_id
+   • Does not reveal payer's real node ID
 
-4. 無 payment_hash 關聯
-   - 每次支付使用新的 hash
-   - 無法關聯同一 offer 的多次支付`}</pre>
+4. No payment_hash Correlation
+   • Each payment uses new hash
+   • Cannot correlate multiple payments to same offer`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">比較</h2>

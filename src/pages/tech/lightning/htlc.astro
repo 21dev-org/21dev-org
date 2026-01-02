@@ -84,40 +84,33 @@ OP_ENDIF
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`支付路徑：Alice ──→ Bob ──→ Carol
+      class="text-[var(--text-secondary)]">{`Payment Path: Alice --> Bob --> Carol
 
-步驟 1：Carol 生成秘密和哈希
-┌─────────────────────────────────────────┐
-│ Carol 生成：                            │
-│   preimage (R) = random 32 bytes        │
-│   hash (H) = SHA256(R)                  │
-│                                         │
-│ Carol 將 H 放入 invoice 給 Alice        │
-└─────────────────────────────────────────┘
+Step 1: Carol generates secret and hash
+  Carol generates:
+    preimage (R) = random 32 bytes
+    hash (H) = SHA256(R)
+  Carol puts H in invoice for Alice
 
-步驟 2：Alice 建立 HTLC 鏈
-┌─────────────────────────────────────────┐
-│ Alice → Bob: HTLC                       │
-│   金額: 1000 sats + 手續費              │
-│   條件: 提供 SHA256 原像 = H            │
-│   超時: 144 blocks                      │
-├─────────────────────────────────────────┤
-│ Bob → Carol: HTLC                       │
-│   金額: 1000 sats                       │
-│   條件: 提供 SHA256 原像 = H            │
-│   超時: 140 blocks (更短!)              │
-└─────────────────────────────────────────┘
+Step 2: Alice builds HTLC chain
+  Alice -> Bob: HTLC
+    Amount: 1000 sats + fees
+    Condition: provide SHA256 preimage = H
+    Timeout: 144 blocks
 
-步驟 3：原像傳回，解鎖資金
-┌─────────────────────────────────────────┐
-│ Carol 知道 R，向 Bob 揭示 R             │
-│   → Carol 獲得 1000 sats                │
-│                                         │
-│ Bob 現在知道 R，向 Alice 揭示 R         │
-│   → Bob 獲得 1000 sats + 手續費         │
-│                                         │
-│ 支付完成！                              │
-└─────────────────────────────────────────┘`}</pre>
+  Bob -> Carol: HTLC
+    Amount: 1000 sats
+    Condition: provide SHA256 preimage = H
+    Timeout: 140 blocks (shorter!)
+
+Step 3: Preimage propagates back, unlocking funds
+  Carol knows R, reveals R to Bob
+    -> Carol receives 1000 sats
+
+  Bob now knows R, reveals R to Alice
+    -> Bob receives 1000 sats + fees
+
+  Payment complete!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖遞減</h2>
@@ -228,19 +221,19 @@ HTLC 輸出腳本：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`隱私問題：
+      class="text-[var(--text-secondary)]">{`Privacy Issue:
 
-Alice → Bob → Carol → Dave
-  H1      H1     H1
+Alice -> Bob -> Carol -> Dave
+  H1      H1      H1
 
-所有節點看到相同的 H
-如果 Bob 和 Dave 是同一人或串謀
-他們可以推斷出支付路徑
+All nodes see the same H
+If Bob and Dave are same person or collude
+They can infer the payment path
 
-解決方案：Point Time-Locked Contracts (PTLCs)
-使用 Schnorr 簽名和適配器簽名
-每一跳使用不同的「點」
-無法關聯不同跳`}</pre>
+Solution: Point Time-Locked Contracts (PTLCs)
+• Use Schnorr signatures and adaptor signatures
+• Each hop uses different "point"
+• Cannot correlate different hops`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>

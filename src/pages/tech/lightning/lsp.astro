@@ -35,43 +35,39 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`新用戶的困境：
+      class="text-[var(--text-secondary)]">{`New User Dilemma:
 
-1. 入站容量問題
-   ┌─────────────────────────────────────────────────────┐
-   │ 新用戶開通道時：                                    │
-   │                                                     │
-   │ 用戶 ────[1 BTC]────> 對方                          │
-   │                                                     │
-   │ 結果：                                              │
-   │ - 可以發送 1 BTC                                    │
-   │ - 無法接收任何支付！                                │
-   │                                                     │
-   │ 問題：商家無法接收付款，用戶無法收款                │
-   └─────────────────────────────────────────────────────┘
+1. Inbound Capacity Problem
 
-2. 通道管理複雜
-   ├── 需要決定和誰開通道
-   ├── 需要監控通道健康度
-   ├── 需要處理強制關閉
-   └── 需要 24/7 在線（或使用 Watchtower）
+   When new user opens channel:
+     User ----[1 BTC]----> Counterparty
 
-3. 流動性成本
-   ├── 開通道需要鏈上交易費
-   ├── 需要鎖定資金
-   └── 再平衡需要額外費用
+   Result:
+     - Can send 1 BTC
+     - Cannot receive any payment!
 
-LSP 解決方案：
-┌─────────────────────────────────────────────────────────┐
-│ LSP 向用戶開通道                                        │
-│                                                         │
-│ LSP ────[1 BTC]────> 用戶                               │
-│                                                         │
-│ 結果：                                                  │
-│ - 用戶立即有 1 BTC 入站容量                             │
-│ - 用戶可以接收支付                                      │
-│ - LSP 提供專業通道管理                                  │
-└─────────────────────────────────────────────────────────┘`}</pre>
+   Problem: Merchants can't receive, users can't receive
+
+2. Complex Channel Management
+   - Need to decide who to open channels with
+   - Need to monitor channel health
+   - Need to handle force closes
+   - Need 24/7 online (or use Watchtower)
+
+3. Liquidity Cost
+   - Opening channels needs on-chain fee
+   - Need to lock funds
+   - Rebalancing needs extra fees
+
+LSP Solution:
+
+   LSP opens channel to user:
+     LSP ----[1 BTC]----> User
+
+   Result:
+     - User immediately has 1 BTC inbound capacity
+     - User can receive payments
+     - LSP provides professional channel management`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 服務類型</h2>
@@ -127,36 +123,36 @@ LSP 解決方案：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LSP 規範（LSPS）：
+      class="text-[var(--text-secondary)]">{`LSPS (LSP Specifications):
 
-LSPS 是標準化 LSP 服務的規範集：
+Standardized spec set for LSP services:
 
 LSPS0: Transport Layer
-├── 基於 BOLT 8 加密連接
-├── JSON-RPC 2.0 訊息格式
-└── 通過自定義訊息類型傳輸
+  - Based on BOLT 8 encrypted connection
+  - JSON-RPC 2.0 message format
+  - Transmitted via custom message types
 
 LSPS1: Channel Request
-├── 用戶請求 LSP 開通道
-├── 指定容量、費用偏好
-└── LSP 返回報價和接受
+  - User requests LSP to open channel
+  - Specify capacity, fee preferences
+  - LSP returns quote and acceptance
 
 LSPS2: JIT Channels
-├── 首次支付時開通道
-├── 從支付金額中扣除開通道費
-└── 無需預先鎖定資金
+  - Open channel on first payment
+  - Deduct channel open fee from payment
+  - No pre-locking funds required
 
 LSPS3: Channel Lease
-├── 租賃入站容量
-├── 指定租期和容量
-└── 租期結束後 LSP 可關閉
+  - Lease inbound capacity
+  - Specify lease period and capacity
+  - LSP can close after lease ends
 
 LSPS4: Continuous Fee Updates
-├── 動態調整通道費率
-├── 根據市場條件更新
-└── 自動化費用管理
+  - Dynamically adjust channel fees
+  - Update based on market conditions
+  - Automated fee management
 
-API 示例（LSPS1）：
+API Example (LSPS1):
 {
   "jsonrpc": "2.0",
   "method": "lsps1.create_order",
@@ -176,40 +172,39 @@ API 示例（LSPS1）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LSP 收入來源：
+      class="text-[var(--text-secondary)]">{`LSP Revenue Sources:
 
-1. 通道開設費
-   ├── 一次性費用
-   ├── 覆蓋鏈上交易成本
-   └── 例：0.1% 的通道容量
+1. Channel Opening Fee
+   - One-time fee
+   - Covers on-chain TX cost
+   - Example: 0.1% of channel capacity
 
-2. 流動性租賃費
-   ├── 按時間收費（如每月）
-   ├── 補償資金機會成本
-   └── 例：1% 年化
+2. Liquidity Lease Fee
+   - Time-based (e.g., monthly)
+   - Compensates capital opportunity cost
+   - Example: 1% annualized
 
-3. 路由費用
-   ├── 從經過的支付中收取
-   ├── 基礎費 + 比例費
-   └── 例：1 sat + 0.01%
+3. Routing Fees
+   - Collected from passing payments
+   - Base fee + proportional fee
+   - Example: 1 sat + 0.01%
 
-4. 服務訂閱
-   ├── 月費或年費
-   ├── 包含多種服務
-   └── 例：$5/月
+4. Service Subscription
+   - Monthly or annual fee
+   - Includes multiple services
+   - Example: $5/month
 
-成本結構：
-┌─────────────────────────────────────────────────────────┐
-│ 固定成本：                                              │
-│ ├── 節點運營（服務器、帶寬）                           │
-│ ├── 開發維護                                            │
-│ └── 客戶支持                                            │
-│                                                         │
-│ 變動成本：                                              │
-│ ├── 鏈上交易費（開/關通道）                            │
-│ ├── 資金成本（鎖定的 BTC）                             │
-│ └── 再平衡費用                                          │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Cost Structure:
+
+Fixed Costs:
+  - Node operations (server, bandwidth)
+  - Development and maintenance
+  - Customer support
+
+Variable Costs:
+  - On-chain TX fees (open/close channels)
+  - Capital cost (locked BTC)
+  - Rebalancing fees`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全與信任模型</h2>
@@ -293,37 +288,36 @@ API 示例（LSPS1）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`運行自己的 LSP：
+      class="text-[var(--text-secondary)]">{`Running Your Own LSP:
 
-需要的組件：
-1. 閃電節點（LND、CLN、Eclair）
-2. 足夠的流動性資金
-3. LSP 軟件/插件
-4. API 服務器
+Required Components:
+  1. Lightning node (LND, CLN, Eclair)
+  2. Sufficient liquidity capital
+  3. LSP software/plugins
+  4. API server
 
-開源 LSP 實現：
-├── Breez SDK - 完整的 LSP 解決方案
-├── lspd (LND) - Breez 的 LSP daemon
-├── cln-lsps (CLN) - LSPS 規範實現
-└── VLS (Validating Lightning Signer) - 安全簽名
+Open Source LSP Implementations:
+  - Breez SDK: Complete LSP solution
+  - lspd (LND): Breez's LSP daemon
+  - cln-lsps (CLN): LSPS spec implementation
+  - VLS (Validating Lightning Signer): Secure signing
 
-運營考量：
-┌─────────────────────────────────────────────────────────┐
-│ 流動性管理：                                            │
-│ ├── 監控各通道餘額                                      │
-│ ├── 自動再平衡                                          │
-│ └── 預測用戶需求                                        │
-│                                                         │
-│ 風險管理：                                              │
-│ ├── 設定每用戶上限                                      │
-│ ├── 監控可疑活動                                        │
-│ └── 準備應對通道攻擊                                    │
-│                                                         │
-│ 合規考量：                                              │
-│ ├── 可能需要 MSB 許可證                                 │
-│ ├── KYC/AML 要求                                        │
-│ └── 資金傳輸法規                                        │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Operational Considerations:
+
+Liquidity Management:
+  - Monitor channel balances
+  - Automatic rebalancing
+  - Predict user demand
+
+Risk Management:
+  - Set per-user limits
+  - Monitor suspicious activity
+  - Prepare for channel attacks
+
+Compliance Considerations:
+  - May need MSB license
+  - KYC/AML requirements
+  - Money transmission regulations`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來發展</h2>

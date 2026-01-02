@@ -35,40 +35,31 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`節點標識：
+      class="text-[var(--text-secondary)]">{`Node Identity:
 
-節點公鑰：
-┌──────────────────────────────────────────────────────────────┐
-│ 格式：secp256k1 壓縮公鑰（33 bytes）                         │
-│                                                              │
-│ 範例：                                                       │
-│ 02778f4a4a...（66 hex 字元）                                 │
-│                                                              │
-│ 用途：                                                       │
-│ ├── 唯一識別節點                                             │
-│ ├── 加密通訊（ECDH）                                         │
-│ ├── 簽署訊息                                                 │
-│ └── 驗證通道公告                                             │
-└──────────────────────────────────────────────────────────────┘
+節點公鑰 (Node Public Key)：
+• 格式：secp256k1 壓縮公鑰（33 bytes）
+• 範例：02778f4a4a...（66 hex 字元）
 
-節點地址：
-┌──────────────────────────────────────────────────────────────┐
-│ 連接字串格式：                                               │
-│ <node_pubkey>@<host>:<port>                                  │
-│                                                              │
-│ 範例：                                                       │
-│ 02778f4a4a...@192.168.1.100:9735                            │
-│ 02778f4a4a...@mynode.onion:9735                             │
-│                                                              │
-│ 預設端口：9735（主網）、19735（測試網）                      │
-└──────────────────────────────────────────────────────────────┘
+用途：
+• 唯一識別節點
+• 加密通訊（ECDH）
+• 簽署訊息
+• 驗證通道公告
 
-地址類型：
-├── IPv4：常規 IP 地址
-├── IPv6：IPv6 地址
-├── Torv3：Tor 洋蔥地址（隱私）
-├── DNS：域名解析
-└── WebSocket：瀏覽器連接（某些實現）`}</pre>
+節點地址 (Node Address)：
+• 連接字串格式：<node_pubkey>@<host>:<port>
+• 範例：
+  - 02778f4a4a...@192.168.1.100:9735
+  - 02778f4a4a...@mynode.onion:9735
+• 預設端口：9735（主網）、19735（測試網）
+
+地址類型 (Address Types)：
+• IPv4：常規 IP 地址
+• IPv6：IPv6 地址
+• Torv3：Tor 洋蔥地址（隱私）
+• DNS：域名解析
+• WebSocket：瀏覽器連接（某些實現）`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Noise Protocol 握手</h2>
@@ -77,65 +68,52 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 8 握手過程（Noise_XK）：
+      class="text-[var(--text-secondary)]">{`BOLT 8 Handshake (Noise_XK):
 
-握手訊息流：
-┌──────────────────────────────────────────────────────────────┐
-│ 發起者（I）                    回應者（R）                   │
-│     │                              │                         │
-│     │──── Act One ────────────────>│                         │
-│     │     (50 bytes)               │                         │
-│     │                              │                         │
-│     │<─── Act Two ─────────────────│                         │
-│     │     (50 bytes)               │                         │
-│     │                              │                         │
-│     │──── Act Three ──────────────>│                         │
-│     │     (66 bytes)               │                         │
-│     │                              │                         │
-│     │     [握手完成，加密通道建立] │                         │
-│     │<════ 加密訊息 ═════════════>│                          │
-└──────────────────────────────────────────────────────────────┘
+Message Flow:
 
-Act One（發起者 → 回應者）：
-┌──────────────────────────────────────────────────────────────┐
-│ 50 bytes：                                                   │
-│ ├── version: 1 byte（0x00）                                  │
-│ ├── ephemeral_key: 33 bytes（發起者臨時公鑰）                │
-│ └── tag: 16 bytes（ChaCha20-Poly1305 MAC）                   │
-│                                                              │
-│ 發起者：                                                     │
-│ 1. 生成臨時金鑰對 (e_i, E_i)                                 │
-│ 2. 計算 ECDH：es = E_i * rs（回應者靜態公鑰）                │
-│ 3. 衍生加密金鑰                                              │
-│ 4. 加密並發送                                                │
-└──────────────────────────────────────────────────────────────┘
+  Initiator (I)                     Responder (R)
+       |                                 |
+       |---- Act One (50 bytes) -------->|
+       |                                 |
+       |<--- Act Two (50 bytes) ---------|
+       |                                 |
+       |---- Act Three (66 bytes) ------>|
+       |                                 |
+       |     [Handshake complete]        |
+       |<==== Encrypted Messages =======>|
 
-Act Two（回應者 → 發起者）：
-┌──────────────────────────────────────────────────────────────┐
-│ 50 bytes：                                                   │
-│ ├── version: 1 byte（0x00）                                  │
-│ ├── ephemeral_key: 33 bytes（回應者臨時公鑰）                │
-│ └── tag: 16 bytes（ChaCha20-Poly1305 MAC）                   │
-│                                                              │
-│ 回應者：                                                     │
-│ 1. 解密 Act One，驗證                                        │
-│ 2. 生成臨時金鑰對 (e_r, E_r)                                 │
-│ 3. 計算 ECDH：ee = E_r * E_i                                 │
-│ 4. 加密並發送                                                │
-└──────────────────────────────────────────────────────────────┘
+Act One (Initiator -> Responder):
+• 50 bytes 結構：
+  - version: 1 byte（0x00）
+  - ephemeral_key: 33 bytes（發起者臨時公鑰）
+  - tag: 16 bytes（ChaCha20-Poly1305 MAC）
+• 發起者步驟：
+  1. 生成臨時金鑰對 (e_i, E_i)
+  2. 計算 ECDH：es = E_i * rs（回應者靜態公鑰）
+  3. 衍生加密金鑰
+  4. 加密並發送
 
-Act Three（發起者 → 回應者）：
-┌──────────────────────────────────────────────────────────────┐
-│ 66 bytes：                                                   │
-│ ├── version: 1 byte（0x00）                                  │
-│ ├── encrypted_pubkey: 49 bytes（發起者靜態公鑰，加密）       │
-│ └── tag: 16 bytes（ChaCha20-Poly1305 MAC）                   │
-│                                                              │
-│ 發起者：                                                     │
-│ 1. 計算 ECDH：se = s_i * E_r                                 │
-│ 2. 加密自己的靜態公鑰                                        │
-│ 3. 發送，握手完成                                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Act Two (Responder -> Initiator):
+• 50 bytes 結構：
+  - version: 1 byte（0x00）
+  - ephemeral_key: 33 bytes（回應者臨時公鑰）
+  - tag: 16 bytes（ChaCha20-Poly1305 MAC）
+• 回應者步驟：
+  1. 解密 Act One，驗證
+  2. 生成臨時金鑰對 (e_r, E_r)
+  3. 計算 ECDH：ee = E_r * E_i
+  4. 加密並發送
+
+Act Three (Initiator -> Responder):
+• 66 bytes 結構：
+  - version: 1 byte（0x00）
+  - encrypted_pubkey: 49 bytes（發起者靜態公鑰，加密）
+  - tag: 16 bytes（ChaCha20-Poly1305 MAC）
+• 發起者步驟：
+  1. 計算 ECDH：se = s_i * E_r
+  2. 加密自己的靜態公鑰
+  3. 發送，握手完成`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">金鑰衍生</h2>
@@ -144,41 +122,31 @@ Act Three（發起者 → 回應者）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HKDF 金鑰衍生：
+      class="text-[var(--text-secondary)]">{`HKDF Key Derivation:
 
-握手狀態：
-┌──────────────────────────────────────────────────────────────┐
-│ h: 握手哈希（持續更新）                                      │
-│ ck: 鏈接金鑰（用於 HKDF）                                    │
-│ k: 當前加密金鑰                                              │
-│ n: nonce（計數器）                                           │
-└──────────────────────────────────────────────────────────────┘
+握手狀態 (Handshake State)：
+• h: 握手哈希（持續更新）
+• ck: 鏈接金鑰（用於 HKDF）
+• k: 當前加密金鑰
+• n: nonce（計數器）
 
-初始化：
-┌──────────────────────────────────────────────────────────────┐
-│ 協議名稱：                                                   │
-│ "Noise_XK_secp256k1_ChaChaPoly_SHA256"                       │
-│                                                              │
-│ h = SHA256(protocol_name || prologue)                        │
-│ ck = h                                                       │
-│                                                              │
-│ prologue = "lightning"                                       │
-└──────────────────────────────────────────────────────────────┘
+初始化 (Initialization)：
+• 協議名稱："Noise_XK_secp256k1_ChaChaPoly_SHA256"
+• h = SHA256(protocol_name || prologue)
+• ck = h
+• prologue = "lightning"
 
 HKDF 擴展：
-┌──────────────────────────────────────────────────────────────┐
-│ (ck, k) = HKDF(ck, input_key_material)                       │
-│                                                              │
-│ 每次 ECDH 計算後：                                           │
-│ ├── 混入 ECDH 結果                                           │
-│ ├── 更新 ck 和 k                                             │
-│ └── 重置 nonce                                               │
-└──────────────────────────────────────────────────────────────┘
+• (ck, k) = HKDF(ck, input_key_material)
+• 每次 ECDH 計算後：
+  - 混入 ECDH 結果
+  - 更新 ck 和 k
+  - 重置 nonce
 
-最終金鑰：
-├── 發送金鑰：用於加密發送的訊息
-├── 接收金鑰：用於解密接收的訊息
-└── 兩個金鑰通過最終 HKDF 分割獲得`}</pre>
+最終金鑰 (Final Keys)：
+• 發送金鑰：用於加密發送的訊息
+• 接收金鑰：用於解密接收的訊息
+• 兩個金鑰通過最終 HKDF 分割獲得`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息加密</h2>
@@ -187,48 +155,37 @@ HKDF 擴展：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`握手後的訊息加密：
+      class="text-[var(--text-secondary)]">{`Message Encryption (Post-Handshake):
 
-加密訊息格式：
-┌──────────────────────────────────────────────────────────────┐
-│ ┌──────────────┬──────────────────────────┬────────────────┐ │
-│ │ 長度密文     │ 訊息密文                 │ MAC            │ │
-│ │ (18 bytes)   │ (variable)               │ (16 bytes)     │ │
-│ └──────────────┴──────────────────────────┴────────────────┘ │
-│                                                              │
-│ 長度密文：                                                   │
-│ ├── 原始長度：2 bytes（big-endian）                          │
-│ ├── 加密後：2 bytes                                          │
-│ └── MAC：16 bytes                                            │
-│                                                              │
-│ 訊息密文：                                                   │
-│ ├── 原始訊息：最大 65535 bytes                               │
-│ └── MAC：16 bytes                                            │
-└──────────────────────────────────────────────────────────────┘
+Encrypted Message Format:
++----------------+------------------+------------+
+| Length Cipher  | Message Cipher   | MAC        |
+| (18 bytes)     | (variable)       | (16 bytes) |
++----------------+------------------+------------+
 
-加密算法：
-┌──────────────────────────────────────────────────────────────┐
-│ ChaCha20-Poly1305 AEAD：                                     │
-│                                                              │
-│ 加密：                                                       │
-│ ciphertext = ChaCha20(key, nonce, plaintext)                 │
-│ tag = Poly1305(key, ciphertext)                              │
-│                                                              │
-│ nonce：64-bit 計數器，little-endian，前 4 bytes 為 0         │
-│ 每條訊息後 nonce++                                           │
-└──────────────────────────────────────────────────────────────┘
+長度密文 (Length Ciphertext)：
+• 原始長度：2 bytes（big-endian）
+• 加密後：2 bytes
+• MAC：16 bytes
 
-金鑰輪換：
-┌──────────────────────────────────────────────────────────────┐
-│ 每 1000 條訊息輪換金鑰：                                     │
-│                                                              │
-│ if (nonce >= 1000) {                                         │
-│   (ck, k) = HKDF(ck, k)                                      │
-│   nonce = 0                                                  │
-│ }                                                            │
-│                                                              │
-│ 前向安全：舊金鑰無法解密新訊息                               │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+訊息密文 (Message Ciphertext)：
+• 原始訊息：最大 65535 bytes
+• MAC：16 bytes
+
+加密算法 (ChaCha20-Poly1305 AEAD)：
+• 加密：
+  ciphertext = ChaCha20(key, nonce, plaintext)
+  tag = Poly1305(key, ciphertext)
+• nonce：64-bit 計數器，little-endian，前 4 bytes 為 0
+• 每條訊息後 nonce++
+
+金鑰輪換 (Key Rotation)：
+• 每 1000 條訊息輪換金鑰：
+  if (nonce >= 1000) {
+    (ck, k) = HKDF(ck, k)
+    nonce = 0
+  }
+• 前向安全：舊金鑰無法解密新訊息`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">連接管理</h2>
@@ -270,40 +227,40 @@ HKDF 擴展：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`節點連接操作：
+      class="text-[var(--text-secondary)]">{`Connection Commands:
 
-LND：
-# 連接節點
+LND:
+# Connect to node
 lncli connect <pubkey>@<host>:<port>
 
-# 列出已連接節點
+# List connected peers
 lncli listpeers
 
-# 斷開連接
+# Disconnect
 lncli disconnect <pubkey>
 
-# 查看節點資訊
+# Get node info
 lncli getnodeinfo <pubkey>
 
-Core Lightning：
-# 連接節點
+Core Lightning:
+# Connect to node
 lightning-cli connect <pubkey>@<host>:<port>
 
-# 列出節點
+# List peers
 lightning-cli listpeers
 
-# 斷開連接
+# Disconnect
 lightning-cli disconnect <pubkey>
 
-# 節點資訊
+# Node info
 lightning-cli listnodes <pubkey>
 
-連接狀態：
-├── Connecting：正在建立 TCP 連接
-├── Noise handshake：正在進行加密握手
-├── Init exchange：交換功能位
-├── Connected：完全連接
-└── Reconnecting：斷線重連中`}</pre>
+連接狀態 (Connection States)：
+• Connecting：正在建立 TCP 連接
+• Noise handshake：正在進行加密握手
+• Init exchange：交換功能位
+• Connected：完全連接
+• Reconnecting：斷線重連中`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

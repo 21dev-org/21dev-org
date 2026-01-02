@@ -35,32 +35,25 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錢包類型譜系：
+      class="text-[var(--text-secondary)]">{`Wallet Type Spectrum
 
-┌──────────────────────────────────────────────────────────────┐
-│ 託管程度：低 ◄─────────────────────────────────► 高          │
-│                                                              │
-│ ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
-│ │ 全節點  │  │ LSP     │  │ 半託管  │  │ 全託管  │          │
-│ │         │  │ 錢包    │  │         │  │         │          │
-│ └─────────┘  └─────────┘  └─────────┘  └─────────┘          │
-│                                                              │
-│ 自己運行節點  自己持有鍵   鍵分割/    服務商持有             │
-│ 完全控制     LSP 提供     共同託管   你的資金               │
-│              流動性                                          │
-└──────────────────────────────────────────────────────────────┘
+Custody Level:  Low <-------------------------> High
 
-安全性 vs 便利性：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│ 安全性高 ──────────────────────────────────────► 便利性高   │
-│                                                              │
-│ 全節點 > LSP 錢包 > 半託管 > 全託管                         │
-│                                                              │
-│ 便利性高 ──────────────────────────────────────► 安全性高   │
-│                                                              │
-│ 全託管 > 半託管 > LSP 錢包 > 全節點                         │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+│ Full     │  │ LSP      │  │ Semi-    │  │ Fully    │
+│ Node     │  │ Wallet   │  │ Custodial│  │ Custodial│
+└──────────┘  └──────────┘  └──────────┘  └──────────┘
+Run your own   Hold keys,   Key split/   Provider
+node, full     LSP provides co-custody   holds your
+control        liquidity                 funds
+
+Security vs Convenience:
+
+More Secure ────────────────────────────> More Convenient
+Full Node > LSP Wallet > Semi-Custodial > Fully Custodial
+
+More Convenient ────────────────────────> More Secure
+Fully Custodial > Semi-Custodial > LSP Wallet > Full Node`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">託管錢包</h2>
@@ -69,37 +62,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`託管錢包特性：
+      class="text-[var(--text-secondary)]">{`Custodial Wallet Characteristics
 
-運作方式：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│   用戶 ────────► 服務商節點 ────────► 閃電網路              │
-│          帳戶餘額      實際通道                              │
-│                                                              │
-│ 用戶只有帳戶，不持有私鑰                                     │
-│ 服務商運行節點，管理所有通道                                 │
-└──────────────────────────────────────────────────────────────┘
+How it works:
+  User ---------> Provider Node ---------> Lightning Network
+       (account      (actual
+        balance)      channels)
 
-優點：
-├── 即時可用，無需等待通道開設
-├── 無需理解技術細節
-├── 手續費通常較低（批量處理）
-├── 小額使用方便
-└── 支援社交功能
+• User only has account, no private keys
+• Provider runs node, manages all channels
 
-缺點：
-├── 需要信任服務商
-├── 服務商可以凍結資金
-├── 隱私較差（服務商知道所有交易）
-├── 服務商倒閉風險
-└── 可能有 KYC 要求
+Pros:
+• Instant availability, no channel setup wait
+• No technical knowledge required
+• Usually lower fees (batch processing)
+• Convenient for small amounts
+• Social features supported
 
-適合場景：
-├── 初學者入門
-├── 小額日常消費
-├── 社交支付
-└── 不想管理技術的用戶`}</pre>
+Cons:
+• Requires trusting provider
+• Provider can freeze funds
+• Poor privacy (provider sees all transactions)
+• Provider bankruptcy risk
+• May require KYC
+
+Best for:
+• Beginners getting started
+• Small daily spending
+• Social payments
+• Users who don't want technical management`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自託管 LSP 錢包</h2>
@@ -108,46 +99,42 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LSP（Lightning Service Provider）錢包：
+      class="text-[var(--text-secondary)]">{`LSP (Lightning Service Provider) Wallet
 
-運作方式：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│   用戶錢包 ◄──────通道──────► LSP ────► 閃電網路            │
-│   (持有私鑰)                                                 │
-│                                                              │
-│ 用戶持有私鑰，LSP 提供：                                     │
-│ ├── 入站流動性                                               │
-│ ├── 路由服務                                                 │
-│ ├── 通道管理                                                 │
-│ └── 備份服務                                                 │
-└──────────────────────────────────────────────────────────────┘
+How it works:
+  User Wallet <----channel----> LSP -----> Lightning Network
+  (holds keys)
 
-主要功能：
-┌──────────────────────────────────────────────────────────────┐
-│ 自動通道管理：                                               │
-│ ├── 自動開設通道                                             │
-│ ├── 自動增加入站容量                                         │
-│ └── 自動再平衡                                               │
-│                                                              │
-│ 簡化用戶體驗：                                               │
-│ ├── 接收首筆支付即可使用                                     │
-│ ├── 無需理解通道概念                                         │
-│ └── 類似鏈上錢包體驗                                         │
-└──────────────────────────────────────────────────────────────┘
+User holds private keys. LSP provides:
+• Inbound liquidity
+• Routing services
+• Channel management
+• Backup services
 
-優點：
-├── 自己持有私鑰
-├── 資金在自己控制下
-├── 更好的隱私
-├── 無需 KYC
-└── 用戶體驗良好
+Key Features:
 
-缺點：
-├── 依賴 LSP 可用性
-├── LSP 可能收取服務費
-├── 需要管理備份
-└── 首次接收可能需要鏈上交易`}</pre>
+Automatic Channel Management:
+• Auto channel opening
+• Auto inbound capacity increase
+• Auto rebalancing
+
+Simplified UX:
+• Ready to receive on first payment
+• No need to understand channel concepts
+• Similar to on-chain wallet experience
+
+Pros:
+• You hold private keys
+• Funds under your control
+• Better privacy
+• No KYC required
+• Good user experience
+
+Cons:
+• Depends on LSP availability
+• LSP may charge service fees
+• Need to manage backups
+• First receive may need on-chain tx`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">全節點錢包</h2>
@@ -156,55 +143,51 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`運行自己的閃電節點：
+      class="text-[var(--text-secondary)]">{`Running Your Own Lightning Node
 
-架構：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │                    用戶硬體                              │ │
-│ │  ┌──────────┐    ┌──────────┐    ┌──────────┐          │ │
-│ │  │ Bitcoin  │◄───│ Lightning│◄───│  錢包    │          │ │
-│ │  │ Core     │    │ 節點     │    │  介面    │          │ │
-│ │  └──────────┘    └──────────┘    └──────────┘          │ │
-│ └─────────────────────────────────────────────────────────┘ │
-│                         │                                    │
-│                         ▼                                    │
-│                    閃電網路                                  │
-└──────────────────────────────────────────────────────────────┘
+Architecture:
+┌─────────────────────────────────────────────────────────┐
+│                    User Hardware                        │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐          │
+│  │ Bitcoin  │<---│ Lightning│<---│  Wallet  │          │
+│  │ Core     │    │ Node     │    │  UI      │          │
+│  └──────────┘    └──────────┘    └──────────┘          │
+└─────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+                 Lightning Network
 
-節點軟體選擇：
-┌──────────────────────────────────────────────────────────────┐
-│ LND (Lightning Labs)：                                       │
-│ ├── Go 語言編寫                                              │
-│ ├── 最廣泛使用                                               │
-│ ├── 豐富的 API                                               │
-│ └── 活躍的開發社群                                           │
-│                                                              │
-│ Core Lightning (Blockstream)：                               │
-│ ├── C 語言編寫                                               │
-│ ├── 插件系統靈活                                             │
-│ ├── 原生支援 Liquidity Ads                                   │
-│ └── 輕量級                                                   │
-│                                                              │
-│ Eclair (ACINQ)：                                             │
-│ ├── Scala 語言編寫                                           │
-│ ├── 企業級穩定性                                             │
-│ ├── Phoenix 錢包後端                                         │
-│ └── 支援 Trampoline                                          │
-│                                                              │
-│ LDK (Spiral)：                                               │
-│ ├── Rust 語言庫                                              │
-│ ├── 嵌入式使用                                               │
-│ ├── 高度可定制                                               │
-│ └── 適合開發者整合                                           │
-└──────────────────────────────────────────────────────────────┘
+Node Software Options:
 
-硬體選項：
-├── 專用硬體：Umbrel, Start9, RaspiBlitz, myNode
-├── 雲端 VPS：需要可靠的網路和存儲
-├── 家用電腦：需要持續運行
-└── 企業伺服器：高可用性配置`}</pre>
+LND (Lightning Labs):
+• Written in Go
+• Most widely used
+• Rich API
+• Active dev community
+
+Core Lightning (Blockstream):
+• Written in C
+• Flexible plugin system
+• Native Liquidity Ads support
+• Lightweight
+
+Eclair (ACINQ):
+• Written in Scala
+• Enterprise-grade stability
+• Phoenix wallet backend
+• Trampoline support
+
+LDK (Spiral):
+• Rust library
+• Embedded use
+• Highly customizable
+• Good for developer integration
+
+Hardware Options:
+• Dedicated: Umbrel, Start9, RaspiBlitz, myNode
+• Cloud VPS: requires reliable network/storage
+• Home computer: requires continuous operation
+• Enterprise server: high availability setup`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">熱門錢包比較</h2>
@@ -260,49 +243,28 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`選擇錢包的決策樹：
+      class="text-[var(--text-secondary)]">{`Wallet Decision Tree
 
-使用金額：
-┌──────────────────────────────────────────────────────────────┐
-│ 小額（< $100）：                                             │
-│ └── 託管錢包足夠，方便快速                                   │
-│                                                              │
-│ 中等（$100 - $1000）：                                       │
-│ └── LSP 錢包較好，保持控制權                                 │
-│                                                              │
-│ 大額（> $1000）：                                            │
-│ └── 考慮運行自己的節點                                       │
-└──────────────────────────────────────────────────────────────┘
+By Amount:
+• Small (< $100): Custodial is fine, quick and easy
+• Medium ($100 - $1000): LSP wallet better, keep control
+• Large (> $1000): Consider running your own node
 
-使用頻率：
-┌──────────────────────────────────────────────────────────────┐
-│ 偶爾使用：                                                   │
-│ └── 託管或 LSP 錢包，低維護                                  │
-│                                                              │
-│ 日常使用：                                                   │
-│ └── LSP 錢包，平衡便利和控制                                 │
-│                                                              │
-│ 商業用途：                                                   │
-│ └── 自己的節點，完全控制                                     │
-└──────────────────────────────────────────────────────────────┘
+By Usage Frequency:
+• Occasional: Custodial or LSP wallet, low maintenance
+• Daily use: LSP wallet, balance convenience and control
+• Business use: Your own node, full control
 
-技術能力：
-┌──────────────────────────────────────────────────────────────┐
-│ 初學者：                                                     │
-│ └── 從託管開始，逐步學習                                     │
-│                                                              │
-│ 中級：                                                       │
-│ └── LSP 錢包，理解基本概念                                   │
-│                                                              │
-│ 進階：                                                       │
-│ └── 運行節點，完全控制                                       │
-└──────────────────────────────────────────────────────────────┘
+By Technical Skill:
+• Beginner: Start with custodial, learn gradually
+• Intermediate: LSP wallet, understand basic concepts
+• Advanced: Run a node, full control
 
-隱私需求：
-├── 低：託管可接受
-├── 中：LSP 錢包（LSP 仍可見交易）
-├── 高：自己的節點 + Tor
-└── 極高：自己的節點 + 私有通道`}</pre>
+By Privacy Needs:
+• Low: Custodial acceptable
+• Medium: LSP wallet (LSP still sees transactions)
+• High: Own node + Tor
+• Maximum: Own node + private channels`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">備份和恢復</h2>
@@ -311,47 +273,41 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`不同錢包的備份策略：
+      class="text-[var(--text-secondary)]">{`Backup Strategies by Wallet Type
 
-託管錢包：
-┌──────────────────────────────────────────────────────────────┐
-│ 通常只需記住帳號密碼                                         │
-│ 服務商負責所有備份                                           │
-│ 如果服務商消失，資金可能無法恢復                             │
-└──────────────────────────────────────────────────────────────┘
+Custodial Wallet:
+• Usually just remember account/password
+• Provider handles all backups
+• If provider disappears, funds may be unrecoverable
 
-LSP 錢包：
-┌──────────────────────────────────────────────────────────────┐
-│ 種子詞備份（12-24 詞）：                                     │
-│ ├── 恢復鏈上資金                                             │
-│ └── 可能需要 LSP 協助恢復通道                                │
-│                                                              │
-│ 靜態通道備份（SCB）：                                        │
-│ ├── 記錄通道對手資訊                                         │
-│ └── 強制關閉恢復資金                                         │
-│                                                              │
-│ 雲端備份：                                                   │
-│ └── 許多錢包自動備份到雲端                                   │
-└──────────────────────────────────────────────────────────────┘
+LSP Wallet:
+Seed phrase backup (12-24 words):
+  • Recovers on-chain funds
+  • May need LSP help to recover channels
 
-全節點：
-┌──────────────────────────────────────────────────────────────┐
-│ 必須備份：                                                   │
-│ ├── 種子詞 / HD 種子                                         │
-│ ├── channel.backup / SCB                                     │
-│ └── 錢包資料庫（可選但推薦）                                 │
-│                                                              │
-│ 自動備份策略：                                               │
-│ ├── 每次通道變更自動備份 SCB                                 │
-│ ├── 備份到多個位置                                           │
-│ └── 定期測試恢復流程                                         │
-└──────────────────────────────────────────────────────────────┘
+Static Channel Backup (SCB):
+  • Records channel peer info
+  • Force close to recover funds
 
-⚠️ 重要提醒：
-├── 種子詞只能恢復鏈上資金
-├── 通道資金需要 SCB 或完整備份
-├── 舊備份可能導致懲罰交易
-└── 永遠不要在線上儲存種子詞`}</pre>
+Cloud backup:
+  • Many wallets auto-backup to cloud
+
+Full Node:
+Must backup:
+  • Seed phrase / HD seed
+  • channel.backup / SCB
+  • Wallet database (optional but recommended)
+
+Auto-backup strategy:
+  • Auto-backup SCB on every channel change
+  • Backup to multiple locations
+  • Regularly test recovery process
+
+Important Reminders:
+• Seed phrase only recovers on-chain funds
+• Channel funds need SCB or full backup
+• Old backup may trigger penalty transaction
+• Never store seed phrase online`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
@@ -368,43 +324,37 @@ LSP 錢包：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錢包安全建議：
+      class="text-[var(--text-secondary)]">{`Wallet Security Best Practices
 
-基本安全：
-┌──────────────────────────────────────────────────────────────┐
-│ ✓ 使用官方來源下載錢包                                       │
-│ ✓ 驗證應用簽名/雜湊                                          │
-│ ✓ 啟用裝置加密                                               │
-│ ✓ 使用強密碼/PIN                                             │
-│ ✓ 啟用生物識別（如可用）                                     │
-│ ✓ 保持軟體更新                                               │
-└──────────────────────────────────────────────────────────────┘
+Basic Security:
+[x] Download wallet from official sources
+[x] Verify app signature/hash
+[x] Enable device encryption
+[x] Use strong password/PIN
+[x] Enable biometrics (if available)
+[x] Keep software updated
 
-種子詞保護：
-┌──────────────────────────────────────────────────────────────┐
-│ ✓ 離線記錄（紙或金屬）                                       │
-│ ✓ 多個安全位置存放                                           │
-│ ✗ 不要截圖                                                   │
-│ ✗ 不要存在雲端                                               │
-│ ✗ 不要用電子郵件發送                                         │
-│ ✗ 不要輸入到任何網站                                         │
-└──────────────────────────────────────────────────────────────┘
+Seed Phrase Protection:
+[x] Record offline (paper or metal)
+[x] Store in multiple secure locations
+[ ] Don't screenshot
+[ ] Don't store in cloud
+[ ] Don't send via email
+[ ] Don't enter on any website
 
-節點安全：
-┌──────────────────────────────────────────────────────────────┐
-│ ✓ 使用 Tor 隱藏 IP                                           │
-│ ✓ 定期更新軟體                                               │
-│ ✓ 監控通道活動                                               │
-│ ✓ 設置瞭望塔                                                 │
-│ ✓ 限制遠端存取                                               │
-│ ✓ 使用防火牆                                                 │
-└──────────────────────────────────────────────────────────────┘
+Node Security:
+[x] Use Tor to hide IP
+[x] Update software regularly
+[x] Monitor channel activity
+[x] Set up watchtower
+[x] Limit remote access
+[x] Use firewall
 
-資金分散：
-├── 不要把所有資金放在一個錢包
-├── 熱錢包只放日常使用金額
-├── 大額使用冷儲存 + 閃電通道組合
-└── 定期將閃電餘額轉回鏈上`}</pre>
+Fund Distribution:
+• Don't put all funds in one wallet
+• Hot wallet: only daily spending amount
+• Large amounts: cold storage + Lightning combo
+• Periodically move Lightning balance back on-chain`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>

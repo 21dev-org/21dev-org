@@ -25,33 +25,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道狀態概覽：
+      class="text-[var(--text-secondary)]">{`Channel State Overview:
 
-┌─────────────┐
-│   初始化    │
-└──────┬──────┘
-       │ open_channel / accept_channel
-       ▼
-┌─────────────┐
-│  資金交易   │
-│   待確認    │
-└──────┬──────┘
-       │ funding_locked (現在叫 channel_ready)
-       ▼
-┌─────────────┐
-│    正常     │ ←─── 支付、更新狀態
-│    運作     │
-└──────┬──────┘
-       │ shutdown / 單方關閉 / 懲罰
-       ▼
-┌─────────────┐
-│   關閉中    │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│   已關閉    │
-└─────────────┘`}</pre>
+  [Initializing]
+       |
+       | open_channel / accept_channel
+       v
+  [Funding Pending]
+       |
+       | funding_locked (now channel_ready)
+       v
+  [Normal Operation] <-- payments, state updates
+       |
+       | shutdown / unilateral close / penalty
+       v
+  [Closing]
+       |
+       v
+  [Closed]`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">階段一：通道建立</h2>
@@ -62,24 +53,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Alice (發起方)                    Bob (接受方)
-     │                                  │
-     │──── open_channel ───────────────→│
-     │     - chain_hash                 │
-     │     - funding_satoshis           │
-     │     - push_msat                  │
-     │     - channel_reserve            │
-     │     - htlc_minimum               │
-     │     - feerate_per_kw             │
-     │     - funding_pubkey             │
-     │     - ...各種 basepoints          │
-     │                                  │
-     │←─── accept_channel ─────────────│
-     │     - minimum_depth              │
-     │     - channel_reserve            │
-     │     - funding_pubkey             │
-     │     - ...各種 basepoints          │
-     │                                  │`}</pre>
+      class="text-[var(--text-secondary)]">{`Alice (initiator)                 Bob (acceptor)
+     |                                  |
+     |---- open_channel --------------->|
+     |     chain_hash                   |
+     |     funding_satoshis             |
+     |     push_msat                    |
+     |     channel_reserve              |
+     |     htlc_minimum                 |
+     |     feerate_per_kw               |
+     |     funding_pubkey               |
+     |     ...various basepoints        |
+     |                                  |
+     |<--- accept_channel --------------|
+     |     minimum_depth                |
+     |     channel_reserve              |
+     |     funding_pubkey               |
+     |     ...various basepoints        |
+     |                                  |`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">資金交易交換</h3>
@@ -89,21 +80,21 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   >
     <pre
       class="text-[var(--text-secondary)]">{`Alice                              Bob
-     │                                  │
-     │  (Alice 創建 funding tx)         │
-     │                                  │
-     │──── funding_created ────────────→│
-     │     - funding_txid               │
-     │     - funding_output_index       │
-     │     - signature (for Bob's       │
-     │       commitment tx)             │
-     │                                  │
-     │←─── funding_signed ──────────────│
-     │     - signature (for Alice's     │
-     │       commitment tx)             │
-     │                                  │
-     │  (Alice 廣播 funding tx)         │
-     │                                  │`}</pre>
+     |                                  |
+     |  (Alice creates funding tx)      |
+     |                                  |
+     |---- funding_created ------------>|
+     |     funding_txid                 |
+     |     funding_output_index         |
+     |     signature (for Bob's         |
+     |       commitment tx)             |
+     |                                  |
+     |<--- funding_signed --------------|
+     |     signature (for Alice's       |
+     |       commitment tx)             |
+     |                                  |
+     |  (Alice broadcasts funding tx)   |
+     |                                  |`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">等待確認</h3>
@@ -113,14 +104,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   >
     <pre
       class="text-[var(--text-secondary)]">{`Alice                              Bob
-     │                                  │
-     │  (等待 minimum_depth 確認)       │
-     │                                  │
-     │──── channel_ready ──────────────→│
-     │←─── channel_ready ───────────────│
-     │                                  │
-     │  ✓ 通道開啟！可以開始支付       │
-     │                                  │`}</pre>
+     |                                  |
+     |  (wait for minimum_depth conf)   |
+     |                                  |
+     |---- channel_ready -------------->|
+     |<--- channel_ready ---------------|
+     |                                  |
+     |  Channel open! Can start paying  |
+     |                                  |`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">階段二：正常運作</h2>
@@ -132,17 +123,17 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   >
     <pre
       class="text-[var(--text-secondary)]">{`Alice                              Bob
-     │                                  │
-     │──── update_add_htlc ────────────→│
-     │     - channel_id                 │
-     │     - id (htlc_id)               │
-     │     - amount_msat                │
-     │     - payment_hash               │
-     │     - cltv_expiry                │
-     │     - onion_routing_packet       │
-     │                                  │
+     |                                  |
+     |---- update_add_htlc ------------>|
+     |     channel_id                   |
+     |     id (htlc_id)                 |
+     |     amount_msat                  |
+     |     payment_hash                 |
+     |     cltv_expiry                  |
+     |     onion_routing_packet         |
+     |                                  |
 
-狀態：HTLC 已提議但未確認`}</pre>
+State: HTLC proposed but not confirmed`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">提交新狀態</h3>
@@ -152,21 +143,21 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   >
     <pre
       class="text-[var(--text-secondary)]">{`Alice                              Bob
-     │                                  │
-     │──── commitment_signed ──────────→│
-     │     - signature                  │
-     │     - htlc_signatures[]          │
-     │                                  │
-     │←─── revoke_and_ack ──────────────│
-     │     - per_commitment_secret      │
-     │     - next_per_commitment_point  │
-     │                                  │
-     │←─── commitment_signed ───────────│
-     │                                  │
-     │──── revoke_and_ack ─────────────→│
-     │                                  │
+     |                                  |
+     |---- commitment_signed ---------->|
+     |     signature                    |
+     |     htlc_signatures[]            |
+     |                                  |
+     |<--- revoke_and_ack --------------|
+     |     per_commitment_secret        |
+     |     next_per_commitment_point    |
+     |                                  |
+     |<--- commitment_signed -----------|
+     |                                  |
+     |---- revoke_and_ack ------------->|
+     |                                  |
 
-現在：雙方都有新的承諾交易，舊狀態已撤銷`}</pre>
+Now: both have new commitment tx, old state revoked`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解決 HTLC</h3>
@@ -175,21 +166,21 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`解決方式有三種：
+      class="text-[var(--text-secondary)]">{`Three resolution methods:
 
-1. 成功 (fulfill)
-   │←─── update_fulfill_htlc ───────────│
-   │     - payment_preimage             │
+1. Success (fulfill)
+   <- update_fulfill_htlc
+      payment_preimage
 
-2. 失敗 (fail)
-   │←─── update_fail_htlc ──────────────│
-   │     - reason                       │
+2. Failure (fail)
+   <- update_fail_htlc
+      reason
 
-3. 格式錯誤 (malformed)
-   │←─── update_fail_malformed_htlc ────│
-   │     - failure_code                 │
+3. Malformed
+   <- update_fail_malformed_htlc
+      failure_code
 
-解決後需要再次 commitment_signed / revoke_and_ack`}</pre>
+After resolution: need commitment_signed / revoke_and_ack again`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">階段三：通道關閉</h2>
@@ -201,27 +192,27 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   >
     <pre
       class="text-[var(--text-secondary)]">{`Alice                              Bob
-     │                                  │
-     │──── shutdown ───────────────────→│
-     │     - scriptpubkey (關閉地址)    │
-     │                                  │
-     │←─── shutdown ────────────────────│
-     │     - scriptpubkey               │
-     │                                  │
-     │  (不再接受新的 HTLC)             │
-     │  (等待所有 HTLC 解決)            │
-     │                                  │
-     │──── closing_signed ─────────────→│
-     │     - fee_satoshis               │
-     │     - signature                  │
-     │                                  │
-     │←─── closing_signed ──────────────│
-     │     - fee_satoshis (可能不同)    │
-     │     - signature                  │
-     │                                  │
-     │  (協商手續費直到達成一致)        │
-     │  (廣播 closing tx)               │
-     │                                  │`}</pre>
+     |                                  |
+     |---- shutdown ------------------->|
+     |     scriptpubkey (close address) |
+     |                                  |
+     |<--- shutdown --------------------|
+     |     scriptpubkey                 |
+     |                                  |
+     |  (no more new HTLCs accepted)    |
+     |  (wait for all HTLCs to resolve) |
+     |                                  |
+     |---- closing_signed ------------->|
+     |     fee_satoshis                 |
+     |     signature                    |
+     |                                  |
+     |<--- closing_signed --------------|
+     |     fee_satoshis (may differ)    |
+     |     signature                    |
+     |                                  |
+     |  (negotiate fee until agreed)    |
+     |  (broadcast closing tx)          |
+     |                                  |`}</pre>
   </div>
 
   <div class="grid md:grid-cols-3 gap-4 mb-8">
@@ -249,19 +240,19 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錯誤訊息：
+      class="text-[var(--text-secondary)]">{`Error Messages:
 
-│──── error ───────────────────────────→│
-│     - channel_id (或 0 表示全部)      │
-│     - data (人類可讀的錯誤訊息)       │
+|---- error --------------------------->|
+|     channel_id (or 0 for all)         |
+|     data (human-readable message)     |
 
-warning 訊息（BOLT 1.1+）：
-│──── warning ─────────────────────────→│
-│     - channel_id                      │
-│     - data                            │
+Warning message (BOLT 1.1+):
+|---- warning ------------------------->|
+|     channel_id                        |
+|     data                              |
 
-error 會導致通道關閉
-warning 只是警告，通道可繼續`}</pre>
+error causes channel close
+warning is just advisory, channel continues`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道狀態完整圖</h2>
@@ -319,21 +310,21 @@ warning 只是警告，通道可繼續`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`重新連接流程：
+      class="text-[var(--text-secondary)]">{`Reconnection Flow:
 
 Alice                              Bob
-     │                                  │
-     │←──→ channel_reestablish ────────→│
-     │     - next_commitment_number     │
-     │     - next_revocation_number     │
-     │     - your_last_per_commitment   │
-     │       _secret                    │
-     │                                  │
+     |                                  |
+     |<--> channel_reestablish -------->|
+     |     next_commitment_number       |
+     |     next_revocation_number       |
+     |     your_last_per_commitment     |
+     |       _secret                    |
+     |                                  |
 
-比較雙方狀態：
-- 如果同步 → 繼續正常運作
-- 如果不同步 → 重傳遺失的訊息
-- 如果無法恢復 → 強制關閉`}</pre>
+Compare states:
+• If synced -> continue normal operation
+• If out of sync -> retransmit missing messages
+• If cannot recover -> force close`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見狀態問題</h2>

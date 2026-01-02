@@ -34,36 +34,32 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Runes vs Macaroons：
+      class="text-[var(--text-secondary)]">{`Runes vs Macaroons
 
-概念類似：
-┌──────────────────────────────────────────────────────────────┐
-│ 兩者都是：                                                   │
-│ ├── 可委託的認證令牌                                         │
-│ ├── 支援添加限制（restrictions）                             │
-│ ├── 不能移除已有限制                                         │
-│ └── 密碼學驗證完整性                                         │
-│                                                              │
-│ Runes 特點：                                                 │
-│ ├── 專為 CLN 設計                                            │
-│ ├── 更簡潔的格式                                             │
-│ ├── 支援複雜的條件表達式                                     │
-│ └── 原生整合 Commando                                        │
-└──────────────────────────────────────────────────────────────┘
+Similarities:
+兩者都是：
+  • 可委託的認證令牌
+  • 支援添加限制（restrictions）
+  • 不能移除已有限制
+  • 密碼學驗證完整性
 
-Rune 結構：
-┌──────────────────────────────────────────────────────────────┐
-│ rune = base64(                                               │
-│   sha256(secret + restrictions) +                            │
-│   restrictions_string                                        │
-│ )                                                            │
-│                                                              │
-│ 限制範例：                                                   │
-│ method=listpeers       // 只允許 listpeers 命令              │
-│ method^list            // 允許所有 list* 命令                │
-│ time<1700000000        // 時間限制                           │
-│ rate=10                // 每分鐘最多 10 次                   │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Runes 特點：
+  • 專為 CLN 設計
+  • 更簡潔的格式
+  • 支援複雜的條件表達式
+  • 原生整合 Commando
+
+Rune Structure:
+rune = base64(
+  sha256(secret + restrictions) +
+  restrictions_string
+)
+
+Restriction Examples:
+  method=listpeers       // 只允許 listpeers 命令
+  method^list            // 允許所有 list* 命令
+  time<1700000000        // 時間限制
+  rate=10                // 每分鐘最多 10 次`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 Commando</h2>
@@ -72,33 +68,31 @@ Rune 結構：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Commando 操作：
+      class="text-[var(--text-secondary)]">{`Commando Operations
 
-創建 Rune：
-┌──────────────────────────────────────────────────────────────┐
-│ # 創建無限制的 rune（危險！）                                │
-│ lightning-cli commando-rune                                  │
-│                                                              │
-│ # 創建只讀 rune                                              │
-│ lightning-cli commando-rune restrictions='["method^list"]'   │
-│                                                              │
-│ # 創建有時間限制的 rune                                      │
-│ lightning-cli commando-rune restrictions='["time<1700000000"]'
-└──────────────────────────────────────────────────────────────┘
+Creating a Rune:
 
-遠程執行命令：
-┌──────────────────────────────────────────────────────────────┐
-│ # 從另一個節點執行命令                                       │
-│ lightning-cli commando \\                                     │
-│   peer_id=<target_node_id> \\                                 │
-│   rune=<rune_string> \\                                       │
-│   method=listpeers                                           │
-│                                                              │
-│ # 使用 lnmessage（Python 庫）                                │
-│ from lnmessage import LNMessage                              │
-│ ln = LNMessage(node_id, rune)                                │
-│ result = ln.call("listpeers")                                │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+# 創建無限制的 rune（危險！）
+lightning-cli commando-rune
+
+# 創建只讀 rune
+lightning-cli commando-rune restrictions='["method^list"]'
+
+# 創建有時間限制的 rune
+lightning-cli commando-rune restrictions='["time<1700000000"]'
+
+Remote Command Execution:
+
+# 從另一個節點執行命令
+lightning-cli commando \\
+  peer_id=<target_node_id> \\
+  rune=<rune_string> \\
+  method=listpeers
+
+# 使用 lnmessage（Python 庫）
+from lnmessage import LNMessage
+ln = LNMessage(node_id, rune)
+result = ln.call("listpeers")`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
@@ -107,25 +101,23 @@ Rune 結構：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Rune 安全最佳實踐：
+      class="text-[var(--text-secondary)]">{`Rune Security Best Practices
 
-最小權限：
-┌──────────────────────────────────────────────────────────────┐
-│ # 只允許特定命令                                             │
-│ restrictions='["method=getinfo|method=listfunds"]'           │
-│                                                              │
-│ # 限制參數                                                   │
-│ restrictions='["method=pay", "pmsatoshi<1000000"]'           │
-└──────────────────────────────────────────────────────────────┘
+Least Privilege:
 
-時間和速率限制：
-┌──────────────────────────────────────────────────────────────┐
-│ # 24 小時後過期                                              │
-│ restrictions='["time<'$(( $(date +%s) + 86400 ))'"]'         │
-│                                                              │
-│ # 限制調用頻率                                               │
-│ restrictions='["rate=10"]'  // 每分鐘 10 次                  │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+# 只允許特定命令
+restrictions='["method=getinfo|method=listfunds"]'
+
+# 限制參數
+restrictions='["method=pay", "pmsatoshi<1000000"]'
+
+Time and Rate Limits:
+
+# 24 小時後過期
+restrictions='["time<'$(( $(date +%s) + 86400 ))'"]'
+
+# 限制調用頻率
+restrictions='["rate=10"]'  // 每分鐘 10 次`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

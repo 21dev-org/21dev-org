@@ -36,29 +36,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統發票的隱私洩露：
+      class="text-[var(--text-secondary)]">{`Traditional Invoice Privacy Leakage:
 
-BOLT 11 發票內容：
+BOLT 11 invoice contents:
 lnbc100u1p...
-├── 金額：100,000 sats
-├── 目的地：03abc123...def（接收方公鑰）
-├── 過期時間：3600 秒
-└── 路由提示：
-    └── pubkey: 02xyz...
-        scid: 123x456x0
-        fee: 1 sat
-        cltv: 40
+  amount: 100,000 sats
+  destination: 03abc123...def (receiver pubkey)
+  expiry: 3600 seconds
+  route hints:
+    pubkey: 02xyz...
+    scid: 123x456x0
+    fee: 1 sat
+    cltv: 40
 
-問題：
-1. 目的地公鑰暴露接收方身份
-2. 路由提示暴露接收方的直接連接
-3. 可以追蹤特定節點的收款活動
-4. 可以分析接收方的通道結構
+Problems:
+1. Destination pubkey exposes receiver identity
+2. Route hints expose receiver's direct connections
+3. Can track specific node's payment activity
+4. Can analyze receiver's channel structure
 
-攻擊場景：
-- 競爭對手監控商家收款
-- 追蹤用戶消費習慣
-- 針對高價值節點進行攻擊`}</pre>
+Attack scenarios:
+• Competitors monitoring merchant payments
+• Tracking user spending habits
+• Targeted attacks on high-value nodes`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Blinded Path 原理</h2>
@@ -67,34 +67,33 @@ lnbc100u1p...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Blinded Path 結構：
+      class="text-[var(--text-secondary)]">{`Blinded Path Structure:
 
-接收方 Bob 創建 blinded path：
+Receiver Bob creates blinded path:
 
-真實路徑：
-  Node E ──> Node F ──> Node G ──> Bob
-  (入口)                          (接收方)
+Real path:
+  Node E --> Node F --> Node G --> Bob
+  (entry)                          (receiver)
 
-盲化後：
-  ┌───────────────────────────────────────────────────┐
-  │ Blinded Path:                                     │
-  │   introduction_node: E (公開的入口點)              │
-  │   blinding_point: B = b·G                         │
-  │   blinded_hops:                                   │
-  │     ├── blinded_node_id: E' = HMAC(E, B)          │
-  │     │   encrypted_data: [to F, encrypted]         │
-  │     ├── blinded_node_id: F' = HMAC(F, B')         │
-  │     │   encrypted_data: [to G, encrypted]         │
-  │     ├── blinded_node_id: G' = HMAC(G, B'')        │
-  │     │   encrypted_data: [to Bob, encrypted]       │
-  │     └── blinded_node_id: Bob' = HMAC(Bob, B''')   │
-  │         encrypted_data: [final payload]           │
-  └───────────────────────────────────────────────────┘
+After blinding:
 
-發送方只知道：
-- 入口節點 E 的真實 ID
-- 一系列無意義的 blinded_node_id
-- 無法推斷出 F, G, Bob 的身份`}</pre>
+Blinded Path:
+  introduction_node: E (public entry point)
+  blinding_point: B = b*G
+  blinded_hops:
+    blinded_node_id: E' = HMAC(E, B)
+      encrypted_data: [to F, encrypted]
+    blinded_node_id: F' = HMAC(F, B')
+      encrypted_data: [to G, encrypted]
+    blinded_node_id: G' = HMAC(G, B'')
+      encrypted_data: [to Bob, encrypted]
+    blinded_node_id: Bob' = HMAC(Bob, B''')
+      encrypted_data: [final payload]
+
+Sender only knows:
+• Entry node E's real ID
+• A series of meaningless blinded_node_ids
+• Cannot deduce identities of F, G, Bob`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密碼學機制</h2>
@@ -103,35 +102,35 @@ lnbc100u1p...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Blinding 密碼學：
+      class="text-[var(--text-secondary)]">{`Blinding Cryptography:
 
-1. 接收方選擇隨機 blinding secret: b
-   計算 blinding point: B = b·G
+1. Receiver chooses random blinding secret: b
+   Calculates blinding point: B = b*G
 
-2. 對每個節點 N_i，計算：
+2. For each node N_i, calculate:
 
-   共享密鑰：
-   ss_i = SHA256(b · N_i)  // b 與節點公鑰的 ECDH
+   Shared secret:
+   ss_i = SHA256(b * N_i)  // ECDH with node pubkey
 
-   盲化節點 ID：
-   N_i' = N_i + SHA256("blinded_node_id", ss_i)·G
+   Blinded node ID:
+   N_i' = N_i + SHA256("blinded_node_id", ss_i)*G
 
-   加密數據密鑰：
+   Encryption key:
    key_i = SHA256("encrypted_data", ss_i)
 
-   下一跳的 blinding point：
-   B_{i+1} = SHA256("blinding", ss_i) · B
+   Next hop blinding point:
+   B_{i+1} = SHA256("blinding", ss_i) * B
 
-3. 每個節點收到支付時：
-   - 使用自己的私鑰和 B 計算 ss
-   - 解密 encrypted_data
-   - 計算下一跳的 B'
-   - 轉發給下一個 blinded_node_id
+3. When each node receives payment:
+   • Use own private key and B to calculate ss
+   • Decrypt encrypted_data
+   • Calculate next hop's B'
+   • Forward to next blinded_node_id
 
-關鍵：
-- 每個節點只能解密自己的數據
-- 無法推斷其他節點的身份
-- 發送方完全不知道路徑細節`}</pre>
+Key points:
+• Each node can only decrypt its own data
+• Cannot deduce other nodes' identities
+• Sender knows nothing about path details`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付流程</h2>
@@ -140,37 +139,35 @@ lnbc100u1p...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`使用 Blinded Path 的支付：
+      class="text-[var(--text-secondary)]">{`Payment Using Blinded Path:
 
-1. Bob 創建包含 blinded path 的 Offer/Invoice
-   ┌─────────────────────────────────────────┐
-   │ Offer:                                  │
-   │   amount: 100,000 sats                  │
-   │   paths:                                │
-   │     - introduction_node: 02abc...       │
-   │       blinding_point: 03xyz...          │
-   │       blinded_hops: [...]               │
-   └─────────────────────────────────────────┘
+1. Bob creates Offer/Invoice with blinded path
+   Offer:
+     amount: 100,000 sats
+     paths:
+       - introduction_node: 02abc...
+         blinding_point: 03xyz...
+         blinded_hops: [...]
 
-2. Alice 計算路由
-   Alice → ... → 入口節點 E → [blinded path] → Bob
+2. Alice calculates route
+   Alice -> ... -> entry node E -> [blinded path] -> Bob
 
-   Alice 構建洋蔥：
-   ├── 普通跳：Alice 到 E 的路徑
-   └── 盲化跳：直接使用 blinded_hops
+   Alice builds onion:
+   • Normal hops: path from Alice to E
+   • Blinded hops: use blinded_hops directly
 
-3. E 收到支付
-   - 識別這是 blinded path
-   - 使用 blinding_point 解密
-   - 發現下一跳是 F（從 encrypted_data）
-   - 計算新的 blinding_point
-   - 轉發
+3. E receives payment
+   • Recognizes this is blinded path
+   • Decrypts using blinding_point
+   • Finds next hop is F (from encrypted_data)
+   • Calculates new blinding_point
+   • Forwards
 
-4. F, G 同樣處理
+4. F, G process similarly
 
-5. Bob 收到支付
-   - 解密最終 payload
-   - 驗證並接受支付`}</pre>
+5. Bob receives payment
+   • Decrypts final payload
+   • Verifies and accepts payment`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 整合</h2>
@@ -205,29 +202,28 @@ lnbc100u1p...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Reply Path 使用場景：
+      class="text-[var(--text-secondary)]">{`Reply Path Use Cases:
 
-BOLT 12 Offers 流程：
-1. Bob 發布 Offer（包含 blinded reply path）
-2. Alice 使用 Onion Message 請求發票
-3. Bob 通過 reply path 返回發票
-4. Alice 支付發票
+BOLT 12 Offers flow:
+1. Bob publishes Offer (with blinded reply path)
+2. Alice requests invoice using Onion Message
+3. Bob returns invoice through reply path
+4. Alice pays invoice
 
-Reply Path 結構：
-┌─────────────────────────────────────────────────────────┐
-│ alice_offer_request:                                    │
-│   offer_id: ...                                         │
-│   amount: 100000                                        │
-│   reply_path:                                           │
-│     introduction_node: Alice 附近的節點                  │
-│     blinding_point: ...                                 │
-│     blinded_hops: [... → Alice]                         │
-└─────────────────────────────────────────────────────────┘
+Reply Path structure:
 
-好處：
-- Alice 發送請求時也可以保護自己的隱私
-- Bob 可以回覆而不知道 Alice 是誰
-- 雙向隱私保護`}</pre>
+alice_offer_request:
+  offer_id: ...
+  amount: 100000
+  reply_path:
+    introduction_node: node near Alice
+    blinding_point: ...
+    blinded_hops: [... -> Alice]
+
+Benefits:
+• Alice can protect her privacy when sending requests
+• Bob can reply without knowing who Alice is
+• Bidirectional privacy protection`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
@@ -264,27 +260,27 @@ Reply Path 結構：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Onion Messages vs HTLC：
+      class="text-[var(--text-secondary)]">{`Onion Messages vs HTLC:
 
-HTLC（傳統）：
-- 用於支付
-- 需要鎖定資金
-- 有時間限制
-- 需要通道
+HTLC (traditional):
+• Used for payments
+• Requires locking funds
+• Has time limits
+• Requires channel
 
-Onion Messages：
-- 用於通訊
-- 不鎖定資金
-- 無時間限制
-- 不需要直接通道
+Onion Messages:
+• Used for communication
+• No funds locked
+• No time limits
+• No direct channel needed
 
-用途：
-- BOLT 12 發票請求
-- BOLT 12 發票回覆
-- 未來可能：支付證明、聊天等
+Use cases:
+• BOLT 12 invoice requests
+• BOLT 12 invoice replies
+• Future: payment proofs, chat, etc.
 
-訊息類型：513 (onion_message)
-功能位：38/39 (option_onion_messages)`}</pre>
+Message type: 513 (onion_message)
+Feature bits: 38/39 (option_onion_messages)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

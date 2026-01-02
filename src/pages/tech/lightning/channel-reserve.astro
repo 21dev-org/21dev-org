@@ -36,40 +36,32 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`沒有儲備金的風險：
+      class="text-[var(--text-secondary)]">{`Risk Without Channel Reserve:
 
-情境：Alice 和 Bob 開通道，Alice 投入 1 BTC
+Scenario: Alice and Bob open channel, Alice contributes 1 BTC
 
-初始狀態：
-┌─────────────────────────────────────┐
-│ Alice: 1.0 BTC    Bob: 0 BTC        │  State #0
-└─────────────────────────────────────┘
+Initial state:
+  Alice: 1.0 BTC    Bob: 0 BTC        State #0
 
-Alice 支付給 Bob 0.5 BTC：
-┌─────────────────────────────────────┐
-│ Alice: 0.5 BTC    Bob: 0.5 BTC      │  State #1
-└─────────────────────────────────────┘
+Alice pays Bob 0.5 BTC:
+  Alice: 0.5 BTC    Bob: 0.5 BTC      State #1
 
-Alice 又支付 0.5 BTC：
-┌─────────────────────────────────────┐
-│ Alice: 0 BTC      Bob: 1.0 BTC      │  State #2
-└─────────────────────────────────────┘
+Alice pays another 0.5 BTC:
+  Alice: 0 BTC      Bob: 1.0 BTC      State #2
 
-問題：Alice 現在餘額為 0
-├── Alice 廣播 State #1（作弊）
-├── 即使被懲罰，Alice 本來就是 0
-├── Alice 沒有損失！
-└── 可能還能搶到 0.5 BTC
+Problem: Alice now has 0 balance
+• Alice broadcasts State #1 (cheating)
+• Even if penalized, Alice had 0 anyway
+• Alice loses nothing!
+• Might even grab 0.5 BTC
 
-有儲備金的情況：
-┌─────────────────────────────────────┐
-│ Alice: 0.01 BTC   Bob: 0.99 BTC     │  State #2
-│ (儲備金)                             │
-└─────────────────────────────────────┘
+With Channel Reserve:
+  Alice: 0.01 BTC   Bob: 0.99 BTC     State #2
+  (reserve)
 
-├── Alice 不能花費到 0
-├── 如果 Alice 作弊，會失去 0.01 BTC
-└── 經濟威懾有效！`}</pre>
+• Alice cannot spend to 0
+• If Alice cheats, she loses 0.01 BTC
+• Economic deterrence works!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金計算</h2>
@@ -78,35 +70,29 @@ Alice 又支付 0.5 BTC：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`儲備金計算規則（BOLT 2）：
+      class="text-[var(--text-secondary)]">{`Reserve Calculation Rules (BOLT 2):
 
 channel_reserve = max(dust_limit, 1% of channel_capacity)
 
-示例：1 BTC 通道
-├── 通道容量：100,000,000 sats
-├── 1% 儲備金：1,000,000 sats (0.01 BTC)
-└── 每方最少保留：1,000,000 sats
+Example: 1 BTC channel
+• Channel capacity: 100,000,000 sats
+• 1% reserve: 1,000,000 sats (0.01 BTC)
+• Minimum each party must keep: 1,000,000 sats
 
-實際可用容量：
-┌─────────────────────────────────────────────────────────┐
-│ 1 BTC 通道                                              │
-├─────────────────────────────────────────────────────────┤
-│ [Alice 儲備] [    可用容量    ] [Bob 儲備]              │
-│   1%              98%              1%                    │
-│ 0.01 BTC       0.98 BTC        0.01 BTC                 │
-└─────────────────────────────────────────────────────────┘
+Actual usable capacity:
 
-參數協商：
-┌────────────────────────────────────────────────────────┐
-│ open_channel 訊息                                      │
-├────────────────────────────────────────────────────────┤
-│ channel_reserve_satoshis: 對方必須保留的最低餘額       │
-│ dust_limit_satoshis: 最小有效輸出（約 546 sats）       │
-└────────────────────────────────────────────────────────┘
+1 BTC Channel Layout:
+[Alice reserve] [   Usable capacity   ] [Bob reserve]
+     1%                  98%                  1%
+  0.01 BTC            0.98 BTC            0.01 BTC
 
-約束條件：
+Parameter Negotiation (open_channel message):
+• channel_reserve_satoshis: minimum balance peer must keep
+• dust_limit_satoshis: minimum valid output (~546 sats)
+
+Constraints:
 channel_reserve >= dust_limit
-channel_reserve >= 1% of funding_satoshis（建議）
+channel_reserve >= 1% of funding_satoshis (recommended)
 to_local + to_remote >= 2 * channel_reserve`}</pre>
   </div>
 
@@ -116,33 +102,29 @@ to_local + to_remote >= 2 * channel_reserve`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`支付限制示例：
+      class="text-[var(--text-secondary)]">{`Payment Limit Example:
 
-通道狀態：
-├── 通道容量：1 BTC
-├── Alice 餘額：0.6 BTC
-├── Bob 餘額：0.4 BTC
-├── 儲備金要求：0.01 BTC（每方）
-└── Alice 可發送最大：0.6 - 0.01 = 0.59 BTC
+Channel state:
+• Channel capacity: 1 BTC
+• Alice balance: 0.6 BTC
+• Bob balance: 0.4 BTC
+• Reserve requirement: 0.01 BTC (each party)
+• Alice max sendable: 0.6 - 0.01 = 0.59 BTC
 
-支付流程檢查：
+Payment Flow Check:
 
-Alice 想發送 0.55 BTC 給 Bob：
-┌─────────────────────────────────────┐
-│ 支付前    Alice: 0.6   Bob: 0.4    │
-│ 支付後    Alice: 0.05  Bob: 0.95   │
-│ 儲備檢查  0.05 >= 0.01  ✓ 通過     │
-└─────────────────────────────────────┘
+Alice wants to send 0.55 BTC to Bob:
+  Before     Alice: 0.6   Bob: 0.4
+  After      Alice: 0.05  Bob: 0.95
+  Reserve    0.05 >= 0.01  PASS
 
-Alice 想發送 0.595 BTC 給 Bob：
-┌─────────────────────────────────────┐
-│ 支付前    Alice: 0.6   Bob: 0.4    │
-│ 支付後    Alice: 0.005 Bob: 0.995  │
-│ 儲備檢查  0.005 < 0.01  ✗ 拒絕     │
-└─────────────────────────────────────┘
+Alice wants to send 0.595 BTC to Bob:
+  Before     Alice: 0.6   Bob: 0.4
+  After      Alice: 0.005 Bob: 0.995
+  Reserve    0.005 < 0.01  REJECTED
 
-錯誤訊息：
-  insufficient_balance 或
+Error message:
+  insufficient_balance or
   amount_below_minimum`}</pre>
   </div>
 
@@ -152,33 +134,31 @@ Alice 想發送 0.595 BTC 給 Bob：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`單方資助通道的儲備金：
+      class="text-[var(--text-secondary)]">{`Single-Funded Channel Reserve:
 
-Alice 單方資助 1 BTC 通道：
-┌─────────────────────────────────────┐
-│ Alice: 1.0 BTC    Bob: 0 BTC        │
-│ 儲備要求：        ↑                 │
-│ Alice: 0.01 BTC   Bob: 0.01 BTC     │
-└─────────────────────────────────────┘
+Alice single-funds 1 BTC channel:
+  Alice: 1.0 BTC    Bob: 0 BTC
+  Reserve requirement:
+  Alice: 0.01 BTC   Bob: 0.01 BTC
 
-問題：Bob 餘額為 0，低於儲備金！
+Problem: Bob balance is 0, below reserve!
 
-解決方案：
-1. 儲備金要求是「一旦有資金就必須保留」
-2. Bob 初始餘額為 0 是允許的
-3. 一旦 Bob 收到任何資金，必須維持儲備
+Solution:
+1. Reserve is "must keep once you have funds"
+2. Bob starting at 0 is allowed
+3. Once Bob receives any funds, must maintain reserve
 
-流程：
-State 0: Alice 1.0, Bob 0      ← Bob 免儲備（無資金）
-State 1: Alice 0.9, Bob 0.1    ← Bob 現在必須保留 0.01
-State 2: Alice 0.89, Bob 0.11  ← Bob 不能花到 0.01 以下
+Flow:
+State 0: Alice 1.0, Bob 0      <- Bob exempt (no funds)
+State 1: Alice 0.9, Bob 0.1    <- Bob must now keep 0.01
+State 2: Alice 0.89, Bob 0.11  <- Bob cannot spend below 0.01
 
-Bob 最大可花費：0.11 - 0.01 = 0.1 BTC
+Bob max spendable: 0.11 - 0.01 = 0.1 BTC
 
-BOLT 2 規定：
-「如果 to_local_msat < channel_reserve_satoshis*1000
- 且 to_local_msat != 0」
-則違反儲備金要求。`}</pre>
+BOLT 2 states:
+"If to_local_msat < channel_reserve_satoshis*1000
+ AND to_local_msat != 0"
+then reserve requirement is violated.`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金與 HTLC</h2>
@@ -187,36 +167,30 @@ BOLT 2 規定：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`HTLC 和儲備金的交互：
+      class="text-[var(--text-secondary)]">{`HTLC and Reserve Interaction:
 
-情境：
-├── Alice 餘額：0.05 BTC
-├── 儲備金：0.01 BTC
-├── 可用餘額：0.04 BTC
-└── Alice 想路由一個 0.03 BTC 的 HTLC
+Scenario:
+• Alice balance: 0.05 BTC
+• Reserve: 0.01 BTC
+• Available balance: 0.04 BTC
+• Alice wants to route a 0.03 BTC HTLC
 
-步驟 1：添加 HTLC
-┌─────────────────────────────────────────────┐
-│ Alice 餘額: 0.05 → 0.02 + 0.03 (HTLC)      │
-│ 剩餘餘額 0.02 >= 儲備 0.01  ✓               │
-└─────────────────────────────────────────────┘
+Step 1: Add HTLC
+  Alice balance: 0.05 -> 0.02 + 0.03 (HTLC)
+  Remaining 0.02 >= reserve 0.01  PASS
 
-步驟 2a：HTLC 成功（Bob 獲得資金）
-┌─────────────────────────────────────────────┐
-│ Alice: 0.02    Bob: +0.03                   │
-│ Alice 0.02 >= 0.01  ✓                       │
-└─────────────────────────────────────────────┘
+Step 2a: HTLC success (Bob gets funds)
+  Alice: 0.02    Bob: +0.03
+  Alice 0.02 >= 0.01  PASS
 
-步驟 2b：HTLC 失敗（資金返回 Alice）
-┌─────────────────────────────────────────────┐
-│ Alice: 0.02 + 0.03 = 0.05                   │
-│ Alice 0.05 >= 0.01  ✓                       │
-└─────────────────────────────────────────────┘
+Step 2b: HTLC fails (funds return to Alice)
+  Alice: 0.02 + 0.03 = 0.05
+  Alice 0.05 >= 0.01  PASS
 
-注意：
-- HTLC 進行中時，儲備金仍必須滿足
-- 不能用儲備金來「墊付」HTLC
-- 大額 HTLC 可能因儲備金限制而失敗`}</pre>
+Notes:
+• During HTLC, reserve must still be satisfied
+• Cannot use reserve to "front" HTLC
+• Large HTLCs may fail due to reserve limits`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金與通道關閉</h2>
@@ -243,30 +217,28 @@ BOLT 2 規定：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`動態儲備金（部分實現支持）：
+      class="text-[var(--text-secondary)]">{`Dynamic Reserve (some implementations support):
 
-問題：固定 1% 儲備金可能過高或過低
+Problem: Fixed 1% reserve may be too high or too low
 
-小通道：10,000 sats
-├── 1% = 100 sats（可能低於 dust limit）
-└── 實際用 dust limit（546 sats）
+Small channel: 10,000 sats
+• 1% = 100 sats (may be below dust limit)
+• Actually uses dust limit (546 sats)
 
-大通道：10 BTC
-├── 1% = 0.1 BTC（可能過高）
-└── 鎖定太多流動性
+Large channel: 10 BTC
+• 1% = 0.1 BTC (may be too high)
+• Locks up too much liquidity
 
-解決方案：
-1. 協商時設定合理值
-2. 使用 option_channel_reserve（如果支持）
-3. 接受對方的儲備要求或拒絕開通道
+Solutions:
+1. Set reasonable value during negotiation
+2. Use option_channel_reserve (if supported)
+3. Accept peer's reserve requirement or reject channel
 
-channel_update 訊息（BOLT 1.1 提案）：
-┌────────────────────────────────────────────────────────┐
-│ 允許在通道生命週期內調整儲備金                         │
-│ - 增加：提高安全性                                     │
-│ - 減少：釋放流動性                                     │
-│ - 需要雙方同意                                         │
-└────────────────────────────────────────────────────────┘`}</pre>
+channel_update message (BOLT 1.1 proposal):
+• Allows adjusting reserve during channel lifetime
+• Increase: improves security
+• Decrease: releases liquidity
+• Requires mutual agreement`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
@@ -303,28 +275,26 @@ channel_update 訊息（BOLT 1.1 提案）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`儲備金與懲罰機制：
+      class="text-[var(--text-secondary)]">{`Reserve and Penalty Mechanism:
 
-┌─────────────────────────────────────────────────────────┐
-│                    安全機制層次                          │
-├─────────────────────────────────────────────────────────┤
-│ 1. Channel Reserve（儲備金）                            │
-│    └── 確保作弊者有資金可被沒收                         │
-│                                                         │
-│ 2. Revocation Keys（撤銷密鑰）                          │
-│    └── 讓受害者能識別和懲罰舊狀態                       │
-│                                                         │
-│ 3. Penalty Transaction（懲罰交易）                      │
-│    └── 實際沒收作弊者的全部通道資金                     │
-│                                                         │
-│ 4. Watchtower（瞭望塔）                                 │
-│    └── 即使離線也能監控和執行懲罰                       │
-└─────────────────────────────────────────────────────────┘
+Security Mechanism Layers:
 
-Eltoo 模式下：
-├── 不使用懲罰機制
-├── 儲備金的重要性降低
-└── 但仍可能用於其他目的（如手續費保證）`}</pre>
+1. Channel Reserve
+   Ensures cheater has funds that can be seized
+
+2. Revocation Keys
+   Allows victim to identify and penalize old states
+
+3. Penalty Transaction
+   Actually seizes cheater's entire channel funds
+
+4. Watchtower
+   Monitors and executes penalties even when offline
+
+Under Eltoo:
+• No penalty mechanism used
+• Reserve importance reduced
+• May still be used for other purposes (e.g., fee guarantee)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

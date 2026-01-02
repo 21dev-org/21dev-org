@@ -33,35 +33,27 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`支付生命週期：
+      class="text-[var(--text-secondary)]">{`Payment Lifecycle
 
-1. 發票創建（接收者）：
-┌──────────────────────────────────────────────────────────────┐
-│ preimage = random(32)                                        │
-│ payment_hash = SHA256(preimage)                              │
-│ payment_secret = random(32)                                  │
-│ invoice = encode(hash, secret, amount, expiry)               │
-└──────────────────────────────────────────────────────────────┘
+1. Invoice Creation (Receiver):
+preimage = random(32)
+payment_hash = SHA256(preimage)
+payment_secret = random(32)
+invoice = encode(hash, secret, amount, expiry)
 
-2. 路由發現（發送者）：
-┌──────────────────────────────────────────────────────────────┐
-│ decode(invoice)                                              │
-│ paths = dijkstra(graph, source, destination, amount)         │
-│ best_path = select_best(paths)                               │
-└──────────────────────────────────────────────────────────────┘
+2. Route Discovery (Sender):
+decode(invoice)
+paths = dijkstra(graph, source, destination, amount)
+best_path = select_best(paths)
 
-3. HTLC 轉發：
-┌──────────────────────────────────────────────────────────────┐
-│ Alice ─HTLC─> Bob ─HTLC─> Carol ─HTLC─> Dave                 │
-│ 每跳：update_add_htlc + commitment_signed                    │
-└──────────────────────────────────────────────────────────────┘
+3. HTLC Forwarding:
+Alice --HTLC--> Bob --HTLC--> Carol --HTLC--> Dave
+每跳：update_add_htlc + commitment_signed
 
-4. 結算（Preimage 揭露）：
-┌──────────────────────────────────────────────────────────────┐
-│ Dave 驗證 hash/secret → 揭露 preimage                        │
-│ Dave → Carol → Bob → Alice：update_fulfill_htlc              │
-│ 支付完成！                                                   │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+4. Settlement (Preimage Reveal):
+Dave 驗證 hash/secret -> 揭露 preimage
+Dave -> Carol -> Bob -> Alice: update_fulfill_htlc
+支付完成！`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

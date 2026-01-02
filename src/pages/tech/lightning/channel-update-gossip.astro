@@ -35,45 +35,44 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`channel_update 訊息格式：
+      class="text-[var(--text-secondary)]">{`channel_update Message Format:
 
-欄位定義：
-┌──────────────────────────────────────────────────────────────┐
-│ signature: 64 bytes                                          │
-│   對整個訊息的 Schnorr/ECDSA 簽名                            │
-│                                                              │
-│ chain_hash: 32 bytes                                         │
-│   區塊鏈識別（Bitcoin mainnet/testnet）                      │
-│                                                              │
-│ short_channel_id: 8 bytes                                    │
-│   通道識別符（區塊高度:交易索引:輸出索引）                   │
-│                                                              │
-│ timestamp: 4 bytes                                           │
-│   Unix 時間戳，用於判斷更新先後                              │
-│                                                              │
-│ message_flags: 1 byte                                        │
-│   ├── bit 0: must_be_one（兼容性）                           │
-│   └── 其他位保留                                             │
-│                                                              │
-│ channel_flags: 1 byte                                        │
-│   ├── bit 0: direction（0=node1→node2, 1=node2→node1）       │
-│   └── bit 1: disable（1=通道暫時禁用）                       │
-│                                                              │
-│ cltv_expiry_delta: 2 bytes                                   │
-│   轉發 HTLC 需要的 CLTV 差值                                 │
-│                                                              │
-│ htlc_minimum_msat: 8 bytes                                   │
-│   接受的最小 HTLC 金額                                       │
-│                                                              │
-│ fee_base_msat: 4 bytes                                       │
-│   基礎費用（毫聰）                                           │
-│                                                              │
-│ fee_proportional_millionths: 4 bytes                         │
-│   比例費用（每百萬分之一）                                   │
-│                                                              │
-│ htlc_maximum_msat: 8 bytes (optional, if message_flags bit 0)│
-│   接受的最大 HTLC 金額                                       │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Field Definitions:
+
+signature: 64 bytes
+  Schnorr/ECDSA signature of entire message
+
+chain_hash: 32 bytes
+  Blockchain identifier (Bitcoin mainnet/testnet)
+
+short_channel_id: 8 bytes
+  Channel identifier (block_height:tx_index:output_index)
+
+timestamp: 4 bytes
+  Unix timestamp for ordering updates
+
+message_flags: 1 byte
+  • bit 0: must_be_one (compatibility)
+  • Other bits reserved
+
+channel_flags: 1 byte
+  • bit 0: direction (0=node1->node2, 1=node2->node1)
+  • bit 1: disable (1=channel temporarily disabled)
+
+cltv_expiry_delta: 2 bytes
+  CLTV delta required for forwarding HTLCs
+
+htlc_minimum_msat: 8 bytes
+  Minimum accepted HTLC amount
+
+fee_base_msat: 4 bytes
+  Base fee (millisatoshis)
+
+fee_proportional_millionths: 4 bytes
+  Proportional fee (per million)
+
+htlc_maximum_msat: 8 bytes (optional, if message_flags bit 0)
+  Maximum accepted HTLC amount`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用計算</h2>
@@ -82,45 +81,43 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`路由費用計算公式：
+      class="text-[var(--text-secondary)]">{`Routing Fee Formula:
 
-fee = fee_base_msat + (amount_msat × fee_proportional_millionths / 1,000,000)
+fee = fee_base_msat + (amount_msat * fee_proportional_millionths / 1,000,000)
 
-範例：
-┌──────────────────────────────────────────────────────────────┐
-│ 通道策略：                                                   │
-│ ├── fee_base_msat: 1000 (1 sat)                              │
-│ └── fee_proportional_millionths: 100 (0.01%)                 │
-│                                                              │
-│ 轉發 1,000,000 msat (1000 sats) 的費用：                     │
-│ fee = 1000 + (1,000,000 × 100 / 1,000,000)                   │
-│     = 1000 + 100                                             │
-│     = 1100 msat (1.1 sats)                                   │
-│                                                              │
-│ 轉發 10,000,000 msat (10,000 sats) 的費用：                  │
-│ fee = 1000 + (10,000,000 × 100 / 1,000,000)                  │
-│     = 1000 + 1000                                            │
-│     = 2000 msat (2 sats)                                     │
-└──────────────────────────────────────────────────────────────┘
+Example:
 
-常見費用設定：
-┌──────────────────────────────────────────────────────────────┐
-│ 零費用通道：                                                 │
-│ ├── base: 0, ppm: 0                                          │
-│ └── 用於自己的節點間連接                                     │
-│                                                              │
-│ 低費用節點：                                                 │
-│ ├── base: 0-10, ppm: 1-10                                    │
-│ └── 追求路由量                                               │
-│                                                              │
-│ 標準節點：                                                   │
-│ ├── base: 1000, ppm: 100-500                                 │
-│ └── 平衡收益和路由量                                         │
-│                                                              │
-│ 高費用節點：                                                 │
-│ ├── base: 1000+, ppm: 1000+                                  │
-│ └── 熱門路由或稀缺流動性                                     │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Channel Policy:
+  • fee_base_msat: 1000 (1 sat)
+  • fee_proportional_millionths: 100 (0.01%)
+
+Forwarding 1,000,000 msat (1000 sats):
+  fee = 1000 + (1,000,000 * 100 / 1,000,000)
+      = 1000 + 100
+      = 1100 msat (1.1 sats)
+
+Forwarding 10,000,000 msat (10,000 sats):
+  fee = 1000 + (10,000,000 * 100 / 1,000,000)
+      = 1000 + 1000
+      = 2000 msat (2 sats)
+
+Common Fee Settings:
+
+1. Zero-fee Channel:
+   • base: 0, ppm: 0
+   • Used for connections between own nodes
+
+2. Low-fee Node:
+   • base: 0-10, ppm: 1-10
+   • Prioritizes routing volume
+
+3. Standard Node:
+   • base: 1000, ppm: 100-500
+   • Balances revenue and routing volume
+
+4. High-fee Node:
+   • base: 1000+, ppm: 1000+
+   • Popular routes or scarce liquidity`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">方向性</h2>
@@ -129,43 +126,39 @@ fee = fee_base_msat + (amount_msat × fee_proportional_millionths / 1,000,000)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道更新的方向：
+      class="text-[var(--text-secondary)]">{`Channel Update Directions:
 
-一個通道，兩個方向，兩個 update：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│   Node A (pubkey: 02aa...)     Node B (pubkey: 03bb...)      │
-│         │                              │                     │
-│         │   short_channel_id: 700000x1x0                     │
-│         │                              │                     │
-│         │──── channel_update (dir=0) ──│                     │
-│         │     A 設定的從 A→B 策略      │                     │
-│         │     fee_base: 1000           │                     │
-│         │     fee_ppm: 100             │                     │
-│         │                              │                     │
-│         │──── channel_update (dir=1) ──│                     │
-│         │     B 設定的從 B→A 策略      │                     │
-│         │     fee_base: 500            │                     │
-│         │     fee_ppm: 50              │                     │
-│         │                              │                     │
-└──────────────────────────────────────────────────────────────┘
+One channel, two directions, two updates:
 
-方向判定（channel_flags bit 0）：
-┌──────────────────────────────────────────────────────────────┐
-│ direction = 0:                                               │
-│   發布者是 node1（pubkey 較小者）                            │
-│   定義從 node1 到 node2 的策略                               │
-│                                                              │
-│ direction = 1:                                               │
-│   發布者是 node2（pubkey 較大者）                            │
-│   定義從 node2 到 node1 的策略                               │
-│                                                              │
-│ 判斷誰是 node1/node2：                                       │
-│ if pubkey_a < pubkey_b:                                      │
-│     node1 = A, node2 = B                                     │
-│ else:                                                        │
-│     node1 = B, node2 = A                                     │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+  Node A (pubkey: 02aa...)       Node B (pubkey: 03bb...)
+        |                                |
+        |     short_channel_id: 700000x1x0
+        |                                |
+        |---- channel_update (dir=0) ----|
+        |     A's policy for A->B        |
+        |     fee_base: 1000             |
+        |     fee_ppm: 100               |
+        |                                |
+        |---- channel_update (dir=1) ----|
+        |     B's policy for B->A        |
+        |     fee_base: 500              |
+        |     fee_ppm: 50                |
+
+Direction Determination (channel_flags bit 0):
+
+direction = 0:
+  Publisher is node1 (smaller pubkey)
+  Defines policy from node1 to node2
+
+direction = 1:
+  Publisher is node2 (larger pubkey)
+  Defines policy from node2 to node1
+
+Determining node1/node2:
+  if pubkey_a < pubkey_b:
+      node1 = A, node2 = B
+  else:
+      node1 = B, node2 = A`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 傳播</h2>
@@ -174,58 +167,54 @@ fee = fee_base_msat + (amount_msat × fee_proportional_millionths / 1,000,000)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Channel Update 傳播機制：
+      class="text-[var(--text-secondary)]">{`Channel Update Propagation:
 
-廣播流程：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 節點更新通道策略                                          │
-│    lncli updatechanpolicy --base_fee_msat 1000 ...           │
-│                                                              │
-│ 2. 節點創建並簽名 channel_update                             │
-│    timestamp = current_time                                  │
-│                                                              │
-│ 3. 發送給所有連接的對等節點                                  │
-│    peer.send(channel_update)                                 │
-│                                                              │
-│ 4. 對等節點驗證                                              │
-│    ├── 簽名正確？                                            │
-│    ├── 時間戳比已知的新？                                    │
-│    └── 通道存在？                                            │
-│                                                              │
-│ 5. 驗證通過後轉發給其他對等節點                              │
-│    └── 逐漸傳遍整個網路                                      │
-└──────────────────────────────────────────────────────────────┘
+Broadcast Flow:
 
-速率限制：
-┌──────────────────────────────────────────────────────────────┐
-│ 防止 gossip 洪水攻擊：                                       │
-│                                                              │
-│ ├── timestamp 必須遞增                                       │
-│ ├── 過於頻繁的更新可能被忽略                                 │
-│ ├── 節點可以設定最小更新間隔                                 │
-│ └── 建議間隔：至少 1 小時                                    │
-│                                                              │
-│ LND 實現：                                                   │
-│ ├── 默認不接受太頻繁的更新                                   │
-│ └── gossip.channel-update-interval 配置                      │
-└──────────────────────────────────────────────────────────────┘
+1. Node updates channel policy
+   lncli updatechanpolicy --base_fee_msat 1000 ...
 
-Gossip 查詢（同步）：
-┌──────────────────────────────────────────────────────────────┐
-│ 新節點加入網路時：                                           │
-│                                                              │
-│ query_channel_range：                                        │
-│   請求指定區塊範圍內的所有通道                               │
-│                                                              │
-│ reply_channel_range：                                        │
-│   回覆通道列表                                               │
-│                                                              │
-│ query_short_channel_ids：                                    │
-│   請求特定通道的詳細資訊                                     │
-│                                                              │
-│ reply_short_channel_ids_end：                                │
-│   回覆 channel_announcement 和 channel_update                │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+2. Node creates and signs channel_update
+   timestamp = current_time
+
+3. Sends to all connected peers
+   peer.send(channel_update)
+
+4. Peers validate
+   • Signature correct?
+   • Timestamp newer than known?
+   • Channel exists?
+
+5. After validation, forward to other peers
+   -> Gradually propagates across network
+
+Rate Limiting:
+
+Preventing gossip flood attacks:
+  • timestamp must be increasing
+  • Too frequent updates may be ignored
+  • Nodes can set minimum update interval
+  • Recommended interval: at least 1 hour
+
+LND Implementation:
+  • By default rejects too frequent updates
+  • gossip.channel-update-interval config
+
+Gossip Queries (Sync):
+
+When new node joins network:
+
+  query_channel_range:
+    Request all channels in specified block range
+
+  reply_channel_range:
+    Reply with channel list
+
+  query_short_channel_ids:
+    Request details for specific channels
+
+  reply_short_channel_ids_end:
+    Reply with channel_announcement and channel_update`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">禁用通道</h2>
@@ -234,35 +223,33 @@ Gossip 查詢（同步）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道禁用標記：
+      class="text-[var(--text-secondary)]">{`Channel Disable Flag:
 
-channel_flags bit 1（disable）：
-┌──────────────────────────────────────────────────────────────┐
-│ disable = 0：通道正常可用                                    │
-│ disable = 1：通道暫時禁用                                    │
-│                                                              │
-│ 禁用原因：                                                   │
-│ ├── 對等節點離線                                             │
-│ ├── 通道流動性耗盡                                           │
-│ ├── 維護中                                                   │
-│ └── 手動禁用                                                 │
-└──────────────────────────────────────────────────────────────┘
+channel_flags bit 1 (disable):
 
-自動禁用行為（LND）：
-┌──────────────────────────────────────────────────────────────┐
-│ 對等節點斷開連接時：                                         │
-│ 1. 等待一段時間（gossip.inactive-channel-ticker）            │
-│ 2. 發送 disable=1 的 channel_update                          │
-│ 3. 其他節點不再路由到此通道                                  │
-│                                                              │
-│ 對等節點重新連接時：                                         │
-│ 1. 發送 disable=0 的 channel_update                          │
-│ 2. 通道重新可用於路由                                        │
-│                                                              │
-│ 配置：                                                       │
-│ [gossip]                                                     │
-│ inactive-channel-ticker = 20m（默認）                        │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+  disable = 0: Channel normally available
+  disable = 1: Channel temporarily disabled
+
+Disable Reasons:
+  • Peer offline
+  • Channel liquidity exhausted
+  • Under maintenance
+  • Manual disable
+
+Auto-disable Behavior (LND):
+
+When peer disconnects:
+  1. Wait for period (gossip.inactive-channel-ticker)
+  2. Send channel_update with disable=1
+  3. Other nodes stop routing to this channel
+
+When peer reconnects:
+  1. Send channel_update with disable=0
+  2. Channel available for routing again
+
+Config:
+  [gossip]
+  inactive-channel-ticker = 20m (default)`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

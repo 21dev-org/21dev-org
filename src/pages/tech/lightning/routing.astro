@@ -34,24 +34,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`閃電網路圖結構：
+      class="text-[var(--text-secondary)]">{`Lightning Network Graph Structure:
 
-節點 (Nodes):
-- 每個運行閃電網路軟體的實體
-- 由 33 bytes 公鑰標識
-- 通過 node_announcement 廣播
+Nodes:
+• Each entity running LN software
+• Identified by 33-byte public key
+• Broadcast via node_announcement
 
-邊 (Channels):
-- 兩個節點之間的支付通道
-- 由 short_channel_id 標識
-- 有兩個方向，各有獨立的手續費和限制
+Channels (Edges):
+• Payment channel between two nodes
+• Identified by short_channel_id
+• Two directions, each with independent fees and limits
 
-┌─────┐     通道 A      ┌─────┐     通道 B      ┌─────┐
-│Alice│ ─────────────── │ Bob │ ─────────────── │Carol│
-└─────┘                 └─────┘                 └─────┘
-   │                                               │
-   │              通道 C                           │
-   └───────────────────────────────────────────────┘`}</pre>
+┌───────┐   Channel A   ┌───────┐   Channel B   ┌───────┐
+│ Alice │ ───────────── │  Bob  │ ───────────── │ Carol │
+└───────┘               └───────┘               └───────┘
+    │                                               │
+    │               Channel C                       │
+    └───────────────────────────────────────────────┘`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 協議</h2>
@@ -63,26 +63,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Gossip 訊息類型：
+      class="text-[var(--text-secondary)]">{`Gossip Message Types:
 
 1. channel_announcement
-   - 新通道上線
-   - 包含雙方節點 ID 和 Bitcoin 公鑰
-   - 需要鏈上 funding tx 驗證
+   • New channel online
+   • Contains both node IDs and Bitcoin pubkeys
+   • Requires on-chain funding tx verification
 
 2. channel_update
-   - 通道參數變更
-   - 手續費率、CLTV delta、最小/最大 HTLC
-   - 可標記通道為停用
+   • Channel parameter changes
+   • Fee rate, CLTV delta, min/max HTLC
+   • Can mark channel as disabled
 
 3. node_announcement
-   - 節點資訊更新
-   - 別名、顏色、地址、功能
+   • Node info update
+   • Alias, color, addresses, features
 
-Gossip 傳播：
-- 節點收到新訊息後轉發給所有對等方
-- 使用 timestamp 防止舊訊息覆蓋新訊息
-- 過舊的訊息會被忽略`}</pre>
+Gossip Propagation:
+• Node forwards new messages to all peers
+• Uses timestamp to prevent old messages overwriting new
+• Too old messages are ignored`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">尋路算法</h2>
@@ -96,26 +96,26 @@ Gossip 傳播：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`尋路過程：
+      class="text-[var(--text-secondary)]">{`Pathfinding Process:
 
-1. 從目的地開始反向搜索
-   - 為什麼反向？因為需要知道最終 CLTV 來計算每一跳
+1. Start reverse search from destination
+   • Why reverse? Need to know final CLTV to calculate each hop
 
-2. 計算邊的「成本」
-   cost = base_fee + (amount × fee_rate) + risk_factor
+2. Calculate edge "cost"
+   cost = base_fee + (amount * fee_rate) + risk_factor
 
-3. 選擇總成本最低的路徑
+3. Select path with lowest total cost
 
-4. 驗證路徑可行性
-   - 每一跳金額 <= 通道容量
-   - HTLC 數量限制
-   - CLTV 在合理範圍
+4. Validate path feasibility
+   • Each hop amount <= channel capacity
+   • HTLC count limit
+   • CLTV within reasonable range
 
-成本因素：
-- 手續費（最重要）
-- 成功機率（基於歷史資料）
-- 時間鎖風險（較長的 CLTV 較高風險）
-- 通道年齡（較新可能不穩定）`}</pre>
+Cost factors:
+• Fees (most important)
+• Success probability (based on history)
+• Timelock risk (longer CLTV = higher risk)
+• Channel age (newer may be unstable)`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">機率評估</h3>
@@ -124,23 +124,23 @@ Gossip 傳播：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`成功機率估算：
+      class="text-[var(--text-secondary)]">{`Success Probability Estimation:
 
-問題：公開的是通道容量，不是當前餘額分布
+Problem: Public info is channel capacity, not current balance
 
-假設：餘額均勻分布
-對於容量 C 的通道，轉發金額 A：
-成功機率 ≈ (C - A) / C
+Assumption: Uniform balance distribution
+For channel capacity C, forwarding amount A:
+Success probability = (C - A) / C
 
-更精確的估算（基於歷史）：
-- 記錄每個通道的成功/失敗
-- 用貝葉斯方法更新餘額估計
-- 考慮時間衰減（餘額會變化）
+More precise estimation (history-based):
+• Record success/failure for each channel
+• Use Bayesian methods to update balance estimate
+• Consider time decay (balances change)
 
-LND 的 Mission Control：
-- 維護每個通道的成功機率
-- 失敗後降低機率
-- 時間過後逐漸恢復`}</pre>
+LND Mission Control:
+• Maintains success probability per channel
+• Lowers probability after failure
+• Gradually recovers over time`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多路徑支付 (MPP)</h2>
@@ -152,27 +152,25 @@ LND 的 Mission Control：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`MPP (Multi-Path Payments)：
+      class="text-[var(--text-secondary)]">{`MPP (Multi-Path Payments):
 
-支付 1 BTC：
-┌─────────────────────────────────────────┐
-│ 路徑 1: Alice → X → Y → Carol (0.4 BTC)│
-│ 路徑 2: Alice → M → N → Carol (0.3 BTC)│
-│ 路徑 3: Alice → P → Carol (0.3 BTC)    │
-└─────────────────────────────────────────┘
+Paying 1 BTC:
+  Path 1: Alice -> X -> Y -> Carol (0.4 BTC)
+  Path 2: Alice -> M -> N -> Carol (0.3 BTC)
+  Path 3: Alice -> P -> Carol (0.3 BTC)
 
-所有部分使用相同的 payment_hash
-接收方等所有部分到齊後一次揭示 preimage
+All parts use same payment_hash
+Receiver waits for all parts, then reveals preimage
 
-優點：
-- 突破單一通道容量限制
-- 提高大額支付成功率
-- 更好地利用網路流動性
+Advantages:
+• Break single channel capacity limit
+• Increase large payment success rate
+• Better utilization of network liquidity
 
-要求：
-- 接收方支持 MPP (feature bit 16/17)
-- 發送方智能拆分金額
-- 所有部分必須使用相同的 payment_secret`}</pre>
+Requirements:
+• Receiver supports MPP (feature bit 16/17)
+• Sender intelligently splits amount
+• All parts must use same payment_secret`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由失敗處理</h2>
@@ -181,32 +179,32 @@ LND 的 Mission Control：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`常見失敗原因和處理：
+      class="text-[var(--text-secondary)]">{`Common Failure Reasons and Handling:
 
 1. TEMPORARY_CHANNEL_FAILURE
-   - 通道暫時無法轉發
-   - 暫時迴避，稍後重試
+   • Channel temporarily can't forward
+   • Avoid temporarily, retry later
 
 2. FEE_INSUFFICIENT
-   - 手續費太低
-   - 更新 channel_update 後重試
+   • Fee too low
+   • Retry after updating channel_update
 
 3. UNKNOWN_NEXT_PEER
-   - 下一跳節點離線
-   - 選擇其他路徑
+   • Next hop node offline
+   • Choose different path
 
 4. AMOUNT_BELOW_MINIMUM
-   - 金額低於通道最小限制
-   - 選擇其他通道
+   • Amount below channel minimum
+   • Choose different channel
 
 5. EXPIRY_TOO_SOON
-   - CLTV 太近
-   - 增加 CLTV 或選其他路徑
+   • CLTV too close
+   • Increase CLTV or choose other path
 
-重試策略：
-- 排除失敗的邊
-- 重新計算路徑
-- 最多重試 N 次`}</pre>
+Retry strategy:
+• Exclude failed edges
+• Recalculate path
+• Retry up to N times`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">手續費計算</h2>
@@ -261,27 +259,27 @@ Alice → Bob:  1003 sat, fee = 2 sat
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`路由優化技巧：
+      class="text-[var(--text-secondary)]">{`Routing Optimization Tips:
 
-1. 預計算路由
-   - 事先計算常用目的地的路徑
-   - 減少支付延遲
+1. Pre-compute Routes
+   • Calculate paths to common destinations ahead
+   • Reduce payment latency
 
-2. 路由緩存
-   - 記住成功的路徑
-   - 對相同目的地優先使用
+2. Route Caching
+   • Remember successful paths
+   • Prioritize for same destination
 
-3. 本地通道優先
-   - 先嘗試直接通道
-   - 減少手續費和跳數
+3. Local Channel Priority
+   • Try direct channels first
+   • Reduce fees and hop count
 
-4. 並行嘗試
-   - 同時嘗試多條路徑
-   - 使用第一個成功的
+4. Parallel Attempts
+   • Try multiple paths simultaneously
+   • Use first one that succeeds
 
-5. 智能拆分 (MPP)
-   - 根據通道容量決定拆分
-   - 平衡成功率和手續費`}</pre>
+5. Smart Splitting (MPP)
+   • Decide splits based on channel capacity
+   • Balance success rate and fees`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來發展</h2>

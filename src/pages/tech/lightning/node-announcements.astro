@@ -1,0 +1,149 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Node Announcements 節點公告"
+  description="了解閃電網路節點公告訊息，節點如何向網路宣布自己的存在和特性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Node Announcements' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Channel Announcements', href: '/tech/lightning/channel-announcements' }}
+  nextPage={{ title: 'Gossip Protocol', href: '/tech/lightning/gossip' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是節點公告？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    node_announcement 是 Gossip 協議的一部分，讓節點向網路宣布自己的連接資訊、功能和元數據。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>前提條件：</strong>
+      節點必須至少有一個已確認的公開通道才能發送 node_announcement。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`node_announcement Format (BOLT 7)
+
+signature: 64 bytes
+  • 對整個訊息的簽名
+  • 證明來自節點擁有者
+
+features: variable
+  • 節點支援的功能位
+  • 例如：MPP、anchor_outputs、route_blinding
+
+timestamp: 4 bytes
+  • Unix 時間戳
+  • 較新的公告替換較舊的
+
+node_id: 33 bytes
+  • 節點的公鑰（壓縮格式）
+
+rgb_color: 3 bytes
+  • 節點顏色（用於圖形化顯示）
+
+alias: 32 bytes
+  • 人類可讀的節點名稱
+
+addresses: variable
+  • 節點的網路地址列表`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">地址類型</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Supported Address Formats
+
+Type 1: IPv4
+  • 4 bytes IP + 2 bytes port
+  • 例如：192.168.1.1:9735
+
+Type 2: IPv6
+  • 16 bytes IP + 2 bytes port
+  • 例如：[2001:db8::1]:9735
+
+Type 3: Tor v2（已棄用）
+  • 10 bytes onion + 2 bytes port
+
+Type 4: Tor v3
+  • 35 bytes onion + 2 bytes port
+  • 例如：xyz...abc.onion:9735
+
+Type 5: DNS Hostname
+  • 1 byte length + hostname + 2 bytes port
+  • 例如：node.example.com:9735
+
+Multi-Address Support:
+節點可以公告多個地址：
+  • 公網 IPv4
+  • Tor 洋蔥地址（增強隱私）
+  • DNS 名稱（便於記憶）
+
+連接優先級通常：IPv4 > IPv6 > Tor`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能位</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Common Feature Bits
+
+Bit 0/1:   data_loss_protect
+Bit 4/5:   upfront_shutdown_script
+Bit 8/9:   payment_secret
+Bit 14/15: basic_mpp
+Bit 16/17: payment_metadata
+Bit 22/23: anchors_zero_fee_htlc_tx
+Bit 24/25: route_blinding
+Bit 44/45: dual_fund
+
+Even vs Odd Bits:
+  • 偶數位：必須支援（不支援則拒絕連接）
+  • 奇數位：可選支援`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">更新頻率</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點通常每天發送一次更新，或在配置變更時立即發送。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私考量</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        只使用 Tor 地址可以隱藏節點的真實 IP。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/channel-announcements" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道公告</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/gossip" class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/feature-bits" class="text-yellow-600 dark:text-yellow-400 hover:underline">功能位</a>
+    </li>
+  </ul>
+</ArticleLayout>

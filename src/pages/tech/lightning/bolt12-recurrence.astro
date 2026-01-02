@@ -1,0 +1,152 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="BOLT12 Recurrence 週期性支付"
+  description="了解 BOLT12 Offers 的週期性支付功能，實現訂閱和定期付款。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'BOLT12 Recurrence' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'BOLT12 Offers', href: '/tech/lightning/bolt12-offers' }}
+  nextPage={{ title: 'Offers Refunds', href: '/tech/lightning/offers-refunds' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是週期性支付？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BOLT12 的週期性支付功能允許創建訂閱式的 Offer。
+    付款人可以定期（如每月）向同一個 Offer 支付，無需每次獲取新發票。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>用戶控制：</strong>
+      與傳統自動扣款不同，閃電訂閱需要付款人主動發起每次支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offer 結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`週期性 Offer 欄位：
+
+recurrence 欄位：
+recurrence: {
+  time_unit: <unit>,      // 時間單位
+  period: <number>,       // 週期數
+  basetime: <timestamp>,  // 可選：第一個週期開始時間
+  limit: <number>,        // 可選：最大支付次數
+  paywindow: {            // 可選：支付窗口
+    seconds_before: <n>,
+    seconds_after: <n>,
+    proportional_amount: <bool>
+  }
+}
+
+時間單位：
+• 0: 秒（seconds）
+• 1: 天（days）
+• 2: 週（weeks）
+• 3: 月（months）
+• 4: 年（years）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用範例</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`月度訂閱範例：
+
+Offer 創建：
+{
+  description: "Premium Membership",
+  amount_msat: 10000000,  // 10,000 sats/月
+  recurrence: {
+    time_unit: 3,         // 月
+    period: 1,            // 每 1 個月
+    paywindow: {
+      seconds_before: 86400,   // 可提前 1 天支付
+      seconds_after: 604800    // 可延遲 7 天支付
+    }
+  }
+}
+
+Invoice Request（第 N 次）：
+{
+  offer_id: <offer_id>,
+  recurrence_counter: N,      // 第幾次支付
+  recurrence_start: <time>,   // 週期開始時間
+  payer_key: <pubkey>
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付窗口</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`paywindow 機制：
+
+時間線：
+|<-- seconds_before -->|<-- 週期開始 -->|<-- seconds_after -->|
+|      可提前支付       |    精確時間    |       寬限期        |
+
+時間軸：─────────[═══════════════]─────────────────>
+              ↑          ↑           ↑
+            最早      週期開始      最晚
+           支付時間                支付時間
+
+proportional_amount：
+如果 proportional_amount = true：
+• 提前支付：按比例減少金額
+• 延遲支付：按比例增加金額
+
+範例：月費 30,000 sats，提前 10 天支付
+實際支付 = 30,000 × (30-10)/30 = 20,000 sats`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">錢包自動化</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        錢包可以提醒用戶支付即將到期的訂閱，或自動支付（用戶授權下）。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">取消訂閱</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        用戶只需停止支付即可取消，無需通知服務提供者。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>實現狀態：</strong>
+      週期性支付是 BOLT12 的進階功能，目前實現支持程度各異。CLN 支持較完整。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/bolt12-offers" class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/offers-refunds" class="text-yellow-600 dark:text-yellow-400 hover:underline">Offers 退款</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/invoice-request" class="text-yellow-600 dark:text-yellow-400 hover:underline">發票請求</a>
+    </li>
+  </ul>
+</ArticleLayout>

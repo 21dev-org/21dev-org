@@ -36,33 +36,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LN-Penalty（當前機制）問題：
+      class="text-[var(--text-secondary)]">{`LN-Penalty (Current Mechanism) Problems:
 
-1. 非對稱狀態
-   ┌─────────────────────────────────────────────────────┐
-   │ Alice 的 commitment tx ≠ Bob 的 commitment tx       │
-   │                                                     │
-   │ 每次更新都產生兩個不同的交易                          │
-   │ 增加了複雜性和潛在錯誤                               │
-   └─────────────────────────────────────────────────────┘
+1. Asymmetric State
+   Alice's commitment tx != Bob's commitment tx
+   Each update produces two different transactions
+   Increases complexity and potential errors
 
-2. 狀態存儲負擔
-   每次通道更新需要存儲：
-   - 新的 commitment tx
-   - 對方的撤銷密鑰
-   - 所有 HTLC 的超時/成功交易
+2. State Storage Burden
+   Each channel update requires storing:
+   • New commitment tx
+   • Peer's revocation key
+   • All HTLC timeout/success transactions
 
-   10,000 次更新 ≈ 幾 GB 的資料！
+   10,000 updates ~ several GB of data!
 
-3. 懲罰機制風險
-   - 必須存儲所有舊狀態
-   - 舊狀態丟失 = 無法懲罰作惡者
-   - Watchtower 需要大量存儲
+3. Penalty Mechanism Risks
+   • Must store all old states
+   • Lost old states = cannot penalize cheater
+   • Watchtower needs massive storage
 
-4. 有毒狀態
-   - 意外廣播舊狀態可能導致資金全部損失
-   - 硬件故障可能導致災難
-   - 複雜的備份需求`}</pre>
+4. Toxic State
+   • Accidentally broadcasting old state may cause total loss
+   • Hardware failure can cause disaster
+   • Complex backup requirements`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo 設計</h2>
@@ -71,31 +68,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Eltoo 核心概念：
+      class="text-[var(--text-secondary)]">{`Eltoo Core Concept:
 
-對稱狀態：
-  Alice 和 Bob 使用相同的 update tx 和 settle tx
-  ┌─────────────────────────────────────────┐
-  │         Funding TX                      │
-  │         (2-of-2 multisig)               │
-  └────────────────┬────────────────────────┘
-                   │
-                   ▼
-  ┌─────────────────────────────────────────┐
-  │         Update TX (state n)             │
-  │   可以被更新的 state n+1 覆蓋            │
-  └────────────────┬────────────────────────┘
-                   │
-                   ▼
-  ┌─────────────────────────────────────────┐
-  │         Settlement TX                   │
-  │   最終分配餘額給 Alice 和 Bob           │
-  └─────────────────────────────────────────┘
+Symmetric State:
+Alice and Bob use the same update tx and settle tx
 
-關鍵特性：
-- 任何人都可以用更新的狀態「覆蓋」舊狀態
-- 不需要懲罰機制
-- 只需存儲最新狀態`}</pre>
+         Funding TX
+         (2-of-2 multisig)
+              |
+              v
+         Update TX (state n)
+         Can be overwritten by state n+1
+              |
+              v
+         Settlement TX
+         Final balance distribution to Alice and Bob
+
+Key Features:
+• Anyone can "overwrite" old state with newer state
+• No penalty mechanism needed
+• Only need to store latest state`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SIGHASH_ANYPREVOUT</h2>
@@ -107,29 +99,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`SIGHASH_ANYPREVOUT 解釋：
+      class="text-[var(--text-secondary)]">{`SIGHASH_ANYPREVOUT Explained:
 
-傳統簽名（SIGHASH_ALL）：
-  簽名承諾 = Hash(
-    所有輸入（包括 txid 和 vout）+
-    所有輸出
+Traditional signature (SIGHASH_ALL):
+  Signature commits to = Hash(
+    all inputs (including txid and vout) +
+    all outputs
   )
-  → 簽名綁定到特定的輸入 UTXO
+  -> Signature bound to specific input UTXO
 
-ANYPREVOUT：
-  簽名承諾 = Hash(
-    輸入的 scriptPubKey（不包括 txid/vout）+
-    所有輸出
+ANYPREVOUT:
+  Signature commits to = Hash(
+    input's scriptPubKey (not txid/vout) +
+    all outputs
   )
-  → 簽名不綁定到特定 UTXO，可以附加到任何兼容輸出
+  -> Signature not bound to specific UTXO, can attach to any compatible output
 
-這意味著：
-  Update TX n+1 的簽名可以花費：
-  - Funding TX 的輸出
-  - 或 Update TX n 的輸出
-  - 或任何更早的 Update TX 的輸出
+This means:
+  Update TX n+1 signature can spend:
+  • Funding TX output
+  • Or Update TX n output
+  • Or any earlier Update TX output
 
-  只要輸出腳本兼容！`}</pre>
+  As long as output script is compatible!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">狀態更新流程</h2>
@@ -138,36 +130,36 @@ ANYPREVOUT：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Eltoo 狀態轉換：
+      class="text-[var(--text-secondary)]">{`Eltoo State Transitions:
 
-初始狀態：
-Funding TX ──[state 0]──> Update TX 0 ──> Settlement TX 0
+Initial state:
+Funding TX --[state 0]--> Update TX 0 --> Settlement TX 0
                           Alice: 5 BTC
                           Bob:   5 BTC
 
-Alice 支付 1 BTC 給 Bob：
-Funding TX ──[state 1]──> Update TX 1 ──> Settlement TX 1
+Alice pays 1 BTC to Bob:
+Funding TX --[state 1]--> Update TX 1 --> Settlement TX 1
                           Alice: 4 BTC
                           Bob:   6 BTC
 
-Bob 支付 2 BTC 給 Alice：
-Funding TX ──[state 2]──> Update TX 2 ──> Settlement TX 2
+Bob pays 2 BTC to Alice:
+Funding TX --[state 2]--> Update TX 2 --> Settlement TX 2
                           Alice: 6 BTC
                           Bob:   4 BTC
 
-關閉通道（正常）：
-  1. 雙方同意使用最新狀態
-  2. 廣播 Update TX 2
-  3. 等待時間鎖
-  4. 廣播 Settlement TX 2
+Close channel (normal):
+1. Both parties agree to use latest state
+2. Broadcast Update TX 2
+3. Wait for timelock
+4. Broadcast Settlement TX 2
 
-關閉通道（有人作惡）：
-  1. Alice 廣播舊的 Update TX 0
-  2. Bob 發現後，廣播 Update TX 2
-  3. Update TX 2 「覆蓋」Update TX 0
-  4. 結算使用 Settlement TX 2
+Close channel (someone cheats):
+1. Alice broadcasts old Update TX 0
+2. Bob notices, broadcasts Update TX 2
+3. Update TX 2 "overwrites" Update TX 0
+4. Settlement uses Settlement TX 2
 
-沒有懲罰！只是恢復到正確狀態。`}</pre>
+No penalty! Just restores to correct state.`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易結構</h2>
@@ -176,39 +168,33 @@ Funding TX ──[state 2]──> Update TX 2 ──> Settlement TX 2
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Eltoo 交易結構：
+      class="text-[var(--text-secondary)]">{`Eltoo Transaction Structure:
 
 Funding TX:
-┌─────────────────────────────────────────────────────────┐
-│ Output:                                                 │
-│   2-of-2 MuSig (Alice + Bob)                           │
-│   或 Taproot 輸出                                       │
-└─────────────────────────────────────────────────────────┘
+  Output:
+    2-of-2 MuSig (Alice + Bob)
+    or Taproot output
 
 Update TX (state n):
-┌─────────────────────────────────────────────────────────┐
-│ Input:                                                  │
-│   使用 SIGHASH_ANYPREVOUT 簽名                          │
-│   可以花費 Funding TX 或任何更早的 Update TX            │
-│                                                         │
-│ Output:                                                 │
-│   <state_n+1 pubkey> CHECKSIG                          │
-│   或在 CSV 時間鎖後：                                   │
-│   <settlement pubkey> CHECKSIG                          │
-│                                                         │
-│ nLockTime: state number (確保順序)                      │
-└─────────────────────────────────────────────────────────┘
+  Input:
+    Signed with SIGHASH_ANYPREVOUT
+    Can spend Funding TX or any earlier Update TX
+
+  Output:
+    <state_n+1 pubkey> CHECKSIG
+    or after CSV timelock:
+    <settlement pubkey> CHECKSIG
+
+  nLockTime: state number (ensures ordering)
 
 Settlement TX:
-┌─────────────────────────────────────────────────────────┐
-│ Input:                                                  │
-│   花費 Update TX 的輸出（在 CSV 後）                    │
-│                                                         │
-│ Outputs:                                                │
-│   Alice: X BTC                                          │
-│   Bob:   Y BTC                                          │
-│   (根據最新狀態分配)                                     │
-└─────────────────────────────────────────────────────────┘`}</pre>
+  Input:
+    Spends Update TX output (after CSV)
+
+  Outputs:
+    Alice: X BTC
+    Bob:   Y BTC
+    (distributed according to latest state)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo vs LN-Penalty</h2>
@@ -271,34 +257,31 @@ Settlement TX:
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Channel Factory 概念：
+      class="text-[var(--text-secondary)]">{`Channel Factory Concept:
 
-傳統模式：每個通道需要一筆鏈上交易
-  Alice──Bob: 1 tx
-  Alice──Carol: 1 tx
-  Bob──Carol: 1 tx
-  共 3 筆鏈上交易
+Traditional mode: Each channel needs one on-chain tx
+  Alice--Bob: 1 tx
+  Alice--Carol: 1 tx
+  Bob--Carol: 1 tx
+  Total 3 on-chain transactions
 
-Channel Factory：
-  ┌─────────────────────────────────────────┐
-  │           Factory Funding TX            │
-  │          (N-of-N multisig)              │
-  │     Alice + Bob + Carol + ...           │
-  └────────────────┬────────────────────────┘
-                   │
-          ┌────────┴────────┐
-          │                 │
-   ┌──────┴──────┐   ┌──────┴──────┐
-   │ Alice-Bob   │   │ Bob-Carol   │
-   │  Channel    │   │  Channel    │
-   └─────────────┘   └─────────────┘
+Channel Factory:
 
-  只需 1 筆鏈上交易開設多個通道！
+      Factory Funding TX
+      (N-of-N multisig)
+      Alice + Bob + Carol + ...
+              |
+      +-------+-------+
+      |               |
+  Alice-Bob      Bob-Carol
+   Channel        Channel
 
-Eltoo 的優勢：
-- 多方協調更簡單（對稱狀態）
-- 任何人離線不會導致懲罰風險
-- 可以動態調整 Factory 內的通道`}</pre>
+  Only 1 on-chain tx to open multiple channels!
+
+Eltoo advantages:
+• Multi-party coordination simpler (symmetric state)
+• Anyone going offline doesn't cause penalty risk
+• Can dynamically adjust channels within Factory`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">APO 軟分叉進展</h2>

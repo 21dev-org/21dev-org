@@ -35,36 +35,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 11 發票結構：
+      class="text-[var(--text-secondary)]">{`BOLT 11 Invoice Structure
 
-完整發票範例：
-┌──────────────────────────────────────────────────────────────┐
-│ lnbc10u1pj9...省略...cqzzsxqyz5vq                            │
-│                                                              │
-│ 分解：                                                       │
-│ ├── ln        : 前綴（Lightning Network）                    │
-│ ├── bc        : 網路（bc=mainnet, tb=testnet, bcrt=regtest） │
-│ ├── 10u       : 金額（10 micro-bitcoin = 1000 sats）         │
-│ ├── 1         : 分隔符                                       │
-│ ├── pj9...    : 時間戳 + 資料欄位（Bech32 編碼）             │
-│ └── cqzzsxqyz5vq : 簽名 + 恢復標誌                           │
-└──────────────────────────────────────────────────────────────┘
+Example Invoice:
+lnbc10u1pj9...omitted...cqzzsxqyz5vq
 
-金額單位：
-┌──────────────────────────────────────────────────────────────┐
-│ 字母  │ 乘數        │ 換算                                  │
-│───────┼─────────────┼───────────────────────────────────────│
-│ m     │ 0.001       │ milli-bitcoin（100,000 sats）         │
-│ u     │ 0.000001    │ micro-bitcoin（100 sats）             │
-│ n     │ 0.000000001 │ nano-bitcoin（0.1 sats）              │
-│ p     │ 1e-12       │ pico-bitcoin（0.0001 sats）           │
-└──────────────────────────────────────────────────────────────┘
+Breakdown:
+• ln        : prefix (Lightning Network)
+• bc        : network (bc=mainnet, tb=testnet, bcrt=regtest)
+• 10u       : amount (10 micro-bitcoin = 1000 sats)
+• 1         : separator
+• pj9...    : timestamp + data fields (Bech32 encoded)
+• cqzzsxqyz5vq : signature + recovery flag
 
-範例：
-├── lnbc1m    = 0.001 BTC = 100,000 sats
-├── lnbc100u  = 0.0001 BTC = 10,000 sats
-├── lnbc1000n = 0.000001 BTC = 100 sats
-└── lnbc（無金額）= 金額由付款人決定`}</pre>
+Amount Units:
+┌────────┬─────────────┬─────────────────────────────┐
+│ Letter │ Multiplier  │ Conversion                  │
+├────────┼─────────────┼─────────────────────────────┤
+│ m      │ 0.001       │ milli-bitcoin (100,000 sats)│
+│ u      │ 0.000001    │ micro-bitcoin (100 sats)    │
+│ n      │ 0.000000001 │ nano-bitcoin (0.1 sats)     │
+│ p      │ 1e-12       │ pico-bitcoin (0.0001 sats)  │
+└────────┴─────────────┴─────────────────────────────┘
+
+Examples:
+• lnbc1m    = 0.001 BTC = 100,000 sats
+• lnbc100u  = 0.0001 BTC = 10,000 sats
+• lnbc1000n = 0.000001 BTC = 100 sats
+• lnbc (no amount) = amount decided by payer`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">資料欄位（Tagged Fields）</h2>
@@ -73,66 +71,43 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 11 標籤欄位：
+      class="text-[var(--text-secondary)]">{`BOLT 11 Tagged Fields
 
-欄位結構：
+Field Structure:
 ┌──────────────────────────────────────────────────────────────┐
 │ [type: 5 bits] [data_length: 10 bits] [data: variable]      │
 └──────────────────────────────────────────────────────────────┘
 
-必要欄位：
-┌──────────────────────────────────────────────────────────────┐
-│ p (1)  : payment_hash                                        │
-│          256-bit SHA256 哈希                                 │
-│          用於 HTLC 構建                                      │
-└──────────────────────────────────────────────────────────────┘
+Required Field:
+• p (1) : payment_hash - 256-bit SHA256 hash, used for HTLC
 
-常用欄位：
-┌──────────────────────────────────────────────────────────────┐
-│ d (13) : description                                         │
-│          短描述文字（UTF-8）                                 │
-│                                                              │
-│ h (23) : description_hash                                    │
-│          長描述的 SHA256 哈希                                │
-│          （與 d 互斥）                                       │
-│                                                              │
-│ x (6)  : expiry                                              │
-│          過期時間（秒），預設 3600                           │
-│                                                              │
-│ n (19) : payee_pubkey                                        │
-│          收款人公鑰（33 bytes）                              │
-│          可從簽名恢復                                        │
-│                                                              │
-│ c (24) : min_final_cltv_expiry_delta                         │
-│          最小 CLTV delta，預設 18                            │
-└──────────────────────────────────────────────────────────────┘
+Common Fields:
+• d (13) : description - short text (UTF-8)
+• h (23) : description_hash - SHA256 of long description
+           (mutually exclusive with d)
+• x (6)  : expiry - expiration time in seconds (default 3600)
+• n (19) : payee_pubkey - receiver public key (33 bytes)
+           can be recovered from signature
+• c (24) : min_final_cltv_expiry_delta - minimum CLTV delta
+           (default 18)
 
-路由提示：
-┌──────────────────────────────────────────────────────────────┐
-│ r (3)  : routing_info                                        │
-│          私有通道的路由提示                                  │
-│          每跳 51 bytes：                                     │
-│          ├── pubkey: 33 bytes                                │
-│          ├── short_channel_id: 8 bytes                       │
-│          ├── fee_base_msat: 4 bytes                          │
-│          ├── fee_proportional_millionths: 4 bytes            │
-│          └── cltv_expiry_delta: 2 bytes                      │
-└──────────────────────────────────────────────────────────────┘
+Routing Hints:
+• r (3) : routing_info - hints for private channels
+  Per hop (51 bytes):
+  - pubkey: 33 bytes
+  - short_channel_id: 8 bytes
+  - fee_base_msat: 4 bytes
+  - fee_proportional_millionths: 4 bytes
+  - cltv_expiry_delta: 2 bytes
 
-功能位：
-┌──────────────────────────────────────────────────────────────┐
-│ 9 (5)  : feature_bits                                        │
-│          發票支援的功能                                      │
-│          如 payment_secret、basic_mpp 等                     │
-└──────────────────────────────────────────────────────────────┘
+Feature Bits:
+• 9 (5) : feature_bits - supported features
+  e.g., payment_secret, basic_mpp
 
-支付密鑰：
-┌──────────────────────────────────────────────────────────────┐
-│ s (16) : payment_secret                                      │
-│          256-bit 隨機值                                      │
-│          防止探測和前向劫持                                  │
-│          MPP 要求此欄位                                      │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Payment Secret:
+• s (16) : payment_secret - 256-bit random value
+  Prevents probing and forward-hijacking
+  Required for MPP`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Bech32 編碼</h2>
@@ -141,41 +116,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Bech32 編碼細節：
+      class="text-[var(--text-secondary)]">{`Bech32 Encoding Details
 
-字元集（32 個字元）：
-┌──────────────────────────────────────────────────────────────┐
-│ qpzry9x8gf2tvdw0s3jn54khce6mua7l                             │
-│                                                              │
-│ 排除易混淆字元：1, b, i, o                                   │
-│ 全小寫，減少錯誤                                             │
-└──────────────────────────────────────────────────────────────┘
+Character Set (32 characters):
+qpzry9x8gf2tvdw0s3jn54khce6mua7l
 
-編碼過程：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 原始資料（8-bit bytes）                                   │
-│    ↓                                                         │
-│ 2. 轉換為 5-bit groups                                       │
-│    ↓                                                         │
-│ 3. 映射到 Bech32 字元                                        │
-│    ↓                                                         │
-│ 4. 添加校驗碼（6 字元）                                      │
-└──────────────────────────────────────────────────────────────┘
+• Excludes confusing chars: 1, b, i, o
+• All lowercase to reduce errors
 
-校驗碼計算：
-├── 使用 BCH 碼（Bose-Chaudhuri-Hocquenghem）
-├── 可偵測最多 4 個字元錯誤
-├── 在 89 字元內保證偵測 2 個替換錯誤
-└── 提供錯誤位置提示
+Encoding Process:
+1. Raw data (8-bit bytes)
+   ↓
+2. Convert to 5-bit groups
+   ↓
+3. Map to Bech32 characters
+   ↓
+4. Add checksum (6 characters)
 
-範例轉換：
-┌──────────────────────────────────────────────────────────────┐
-│ 時間戳 1496314658                                            │
-│ = 0x5932DC22（32-bit）                                       │
-│ = 分成 7 個 5-bit groups                                     │
-│ = [0b01011, 0b00100, ...]                                    │
-│ = Bech32 字元                                                │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Checksum Properties:
+• Uses BCH code (Bose-Chaudhuri-Hocquenghem)
+• Detects up to 4 character errors
+• Guarantees detection of 2 substitution errors within 89 chars
+• Provides error position hints
+
+Example Conversion:
+Timestamp 1496314658
+= 0x5932DC22 (32-bit)
+= Split into 7 x 5-bit groups
+= [0b01011, 0b00100, ...]
+= Bech32 characters`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">簽名與驗證</h2>
@@ -184,43 +153,36 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`發票簽名：
+      class="text-[var(--text-secondary)]">{`Invoice Signature
 
-簽名對象：
+Signed Message:
+SHA256(SHA256(
+  hrp (as UTF-8 bytes) ||
+  data (as 5-bit values, excluding signature)
+))
+hrp = "lnbc" or "lntb" etc.
+
+Signature Format (65 bytes):
 ┌──────────────────────────────────────────────────────────────┐
-│ SHA256(SHA256(                                               │
-│   hrp (as UTF-8 bytes) ||                                    │
-│   data (as 5-bit values, excluding signature)                │
-│ ))                                                           │
-│                                                              │
-│ hrp = "lnbc" 或 "lntb" 等                                    │
+│ r: 32 bytes        - ECDSA signature r value                 │
+│ s: 32 bytes        - ECDSA signature s value                 │
+│ recovery: 1 byte   - public key recovery flag (0-3)          │
 └──────────────────────────────────────────────────────────────┘
 
-簽名格式（65 bytes）：
-┌──────────────────────────────────────────────────────────────┐
-│ ├── r: 32 bytes   │ ECDSA 簽名 r 值                         │
-│ ├── s: 32 bytes   │ ECDSA 簽名 s 值                         │
-│ └── recovery: 1 byte │ 公鑰恢復標誌 (0-3)                   │
-└──────────────────────────────────────────────────────────────┘
+Public Key Recovery:
+If invoice has no n (payee_pubkey) field:
+1. Compute hash of signed message
+2. Use recovery ID to recover pubkey from signature
+3. Recovered pubkey is the receiver's node ID
+• Benefit: saves 33 bytes
 
-公鑰恢復：
-┌──────────────────────────────────────────────────────────────┐
-│ 如果發票沒有 n（payee_pubkey）欄位：                         │
-│                                                              │
-│ 1. 計算簽名訊息的哈希                                        │
-│ 2. 使用 recovery ID 從簽名恢復公鑰                           │
-│ 3. 恢復的公鑰即為收款人節點 ID                               │
-│                                                              │
-│ 優點：節省 33 bytes 空間                                     │
-└──────────────────────────────────────────────────────────────┘
-
-驗證流程：
-1. 解碼 Bech32
-2. 驗證校驗碼
-3. 解析欄位
-4. 驗證簽名（或恢復公鑰）
-5. 檢查過期時間
-6. 驗證金額格式`}</pre>
+Verification Flow:
+1. Decode Bech32
+2. Verify checksum
+3. Parse fields
+4. Verify signature (or recover pubkey)
+5. Check expiration time
+6. Validate amount format`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解碼範例</h2>
@@ -229,42 +191,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`發票解碼示範：
+      class="text-[var(--text-secondary)]">{`Invoice Decoding Example
 
-原始發票：
+Raw Invoice:
 lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rq
 wzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahr
 sqsrzjqwryaup9lh50kkranzgcdnn2fgvx390wgj5jd07rwr3vxeje0glclldc
 wwnqqqqqqqqqqqqqqqsqfq2zs8t3c
 
-解碼結果：
-┌──────────────────────────────────────────────────────────────┐
-│ 網路：mainnet (bc)                                           │
-│ 金額：20 mBTC = 2,000,000 sats                               │
-│                                                              │
-│ 時間戳：1496314658                                           │
-│         2017-06-01 12:57:38 UTC                              │
-│                                                              │
-│ payment_hash:                                                │
-│   0001020304050607080900010203040506070809000102030405060708 │
-│                                                              │
-│ description_hash:                                            │
-│   3925b6f67e2c340036ed12093dd44e0368df1b6ea26c53dbe4811f58fd5db8c1│
-│                                                              │
-│ 過期：3600 秒（預設）                                        │
-│                                                              │
-│ 簽名：有效                                                   │
-│ 收款人公鑰：（從簽名恢復）                                   │
-└──────────────────────────────────────────────────────────────┘
+Decoded Result:
+• Network: mainnet (bc)
+• Amount: 20 mBTC = 2,000,000 sats
+• Timestamp: 1496314658 (2017-06-01 12:57:38 UTC)
+• payment_hash:
+  0001020304050607080900010203040506070809000102030405060708
+• description_hash:
+  3925b6f67e2c340036ed12093dd44e0368df1b6ea26c53dbe4811f58fd5db8c1
+• Expiry: 3600 seconds (default)
+• Signature: valid
+• Payee pubkey: (recovered from signature)
 
-CLI 解碼：
+CLI Decoding:
+
 # LND
 lncli decodepayreq <invoice>
 
 # Core Lightning
 lightning-cli decode <invoice>
 
-# 線上工具
+# Online Tool
 https://lightningdecoder.com/`}</pre>
   </div>
 

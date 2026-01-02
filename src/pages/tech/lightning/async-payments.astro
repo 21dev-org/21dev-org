@@ -36,31 +36,31 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`現有方案及其問題：
+      class="text-[var(--text-secondary)]">{`Existing Solutions and Their Problems:
 
-1. 託管錢包
-   ✓ 簡單，隨時可收款
-   ✗ 資金由第三方控制
-   ✗ 隱私風險
-   ✗ 交易對手風險
+1. Custodial Wallets
+   + Simple, can receive anytime
+   - Funds controlled by third party
+   - Privacy risk
+   - Counterparty risk
 
-2. LSP 代理接收
-   ✓ 資金最終到達用戶
-   ✓ 較好的用戶體驗
-   ✗ LSP 需要暫時持有資金
-   ✗ 仍有信任要求
-   ✗ LSP 可能審查支付
+2. LSP Proxy Receiving
+   + Funds eventually reach user
+   + Better user experience
+   - LSP needs to temporarily hold funds
+   - Still requires trust
+   - LSP may censor payments
 
 3. HODL Invoices
-   ✓ 支付可以等待
-   ✗ 佔用發送方流動性
-   ✗ 增加堵塞風險
-   ✗ 有時間限制
+   + Payment can wait
+   - Occupies sender's liquidity
+   - Increases jamming risk
+   - Has time limit
 
-理想方案：
-- 接收方離線時可以「承諾」收款
-- 上線後無信任地結算
-- 不佔用他人流動性`}</pre>
+Ideal Solution:
+• Receiver can "commit" to receive while offline
+• Settle trustlessly when online
+• Don't occupy others' liquidity`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Async Payments 概念</h2>
@@ -69,32 +69,27 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`非同步支付設計目標：
+      class="text-[var(--text-secondary)]">{`Async Payment Design Goals:
 
-┌─────────────────────────────────────────────────────────┐
-│                    發送方 (Alice)                        │
-│                         │                               │
-│                    發起支付                              │
-│                         │                               │
-│                         ▼                               │
-│   ┌─────────────────────────────────────────────┐       │
-│   │              LSP / 中間節點                  │       │
-│   │                                              │       │
-│   │  持有支付，等待接收方上線                     │       │
-│   │  (不需要持有實際資金)                        │       │
-│   └─────────────────────────────────────────────┘       │
-│                         │                               │
-│                    接收方上線                            │
-│                         │                               │
-│                         ▼                               │
-│                    接收方 (Bob)                          │
-│                    完成結算                              │
-└─────────────────────────────────────────────────────────┘
+Flow:
+  Sender (Alice)
+       |
+       | Initiates payment
+       v
+  LSP / Intermediate Node
+       |
+       | Holds payment intent, waits for receiver
+       | (doesn't hold actual funds)
+       v
+  Receiver comes online
+       |
+       v
+  Receiver (Bob) - Completes settlement
 
-關鍵特性：
-- 接收方離線時不佔用流動性
-- 上線後完成實際的 HTLC 交換
-- 無需信任中間節點持有資金`}</pre>
+Key Features:
+• No liquidity occupied while receiver offline
+• Complete actual HTLC exchange when online
+• No need to trust intermediate node with funds`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術方案</h2>
@@ -105,31 +100,31 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Trampoline 路由 + 非同步支付：
+      class="text-[var(--text-secondary)]">{`Trampoline Routing + Async Payments:
 
-概念：
-- 發送方將支付委託給 Trampoline 節點
-- Trampoline 節點負責找到接收方
-- 如果接收方離線，Trampoline 可以等待
+Concept:
+• Sender delegates payment to Trampoline node
+• Trampoline node finds the receiver
+• If receiver offline, Trampoline can wait
 
-流程：
-1. Alice 創建支付，指定 Bob 的靜態 ID
-2. Alice 發送給 Trampoline 節點 T
-3. T 發現 Bob 離線
-4. T 保存「支付意圖」（不是實際資金）
-5. Bob 上線，連接 T
-6. T 將支付路由給 Bob
-7. Bob 揭示 preimage
-8. 支付完成
+Flow:
+1. Alice creates payment, specifies Bob's static ID
+2. Alice sends to Trampoline node T
+3. T discovers Bob is offline
+4. T saves "payment intent" (not actual funds)
+5. Bob comes online, connects to T
+6. T routes payment to Bob
+7. Bob reveals preimage
+8. Payment complete
 
-優點：
-- 不需要鏈上交易
-- Bob 離線時 Alice 的資金不被鎖定
-- 基於現有 Trampoline 提案
+Advantages:
+• No on-chain transaction needed
+• Alice's funds not locked when Bob offline
+• Based on existing Trampoline proposal
 
-限制：
-- 需要 Trampoline 節點支援
-- 仍有一定信任要求（T 可能不轉發）`}</pre>
+Limitations:
+• Requires Trampoline node support
+• Still some trust requirement (T might not forward)`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. PTLCs + Async</h3>
@@ -138,30 +133,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`PTLC 實現非同步支付：
+      class="text-[var(--text-secondary)]">{`PTLC-based Async Payments:
 
-使用適配器簽名的優勢：
+Advantages of adaptor signatures:
 
-傳統 HTLC：
-- 接收方必須在線生成 preimage
-- 無法提前創建「可重用」的支付方式
+Traditional HTLC:
+• Receiver must be online to generate preimage
+• Cannot create "reusable" payment method in advance
 
-PTLC：
-- 接收方可以提前發布公開點 P = p·G
-- 發送方使用 P 創建支付
-- 接收方上線後用 p 解鎖
+PTLC:
+• Receiver can publish public point P = p*G in advance
+• Sender uses P to create payment
+• Receiver unlocks with p when online
 
-流程：
-1. Bob 發布靜態支付點 P（類似靜態地址）
-2. Alice 創建 PTLC 鎖定到 P
-3. Alice 發送支付到 Bob 的 LSP
-4. LSP 持有支付（PTLC 形式）
-5. Bob 上線，用 p 解鎖 PTLC
-6. 支付完成
+Flow:
+1. Bob publishes static payment point P (like static address)
+2. Alice creates PTLC locked to P
+3. Alice sends payment to Bob's LSP
+4. LSP holds payment (in PTLC form)
+5. Bob comes online, unlocks PTLC with p
+6. Payment complete
 
-挑戰：
-- 需要 PTLC 廣泛部署
-- 依賴 Taproot channels`}</pre>
+Challenges:
+• Requires widespread PTLC deployment
+• Depends on Taproot channels`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 靜態發票 (Static Invoices)</h3>
@@ -170,33 +165,30 @@ PTLC：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 12 Offers 實現靜態發票：
+      class="text-[var(--text-secondary)]">{`BOLT 12 Offers for Static Invoices:
 
-傳統 BOLT 11：
-- 每次收款需要生成新發票
-- 發票有過期時間
-- 接收方需要在線
+Traditional BOLT 11:
+• Need to generate new invoice each time
+• Invoice has expiry time
+• Receiver must be online
 
-BOLT 12 Offers：
-┌─────────────────────────────────────────┐
-│ Offer: lno1...                           │
-│                                          │
-│ - 靜態的支付「要約」                      │
-│ - 可重複使用                             │
-│ - 不需要每次在線生成發票                  │
-└─────────────────────────────────────────┘
+BOLT 12 Offers:
+  Offer: lno1...
+  • Static payment "offer"
+  • Reusable
+  • No need to be online for each invoice
 
-流程：
-1. Bob 創建 Offer 並發布
-2. Alice 使用 Offer 請求發票
-3. 發票請求通過洋蔥路由
-4. Bob 的節點/LSP 返回發票
-5. Alice 支付
+Flow:
+1. Bob creates and publishes Offer
+2. Alice uses Offer to request invoice
+3. Invoice request via onion routing
+4. Bob's node/LSP returns invoice
+5. Alice pays
 
-非同步場景：
-- Bob 離線時，LSP 可以代理
-- 使用 Bob 預先授權的密鑰
-- 或等待 Bob 上線`}</pre>
+Async scenario:
+• When Bob offline, LSP can proxy
+• Use Bob's pre-authorized keys
+• Or wait for Bob to come online`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 輔助非同步</h2>
@@ -260,28 +252,28 @@ BOLT 12 Offers：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`非同步支付的路線圖：
+      class="text-[var(--text-secondary)]">{`Async Payments Roadmap:
 
-近期（已實現）：
-├── LSP 代理接收
-├── HODL invoices
-└── 推送通知喚醒
+Near-term (implemented):
+• LSP proxy receiving
+• HODL invoices
+• Push notification wakeup
 
-中期（開發中）：
-├── BOLT 12 Offers
-├── Trampoline routing
-└── 更好的 LSP 標準
+Mid-term (in development):
+• BOLT 12 Offers
+• Trampoline routing
+• Better LSP standards
 
-長期（研究中）：
-├── PTLC-based async
-├── 完全無信任方案
-└── 跨 LSP 互操作
+Long-term (research):
+• PTLC-based async
+• Fully trustless solution
+• Cross-LSP interoperability
 
-理想目標：
-- 接收方可以完全離線
-- 不佔用網路流動性
-- 最小化信任要求
-- 保護隱私`}</pre>
+Ideal Goals:
+• Receiver can be fully offline
+• Don't occupy network liquidity
+• Minimize trust requirements
+• Protect privacy`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

@@ -36,40 +36,40 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`公開通道 (Public/Announced)：
-┌─────────────────────────────────────────────────────────┐
-│ 通道開設後：                                            │
-│ 1. 發送 channel_announcement 訊息                       │
-│ 2. 發送 channel_update 訊息                             │
-│ 3. 全網節點更新路由圖                                   │
-│                                                         │
-│ 所有人都知道：                                          │
-│ ├── 通道存在                                            │
-│ ├── 兩端節點 ID                                         │
-│ ├── 通道容量                                            │
-│ ├── 費率設定                                            │
-│ └── 時間鎖要求                                          │
-│                                                         │
-│ 用途：路由節點、公共基礎設施                            │
-└─────────────────────────────────────────────────────────┘
+      class="text-[var(--text-secondary)]">{`Public/Announced Channels:
 
-私有通道 (Private/Unannounced)：
-┌─────────────────────────────────────────────────────────┐
-│ 通道開設後：                                            │
-│ 1. 不發送 channel_announcement                          │
-│ 2. 不發送公開的 channel_update                          │
-│ 3. 網路圖中不存在此通道                                 │
-│                                                         │
-│ 只有通道雙方知道：                                      │
-│ ├── 通道存在                                            │
-│ ├── 容量和餘額                                          │
-│ └── 詳細設定                                            │
-│                                                         │
-│ 外部觀察者只能看到：                                    │
-│ └── 鏈上的資金交易（無法確定是閃電通道）               │
-│                                                         │
-│ 用途：終端用戶錢包、隱私需求                            │
-└─────────────────────────────────────────────────────────┘`}</pre>
+After channel opens:
+  1. Send channel_announcement message
+  2. Send channel_update message
+  3. All nodes update routing graph
+
+Everyone knows:
+  - Channel exists
+  - Both node IDs
+  - Channel capacity
+  - Fee settings
+  - Timelock requirements
+
+Use case: Routing nodes, public infrastructure
+
+---
+
+Private/Unannounced Channels:
+
+After channel opens:
+  1. No channel_announcement sent
+  2. No public channel_update sent
+  3. Channel doesn't exist in network graph
+
+Only channel parties know:
+  - Channel exists
+  - Capacity and balance
+  - Detailed settings
+
+External observers can only see:
+  - On-chain funding TX (can't confirm it's LN channel)
+
+Use case: End-user wallets, privacy needs`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">如何創建私有通道</h2>
@@ -78,31 +78,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`創建私有通道：
+      class="text-[var(--text-secondary)]">{`Creating Private Channels:
 
-open_channel 訊息中的 channel_flags：
-┌─────────────────────────────────────────────────────────┐
-│ channel_flags:                                          │
-│   bit 0: announce_channel                               │
-│          0 = 私有（不宣布）                             │
-│          1 = 公開（宣布）                               │
-└─────────────────────────────────────────────────────────┘
+channel_flags in open_channel message:
 
-LND 命令：
+  channel_flags:
+    bit 0: announce_channel
+           0 = private (don't announce)
+           1 = public (announce)
+
+LND Command:
 lncli openchannel --private \\
   --node_key <peer_pubkey> \\
   --local_amt 1000000
 
-CLN 命令：
+CLN Command:
 lightning-cli fundchannel \\
   <peer_id> 1000000 \\
   announce=false
 
-協商流程：
-1. 發起方在 open_channel 中設定 channel_flags=0
-2. 接收方在 accept_channel 中同意
-3. 通道開設完成後不廣播
-4. 雙方各自維護通道信息`}</pre>
+Negotiation Flow:
+  1. Initiator sets channel_flags=0 in open_channel
+  2. Receiver agrees in accept_channel
+  3. Channel opens without broadcasting
+  4. Both parties maintain channel info locally`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由提示 (Route Hints)</h2>
@@ -111,42 +110,40 @@ lightning-cli fundchannel \\
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`私有通道的支付接收：
+      class="text-[var(--text-secondary)]">{`Receiving Payments via Private Channels:
 
-問題：發送方不知道私有通道存在，如何路由？
+Problem: Sender doesn't know private channel exists. How to route?
 
-解決方案：Route Hints（路由提示）
+Solution: Route Hints
 
-發票中包含私有通道信息：
+Invoice includes private channel info:
 lnbc100n1...
-├── payment_hash
-├── amount
-├── description
-└── r (route hints):
-    └── [{
-          "pubkey": "<LSP_node_id>",
-          "short_channel_id": "123x456x0",
-          "fee_base_msat": 1000,
-          "fee_proportional_millionths": 100,
-          "cltv_expiry_delta": 40
-        }]
+  - payment_hash
+  - amount
+  - description
+  - r (route hints):
+      [{
+        "pubkey": "<LSP_node_id>",
+        "short_channel_id": "123x456x0",
+        "fee_base_msat": 1000,
+        "fee_proportional_millionths": 100,
+        "cltv_expiry_delta": 40
+      }]
 
-發送方路徑計算：
-1. 發送方收到發票
-2. 讀取 route hints
-3. 路由到 hints 中的節點
-4. 使用 hints 中的通道到達接收方
+Sender Path Calculation:
+  1. Sender receives invoice
+  2. Reads route hints
+  3. Routes to node in hints
+  4. Uses hint channel to reach receiver
 
-┌─────────────────────────────────────────────────────────┐
-│ 發送方 → [公開網路] → LSP → [私有通道] → 接收方        │
-│                         ↑                               │
-│                    route hint 提供                      │
-└─────────────────────────────────────────────────────────┘
+  Sender -> [Public Network] -> LSP -> [Private Channel] -> Receiver
+                                 ^
+                           route hint provided
 
-隱私洩露：
-├── 發送方知道私有通道存在（從發票）
-├── 發送方知道通道容量估計（從費率限制）
-└── LSP 知道支付來源和目的地`}</pre>
+Privacy Leakage:
+  - Sender knows private channel exists (from invoice)
+  - Sender knows capacity estimate (from fee limits)
+  - LSP knows payment source and destination`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
@@ -184,32 +181,32 @@ lnbc100n1...
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`SCID Alias（短通道 ID 別名）：
+      class="text-[var(--text-secondary)]">{`SCID Alias (Short Channel ID Alias):
 
-問題：
-├── 傳統 SCID 格式：區塊高度:交易索引:輸出索引
-├── 例如：700000:1234:0
-└── 這洩露了資金交易的鏈上位置！
+Problem:
+  - Traditional SCID format: block_height:tx_index:output_index
+  - Example: 700000:1234:0
+  - This leaks on-chain funding TX location!
 
-SCID Alias 解決方案：
-├── 使用隨機生成的別名 SCID
-├── 格式仍是 8 字節，但不對應真實區塊
-└── 只有通道雙方知道映射關係
+SCID Alias Solution:
+  - Use randomly generated alias SCID
+  - Still 8-byte format, but doesn't map to real block
+  - Only channel parties know the mapping
 
-功能位：option_scid_alias (bit 46/47)
+Feature bit: option_scid_alias (bit 46/47)
 
-示例：
-真實 SCID: 700000x1234x0  （不公開）
-Alias SCID: 0x00abcdef12345678  （用於 route hints）
+Example:
+  Real SCID: 700000x1234x0 (not public)
+  Alias SCID: 0x00abcdef12345678 (used in route hints)
 
-優點：
-├── 發票不洩露資金交易位置
-├── 支持 Zero-Conf 通道（無真實 SCID）
-└── 更好的隱私保護
+Benefits:
+  - Invoice doesn't leak funding TX location
+  - Supports Zero-Conf channels (no real SCID yet)
+  - Better privacy protection
 
-在 route hints 中使用 alias：
+Using alias in route hints:
 {
-  "short_channel_id": "alias_scid",  // 使用別名
+  "short_channel_id": "alias_scid",
   ...
 }`}</pre>
   </div>
@@ -253,27 +250,26 @@ Alias SCID: 0x00abcdef12345678  （用於 route hints）
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`增強隱私：Route Blinding + 私有通道
+      class="text-[var(--text-secondary)]">{`Enhanced Privacy: Route Blinding + Private Channels
 
-Route Hints 的問題：
-├── 暴露私有通道信息給發送方
-└── 發送方知道接收方連接的節點
+Route Hints Problem:
+  - Exposes private channel info to sender
+  - Sender knows receiver's connected node
 
-Route Blinding 解決方案：
-├── 接收方創建盲化路徑
-├── 發送方只知道入口節點
-└── 不知道後續路徑和最終目的地
+Route Blinding Solution:
+  - Receiver creates blinded path
+  - Sender only knows entry node
+  - Doesn't know subsequent path or final destination
 
-組合使用：
-┌─────────────────────────────────────────────────────────┐
-│ 發送方 → 入口節點 → [盲化路徑] → LSP → [私有通道] → 你  │
-│                         ↑          ↑                     │
-│                    Route Blinding  私有                  │
-│                         ↓                                │
-│            發送方只知道這個節點                          │
-└─────────────────────────────────────────────────────────┘
+Combined Usage:
 
-見：/tech/lightning/route-blinding`}</pre>
+  Sender -> Entry Node -> [Blinded Path] -> LSP -> [Private] -> You
+                               ^            ^
+                         Route Blinding   Private
+                               |
+                    Sender only knows this node
+
+See: /tech/lightning/route-blinding`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

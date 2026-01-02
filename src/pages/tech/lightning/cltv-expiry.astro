@@ -35,31 +35,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`CLTV Delta 在路由中的應用：
+      class="text-[var(--text-secondary)]">{`CLTV Delta in Routing:
 
-多跳支付示例（Alice → Bob → Carol → Dave）：
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│ 當前區塊高度：800,000                                        │
-│ 最終過期（Dave）：800,100（+100 blocks）                     │
-│                                                              │
-│ Bob's delta: 40    Carol's delta: 40    Dave's delta: 18     │
-│                                                              │
-│ Alice ──────> Bob ──────> Carol ──────> Dave                 │
-│   │           │            │             │                   │
-│   │ HTLC      │ HTLC       │ HTLC        │                   │
-│   │ expiry:   │ expiry:    │ expiry:     │                   │
-│   │ 800,180   │ 800,140    │ 800,100     │                   │
-│   │           │            │             │                   │
-│   └───────────┴────────────┴─────────────┘                   │
-│                                                              │
-│ 計算過程：                                                   │
-│ Dave: 800,100（發票指定的 min_final_cltv_expiry）            │
-│ Carol → Dave: 800,100（無需加 delta，是最終節點）            │
-│ Bob → Carol: 800,100 + 40 = 800,140                          │
-│ Alice → Bob: 800,140 + 40 = 800,180                          │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Multi-hop Payment Example (Alice -> Bob -> Carol -> Dave):
+
+Current block height: 800,000
+Final expiry (Dave): 800,100 (+100 blocks)
+
+Bob's delta: 40    Carol's delta: 40    Dave's delta: 18
+
+Alice ------> Bob ------> Carol ------> Dave
+  |            |            |             |
+  | HTLC       | HTLC       | HTLC        |
+  | expiry:    | expiry:    | expiry:     |
+  | 800,180    | 800,140    | 800,100     |
+
+Calculation:
+  Dave: 800,100 (min_final_cltv_expiry from invoice)
+  Carol -> Dave: 800,100 (no delta needed, final node)
+  Bob -> Carol: 800,100 + 40 = 800,140
+  Alice -> Bob: 800,140 + 40 = 800,180`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要 Delta？</h2>
@@ -68,32 +63,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Delta 提供的安全時間窗口：
+      class="text-[var(--text-secondary)]">{`Safety Time Window Provided by Delta:
 
-場景：Carol 收到 preimage 但需要向 Bob 結算
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│ 時間線（區塊高度）：                                         │
-│                                                              │
-│ 800,100     800,140                                          │
-│    │           │                                             │
-│    ▼           ▼                                             │
-│ ───┼───────────┼──────────────────────────────────>          │
-│    │           │                                             │
-│    │           └── Bob→Carol HTLC 過期                       │
-│    │                                                         │
-│    └── Carol→Dave HTLC 過期                                  │
-│                                                              │
-│ Carol 的 40 個區塊窗口：                                     │
-│ ├── 區塊 800,100：Dave HTLC 過期，Carol 最後機會獲取 preimage│
-│ ├── 區塊 800,100-800,140：Carol 有時間向 Bob 提交 preimage   │
-│ └── 區塊 800,140：Bob HTLC 過期，Carol 最後機會結算          │
-│                                                              │
-│ 如果 delta 太小（比如 3 個區塊）：                           │
-│ ├── 鏈上擁堵時可能來不及廣播                                 │
-│ ├── 礦工可能延遲打包                                         │
-│ └── Carol 可能損失資金！                                     │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Scenario: Carol receives preimage but needs to settle with Bob
+
+Timeline (block height):
+
+800,100     800,140
+   |           |
+   v           v
+---+===========+------------------------------------>
+   |           |
+   |           +-- Bob->Carol HTLC expires
+   |
+   +-- Carol->Dave HTLC expires
+
+Carol's 40-block window:
+  • Block 800,100: Dave HTLC expires, Carol's last chance to get preimage
+  • Blocks 800,100-800,140: Carol has time to submit preimage to Bob
+  • Block 800,140: Bob HTLC expires, Carol's last chance to settle
+
+If delta is too small (e.g., 3 blocks):
+  • May not broadcast in time during chain congestion
+  • Miners may delay packaging
+  • Carol could lose funds!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Delta 設定建議</h2>
@@ -102,42 +95,40 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`推薦的 CLTV Delta 設定：
+      class="text-[var(--text-secondary)]">{`Recommended CLTV Delta Settings:
 
-默認值（不同實現）：
-┌──────────────────────────────────────────────────────────────┐
-│ LND:                                                         │
-│ ├── time_lock_delta: 40（默認）                              │
-│ └── 配置：lnd.conf 或 updatechanpolicy                       │
-│                                                              │
-│ Core Lightning:                                              │
-│ ├── cltv_delta: 34（默認）                                   │
-│ └── 配置：setchannel 或 config                               │
-│                                                              │
-│ Eclair:                                                      │
-│ ├── cltv-expiry-delta: 48（默認）                            │
-│ └── 配置：eclair.conf                                        │
-└──────────────────────────────────────────────────────────────┘
+Defaults (different implementations):
 
-選擇 Delta 的考量：
-┌──────────────────────────────────────────────────────────────┐
-│ 較大 Delta（如 144 = ~1 天）：                               │
-│ ├── ✓ 更安全，有充足時間處理                                 │
-│ ├── ✓ 適合不常在線的節點                                     │
-│ ├── ✗ 資金鎖定時間更長                                       │
-│ └── ✗ 可能被路由算法跳過                                     │
-│                                                              │
-│ 較小 Delta（如 18）：                                        │
-│ ├── ✓ 資金鎖定時間短                                         │
-│ ├── ✓ 對付款人更有吸引力                                     │
-│ ├── ✗ 鏈上擁堵時可能不安全                                   │
-│ └── ✗ 需要節點高度可用                                       │
-│                                                              │
-│ 平衡建議：                                                   │
-│ ├── 路由節點：40-80（需要可靠監控）                          │
-│ ├── 個人節點：80-144（更保守）                               │
-│ └── 高價值通道：144+（最大安全）                             │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+LND:
+  • time_lock_delta: 40 (default)
+  • Config: lnd.conf or updatechanpolicy
+
+Core Lightning:
+  • cltv_delta: 34 (default)
+  • Config: setchannel or config
+
+Eclair:
+  • cltv-expiry-delta: 48 (default)
+  • Config: eclair.conf
+
+Delta Selection Considerations:
+
+Larger Delta (e.g., 144 = ~1 day):
+  [+] Safer, ample time to handle
+  [+] Suitable for nodes not always online
+  [-] Longer fund lock time
+  [-] May be skipped by routing algorithms
+
+Smaller Delta (e.g., 18):
+  [+] Shorter fund lock time
+  [+] More attractive to payers
+  [-] May be unsafe during chain congestion
+  [-] Requires highly available node
+
+Balanced Recommendations:
+  • Routing nodes: 40-80 (requires reliable monitoring)
+  • Personal nodes: 80-144 (more conservative)
+  • High-value channels: 144+ (maximum safety)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">min_final_cltv_expiry</h2>
@@ -146,34 +137,32 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`發票中的最終過期設定：
+      class="text-[var(--text-secondary)]">{`Final Expiry Settings in Invoices:
 
-BOLT 11 發票欄位：
-┌──────────────────────────────────────────────────────────────┐
-│ min_final_cltv_expiry_delta (c):                             │
-│ ├── 類型：varint                                             │
-│ ├── 默認值：18（如果未指定）                                 │
-│ └── 含義：最終節點需要的最小過期差值                         │
-│                                                              │
-│ 範例：                                                       │
-│ lnbc1u1p...c18...（c 後面的數字）                            │
-│                                                              │
-│ 如果當前區塊高度是 800,000：                                 │
-│ 付款人必須設定最終 HTLC 過期 >= 800,018                      │
-└──────────────────────────────────────────────────────────────┘
+BOLT 11 Invoice Field:
 
-接收節點驗證：
-┌──────────────────────────────────────────────────────────────┐
-│ 收到 HTLC 時：                                               │
-│                                                              │
-│ if htlc.cltv_expiry < current_height + min_final_cltv:       │
-│     reject(INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS)             │
-│                                                              │
-│ 這確保接收者有足夠時間：                                     │
-│ ├── 驗證支付                                                 │
-│ ├── 決定是否接受                                             │
-│ └── 必要時在鏈上結算                                         │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+min_final_cltv_expiry_delta (c):
+  • Type: varint
+  • Default: 18 (if not specified)
+  • Meaning: Minimum expiry delta required by final node
+
+Example:
+  lnbc1u1p...c18... (number after 'c')
+
+If current block height is 800,000:
+  Payer must set final HTLC expiry >= 800,018
+
+Receiving Node Validation:
+
+When HTLC received:
+
+if htlc.cltv_expiry < current_height + min_final_cltv:
+    reject(INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS)
+
+This ensures receiver has enough time to:
+  • Validate payment
+  • Decide whether to accept
+  • Settle on-chain if necessary`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
@@ -182,42 +171,40 @@ BOLT 11 發票欄位：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`CLTV 相關的錯誤和問題：
+      class="text-[var(--text-secondary)]">{`CLTV-Related Errors and Issues:
 
-錯誤類型：
-┌──────────────────────────────────────────────────────────────┐
-│ INCORRECT_CLTV_EXPIRY：                                      │
-│ ├── 原因：過期值不符合預期                                   │
-│ ├── 發送節點設定的過期太小                                   │
-│ └── 解決：重試時使用更大的 delta                             │
-│                                                              │
-│ EXPIRY_TOO_SOON：                                            │
-│ ├── 原因：HTLC 即將過期                                      │
-│ ├── 路由太長導致 delta 累積過多                              │
-│ └── 解決：選擇更短的路由                                     │
-│                                                              │
-│ EXPIRY_TOO_FAR：                                             │
-│ ├── 原因：過期時間太遠（超過 max_htlc_cltv）                 │
-│ ├── 節點設定了最大過期限制                                   │
-│ └── 解決：選擇 delta 較小的路由                              │
-└──────────────────────────────────────────────────────────────┘
+Error Types:
 
-max_htlc_cltv 限制：
-┌──────────────────────────────────────────────────────────────┐
-│ 許多節點限制最大 CLTV：                                      │
-│                                                              │
-│ LND 默認：max_cltv = 2016（約 2 週）                         │
-│                                                              │
-│ 原因：                                                       │
-│ ├── 避免資金被長時間鎖定                                     │
-│ ├── 減少 wumbo 攻擊向量                                      │
-│ └── 限制通道被占用時間                                       │
-│                                                              │
-│ 長路由問題：                                                 │
-│ 如果路由有 20 跳，每跳 delta=40：                            │
-│ 總 CLTV = 20 × 40 = 800 blocks ≈ 5.5 天                      │
-│ 加上 min_final = 18，可能接近限制                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+INCORRECT_CLTV_EXPIRY:
+  • Cause: Expiry value doesn't match expected
+  • Sender set expiry too small
+  • Solution: Retry with larger delta
+
+EXPIRY_TOO_SOON:
+  • Cause: HTLC about to expire
+  • Route too long causing excessive delta accumulation
+  • Solution: Choose shorter route
+
+EXPIRY_TOO_FAR:
+  • Cause: Expiry time too far (exceeds max_htlc_cltv)
+  • Node has maximum expiry limit set
+  • Solution: Choose route with smaller delta
+
+max_htlc_cltv Limit:
+
+Many nodes limit maximum CLTV:
+
+LND default: max_cltv = 2016 (~2 weeks)
+
+Reasons:
+  • Avoid funds being locked for too long
+  • Reduce wumbo attack vectors
+  • Limit channel occupation time
+
+Long Route Problem:
+  If route has 20 hops, each with delta=40:
+  Total CLTV = 20 x 40 = 800 blocks ~ 5.5 days
+  Plus min_final = 18, may approach limit`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

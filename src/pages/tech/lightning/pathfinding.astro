@@ -36,38 +36,36 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`閃電網路圖的構成：
+      class="text-[var(--text-secondary)]">{`Lightning Network Graph Structure:
 
-節點（Vertices）：
-├── 每個閃電節點是一個頂點
-├── 由 33 字節公鑰標識
-└── 通過 node_announcement 訊息公布
+Nodes (Vertices):
+  - Each Lightning node is a vertex
+  - Identified by 33-byte public key
+  - Announced via node_announcement message
 
-邊（Edges）：
-├── 每個公開通道是一條邊
-├── 實際上是雙向邊（兩個方向獨立）
-├── 通過 channel_announcement 公布
-└── 通過 channel_update 更新屬性
+Edges:
+  - Each public channel is an edge
+  - Actually bidirectional (each direction independent)
+  - Announced via channel_announcement
+  - Updated via channel_update
 
-邊的屬性：
-┌─────────────────────────────────────────────────────────┐
-│ short_channel_id: 通道標識                              │
-│ capacity: 總容量（已知）                                │
-│ balance: 各方餘額（未知！）                             │
-│                                                         │
-│ 每個方向的參數：                                        │
-│ ├── base_fee: 基礎費用                                  │
-│ ├── fee_rate: 比例費用（ppm）                          │
-│ ├── cltv_delta: 時間鎖增量                             │
-│ ├── htlc_min: 最小 HTLC                                │
-│ └── htlc_max: 最大 HTLC                                │
-└─────────────────────────────────────────────────────────┘
+Edge Properties:
+  short_channel_id: channel identifier
+  capacity: total capacity (known)
+  balance: each party's balance (unknown!)
 
-典型網路規模（2024）：
-├── 節點：~15,000
-├── 通道：~50,000
-├── 總容量：~5,000 BTC
-└── 圖大小：~10MB`}</pre>
+  Per-direction parameters:
+    - base_fee: base fee
+    - fee_rate: proportional fee (ppm)
+    - cltv_delta: timelock delta
+    - htlc_min: minimum HTLC
+    - htlc_max: maximum HTLC
+
+Typical Network Size (2024):
+  - Nodes: ~15,000
+  - Channels: ~50,000
+  - Total capacity: ~5,000 BTC
+  - Graph size: ~10MB`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">基礎演算法</h2>
@@ -76,34 +74,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Dijkstra 演算法變體：
+      class="text-[var(--text-secondary)]">{`Dijkstra Algorithm Variant:
 
-基本思路：
-找到從源點到目標的最低「成本」路徑
+Basic Idea:
+Find lowest "cost" path from source to target
 
-成本函數設計：
+Cost Function Design:
 cost(edge) = f(fee, probability, time_lock, ...)
 
-LND 的成本函數示例：
+LND Cost Function Example:
 cost = fee
-     + amount × risk_factor × cltv_delta
-     + amount × (1 - success_probability) × penalty
+     + amount * risk_factor * cltv_delta
+     + amount * (1 - success_probability) * penalty
 
-參數解釋：
-├── fee: 直接費用成本
-├── risk_factor: 時間價值（資金鎖定成本）
-├── cltv_delta: 這一跳增加的時間鎖
-├── success_probability: 基於歷史的成功率估計
-└── penalty: 失敗的懲罰因子
+Parameters:
+  - fee: direct fee cost
+  - risk_factor: time value (fund locking cost)
+  - cltv_delta: timelock increase for this hop
+  - success_probability: historical success estimate
+  - penalty: failure penalty factor
 
-演算法流程：
-1. 從目標節點反向搜索（更高效）
-2. 維護優先隊列（按成本排序）
-3. 每次取出成本最低的節點
-4. 更新鄰居節點的最優路徑
-5. 直到到達源節點
+Algorithm Flow:
+  1. Search backwards from target (more efficient)
+  2. Maintain priority queue (sorted by cost)
+  3. Pop lowest cost node each time
+  4. Update optimal path for neighbor nodes
+  5. Until reaching source node
 
-偽代碼：
+Pseudocode:
 function dijkstra(source, target, amount):
   dist[target] = 0
   queue.add(target, 0)
@@ -128,40 +126,40 @@ function dijkstra(source, target, amount):
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道餘額不確定性：
+      class="text-[var(--text-secondary)]">{`Channel Balance Uncertainty:
 
-問題：
-├── 只知道總容量，不知道各方餘額
-├── 餘額實時變化
-└── 選中的路徑可能因餘額不足而失敗
+Problem:
+  - Only know total capacity, not individual balances
+  - Balances change in real-time
+  - Selected path may fail due to insufficient balance
 
-示例：
-通道容量：1 BTC
-可能的餘額分佈：
-├── Alice: 0.0 BTC, Bob: 1.0 BTC
-├── Alice: 0.3 BTC, Bob: 0.7 BTC
-├── Alice: 0.5 BTC, Bob: 0.5 BTC
-├── Alice: 1.0 BTC, Bob: 0.0 BTC
-└── 任何中間值...
+Example:
+Channel capacity: 1 BTC
+Possible balance distributions:
+  - Alice: 0.0 BTC, Bob: 1.0 BTC
+  - Alice: 0.3 BTC, Bob: 0.7 BTC
+  - Alice: 0.5 BTC, Bob: 0.5 BTC
+  - Alice: 1.0 BTC, Bob: 0.0 BTC
+  - Any value in between...
 
-概率模型：
-假設餘額均勻分佈在 [0, capacity]
+Probability Model:
+Assume balance uniformly distributed in [0, capacity]
 
-P(can_forward amount) ≈ (capacity - amount) / capacity
+P(can_forward amount) = (capacity - amount) / capacity
 
 amount = 0.1 BTC, capacity = 1 BTC
-P(success) ≈ 0.9 (90%)
+P(success) = 0.9 (90%)
 
 amount = 0.9 BTC, capacity = 1 BTC
-P(success) ≈ 0.1 (10%)
+P(success) = 0.1 (10%)
 
-多跳成功率：
-P(path success) = P(hop1) × P(hop2) × ... × P(hopN)
+Multi-hop Success Rate:
+P(path success) = P(hop1) * P(hop2) * ... * P(hopN)
 
-3 跳路徑，每跳 90% 成功率：
-P(success) = 0.9³ = 0.729 (73%)
+3-hop path, 90% success rate each hop:
+P(success) = 0.9^3 = 0.729 (73%)
 
-這就是為什麼大額支付經常失敗！`}</pre>
+This is why large payments often fail!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">任務控制</h2>
@@ -170,46 +168,45 @@ P(success) = 0.9³ = 0.729 (73%)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Mission Control（LND 的學習機制）：
+      class="text-[var(--text-secondary)]">{`Mission Control (LND's Learning Mechanism):
 
-概念：從支付歷史學習路徑可靠性
+Concept: Learn path reliability from payment history
 
-記錄每次嘗試：
-┌─────────────────────────────────────────────────────────┐
-│ 支付嘗試 #1:                                            │
-│ - 路徑: A → B → C → D                                   │
-│ - 結果: 失敗 at B→C (TEMPORARY_CHANNEL_FAILURE)         │
-│ - 學到: B→C 可能餘額不足                               │
-│                                                         │
-│ 支付嘗試 #2:                                            │
-│ - 路徑: A → E → F → D（避開 B→C）                       │
-│ - 結果: 成功                                            │
-│ - 學到: E→F→D 路徑可靠                                 │
-└─────────────────────────────────────────────────────────┘
+Recording Each Attempt:
 
-Mission Control 數據結構：
+  Payment Attempt #1:
+    Path: A -> B -> C -> D
+    Result: Failed at B->C (TEMPORARY_CHANNEL_FAILURE)
+    Learned: B->C may have insufficient balance
+
+  Payment Attempt #2:
+    Path: A -> E -> F -> D (avoiding B->C)
+    Result: Success
+    Learned: E->F->D path is reliable
+
+Mission Control Data Structure:
 {
   "node_pairs": {
-    "B→C": {
+    "B->C": {
       "last_fail_time": "2024-01-01T12:00:00Z",
-      "fail_amount": 100000,  // 失敗的金額
-      "success_amount": 50000  // 成功過的金額
+      "fail_amount": 100000,
+      "success_amount": 50000
     }
   }
 }
 
-成功率估計更新：
+Success Rate Estimation Update:
 if (amount > fail_amount):
-  P(success) = 0  // 一定失敗
+  P(success) = 0  // will definitely fail
 else if (amount <= success_amount):
-  P(success) = high  // 可能成功
+  P(success) = high  // likely to succeed
 else:
   P(success) = interpolate(...)
 
-衰減機制：
-├── 舊數據權重降低（餘額會變化）
-├── 一定時間後重新嘗試失敗的路徑
-└── 典型衰減時間：1-24 小時`}</pre>
+Decay Mechanism:
+  - Old data weight decreases (balances change)
+  - Retry failed paths after some time
+  - Typical decay time: 1-24 hours`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多路徑搜索</h2>
@@ -218,34 +215,33 @@ else:
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`MPP 的路徑搜索：
+      class="text-[var(--text-secondary)]">{`MPP Path Finding:
 
-問題：如何找到能組合成功的多條路徑？
+Problem: How to find multiple paths that work together?
 
-方法 1：貪婪分割
-1. 找最佳單路徑，分配最大可能金額
-2. 在殘餘圖上重複
-3. 直到總金額滿足
+Method 1: Greedy Split
+  1. Find best single path, allocate max possible amount
+  2. Repeat on residual graph
+  3. Until total amount satisfied
 
-方法 2：最小費用流
-├── 建模為網路流問題
-├── 容量 = 估計可用餘額
-├── 成本 = 費用 + 風險
-└── 求解最小成本最大流
+Method 2: Min-Cost Flow
+  - Model as network flow problem
+  - Capacity = estimated available balance
+  - Cost = fee + risk
+  - Solve minimum cost maximum flow
 
-方法 3：機會主義
-1. 嘗試單路徑發送全額
-2. 如果失敗，減半金額重試
-3. 遞歸分割直到成功或放棄
+Method 3: Opportunistic
+  1. Try single path for full amount
+  2. If fails, halve amount and retry
+  3. Recursively split until success or give up
 
-LND 的方法：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 計算多條候選路徑（K 最短路徑）                       │
-│ 2. 評估每條路徑的成功概率和成本                         │
-│ 3. 選擇最優組合（總成本最低且概率足夠）                │
-│ 4. 並行發送各分片                                       │
-│ 5. 失敗的分片重新尋路                                   │
-└─────────────────────────────────────────────────────────┘`}</pre>
+LND's Approach:
+  1. Compute multiple candidate paths (K shortest paths)
+  2. Evaluate success probability and cost for each path
+  3. Select optimal combination (lowest total cost with
+     sufficient probability)
+  4. Send shards in parallel
+  5. Re-route failed shards`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優化技術</h2>
@@ -287,32 +283,31 @@ LND 的方法：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Trampoline 路由如何改變路徑搜索：
+      class="text-[var(--text-secondary)]">{`How Trampoline Routing Changes Path Finding:
 
-傳統模式：
-├── 發送方維護完整網路圖
-├── 發送方計算完整路徑
-└── 計算成本高，移動設備不友好
+Traditional Mode:
+  - Sender maintains complete network graph
+  - Sender computes full path
+  - High computation cost, not mobile-friendly
 
-Trampoline 模式：
-├── 發送方只知道幾個 Trampoline 節點
-├── 發送方計算到 Trampoline 的路徑
-├── Trampoline 節點計算後續路徑
-└── 大大減少發送方的計算和存儲需求
+Trampoline Mode:
+  - Sender only knows a few Trampoline nodes
+  - Sender computes path to Trampoline
+  - Trampoline nodes compute subsequent paths
+  - Greatly reduces sender's computation and storage
 
-路徑搜索職責分配：
-┌─────────────────────────────────────────────────────────┐
-│ 發送方：                                                │
-│ └── 搜索到第一個 Trampoline 的路徑                     │
-│                                                         │
-│ Trampoline 1：                                          │
-│ └── 搜索到 Trampoline 2（或目的地）的路徑              │
-│                                                         │
-│ Trampoline 2：                                          │
-│ └── 搜索到最終目的地的路徑                             │
-└─────────────────────────────────────────────────────────┘
+Path Finding Responsibility Distribution:
 
-見：/tech/lightning/trampoline`}</pre>
+  Sender:
+    -> Finds path to first Trampoline
+
+  Trampoline 1:
+    -> Finds path to Trampoline 2 (or destination)
+
+  Trampoline 2:
+    -> Finds path to final destination
+
+See: /tech/lightning/trampoline`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現差異</h2>

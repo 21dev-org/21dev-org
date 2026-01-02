@@ -35,27 +35,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錯誤代碼結構：
+      class="text-[var(--text-secondary)]">{`Error Code Structure
 
-┌─────────────────────────────────────────────────────────┐
-│ 錯誤代碼格式（2 字節）                                  │
-├─────────────────────────────────────────────────────────┤
-│ Bit 15 (BADONION):  1 = HMAC 驗證失敗                  │
-│ Bit 14 (PERM):      1 = 永久錯誤，不要重試              │
-│ Bit 13 (NODE):      1 = 節點錯誤，可嘗試繞過            │
-│ Bit 12 (UPDATE):    1 = 包含 channel_update            │
-│ Bits 0-11:          具體錯誤類型代碼                    │
-└─────────────────────────────────────────────────────────┘
+Error code format (2 bytes):
+Bit 15 (BADONION):  1 = HMAC verification failed
+Bit 14 (PERM):      1 = Permanent error, don't retry
+Bit 13 (NODE):      1 = Node error, can try bypassing
+Bit 12 (UPDATE):    1 = Contains channel_update
+Bits 0-11:          Specific error type code
 
-錯誤分類：
-├── 臨時錯誤（可重試）
-│   └── 資源暫時不可用、餘額不足等
-├── 永久錯誤（不重試）
-│   └── 金額太小、CLTV 過期、通道不存在等
-├── 節點錯誤
-│   └── 節點問題，可繞過此節點重試
-└── 洋蔥錯誤
-    └── HMAC 失敗，路由資料損壞`}</pre>
+Error Categories:
+• Temporary errors (can retry)
+  - Resources temporarily unavailable, insufficient balance, etc.
+• Permanent errors (don't retry)
+  - Amount too small, CLTV expired, channel doesn't exist, etc.
+• Node errors
+  - Node issues, can bypass this node and retry
+• Onion errors
+  - HMAC failed, routing data corrupted`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見錯誤代碼</h2>
@@ -214,43 +211,37 @@ INVALID_ONION_BLINDING (0x801A)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錯誤訊息格式：
+      class="text-[var(--text-secondary)]">{`Error Message Format
 
-update_fail_htlc 訊息：
-┌─────────────────────────────────────────────────────────┐
-│ channel_id: 32 bytes                                    │
-│ id: u64（HTLC ID）                                      │
-│ reason: 加密的錯誤訊息                                  │
-└─────────────────────────────────────────────────────────┘
+update_fail_htlc message:
+• channel_id: 32 bytes
+• id: u64 (HTLC ID)
+• reason: encrypted error message
 
-加密的錯誤訊息解密後：
-┌─────────────────────────────────────────────────────────┐
-│ hmac: 32 bytes                                          │
-│ failure_len: 2 bytes                                    │
-│ failuremsg: failure_len bytes                           │
-│   ├── failure_code: 2 bytes                             │
-│   └── data: 取決於 failure_code                         │
-│ pad_len: 2 bytes                                        │
-│ pad: pad_len bytes                                      │
-└─────────────────────────────────────────────────────────┘
+Decrypted error message:
+• hmac: 32 bytes
+• failure_len: 2 bytes
+• failuremsg: failure_len bytes
+  - failure_code: 2 bytes
+  - data: depends on failure_code
+• pad_len: 2 bytes
+• pad: pad_len bytes
 
-帶 channel_update 的錯誤（UPDATE 標誌）：
-┌─────────────────────────────────────────────────────────┐
-│ failure_code: 2 bytes                                   │
-│ len: 2 bytes                                            │
-│ channel_update: len bytes                               │
-│   ├── signature: 64 bytes                               │
-│   ├── chain_hash: 32 bytes                              │
-│   ├── short_channel_id: 8 bytes                         │
-│   ├── timestamp: 4 bytes                                │
-│   ├── message_flags: 1 byte                             │
-│   ├── channel_flags: 1 byte                             │
-│   ├── cltv_expiry_delta: 2 bytes                        │
-│   ├── htlc_minimum_msat: 8 bytes                        │
-│   ├── fee_base_msat: 4 bytes                            │
-│   ├── fee_proportional_millionths: 4 bytes             │
-│   └── htlc_maximum_msat: 8 bytes（可選）                │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Error with channel_update (UPDATE flag):
+• failure_code: 2 bytes
+• len: 2 bytes
+• channel_update: len bytes
+  - signature: 64 bytes
+  - chain_hash: 32 bytes
+  - short_channel_id: 8 bytes
+  - timestamp: 4 bytes
+  - message_flags: 1 byte
+  - channel_flags: 1 byte
+  - cltv_expiry_delta: 2 bytes
+  - htlc_minimum_msat: 8 bytes
+  - fee_base_msat: 4 bytes
+  - fee_proportional_millionths: 4 bytes
+  - htlc_maximum_msat: 8 bytes (optional)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤處理策略</h2>
@@ -292,34 +283,32 @@ update_fail_htlc 訊息：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Mission Control 如何使用錯誤：
+      class="text-[var(--text-secondary)]">{`How Mission Control Uses Errors
 
-收到錯誤後的處理：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 解密錯誤，識別失敗節點                               │
-│ 2. 根據錯誤類型決定懲罰程度                             │
-│ 3. 更新節點/通道的成功概率                              │
-│ 4. 下次路徑計算時使用更新後的概率                       │
-└─────────────────────────────────────────────────────────┘
+Processing after receiving error:
+1. Decrypt error, identify failing node
+2. Determine penalty severity based on error type
+3. Update node/channel success probability
+4. Use updated probability in next path calculation
 
-懲罰策略示例：
+Penalty Strategy Example:
 
-錯誤類型                              懲罰程度        衰減時間
-─────────────────────────────────────────────────────────────────
-TEMPORARY_CHANNEL_FAILURE             輕度            1 小時
-CHANNEL_DISABLED                      中度            6 小時
-UNKNOWN_NEXT_PEER                     重度            永久
-INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS  不懲罰          N/A
+Error Type                            Penalty   Decay Time
+----------------------------------------------------------------
+TEMPORARY_CHANNEL_FAILURE             Light     1 hour
+CHANNEL_DISABLED                      Medium    6 hours
+UNKNOWN_NEXT_PEER                     Heavy     Permanent
+INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS  None      N/A
 
-概率更新公式：
-新概率 = 舊概率 × 衰減因子
+Probability update formula:
+new_probability = old_probability * decay_factor
 
-示例：
-├── 初始成功概率：95%
-├── 收到 TEMPORARY_CHANNEL_FAILURE
-├── 懲罰：成功概率降至 60%
-├── 1 小時後開始衰減恢復
-└── 24 小時後恢復到基準概率`}</pre>
+Example:
+• Initial success probability: 95%
+• Received TEMPORARY_CHANNEL_FAILURE
+• Penalty: Success probability drops to 60%
+• After 1 hour, starts decay recovery
+• After 24 hours, returns to baseline probability`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">調試支付失敗</h2>

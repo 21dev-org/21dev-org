@@ -36,30 +36,28 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統通道開設的問題：
+      class="text-[var(--text-secondary)]">{`Problem with Traditional Channel Opening:
 
-假設 10 個人想要互相開通道：
-┌─────────────────────────────────────────────────────────┐
-│ 需要的通道數：10 × 9 / 2 = 45 個通道                    │
-│ 需要的鏈上交易：45 筆                                   │
-│ 假設每筆交易費：10,000 sats                             │
-│ 總成本：450,000 sats                                    │
-└─────────────────────────────────────────────────────────┘
+Assume 10 people want to open channels with each other:
 
-隨著參與者增加：
-├── 20 人：190 個通道 → 1,900,000 sats
-├── 100 人：4,950 個通道 → 49,500,000 sats
-└── 擴展性非常差！
+  Channels needed: 10 x 9 / 2 = 45 channels
+  On-chain TXs needed: 45
+  Assume fee per TX: 10,000 sats
+  Total cost: 450,000 sats
 
-Channel Factory 解決方案：
-┌─────────────────────────────────────────────────────────┐
-│ 10 個人共享一個 Factory                                 │
-│ 需要的鏈上交易：1 筆（開設）+ 1 筆（關閉）             │
-│ 總成本：~20,000 sats（大幅節省！）                      │
-│                                                         │
-│ Factory 內部可以創建任意通道配置                        │
-│ 不需要額外的鏈上交易                                    │
-└─────────────────────────────────────────────────────────┘`}</pre>
+As participants increase:
+  - 20 people: 190 channels -> 1,900,000 sats
+  - 100 people: 4,950 channels -> 49,500,000 sats
+  - Scalability is very poor!
+
+Channel Factory Solution:
+
+  10 people share one Factory
+  On-chain TXs needed: 1 (open) + 1 (close)
+  Total cost: ~20,000 sats (huge savings!)
+
+  Factory can create any channel configuration internally
+  No additional on-chain transactions needed`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">基本結構</h2>
@@ -68,41 +66,38 @@ Channel Factory 解決方案：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Channel Factory 層次結構：
+      class="text-[var(--text-secondary)]">{`Channel Factory Layer Structure:
 
-層次 1：資金交易（Funding Transaction）
-┌─────────────────────────────────────────────────────────┐
-│ 輸入：每個參與者的 UTXO                                 │
-│ 輸出：N-of-N 多簽地址                                   │
-│                                                         │
-│ Alice: 1 BTC ─┐                                         │
-│ Bob: 1 BTC ───┼──> [3-of-3 多簽] = 3 BTC               │
-│ Carol: 1 BTC ─┘                                         │
-└─────────────────────────────────────────────────────────┘
+Layer 1: Funding Transaction
 
-層次 2：分配交易（Allocation Transaction）
-┌─────────────────────────────────────────────────────────┐
-│ 花費層次 1 的多簽輸出                                   │
-│ 創建多個通道輸出                                        │
-│                                                         │
-│ 3 BTC ──> Alice-Bob 通道: 1 BTC                        │
-│       ──> Bob-Carol 通道: 1 BTC                        │
-│       ──> Alice-Carol 通道: 1 BTC                      │
-│                                                         │
-│ 這些通道是「虛擬」的，不上鏈！                         │
-└─────────────────────────────────────────────────────────┘
+  Inputs: Each participant's UTXO
+  Output: N-of-N multisig address
 
-層次 3：承諾交易（Commitment Transactions）
-┌─────────────────────────────────────────────────────────┐
-│ 每個通道有自己的承諾交易                                │
-│ 正常的閃電網路通道機制                                  │
-└─────────────────────────────────────────────────────────┘
+  Alice: 1 BTC --+
+  Bob: 1 BTC ----+--> [3-of-3 multisig] = 3 BTC
+  Carol: 1 BTC --+
 
-關鍵點：
-├── 只有層次 1 的交易上鏈
-├── 層次 2、3 都是鏈下狀態
-├── 必要時可以強制上鏈任何層次
-└── 狀態更新需要所有參與者簽名`}</pre>
+Layer 2: Allocation Transaction
+
+  Spends Layer 1 multisig output
+  Creates multiple channel outputs
+
+  3 BTC --> Alice-Bob channel: 1 BTC
+        --> Bob-Carol channel: 1 BTC
+        --> Alice-Carol channel: 1 BTC
+
+  These channels are "virtual" - not on-chain!
+
+Layer 3: Commitment Transactions
+
+  Each channel has its own commitment TX
+  Normal Lightning channel mechanics
+
+Key Points:
+  - Only Layer 1 TX goes on-chain
+  - Layers 2 and 3 are off-chain state
+  - Can force any layer on-chain if needed
+  - State updates require all participants' signatures`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">狀態更新</h2>
@@ -111,34 +106,30 @@ Channel Factory 解決方案：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Factory 狀態更新：
+      class="text-[var(--text-secondary)]">{`Factory State Updates:
 
-場景：Alice 想和 Dave 開新通道
+Scenario: Alice wants to open new channel with Dave
 
-當前狀態：
-┌─────────────────────────────────────────────────────────┐
-│ Factory：Alice, Bob, Carol, Dave                        │
-│ 通道：Alice-Bob, Bob-Carol, Carol-Dave                  │
-│ 餘額分配各 1 BTC                                        │
-└─────────────────────────────────────────────────────────┘
+Current State:
+  Factory: Alice, Bob, Carol, Dave
+  Channels: Alice-Bob, Bob-Carol, Carol-Dave
+  Balance allocation: 1 BTC each
 
-更新流程：
-1. Alice 提議新的分配狀態
-2. 所有 4 人簽名新的分配交易
-3. 舊狀態被撤銷
-4. 新狀態生效
+Update Flow:
+  1. Alice proposes new allocation state
+  2. All 4 people sign new allocation TX
+  3. Old state is revoked
+  4. New state takes effect
 
-新狀態：
-┌─────────────────────────────────────────────────────────┐
-│ 通道：Alice-Bob, Bob-Carol, Carol-Dave, Alice-Dave      │
-│ 每個通道分配 0.8 BTC（總額不變）                        │
-└─────────────────────────────────────────────────────────┘
+New State:
+  Channels: Alice-Bob, Bob-Carol, Carol-Dave, Alice-Dave
+  Each channel allocated 0.8 BTC (total unchanged)
 
-挑戰：
-├── 需要所有參與者在線並同意
-├── 任何人拒絕 → 無法更新
-├── 隨參與者增多，協調成本增加
-└── 這是 Factory 的主要限制`}</pre>
+Challenges:
+  - All participants must be online and agree
+  - Anyone refuses -> cannot update
+  - Coordination cost increases with more participants
+  - This is Factory's main limitation`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo 的重要性</h2>
@@ -164,29 +155,29 @@ Channel Factory 解決方案：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Eltoo + Channel Factory：
+      class="text-[var(--text-secondary)]">{`Eltoo + Channel Factory:
 
-使用 SIGHASH_ANYPREVOUT：
+Using SIGHASH_ANYPREVOUT:
 
-Update TX #1 ─┐
-Update TX #2 ─┼─> 任一個都可以花費 Funding TX
-Update TX #3 ─┘
+Update TX #1 --+
+Update TX #2 --+--> Any can spend Funding TX
+Update TX #3 --+
    ...
-Update TX #N ───> 最新狀態
+Update TX #N ----> Latest state
 
-Settlement TX ───> 最終結算
+Settlement TX ----> Final settlement
 
-流程：
-1. 任何人廣播任何舊的 Update TX
-2. 其他人可以廣播更新的 Update TX
-3. 最終只有最新狀態生效
-4. Settlement TX 完成結算
+Flow:
+  1. Anyone broadcasts any old Update TX
+  2. Others can broadcast newer Update TX
+  3. Only latest state takes effect
+  4. Settlement TX completes settlement
 
-優點：
-├── 無需存儲撤銷密鑰
-├── 狀態可以無限更新
-├── 離線參與者不會被懲罰
-└── 完美支持多方協議`}</pre>
+Benefits:
+  - No need to store revocation keys
+  - State can update infinitely
+  - Offline participants won't be punished
+  - Perfect for multi-party protocols`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
@@ -226,39 +217,39 @@ Settlement TX ───> 最終結算
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Channel Factory 的挑戰：
+      class="text-[var(--text-secondary)]">{`Channel Factory Challenges:
 
-1. 協調問題
-   ├── 所有參與者必須在線才能更新
-   ├── 一人離線 → 全體卡住
-   ├── 惡意參與者可以阻撓更新
-   └── 需要激勵機制確保配合
+1. Coordination Problem
+   - All participants must be online to update
+   - One offline -> everyone stuck
+   - Malicious participant can block updates
+   - Need incentive mechanism for cooperation
 
-2. 退出成本
-   ├── 單人退出需要關閉整個 Factory
-   ├── 或者進行昂貴的鏈上分割
-   └── 可能需要「虛擬」退出機制
+2. Exit Cost
+   - Single exit requires closing entire Factory
+   - Or expensive on-chain split
+   - May need "virtual" exit mechanism
 
-3. 資本效率
-   ├── 資金鎖定在 Factory 中
-   ├── 不能用於 Factory 外的通道
-   └── 需要權衡內外部流動性
+3. Capital Efficiency
+   - Funds locked in Factory
+   - Cannot use for channels outside Factory
+   - Need to balance internal/external liquidity
 
-4. 軟分叉依賴
-   ├── 最佳實現需要 SIGHASH_ANYPREVOUT
-   ├── 或類似的 covenant 支持
-   └── 目前 Bitcoin 尚未激活
+4. Soft Fork Dependency
+   - Best implementation needs SIGHASH_ANYPREVOUT
+   - Or similar covenant support
+   - Not yet activated on Bitcoin
 
-5. 複雜性
-   ├── 多層次交易結構
-   ├── 狀態管理複雜
-   └── 實現和審計難度高
+5. Complexity
+   - Multi-layer transaction structure
+   - Complex state management
+   - High implementation and audit difficulty
 
-可能的緩解措施：
-├── 小規模 Factory（5-10 人）
-├── 信任假設（如企業內部）
-├── 激勵機制（押金/聲譽）
-└── 備用退出路徑`}</pre>
+Possible Mitigations:
+  - Small-scale Factory (5-10 people)
+  - Trust assumptions (e.g., within enterprise)
+  - Incentive mechanisms (deposit/reputation)
+  - Backup exit paths`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關概念</h2>

@@ -79,30 +79,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`channel_announcement 結構：
+      class="text-[var(--text-secondary)]">{`channel_announcement structure:
 
-┌─────────────────────────────────────────────────────────┐
-│ node_signature_1: 節點 1 的簽名                         │
-│ node_signature_2: 節點 2 的簽名                         │
-│ bitcoin_signature_1: 節點 1 的 Bitcoin 密鑰簽名         │
-│ bitcoin_signature_2: 節點 2 的 Bitcoin 密鑰簽名         │
-│ features: 通道功能位                                    │
-│ chain_hash: 區塊鏈標識（mainnet/testnet）               │
-│ short_channel_id: 8 字節通道標識                        │
-│   ├── block height (3 bytes)                           │
-│   ├── tx index (3 bytes)                               │
-│   └── output index (2 bytes)                           │
-│ node_id_1: 節點 1 公鑰（字典序較小）                    │
-│ node_id_2: 節點 2 公鑰（字典序較大）                    │
-│ bitcoin_key_1: 節點 1 的 Bitcoin 公鑰                   │
-│ bitcoin_key_2: 節點 2 的 Bitcoin 公鑰                   │
-└─────────────────────────────────────────────────────────┘
+Fields:
+  node_signature_1: node 1 signature
+  node_signature_2: node 2 signature
+  bitcoin_signature_1: node 1 Bitcoin key signature
+  bitcoin_signature_2: node 2 Bitcoin key signature
+  features: channel feature bits
+  chain_hash: blockchain identifier (mainnet/testnet)
+  short_channel_id: 8 byte channel identifier
+    block height (3 bytes)
+    tx index (3 bytes)
+    output index (2 bytes)
+  node_id_1: node 1 pubkey (lexicographically smaller)
+  node_id_2: node 2 pubkey (lexicographically larger)
+  bitcoin_key_1: node 1 Bitcoin pubkey
+  bitcoin_key_2: node 2 Bitcoin pubkey
 
-驗證步驟：
-1. 檢查 short_channel_id 對應的 UTXO 存在
-2. UTXO 是 P2WSH，鎖定到 2-of-2 multisig
-3. 驗證 4 個簽名
-4. 確認 chain_hash 匹配`}</pre>
+Validation steps:
+1. Check UTXO exists for short_channel_id
+2. UTXO is P2WSH, locked to 2-of-2 multisig
+3. Verify all 4 signatures
+4. Confirm chain_hash matches`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Channel Update</h2>
@@ -111,32 +110,31 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`channel_update 結構：
+      class="text-[var(--text-secondary)]">{`channel_update structure:
 
-┌─────────────────────────────────────────────────────────┐
-│ signature: 發布者的簽名                                 │
-│ chain_hash: 區塊鏈標識                                  │
-│ short_channel_id: 通道標識                              │
-│ timestamp: Unix 時間戳（更新時間）                      │
-│ message_flags:                                          │
-│   └── bit 0: must_be_one                               │
-│ channel_flags:                                          │
-│   ├── bit 0: direction (0=node1→node2, 1=node2→node1)  │
-│   └── bit 1: disabled (通道是否禁用)                    │
-│ cltv_expiry_delta: HTLC 時間鎖增量                      │
-│ htlc_minimum_msat: 最小 HTLC 金額                       │
-│ fee_base_msat: 基礎路由費                               │
-│ fee_proportional_millionths: 比例路由費                 │
-│ htlc_maximum_msat: 最大 HTLC 金額（可選）               │
-└─────────────────────────────────────────────────────────┘
+Fields:
+  signature: publisher's signature
+  chain_hash: blockchain identifier
+  short_channel_id: channel identifier
+  timestamp: Unix timestamp (update time)
+  message_flags:
+    bit 0: must_be_one
+  channel_flags:
+    bit 0: direction (0=node1->node2, 1=node2->node1)
+    bit 1: disabled (is channel disabled)
+  cltv_expiry_delta: HTLC timelock delta
+  htlc_minimum_msat: minimum HTLC amount
+  fee_base_msat: base routing fee
+  fee_proportional_millionths: proportional routing fee
+  htlc_maximum_msat: maximum HTLC amount (optional)
 
-費用計算：
+Fee calculation:
 fee = fee_base_msat + (amount * fee_proportional_millionths / 1000000)
 
-更新規則：
-- timestamp 必須比之前的大
-- 每個方向獨立更新
-- 可以禁用/啟用通道`}</pre>
+Update rules:
+• timestamp must be greater than previous
+• Each direction updates independently
+• Can disable/enable channel`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Node Announcement</h2>
@@ -145,28 +143,27 @@ fee = fee_base_msat + (amount * fee_proportional_millionths / 1000000)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`node_announcement 結構：
+      class="text-[var(--text-secondary)]">{`node_announcement structure:
 
-┌─────────────────────────────────────────────────────────┐
-│ signature: 節點簽名                                     │
-│ features: 節點功能位                                    │
-│ timestamp: 更新時間                                     │
-│ node_id: 節點公鑰                                       │
-│ rgb_color: 節點顏色（3 bytes）                          │
-│ alias: 節點別名（最多 32 bytes UTF-8）                  │
-│ addresses: 網路地址列表                                 │
-│   ├── type 1: IPv4 (6 bytes)                           │
-│   ├── type 2: IPv6 (18 bytes)                          │
-│   ├── type 3: Tor v2 (12 bytes) [已棄用]               │
-│   ├── type 4: Tor v3 (37 bytes)                        │
-│   ├── type 5: DNS hostname                             │
-│   └── type 6: WebSocket                                │
-└─────────────────────────────────────────────────────────┘
+Fields:
+  signature: node signature
+  features: node feature bits
+  timestamp: update time
+  node_id: node public key
+  rgb_color: node color (3 bytes)
+  alias: node alias (max 32 bytes UTF-8)
+  addresses: network address list
+    type 1: IPv4 (6 bytes)
+    type 2: IPv6 (18 bytes)
+    type 3: Tor v2 (12 bytes) [deprecated]
+    type 4: Tor v3 (37 bytes)
+    type 5: DNS hostname
+    type 6: WebSocket
 
-前提條件：
-- 節點必須至少有一個公開通道
-- 否則 node_announcement 會被忽略
-- 防止垃圾節點信息`}</pre>
+Prerequisites:
+• Node must have at least one public channel
+• Otherwise node_announcement is ignored
+• Prevents spam node information`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 同步</h2>
@@ -175,31 +172,30 @@ fee = fee_base_msat + (amount * fee_proportional_millionths / 1000000)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Gossip 查詢機制：
+      class="text-[var(--text-secondary)]">{`Gossip Query Mechanism:
 
-初始同步：
-┌─────────────┐                      ┌─────────────┐
-│   新節點    │                      │   老節點    │
-└──────┬──────┘                      └──────┬──────┘
-       │                                    │
-       │──── query_channel_range ──────────>│
-       │     (請求某區塊範圍的通道)          │
-       │                                    │
-       │<─── reply_channel_range ──────────│
-       │     (返回該範圍的 short_channel_ids)│
-       │                                    │
-       │──── query_short_channel_ids ──────>│
-       │     (請求特定通道的完整資訊)        │
-       │                                    │
-       │<─── channel_announcement ─────────│
-       │<─── channel_update ───────────────│
-       │<─── node_announcement ────────────│
-       │                                    │
-       ▼                                    ▼
+Initial sync:
 
-增量同步：
-- gossip_timestamp_filter: 只接收特定時間後的更新
-- 減少重複訊息傳輸`}</pre>
+New Node                           Old Node
+    |                                    |
+    |---- query_channel_range ---------->|
+    |     (request channels in block range)
+    |                                    |
+    |<--- reply_channel_range -----------|
+    |     (returns short_channel_ids)    |
+    |                                    |
+    |---- query_short_channel_ids ------>|
+    |     (request full channel info)    |
+    |                                    |
+    |<--- channel_announcement ----------|
+    |<--- channel_update ----------------|
+    |<--- node_announcement -------------|
+    |                                    |
+    v                                    v
+
+Incremental sync:
+• gossip_timestamp_filter: only receive updates after specific time
+• Reduces duplicate message transmission`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 驗證</h2>
@@ -231,31 +227,30 @@ fee = fee_base_msat + (amount * fee_proportional_millionths / 1000000)
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`私有通道（Unannounced Channels）：
+      class="text-[var(--text-secondary)]">{`Private Channels (Unannounced):
 
-私有通道：
-- 不廣播 channel_announcement
-- 不在公開圖譜中
-- 只有通道雙方知道
+Private channels:
+• Do not broadcast channel_announcement
+• Not in public graph
+• Only known to channel parties
 
-用途：
-- 移動錢包連接 LSP（隱私）
-- 商家不公開收款通道
-- 減少網路圖譜大小
+Use cases:
+• Mobile wallets connecting to LSP (privacy)
+• Merchants not exposing payment channels
+• Reducing network graph size
 
-發票中的路由提示（Route Hints）：
-┌─────────────────────────────────────────┐
-│ Invoice:                                │
-│   route_hints:                          │
-│     - pubkey: 02abc...                  │
-│       short_channel_id: 123x456x0       │
-│       fee_base_msat: 1000               │
-│       fee_proportional: 100             │
-│       cltv_expiry_delta: 40             │
-└─────────────────────────────────────────┘
+Route Hints in Invoices:
 
-這讓發送方可以路由到有私有通道的接收方，
-同時不公開通道給整個網路。`}</pre>
+Invoice:
+  route_hints:
+    - pubkey: 02abc...
+      short_channel_id: 123x456x0
+      fee_base_msat: 1000
+      fee_proportional: 100
+      cltv_expiry_delta: 40
+
+This lets senders route to recipients with private channels,
+without exposing the channel to the entire network.`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">圖譜維護</h2>

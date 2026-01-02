@@ -35,49 +35,46 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`瞭望塔資料結構：
+      class="text-[var(--text-secondary)]">{`Watchtower Data Structures:
 
-Justice Transaction Blob：
-┌──────────────────────────────────────────────────────────────┐
-│ 客戶端發送給瞭望塔的加密資料：                               │
-│                                                              │
-│ 明文內容：                                                   │
-│ ├── sweep_address: 懲罰資金發送目的地                        │
-│ ├── revocation_key: 撤銷私鑰                                 │
-│ ├── to_local_delay_key: 延遲支付私鑰                         │
-│ └── to_remote_key: 遠端支付私鑰（可選）                      │
-│                                                              │
-│ 或者直接包含：                                               │
-│ └── 預簽名的 Justice Transaction                             │
-└──────────────────────────────────────────────────────────────┘
+Justice Transaction Blob:
 
-Locator（定位器）：
-┌──────────────────────────────────────────────────────────────┐
-│ 用於匹配區塊鏈上的作弊交易：                                 │
-│                                                              │
-│ locator = txid[:16]（前 16 bytes）                           │
-│                                                              │
-│ 設計考量：                                                   │
-│ ├── 足夠長以避免碰撞                                         │
-│ ├── 足夠短以節省儲存                                         │
-│ └── 不揭露完整 txid（隱私）                                  │
-└──────────────────────────────────────────────────────────────┘
+Encrypted data sent from client to watchtower:
 
-Encryption Key：
-┌──────────────────────────────────────────────────────────────┐
-│ blob 使用 txid 加密：                                        │
-│                                                              │
-│ encryption_key = SHA256(breach_txid)                         │
-│                                                              │
-│ 加密方案：                                                   │
-│ ├── ChaCha20-Poly1305                                        │
-│ └── AES-GCM（替代方案）                                      │
-│                                                              │
-│ 結果：                                                       │
-│ ├── 瞭望塔無法讀取 blob 內容                                 │
-│ ├── 只有當作弊交易出現，才能解密                             │
-│ └── 作弊交易 txid 就是解密金鑰                               │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Plaintext contents:
+  • sweep_address: Destination for penalty funds
+  • revocation_key: Revocation private key
+  • to_local_delay_key: Delayed payment private key
+  • to_remote_key: Remote payment private key (optional)
+
+Or directly contains:
+  • Pre-signed Justice Transaction
+
+Locator:
+
+For matching breach transactions on blockchain:
+
+locator = txid[:16] (first 16 bytes)
+
+Design considerations:
+  • Long enough to avoid collisions
+  • Short enough to save storage
+  • Doesn't reveal full txid (privacy)
+
+Encryption Key:
+
+Blob encrypted using txid:
+
+encryption_key = SHA256(breach_txid)
+
+Encryption schemes:
+  • ChaCha20-Poly1305
+  • AES-GCM (alternative)
+
+Result:
+  • Watchtower cannot read blob contents
+  • Can only decrypt when breach tx appears
+  • Breach tx txid is the decryption key`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協議訊息</h2>
@@ -86,54 +83,51 @@ Encryption Key：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`客戶端-瞭望塔通訊：
+      class="text-[var(--text-secondary)]">{`Client-Watchtower Communication:
 
-會話建立：
-┌──────────────────────────────────────────────────────────────┐
-│ 客戶端                                瞭望塔                 │
-│     │                                    │                   │
-│     │──── CreateSession ────────────────>│                   │
-│     │     {                              │                   │
-│     │       blob_type,                   │                   │
-│     │       max_updates,                 │                   │
-│     │       reward_address (optional)    │                   │
-│     │     }                              │                   │
-│     │                                    │                   │
-│     │<─── CreateSessionReply ────────────│                   │
-│     │     {                              │                   │
-│     │       session_id,                  │                   │
-│     │       accepted / rejected,         │                   │
-│     │       fee_rate                     │                   │
-│     │     }                              │                   │
-└──────────────────────────────────────────────────────────────┘
+Session Establishment:
 
-狀態更新：
-┌──────────────────────────────────────────────────────────────┐
-│ 客戶端                                瞭望塔                 │
-│     │                                    │                   │
-│     │──── StateUpdate ──────────────────>│                   │
-│     │     {                              │                   │
-│     │       session_id,                  │                   │
-│     │       seq_num,                     │                   │
-│     │       locator,                     │                   │
-│     │       encrypted_blob               │                   │
-│     │     }                              │                   │
-│     │                                    │                   │
-│     │<─── StateUpdateReply ──────────────│                   │
-│     │     {                              │                   │
-│     │       code: ACCEPTED / REJECTED,   │                   │
-│     │       last_applied                 │                   │
-│     │     }                              │                   │
-└──────────────────────────────────────────────────────────────┘
+  Client                              Watchtower
+     |                                    |
+     |---- CreateSession ---------------->|
+     |     {                              |
+     |       blob_type,                   |
+     |       max_updates,                 |
+     |       reward_address (optional)    |
+     |     }                              |
+     |                                    |
+     |<--- CreateSessionReply ------------|
+     |     {                              |
+     |       session_id,                  |
+     |       accepted / rejected,         |
+     |       fee_rate                     |
+     |     }                              |
 
-刪除會話：
-┌──────────────────────────────────────────────────────────────┐
-│ DeleteSession {                                              │
-│   session_id                                                 │
-│ }                                                            │
-│                                                              │
-│ 用於通道關閉後清理資源                                       │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+State Update:
+
+  Client                              Watchtower
+     |                                    |
+     |---- StateUpdate ------------------>|
+     |     {                              |
+     |       session_id,                  |
+     |       seq_num,                     |
+     |       locator,                     |
+     |       encrypted_blob               |
+     |     }                              |
+     |                                    |
+     |<--- StateUpdateReply --------------|
+     |     {                              |
+     |       code: ACCEPTED / REJECTED,   |
+     |       last_applied                 |
+     |     }                              |
+
+Delete Session:
+
+DeleteSession {
+  session_id
+}
+
+Used to clean up resources after channel closes`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">瞭望塔處理流程</h2>
@@ -142,44 +136,42 @@ Encryption Key：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`瞭望塔監控和回應：
+      class="text-[var(--text-secondary)]">{`Watchtower Monitoring and Response:
 
-監控階段：
-┌──────────────────────────────────────────────────────────────┐
-│ 每個新區塊：                                                 │
-│                                                              │
-│ for each tx in block:                                        │
-│   locator = tx.txid[:16]                                     │
-│   if locator in database:                                    │
-│     # 可能的作弊！                                           │
-│     blob = database.get(locator)                             │
-│     key = SHA256(tx.txid)                                    │
-│     try:                                                     │
-│       justice_data = decrypt(blob, key)                      │
-│       broadcast_justice_tx(justice_data, tx)                 │
-│     except DecryptionError:                                  │
-│       # 誤報（locator 碰撞）                                 │
-│       continue                                               │
-└──────────────────────────────────────────────────────────────┘
+Monitoring Phase:
 
-構建 Justice Transaction：
-┌──────────────────────────────────────────────────────────────┐
-│ 使用解密的資料：                                             │
-│                                                              │
-│ 1. 識別作弊承諾交易的輸出                                    │
-│    ├── to_local 輸出（延遲）                                 │
-│    ├── to_remote 輸出                                        │
-│    └── HTLC 輸出                                             │
-│                                                              │
-│ 2. 構建花費交易                                              │
-│    ├── 使用撤銷私鑰簽名                                      │
-│    ├── 設定適當費率                                          │
-│    └── 發送到 sweep_address                                  │
-│                                                              │
-│ 3. 廣播 Justice Transaction                                  │
-│    ├── 使用最高費率                                          │
-│    └── 監控確認                                              │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+For each new block:
+
+for each tx in block:
+  locator = tx.txid[:16]
+  if locator in database:
+    # Possible breach!
+    blob = database.get(locator)
+    key = SHA256(tx.txid)
+    try:
+      justice_data = decrypt(blob, key)
+      broadcast_justice_tx(justice_data, tx)
+    except DecryptionError:
+      # False positive (locator collision)
+      continue
+
+Building Justice Transaction:
+
+Using decrypted data:
+
+1. Identify breach commitment tx outputs
+   • to_local output (delayed)
+   • to_remote output
+   • HTLC outputs
+
+2. Build spending transaction
+   • Sign using revocation private key
+   • Set appropriate fee rate
+   • Send to sweep_address
+
+3. Broadcast Justice Transaction
+   • Use highest fee rate
+   • Monitor for confirmation`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
@@ -188,40 +180,37 @@ Encryption Key：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`隱私設計：
+      class="text-[var(--text-secondary)]">{`Privacy Design:
 
-瞭望塔不知道什麼：
-┌──────────────────────────────────────────────────────────────┐
-│ ✗ 客戶端身份（可以使用 Tor）                                 │
-│ ✗ 通道對手方                                                 │
-│ ✗ 通道容量                                                   │
-│ ✗ 正常的交易活動                                             │
-│ ✗ 資金金額（直到作弊發生）                                   │
-│ ✗ blob 內容（直到作弊發生）                                  │
-└──────────────────────────────────────────────────────────────┘
+What Watchtower Does NOT Know:
 
-瞭望塔知道什麼：
-┌──────────────────────────────────────────────────────────────┐
-│ ✓ 客戶端有閃電通道                                           │
-│ ✓ 通道狀態更新的頻率                                         │
-│ ✓ 大約的通道數量（按會話數）                                 │
-│ ✓ 作弊發生時的完整交易                                       │
-└──────────────────────────────────────────────────────────────┘
+[X] Client identity (can use Tor)
+[X] Channel counterparty
+[X] Channel capacity
+[X] Normal transaction activity
+[X] Fund amounts (until breach occurs)
+[X] Blob contents (until breach occurs)
 
-進一步隱私增強：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 使用多個瞭望塔                                            │
-│    └── 分散信任，無單點知識                                  │
-│                                                              │
-│ 2. 添加假更新                                                │
-│    └── 混淆真實活動模式                                      │
-│                                                              │
-│ 3. 延遲更新                                                  │
-│    └── 批量發送，隱藏即時活動                                │
-│                                                              │
-│ 4. Tor 連接                                                  │
-│    └── 隱藏 IP 地址                                          │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+What Watchtower DOES Know:
+
+[O] Client has Lightning channels
+[O] Frequency of channel state updates
+[O] Approximate number of channels (by session count)
+[O] Full transaction when breach occurs
+
+Further Privacy Enhancements:
+
+1. Use multiple watchtowers
+   Distribute trust, no single point of knowledge
+
+2. Add fake updates
+   Obscure real activity patterns
+
+3. Delay updates
+   Batch send, hide real-time activity
+
+4. Tor connection
+   Hide IP address`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">獎勵機制</h2>
@@ -247,24 +236,23 @@ Encryption Key：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`獎勵交易結構：
+      class="text-[var(--text-secondary)]">{`Reward Transaction Structure:
 
-Justice Transaction with Reward：
-┌──────────────────────────────────────────────────────────────┐
-│ 輸入：                                                       │
-│ └── 作弊承諾交易的輸出                                       │
-│                                                              │
-│ 輸出：                                                       │
-│ ├── [0] 瞭望塔獎勵：X sats                                   │
-│ │       to: reward_address（瞭望塔提供）                     │
-│ └── [1] 客戶端餘額：剩餘 - 費用                              │
-│         to: sweep_address（客戶端提供）                      │
-│                                                              │
-│ 獎勵比例協商：                                               │
-│ ├── 固定金額                                                 │
-│ ├── 百分比                                                   │
-│ └── 複合模式                                                 │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Justice Transaction with Reward:
+
+Inputs:
+  Breach commitment transaction outputs
+
+Outputs:
+  [0] Watchtower reward: X sats
+      to: reward_address (provided by watchtower)
+  [1] Client balance: remainder - fees
+      to: sweep_address (provided by client)
+
+Reward Ratio Negotiation:
+  • Fixed amount
+  • Percentage
+  • Composite model`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

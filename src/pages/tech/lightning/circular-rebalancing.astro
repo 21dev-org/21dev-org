@@ -1,0 +1,156 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Circular Rebalancing 循環再平衡"
+  description="了解閃電網路的循環再平衡技術，通過自我支付優化通道流動性分布。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Circular Rebalancing' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Rebalancing', href: '/tech/lightning/rebalancing' }}
+  nextPage={{ title: 'Liquidity', href: '/tech/lightning/liquidity' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是循環再平衡？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    循環再平衡是一種通過「自己付錢給自己」來調整通道流動性的技術。
+    資金從一個通道流出，經過網路，再從另一個通道流入。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>零成本轉移：</strong>
+      除了路由費用外，循環再平衡不會改變你的總餘額。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`循環再平衡流程：
+
+初始狀態：
+你的節點
+    |                              |
+    | 通道 A                  通道 B
+    | 本地: 900k            本地: 100k
+    | 遠程: 100k            遠程: 900k
+    |                              |
+    +--[對方 A]---網路---[對方 B]--+
+
+問題：
+• 通道 A 無法接收（入站容量少）
+• 通道 B 無法發送（出站容量少）
+
+循環再平衡：
+操作：從通道 A 發送 400k 給自己，經由通道 B 接收
+
+    你 --400k--> 對方A --網路--> 對方B --400k--> 你
+    ^                                           |
+    +-------------------------------------------+
+
+結果：
+• 通道 A: 本地 500k / 遠程 500k
+• 通道 B: 本地 500k / 遠程 500k`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實作方式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`使用 LND：
+
+# 手動循環再平衡
+lncli payinvoice --outgoing_chan_id=<from_channel> \\
+                 --last_hop_pubkey=<entry_node_pubkey> \\
+                 <self_generated_invoice>
+
+# 使用 bos（Balance of Satoshis）
+bos rebalance --out <outgoing_peer> --in <incoming_peer> \\
+              --amount 500000
+
+自動化工具：
+• bos（Balance of Satoshis）
+• rebalance-lnd
+• lndmanage
+• charge-lnd（自動調整費率觸發再平衡）
+
+使用 CLN：
+# 使用 rebalance 插件
+lightning-cli rebalance <outgoing_scid> <incoming_scid> \\
+              <amount_msat> <maxfeepercent>`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">成本效益分析</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`再平衡經濟學：
+
+成本：
+再平衡 500,000 sats，路由費率 500 ppm：
+費用 = 500,000 × 0.0005 = 250 sats
+
+注意：實際費用取決於路徑長度和各節點費率
+
+收益考量：
+假設：
+• 你的通道費率：1000 ppm
+• 再平衡後可路由：5,000,000 sats 流量
+
+潛在收益 = 5,000,000 × 0.001 = 5,000 sats
+ROI = (5,000 - 250) / 250 = 1900%
+
+但實際上：
+• 不是所有容量都會被使用
+• 流動性會再次失衡
+• 需要持續再平衡`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">時機選擇</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        在低費率時段再平衡，或使用負入站費用的通道。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">替代方案</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        調整費率讓市場自然再平衡，或使用 Submarine Swaps。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>隱私考量：</strong>
+      循環再平衡會向路徑上的節點暴露你正在進行再平衡，可能洩漏通道狀態資訊。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/rebalancing" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道再平衡</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/liquidity" class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/submarine-swaps" class="text-yellow-600 dark:text-yellow-400 hover:underline">Submarine Swaps</a>
+    </li>
+  </ul>
+</ArticleLayout>

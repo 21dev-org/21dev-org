@@ -36,30 +36,30 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`單路徑支付問題：
+      class="text-[var(--text-secondary)]">{`Single-Path Payment Problem:
 
-場景：Alice 想支付 1 BTC 給 Dave
+Scenario: Alice wants to pay 1 BTC to Dave
 
-網路狀態：
-Alice ──[0.3]──> Bob ──[0.8]──> Carol ──[0.5]──> Dave
-      │                                           ▲
-      └───[0.4]──> Eve ──[0.6]──> Frank ──[0.3]──┘
+Network state:
+Alice --[0.3]--> Bob --[0.8]--> Carol --[0.5]--> Dave
+      |                                           ^
+      +--[0.4]--> Eve --[0.6]--> Frank --[0.3]---+
 
-路徑 1: Alice → Bob → Carol → Dave
-        瓶頸: 0.3 BTC（Alice-Bob 通道）
+Path 1: Alice -> Bob -> Carol -> Dave
+        Bottleneck: 0.3 BTC (Alice-Bob channel)
 
-路徑 2: Alice → Eve → Frank → Dave
-        瓶頸: 0.3 BTC（Frank-Dave 通道）
+Path 2: Alice -> Eve -> Frank -> Dave
+        Bottleneck: 0.3 BTC (Frank-Dave channel)
 
-問題：
-- 沒有任何單一路徑能支持 1 BTC
-- 支付失敗！
+Problem:
+• No single path can support 1 BTC
+• Payment fails!
 
-解決方案：
-- 將 1 BTC 拆分
-- 路徑 1 發送 0.3 BTC
-- 路徑 2 發送 0.3 BTC
-- 其他路徑發送剩餘 0.4 BTC`}</pre>
+Solution:
+• Split 1 BTC
+• Path 1 sends 0.3 BTC
+• Path 2 sends 0.3 BTC
+• Other paths send remaining 0.4 BTC`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MPP 類型</h2>
@@ -95,41 +95,37 @@ Alice ──[0.3]──> Bob ──[0.8]──> Carol ──[0.5]──> Dave
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Basic MPP 流程：
+      class="text-[var(--text-secondary)]">{`Basic MPP Flow:
 
-1. 接收方生成發票
-   ┌─────────────────────────────────────────┐
-   │ Invoice:                                │
-   │   payment_hash: H = SHA256(preimage)    │
-   │   payment_secret: S (32 bytes random)   │
-   │   amount: 1,000,000 sats                │
-   │   features: basic_mpp                   │
-   └─────────────────────────────────────────┘
+1. Receiver generates invoice
+   Invoice:
+     payment_hash: H = SHA256(preimage)
+     payment_secret: S (32 bytes random)
+     amount: 1,000,000 sats
+     features: basic_mpp
 
-2. 發送方拆分支付
-   總額 1,000,000 sats → 3 個分片：
-   - Shard 1: 400,000 sats, 路徑 A
-   - Shard 2: 350,000 sats, 路徑 B
-   - Shard 3: 250,000 sats, 路徑 C
+2. Sender splits payment
+   Total 1,000,000 sats -> 3 shards:
+   - Shard 1: 400,000 sats, path A
+   - Shard 2: 350,000 sats, path B
+   - Shard 3: 250,000 sats, path C
 
-3. 每個分片的 HTLC payload
-   ┌─────────────────────────────────────────┐
-   │ Final hop payload:                      │
-   │   amt_to_forward: 400000                │
-   │   outgoing_cltv_value: ...              │
-   │   payment_secret: S                     │
-   │   total_msat: 1000000000                │
-   └─────────────────────────────────────────┘
+3. Each shard's HTLC payload
+   Final hop payload:
+     amt_to_forward: 400000
+     outgoing_cltv_value: ...
+     payment_secret: S
+     total_msat: 1000000000
 
-4. 接收方處理
-   - 收集所有使用相同 H 和 S 的 HTLCs
-   - 驗證 total_msat 匹配
-   - 等待所有分片到達
-   - 一次性揭示 preimage 結算所有分片
+4. Receiver processing
+   • Collect all HTLCs with same H and S
+   • Verify total_msat matches
+   • Wait for all shards to arrive
+   • Reveal preimage to settle all shards at once
 
-5. 原子性保證
-   - 所有分片成功 → 支付完成
-   - 任何分片失敗 → 所有分片超時返還`}</pre>
+5. Atomicity guarantee
+   • All shards succeed -> payment complete
+   • Any shard fails -> all shards timeout and return`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Payment Secret</h2>
@@ -138,30 +134,26 @@ Alice ──[0.3]──> Bob ──[0.8]──> Carol ──[0.5]──> Dave
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Payment Secret 的重要性：
+      class="text-[var(--text-secondary)]">{`Payment Secret Importance:
 
-問題：沒有 payment_secret 的 MPP
+Problem: MPP without payment_secret
 
-攻擊場景（Wormhole Attack）：
-1. Alice 發送分片 1 (500k sats) 給 Bob
-2. 惡意路由節點 Eve 攔截
-3. Eve 發送自己的 500k sats 假分片
-4. 接收方收到 1M sats，揭示 preimage
-5. Eve 使用 preimage 結算 Alice 的分片
-6. Eve 偷走了 500k sats！
+Attack scenario (Wormhole Attack):
+1. Alice sends shard 1 (500k sats) to Bob
+2. Malicious routing node Eve intercepts
+3. Eve sends her own 500k sats fake shard
+4. Receiver gets 1M sats, reveals preimage
+5. Eve uses preimage to settle Alice's shard
+6. Eve stole 500k sats!
 
-解決方案：Payment Secret
-┌─────────────────────────────────────────────────────────┐
-│ 只有發票持有者知道 payment_secret                        │
-│                                                         │
-│ 接收方只接受包含正確 secret 的 HTLCs                    │
-│                                                         │
-│ Eve 無法偽造分片（不知道 secret）                        │
-└─────────────────────────────────────────────────────────┘
+Solution: Payment Secret
+• Only invoice holder knows payment_secret
+• Receiver only accepts HTLCs with correct secret
+• Eve cannot forge shards (doesn't know secret)
 
-功能位：
-- var_onion_optin (bit 8/9): 必需
-- payment_secret (bit 14/15): 必需 for MPP`}</pre>
+Feature bits:
+• var_onion_optin (bit 8/9): required
+• payment_secret (bit 14/15): required for MPP`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">AMP (Atomic Multi-Path)</h2>
@@ -170,34 +162,33 @@ Alice ──[0.3]──> Bob ──[0.8]──> Carol ──[0.5]──> Dave
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`AMP 機制：
+      class="text-[var(--text-secondary)]">{`AMP Mechanism:
 
-與 Basic MPP 的差異：
-┌─────────────────────────────────────────────────────────┐
-│ Basic MPP:                                              │
-│   所有分片使用相同的 payment_hash H                      │
-│   可能被路由節點關聯                                     │
-│                                                         │
-│ AMP:                                                    │
-│   每個分片有不同的 payment_hash H_i                      │
-│   但最終 preimage 由共享秘密派生                         │
-│   路由節點無法關聯分片                                   │
-└─────────────────────────────────────────────────────────┘
+Differences from Basic MPP:
 
-AMP 秘密派生：
-1. 發送方選擇隨機 root_share
-2. 對於 n 個分片：
-   - share_i = HMAC("share", root_share, i)
-   - preimage_i = share_1 XOR share_2 XOR ... XOR share_i
-   - hash_i = SHA256(preimage_i)
+Basic MPP:
+• All shards use same payment_hash H
+• May be correlated by routing nodes
 
-3. 接收方需要所有 share 才能計算最終 preimage
-4. 確保原子性：只有收齊所有分片才能結算
+AMP:
+• Each shard has different payment_hash H_i
+• Final preimage derived from shared secret
+• Routing nodes cannot correlate shards
 
-優勢：
-- 每個 HTLC 看起來像獨立支付
-- 更強的隱私保護
-- 支持自發支付（Keysend + AMP）`}</pre>
+AMP secret derivation:
+1. Sender chooses random root_share
+2. For n shards:
+   share_i = HMAC("share", root_share, i)
+   preimage_i = share_1 XOR share_2 XOR ... XOR share_i
+   hash_i = SHA256(preimage_i)
+
+3. Receiver needs all shares to calculate final preimage
+4. Ensures atomicity: can only settle after collecting all shards
+
+Advantages:
+• Each HTLC looks like independent payment
+• Stronger privacy protection
+• Supports spontaneous payments (Keysend + AMP)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路徑選擇策略</h2>
@@ -237,36 +228,33 @@ AMP 秘密派生：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`MPP 超時場景：
+      class="text-[var(--text-secondary)]">{`MPP Timeout Scenarios:
 
-場景 1：部分分片失敗
-  Shard 1: 成功到達接收方
-  Shard 2: 路由失敗
+Scenario 1: Partial shard failure
+  Shard 1: Successfully reaches receiver
+  Shard 2: Routing failure
 
-  處理：
-  - 接收方等待合理時間
-  - 超時後讓所有 HTLC 過期
-  - 發送方可以重試（不同路徑或不同分割）
+  Handling:
+  • Receiver waits reasonable time
+  • After timeout, let all HTLCs expire
+  • Sender can retry (different paths or split)
 
-場景 2：接收方離線
-  所有分片到達，但接收方不揭示 preimage
+Scenario 2: Receiver offline
+  All shards arrive, but receiver doesn't reveal preimage
 
-  處理：
-  - 所有 HTLC 超時
-  - 資金返還發送方
+  Handling:
+  • All HTLCs timeout
+  • Funds return to sender
 
-接收方的 MPP 超時設置：
-┌─────────────────────────────────────────┐
-│ mpp_timeout: 60 秒（典型值）            │
-│                                         │
-│ 收到第一個分片後開始計時                │
-│ 超時前未收齊 → 放棄，等 HTLC 過期       │
-└─────────────────────────────────────────┘
+Receiver MPP timeout setting:
+  mpp_timeout: 60 seconds (typical)
+  Timer starts after receiving first shard
+  If not complete before timeout -> abandon, wait for HTLC expiry
 
-最佳實踐：
-- 發送方應並行發送所有分片
-- 避免順序發送導致的延遲
-- 監控部分失敗並快速重試`}</pre>
+Best practices:
+• Sender should send all shards in parallel
+• Avoid delays from sequential sending
+• Monitor partial failures and retry quickly`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

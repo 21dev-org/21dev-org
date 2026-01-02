@@ -36,26 +36,24 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統源路由（Source Routing）：
+      class="text-[var(--text-secondary)]">{`Traditional Source Routing:
 
-發送方需要：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 完整的網路圖譜（~50-100 MB）                          │
-│ 2. 持續同步 gossip 訊息                                  │
-│ 3. 計算到目的地的最佳路徑                                │
-│ 4. 構建完整的洋蔥封包                                    │
-└─────────────────────────────────────────────────────────┘
+Sender requirements:
+1. Complete network graph (~50-100 MB)
+2. Continuously sync gossip messages
+3. Calculate optimal path to destination
+4. Build complete onion packet
 
-對手機錢包的影響：
-- 存儲空間：需要大量存儲圖譜
-- 頻寬：持續下載 channel_update
-- 電量：路徑計算消耗 CPU
-- 時間：首次同步需要很長時間
-- 過時：離線後圖譜可能過期
+Impact on mobile wallets:
+• Storage: need large space for graph
+• Bandwidth: constantly downloading channel_update
+• Battery: path calculation consumes CPU
+• Time: initial sync takes long time
+• Staleness: graph may be outdated after offline
 
-問題示例：
-用戶打開 App → 需要同步 → 等待數分鐘 → 終於可以支付
-這對用戶體驗是災難性的！`}</pre>
+Problem example:
+User opens App -> needs sync -> waits minutes -> finally can pay
+This is disastrous for user experience!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Trampoline 解決方案</h2>
@@ -95,40 +93,29 @@ Trampoline 節點負責：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`嵌套洋蔥結構：
+      class="text-[var(--text-secondary)]">{`Nested Onion Structure:
 
-外層洋蔥（傳統 BOLT 4）：
-┌─────────────────────────────────────────────────────────┐
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ Hop 1: Alice → 直接連接節點 A                       │ │
-│ │   payload: forward to Node B                        │ │
-│ ├─────────────────────────────────────────────────────┤ │
-│ │ Hop 2: Node A → Node B                              │ │
-│ │   payload: forward to Trampoline T1                 │ │
-│ ├─────────────────────────────────────────────────────┤ │
-│ │ Hop 3: Node B → Trampoline T1                       │ │
-│ │   payload: [內層 Trampoline 洋蔥]                   │ │
-│ └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+Outer onion (traditional BOLT 4):
+  Hop 1: Alice -> direct peer Node A
+    payload: forward to Node B
+  Hop 2: Node A -> Node B
+    payload: forward to Trampoline T1
+  Hop 3: Node B -> Trampoline T1
+    payload: [inner Trampoline onion]
 
-內層洋蔥（Trampoline）：
-┌─────────────────────────────────────────────────────────┐
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ T-Hop 1: T1 → T2                                    │ │
-│ │   payload: amount, expiry, next trampoline          │ │
-│ ├─────────────────────────────────────────────────────┤ │
-│ │ T-Hop 2: T2 → Bob                                   │ │
-│ │   payload: final payment details                    │ │
-│ └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+Inner onion (Trampoline):
+  T-Hop 1: T1 -> T2
+    payload: amount, expiry, next trampoline
+  T-Hop 2: T2 -> Bob
+    payload: final payment details
 
-T1 收到後：
-1. 解密外層洋蔥，發現是 Trampoline 支付
-2. 解密內層洋蔥第一層
-3. 發現需要轉發給 T2
-4. 計算到 T2 的路徑
-5. 構建新的外層洋蔥到 T2
-6. 保持內層洋蔥（剝掉一層）`}</pre>
+When T1 receives:
+1. Decrypt outer onion, discover Trampoline payment
+2. Decrypt first layer of inner onion
+3. Find need to forward to T2
+4. Calculate path to T2
+5. Build new outer onion to T2
+6. Keep inner onion (peel one layer)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
@@ -158,33 +145,31 @@ T1 收到後：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Trampoline 費用結構：
+      class="text-[var(--text-secondary)]">{`Trampoline Fee Structure:
 
-傳統路由：
-  總費用 = Σ(每跳的路由費)
-  發送方精確知道每一跳的費用
+Traditional routing:
+  Total fee = sum of each hop's routing fee
+  Sender knows exact fee for each hop
 
-Trampoline 路由：
-  總費用 = Alice→T1 費用 + T1 預算 + T2 預算 + ...
+Trampoline routing:
+  Total fee = Alice->T1 fee + T1 budget + T2 budget + ...
 
-  ┌─────────────────────────────────────────┐
-  │ Alice 指定：                            │
-  │   T1 預算：1000 sats（最多用這麼多）     │
-  │   T2 預算：800 sats                     │
-  └─────────────────────────────────────────┘
+  Alice specifies:
+  • T1 budget: 1000 sats (max allowed)
+  • T2 budget: 800 sats
 
-  T1 實際路由到 T2 花費 500 sats
-  → T1 保留 500 sats 作為服務費
+  T1 actually routes to T2 for 500 sats
+  -> T1 keeps 500 sats as service fee
 
-挑戰：
-  - 預算設太低：支付失敗
-  - 預算設太高：多付費用
-  - 需要經驗來設定合理預算
+Challenges:
+• Budget too low: payment fails
+• Budget too high: overpay fees
+• Need experience to set reasonable budget
 
-優化：
-  - Trampoline 節點可以返回估算費用
-  - 客戶端可以逐步調整預算
-  - 使用歷史數據優化`}</pre>
+Optimizations:
+• Trampoline nodes can return fee estimates
+• Clients can gradually adjust budget
+• Use historical data to optimize`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 格式</h2>

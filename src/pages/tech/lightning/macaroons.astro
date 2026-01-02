@@ -35,46 +35,45 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LND 默認 Macaroons：
+      class="text-[var(--text-secondary)]">{`LND Default Macaroons:
 
-位置：~/.lnd/data/chain/bitcoin/mainnet/
-┌──────────────────────────────────────────────────────────────┐
-│ admin.macaroon                                               │
-│ ├── 完整權限                                                 │
-│ ├── 可以執行所有操作                                         │
-│ └── 最敏感，必須妥善保管                                     │
-│                                                              │
-│ readonly.macaroon                                            │
-│ ├── 唯讀權限                                                 │
-│ ├── 可以查詢餘額、發票、通道狀態                             │
-│ └── 不能發送支付或修改設定                                   │
-│                                                              │
-│ invoice.macaroon                                             │
-│ ├── 發票相關權限                                             │
-│ ├── 創建和查詢發票                                           │
-│ └── 不能發送支付                                             │
-│                                                              │
-│ invoices.macaroon（複數）                                    │
-│ ├── 增強的發票權限                                           │
-│ └── 包含發票訂閱                                             │
-│                                                              │
-│ chainnotifier.macaroon                                       │
-│ ├── 鏈上通知權限                                             │
-│ └── 訂閱區塊和交易確認                                       │
-│                                                              │
-│ signer.macaroon                                              │
-│ ├── 簽名權限                                                 │
-│ └── 用於遠端簽名器                                           │
-│                                                              │
-│ walletkit.macaroon                                           │
-│ ├── 錢包操作權限                                             │
-│ └── 地址生成、PSBT 等                                        │
-│                                                              │
-│ router.macaroon                                              │
-│ ├── 路由權限                                                 │
-│ ├── 發送支付                                                 │
-│ └── 路由查詢                                                 │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Location: ~/.lnd/data/chain/bitcoin/mainnet/
+
+admin.macaroon
+  • Full permissions
+  • Can execute all operations
+  • Most sensitive, must be kept secure
+
+readonly.macaroon
+  • Read-only permissions
+  • Can query balances, invoices, channel status
+  • Cannot send payments or modify settings
+
+invoice.macaroon
+  • Invoice-related permissions
+  • Create and query invoices
+  • Cannot send payments
+
+invoices.macaroon (plural)
+  • Enhanced invoice permissions
+  • Includes invoice subscriptions
+
+chainnotifier.macaroon
+  • On-chain notification permissions
+  • Subscribe to blocks and transaction confirmations
+
+signer.macaroon
+  • Signing permissions
+  • Used for remote signers
+
+walletkit.macaroon
+  • Wallet operation permissions
+  • Address generation, PSBT, etc.
+
+router.macaroon
+  • Routing permissions
+  • Send payments
+  • Route queries`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Macaroon 結構</h2>
@@ -83,41 +82,36 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Macaroon 內部結構：
+      class="text-[var(--text-secondary)]">{`Macaroon Internal Structure:
 
-┌──────────────────────────────────────────────────────────────┐
-│ Macaroon 組成：                                              │
-│                                                              │
-│ ┌─────────────────────────────────────────────────────────┐  │
-│ │ Identifier                                              │  │
-│ │   唯一識別符，用於追蹤                                  │  │
-│ ├─────────────────────────────────────────────────────────┤  │
-│ │ Location (optional)                                     │  │
-│ │   發行者位置（如 "lnd"）                                │  │
-│ ├─────────────────────────────────────────────────────────┤  │
-│ │ Caveats (條件/限制)                                     │  │
-│ │   ├── caveat 1: "entity=info"                           │  │
-│ │   ├── caveat 2: "entity=invoices"                       │  │
-│ │   ├── caveat 3: "action=read"                           │  │
-│ │   └── ...                                               │  │
-│ ├─────────────────────────────────────────────────────────┤  │
-│ │ Signature                                               │  │
-│ │   HMAC 簽名，驗證完整性                                 │  │
-│ └─────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
+Components:
 
-Caveats（條件）類型：
-┌──────────────────────────────────────────────────────────────┐
-│ First-party caveats：                                        │
-│ ├── 直接嵌入在 macaroon 中                                   │
-│ ├── 由驗證者檢查                                             │
-│ └── 例如：時間限制、IP 限制                                  │
-│                                                              │
-│ Third-party caveats：                                        │
-│ ├── 需要第三方驗證                                           │
-│ ├── 實現多方授權                                             │
-│ └── LND 主要使用 first-party                                 │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+1. Identifier
+   Unique identifier for tracking
+
+2. Location (optional)
+   Issuer location (e.g., "lnd")
+
+3. Caveats (conditions/restrictions)
+   • caveat 1: "entity=info"
+   • caveat 2: "entity=invoices"
+   • caveat 3: "action=read"
+   • ...
+
+4. Signature
+   HMAC signature for integrity verification
+
+Caveat Types:
+
+First-party caveats:
+  • Embedded directly in macaroon
+  • Checked by verifier
+  • Examples: time limits, IP restrictions
+
+Third-party caveats:
+  • Requires third-party verification
+  • Enables multi-party authorization
+  • LND primarily uses first-party`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">創建自定義 Macaroon</h2>
@@ -126,52 +120,49 @@ Caveats（條件）類型：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`使用 lncli 創建自定義 macaroon：
+      class="text-[var(--text-secondary)]">{`Creating Custom Macaroons with lncli:
 
-基本語法：
-┌──────────────────────────────────────────────────────────────┐
-│ lncli bakemacaroon <permissions...> [flags]                  │
-│                                                              │
-│ 權限格式：entity:action                                      │
-│ ├── entity: info, offchain, onchain, address, message,       │
-│ │           peers, invoices, macaroon, signer                │
-│ └── action: read, write, generate                            │
-└──────────────────────────────────────────────────────────────┘
+Basic Syntax:
 
-範例：
-┌──────────────────────────────────────────────────────────────┐
-│ # 只讀 macaroon                                              │
-│ lncli bakemacaroon info:read offchain:read onchain:read      │
-│                                                              │
-│ # 只能創建發票                                               │
-│ lncli bakemacaroon invoices:read invoices:write              │
-│                                                              │
-│ # 可以發送支付，但不能修改通道                               │
-│ lncli bakemacaroon offchain:read offchain:write \\            │
-│   --save_to=./payment.macaroon                               │
-│                                                              │
-│ # 帶時間限制                                                 │
-│ lncli bakemacaroon info:read \\                               │
-│   --timeout 3600 \\                                           │
-│   --save_to=./temp.macaroon                                  │
-│                                                              │
-│ # 帶 IP 限制                                                 │
-│ lncli bakemacaroon info:read \\                               │
-│   --allow_external_permissions \\                             │
-│   --custom_caveat "ipaddr 192.168.1.0/24"                    │
-└──────────────────────────────────────────────────────────────┘
+lncli bakemacaroon <permissions...> [flags]
 
-常用權限組合：
-┌──────────────────────────────────────────────────────────────┐
-│ 監控用途（如 RTL、Thunderhub）：                             │
-│ info:read offchain:read onchain:read peers:read              │
-│                                                              │
-│ 支付用途（如 BTCPay Server）：                               │
-│ invoices:read invoices:write offchain:read offchain:write    │
-│                                                              │
-│ 完整操作（等同 admin）：                                     │
-│ 不推薦，使用 admin.macaroon                                  │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Permission Format: entity:action
+  entities: info, offchain, onchain, address, message,
+            peers, invoices, macaroon, signer
+  actions:  read, write, generate
+
+Examples:
+
+# Read-only macaroon
+lncli bakemacaroon info:read offchain:read onchain:read
+
+# Invoice creation only
+lncli bakemacaroon invoices:read invoices:write
+
+# Can send payments, but cannot modify channels
+lncli bakemacaroon offchain:read offchain:write \\
+  --save_to=./payment.macaroon
+
+# With time limit
+lncli bakemacaroon info:read \\
+  --timeout 3600 \\
+  --save_to=./temp.macaroon
+
+# With IP restriction
+lncli bakemacaroon info:read \\
+  --allow_external_permissions \\
+  --custom_caveat "ipaddr 192.168.1.0/24"
+
+Common Permission Combinations:
+
+Monitoring (e.g., RTL, Thunderhub):
+  info:read offchain:read onchain:read peers:read
+
+Payments (e.g., BTCPay Server):
+  invoices:read invoices:write offchain:read offchain:write
+
+Full access (equivalent to admin):
+  Not recommended, use admin.macaroon`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">衍生 Macaroon</h2>
@@ -180,54 +171,51 @@ Caveats（條件）類型：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`從現有 Macaroon 衍生受限版本：
+      class="text-[var(--text-secondary)]">{`Deriving Restricted Macaroons:
 
-關鍵特性：
-┌──────────────────────────────────────────────────────────────┐
-│ Macaroon 的獨特能力：                                        │
-│ ├── 可以添加 caveats（限制）                                 │
-│ ├── 不能移除已有的 caveats                                   │
-│ └── 無需聯繫原始發行者                                       │
-│                                                              │
-│ 這意味著：                                                   │
-│ 你可以把 admin macaroon 變成受限版本                         │
-│ 但不能把 readonly 變成 admin                                 │
-└──────────────────────────────────────────────────────────────┘
+Key Characteristics:
 
-添加限制：
-┌──────────────────────────────────────────────────────────────┐
-│ # 添加時間限制                                               │
-│ lncli constrainmacaroon \\                                    │
-│   --macaroon_file=./admin.macaroon \\                         │
-│   --timeout=3600 \\                                           │
-│   --output=./temp_admin.macaroon                             │
-│                                                              │
-│ # 添加 IP 限制                                               │
-│ lncli constrainmacaroon \\                                    │
-│   --macaroon_file=./admin.macaroon \\                         │
-│   --ip_address=192.168.1.100 \\                               │
-│   --output=./restricted.macaroon                             │
-│                                                              │
-│ 現在 restricted.macaroon：                                   │
-│ ├── 保留原有的所有權限                                       │
-│ ├── 但只能從 192.168.1.100 使用                              │
-│ └── 其他 IP 會被拒絕                                         │
-└──────────────────────────────────────────────────────────────┘
+Macaroon's Unique Ability:
+  • Can add caveats (restrictions)
+  • Cannot remove existing caveats
+  • No need to contact original issuer
 
-委託場景：
-┌──────────────────────────────────────────────────────────────┐
-│ 場景：你要給第三方服務有限存取                               │
-│                                                              │
-│ 1. 從 admin.macaroon 創建受限版本                            │
-│ 2. 添加時間限制（1 天）                                      │
-│ 3. 添加 IP 限制（服務的 IP）                                 │
-│ 4. 只給予需要的權限                                          │
-│                                                              │
-│ lncli bakemacaroon invoices:read invoices:write \\            │
-│   --timeout 86400 \\                                          │
-│   --ip_address <service_ip> \\                                │
-│   --save_to ./service.macaroon                               │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+This means:
+  You can turn admin macaroon into restricted version
+  But cannot turn readonly into admin
+
+Adding Restrictions:
+
+# Add time limit
+lncli constrainmacaroon \\
+  --macaroon_file=./admin.macaroon \\
+  --timeout=3600 \\
+  --output=./temp_admin.macaroon
+
+# Add IP restriction
+lncli constrainmacaroon \\
+  --macaroon_file=./admin.macaroon \\
+  --ip_address=192.168.1.100 \\
+  --output=./restricted.macaroon
+
+Now restricted.macaroon:
+  • Retains all original permissions
+  • But can only be used from 192.168.1.100
+  • Other IPs will be rejected
+
+Delegation Scenario:
+
+Scenario: Give third-party service limited access
+
+1. Create restricted version from admin.macaroon
+2. Add time limit (1 day)
+3. Add IP restriction (service's IP)
+4. Grant only necessary permissions
+
+lncli bakemacaroon invoices:read invoices:write \\
+  --timeout 86400 \\
+  --ip_address <service_ip> \\
+  --save_to ./service.macaroon`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全最佳實踐</h2>
@@ -236,52 +224,49 @@ Caveats（條件）類型：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Macaroon 安全指南：
+      class="text-[var(--text-secondary)]">{`Macaroon Security Guide:
 
-保護 admin.macaroon：
-┌──────────────────────────────────────────────────────────────┐
-│ ⚠ admin.macaroon = 節點完整控制權                            │
-│                                                              │
-│ 應該：                                                       │
-│ ├── 加密儲存                                                 │
-│ ├── 限制檔案權限（chmod 600）                                │
-│ ├── 永遠不要傳輸或分享                                       │
-│ └── 考慮使用硬體安全模組（HSM）                              │
-│                                                              │
-│ 不應該：                                                     │
-│ ├── 放在公開可存取的位置                                     │
-│ ├── 通過不安全通道傳輸                                       │
-│ ├── 給予第三方服務                                           │
-│ └── 提交到版本控制                                           │
-└──────────────────────────────────────────────────────────────┘
+Protecting admin.macaroon:
 
-最小權限原則：
-┌──────────────────────────────────────────────────────────────┐
-│ 為每個用途創建專用 macaroon：                                │
-│                                                              │
-│ BTCPay Server：                                              │
-│   invoices:read invoices:write                               │
-│                                                              │
-│ 監控面板：                                                   │
-│   info:read peers:read offchain:read onchain:read            │
-│                                                              │
-│ 自動支付腳本：                                               │
-│   offchain:write + 金額限制                                  │
-│                                                              │
-│ 開發測試：                                                   │
-│   短時間限制 + IP 限制                                       │
-└──────────────────────────────────────────────────────────────┘
+WARNING: admin.macaroon = Full node control
 
-定期輪換：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 定期生成新的 macaroons                                    │
-│ 2. 更新使用舊 macaroon 的服務                                │
-│ 3. 刪除舊的 macaroon（雖然不能撤銷）                         │
-│                                                              │
-│ 注意：Macaroons 不能被「撤銷」                               │
-│ 唯一的方法是更改 LND 的 root key                             │
-│ 這會使所有現有 macaroons 失效                                │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Should:
+  • Store encrypted
+  • Limit file permissions (chmod 600)
+  • Never transmit or share
+  • Consider using Hardware Security Module (HSM)
+
+Should NOT:
+  • Place in publicly accessible location
+  • Transmit through insecure channels
+  • Give to third-party services
+  • Commit to version control
+
+Principle of Least Privilege:
+
+Create dedicated macaroon for each use case:
+
+BTCPay Server:
+  invoices:read invoices:write
+
+Monitoring Dashboard:
+  info:read peers:read offchain:read onchain:read
+
+Auto-payment Script:
+  offchain:write + amount limit
+
+Development Testing:
+  Short time limit + IP restriction
+
+Regular Rotation:
+
+1. Periodically generate new macaroons
+2. Update services using old macaroon
+3. Delete old macaroon (though cannot revoke)
+
+Note: Macaroons cannot be "revoked"
+The only way is to change LND's root key
+This invalidates all existing macaroons`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

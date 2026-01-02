@@ -27,37 +27,36 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`閃電網路路由費用公式：
+      class="text-[var(--text-secondary)]">{`Lightning Network Routing Fee Formula:
 
-總費用 = base_fee + (amount × fee_rate)
+Total fee = base_fee + (amount * fee_rate)
 
-參數說明：
-┌─────────────────────────────────────────────────────────┐
-│ base_fee (基礎費用)                                     │
-│ ├── 每次轉發收取的固定費用                              │
-│ ├── 單位：millisatoshi (msat)                           │
-│ ├── 典型值：0 - 1000 msat (0 - 1 sat)                   │
-│ └── 無論金額大小都收取                                  │
-├─────────────────────────────────────────────────────────┤
-│ fee_rate (費率)                                         │
-│ ├── 按轉發金額比例收取                                  │
-│ ├── 單位：ppm (parts per million，百萬分之一)           │
-│ ├── 典型值：1 - 5000 ppm (0.0001% - 0.5%)               │
-│ └── 1 ppm = 每轉發 1,000,000 sats 收 1 sat              │
-└─────────────────────────────────────────────────────────┘
+Parameters:
 
-計算示例：
-base_fee = 1000 msat (1 sat)
-fee_rate = 100 ppm
-支付金額 = 100,000 sats
+base_fee:
+  - Fixed fee charged per forward
+  - Unit: millisatoshi (msat)
+  - Typical: 0 - 1000 msat (0 - 1 sat)
+  - Charged regardless of amount
 
-費用 = 1000 + (100,000 × 100 / 1,000,000) msat
-     = 1000 + 10,000 msat
-     = 11,000 msat = 11 sats
+fee_rate:
+  - Proportional to forwarded amount
+  - Unit: ppm (parts per million)
+  - Typical: 1 - 5000 ppm (0.0001% - 0.5%)
+  - 1 ppm = 1 sat per 1,000,000 sats forwarded
 
-多跳支付：
-A → B → C → D
-費用 = 費用(A→B) + 費用(B→C) + 費用(C→D)`}</pre>
+Calculation Example:
+  base_fee = 1000 msat (1 sat)
+  fee_rate = 100 ppm
+  payment amount = 100,000 sats
+
+  fee = 1000 + (100,000 * 100 / 1,000,000) msat
+      = 1000 + 10,000 msat
+      = 11,000 msat = 11 sats
+
+Multi-hop Payment:
+  A -> B -> C -> D
+  Fee = fee(A->B) + fee(B->C) + fee(C->D)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">channel_update 訊息</h2>
@@ -66,30 +65,29 @@ A → B → C → D
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`channel_update 訊息中的費用相關欄位：
+      class="text-[var(--text-secondary)]">{`Fee-related fields in channel_update message:
 
 {
-  "channel_flags": 0,           // 方向標誌
+  "channel_flags": 0,
   "message_flags": 1,
-  "cltv_expiry_delta": 40,      // 時間鎖增量
-  "htlc_minimum_msat": 1000,    // 最小 HTLC
-  "htlc_maximum_msat": 990000000, // 最大 HTLC
-  "fee_base_msat": 1000,        // 基礎費用
-  "fee_proportional_millionths": 100  // 費率 ppm
+  "cltv_expiry_delta": 40,
+  "htlc_minimum_msat": 1000,
+  "htlc_maximum_msat": 990000000,
+  "fee_base_msat": 1000,
+  "fee_proportional_millionths": 100
 }
 
-重要參數：
-┌────────────────────────────────────────────────────────┐
-│ cltv_expiry_delta                                      │
-│ ├── 每跳增加的時間鎖區塊數                             │
-│ ├── 影響支付的總時間鎖                                 │
-│ └── 較長值更安全但可能被拒絕                           │
-├────────────────────────────────────────────────────────┤
-│ htlc_minimum_msat / htlc_maximum_msat                  │
-│ ├── 限制可轉發的 HTLC 大小                             │
-│ ├── 保護通道免受粉塵攻擊                               │
-│ └── 控制流動性使用                                     │
-└────────────────────────────────────────────────────────┘`}</pre>
+Important Parameters:
+
+cltv_expiry_delta:
+  - Timelock blocks added per hop
+  - Affects payment's total timelock
+  - Longer values safer but may be rejected
+
+htlc_minimum_msat / htlc_maximum_msat:
+  - Limits forwardable HTLC size
+  - Protects channel from dust attacks
+  - Controls liquidity usage`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用策略</h2>
@@ -131,41 +129,39 @@ A → B → C → D
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`基於流動性的費用策略：
+      class="text-[var(--text-secondary)]">{`Liquidity-Based Fee Strategy:
 
-通道狀態：
-┌────────────────────────────────────────────────────────┐
-│  你         ←──[0.3 BTC]──┼──[0.7 BTC]──→      對方   │
-│                                                        │
-│  本地餘額：0.3 BTC (30%)                               │
-│  遠端餘額：0.7 BTC (70%)                               │
-└────────────────────────────────────────────────────────┘
+Channel State:
+  You <--[0.3 BTC]--+--[0.7 BTC]--> Counterparty
 
-費用調整邏輯：
+  Local balance: 0.3 BTC (30%)
+  Remote balance: 0.7 BTC (70%)
 
-出站方向（你 → 對方）：
-├── 本地餘額低 (30%)
-├── 出站容量稀缺
-├── 設定高費用以保護流動性
-└── 例：base=1000, rate=500ppm
+Fee Adjustment Logic:
 
-入站方向（對方 → 你）：
-├── 遠端餘額高 (70%)
-├── 入站容量充足
-├── 設定低費用吸引流量
-└── 例：base=0, rate=10ppm
+Outbound direction (You -> Counterparty):
+  - Local balance low (30%)
+  - Outbound capacity scarce
+  - Set high fee to protect liquidity
+  - Example: base=1000, rate=500ppm
 
-自動化費用管理工具：
-├── charge-lnd (LND)
-├── clboss (CLN)
-└── 各種自動化腳本
+Inbound direction (Counterparty -> You):
+  - Remote balance high (70%)
+  - Inbound capacity abundant
+  - Set low fee to attract traffic
+  - Example: base=0, rate=10ppm
 
-動態費用公式示例：
-fee_rate = base_rate × (1 + sensitivity × (0.5 - local_ratio))
+Automated Fee Management Tools:
+  - charge-lnd (LND)
+  - clboss (CLN)
+  - Various automation scripts
 
-local_ratio = 0.3 → 費率提高
-local_ratio = 0.7 → 費率降低
-local_ratio = 0.5 → 使用基礎費率`}</pre>
+Dynamic Fee Formula Example:
+fee_rate = base_rate * (1 + sensitivity * (0.5 - local_ratio))
+
+  local_ratio = 0.3 -> fee rate increases
+  local_ratio = 0.7 -> fee rate decreases
+  local_ratio = 0.5 -> use base rate`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由經濟學</h2>
@@ -174,49 +170,45 @@ local_ratio = 0.5 → 使用基礎費率`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`路由節點盈利分析：
+      class="text-[var(--text-secondary)]">{`Routing Node Profitability Analysis:
 
-收入來源：
-┌─────────────────────────────────────────────────────────┐
-│ 路由費用收入                                            │
-│                                                         │
-│ 假設：                                                  │
-│ - 每日路由量：10 BTC                                    │
-│ - 平均費率：50 ppm                                      │
-│ - 平均基礎費：1 sat                                     │
-│ - 每日支付數：1000 筆                                   │
-│                                                         │
-│ 每日收入 = 10 × 1,000,000 × 50/1,000,000 + 1000         │
-│          = 500 + 1000 = 1500 sats/天                    │
-│          ≈ 45,000 sats/月                               │
-└─────────────────────────────────────────────────────────┘
+Revenue Source - Routing Fee Income:
 
-成本結構：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 開通道成本                                           │
-│    ├── 鏈上交易費（每通道約 2000-10000 sats）          │
-│    └── 需要多個通道才能有效路由                        │
-│                                                         │
-│ 2. 關通道成本                                           │
-│    └── 協商關閉或強制關閉的鏈上費用                    │
-│                                                         │
-│ 3. 再平衡成本                                           │
-│    ├── 循環支付的路由費                                │
-│    └── Submarine Swap 費用                             │
-│                                                         │
-│ 4. 資金機會成本                                         │
-│    ├── 鎖定的 BTC 無法做其他用途                       │
-│    └── 年化約 1-5%（視風險偏好）                       │
-│                                                         │
-│ 5. 運營成本                                             │
-│    ├── 服務器/硬件                                      │
-│    └── 時間和精力                                       │
-└─────────────────────────────────────────────────────────┘
+  Assumptions:
+    - Daily routing volume: 10 BTC
+    - Average fee rate: 50 ppm
+    - Average base fee: 1 sat
+    - Daily payments: 1000
 
-盈利條件：
-路由收入 > 再平衡成本 + 資金成本 + 運營成本
+  Daily income = 10 * 1,000,000 * 50/1,000,000 + 1000
+               = 500 + 1000 = 1500 sats/day
+               = ~45,000 sats/month
 
-大多數小型路由節點實際上是虧損的！`}</pre>
+Cost Structure:
+
+  1. Channel Opening Cost
+     - On-chain TX fee (~2000-10000 sats per channel)
+     - Need multiple channels for effective routing
+
+  2. Channel Closing Cost
+     - On-chain fee for cooperative or force close
+
+  3. Rebalancing Cost
+     - Routing fees for circular payments
+     - Submarine Swap fees
+
+  4. Capital Opportunity Cost
+     - Locked BTC cannot be used elsewhere
+     - ~1-5% annualized (depending on risk preference)
+
+  5. Operating Cost
+     - Server/hardware
+     - Time and effort
+
+Profitability Condition:
+  Routing income > Rebalancing + Capital + Operating costs
+
+Most small routing nodes are actually operating at a loss!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">用戶費用優化</h2>
@@ -255,33 +247,32 @@ local_ratio = 0.5 → 使用基礎費率`}</pre>
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`費用揭示的信息：
+      class="text-[var(--text-secondary)]">{`Information Revealed by Fees:
 
-路由節點可以通過費用了解：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 支付金額                                             │
-│    └── 從比例費用可以推算                              │
-│                                                         │
-│ 2. 支付方向                                             │
-│    └── 知道資金流向                                    │
-│                                                         │
-│ 3. 時間模式                                             │
-│    └── 何時發生支付                                    │
-└─────────────────────────────────────────────────────────┘
+Routing nodes can learn from fees:
 
-隱私保護措施：
+  1. Payment Amount
+     - Can be inferred from proportional fee
 
-1. 洋蔥路由
-   └── 節點不知道完整路徑
+  2. Payment Direction
+     - Knows fund flow direction
 
-2. PTLCs（未來）
-   └── 消除跨跳關聯
+  3. Timing Patterns
+     - When payments occur
 
-3. 添加隨機費用
-   └── 模糊真實金額（用戶側）
+Privacy Protection Measures:
 
-4. 路徑盲化
-   └── 隱藏接收方位置`}</pre>
+  1. Onion Routing
+     - Node doesn't know full path
+
+  2. PTLCs (future)
+     - Eliminates cross-hop correlation
+
+  3. Add Random Fees
+     - Obscures real amount (user-side)
+
+  4. Route Blinding
+     - Hides receiver location`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用管理工具</h2>

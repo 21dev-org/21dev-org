@@ -36,30 +36,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`支付哈希的生成：
+      class="text-[var(--text-secondary)]">{`Payment Hash Generation
 
-接收者（Bob）：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 生成隨機的 32 字節原像（Preimage）                   │
-│    preimage = random_bytes(32)                          │
-│    例：0x1234567890abcdef...（32 bytes）                │
-│                                                         │
-│ 2. 計算 SHA256 哈希                                     │
-│    payment_hash = SHA256(preimage)                      │
-│    例：0xabcdef1234567890...（32 bytes）                │
-│                                                         │
-│ 3. 保密原像，公開哈希                                    │
-│    ├── 原像：只有 Bob 知道                              │
-│    └── 哈希：包含在發票中，發給 Alice                   │
-└─────────────────────────────────────────────────────────┘
+Receiver (Bob):
+1. Generate random 32-byte preimage
+   preimage = random_bytes(32)
+   Example: 0x1234567890abcdef... (32 bytes)
 
-發送者（Alice）：
-┌─────────────────────────────────────────────────────────┐
-│ 1. 收到包含 payment_hash 的發票                         │
-│ 2. 無法從哈希反推原像（單向函數）                       │
-│ 3. 使用 payment_hash 構建 HTLC                          │
-│ 4. 發送支付                                             │
-└─────────────────────────────────────────────────────────┘`}</pre>
+2. Calculate SHA256 hash
+   payment_hash = SHA256(preimage)
+   Example: 0xabcdef1234567890... (32 bytes)
+
+3. Keep preimage secret, publish hash
+   • Preimage: Only Bob knows
+   • Hash: Included in invoice, sent to Alice
+
+Sender (Alice):
+1. Receives invoice containing payment_hash
+2. Cannot reverse hash to get preimage (one-way function)
+3. Uses payment_hash to build HTLC
+4. Sends payment`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付流程</h2>
@@ -68,46 +64,44 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`使用支付哈希的支付流程：
+      class="text-[var(--text-secondary)]">{`Payment Flow Using Payment Hash
 
-Alice ──────────────────────────────────────────────► Bob
-        Carol（中間節點）
+Alice ----------------------------------------> Bob
+        Carol (intermediate node)
 
-步驟 1：Bob 創建發票
-┌─────────────────────────────────────────────────────────┐
-│ Bob 生成：                                               │
-│ preimage = 0x11223344...（秘密）                        │
-│ payment_hash = SHA256(preimage) = 0xaabbccdd...         │
-│                                                         │
-│ 發票內容：                                               │
-│ lnbc10u1p...（包含 payment_hash）                       │
-└─────────────────────────────────────────────────────────┘
-                    │
-                    ▼ 發票發送給 Alice
-步驟 2：Alice 發送支付
-┌─────────────────────────────────────────────────────────┐
-│ Alice → Carol：                                         │
-│   HTLC: 如果你能提供 H 的原像，就給你 10,000 sats      │
-│   H = 0xaabbccdd...                                     │
-│                                                         │
-│ Carol → Bob：                                           │
-│   HTLC: 如果你能提供 H 的原像，就給你 9,990 sats       │
-│   H = 0xaabbccdd...（相同的哈希）                       │
-└─────────────────────────────────────────────────────────┘
-                    │
-                    ▼ Bob 知道原像
-步驟 3：Bob 領取支付
-┌─────────────────────────────────────────────────────────┐
-│ Bob → Carol：                                           │
-│   揭露 preimage = 0x11223344...                         │
-│   Carol 驗證：SHA256(0x11223344...) = 0xaabbccdd... ✓   │
-│   Carol 支付給 Bob                                      │
-│                                                         │
-│ Carol → Alice：                                         │
-│   揭露 preimage = 0x11223344...（同一個原像）          │
-│   Alice 驗證：SHA256(0x11223344...) = 0xaabbccdd... ✓   │
-│   Alice 支付給 Carol                                    │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Step 1: Bob Creates Invoice
+Bob generates:
+  preimage = 0x11223344... (secret)
+  payment_hash = SHA256(preimage) = 0xaabbccdd...
+
+Invoice content:
+  lnbc10u1p... (contains payment_hash)
+
+  | Invoice sent to Alice
+  v
+
+Step 2: Alice Sends Payment
+Alice -> Carol:
+  HTLC: If you can provide preimage of H, I'll give you 10,000 sats
+  H = 0xaabbccdd...
+
+Carol -> Bob:
+  HTLC: If you can provide preimage of H, I'll give you 9,990 sats
+  H = 0xaabbccdd... (same hash)
+
+  | Bob knows the preimage
+  v
+
+Step 3: Bob Claims Payment
+Bob -> Carol:
+  Reveals preimage = 0x11223344...
+  Carol verifies: SHA256(0x11223344...) = 0xaabbccdd... OK
+  Carol pays Bob
+
+Carol -> Alice:
+  Reveals preimage = 0x11223344... (same preimage)
+  Alice verifies: SHA256(0x11223344...) = 0xaabbccdd... OK
+  Alice pays Carol`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全特性</h2>
@@ -149,33 +143,30 @@ Alice ────────────────────────�
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`BOLT 11 發票結構：
+      class="text-[var(--text-secondary)]">{`BOLT 11 Invoice Structure
 
 lnbc10u1pj9...
 
-解碼後：
-┌─────────────────────────────────────────────────────────┐
-│ 金額：10 微比特幣（1,000 satoshis）                     │
-│ 時間戳：1234567890                                      │
-│ payment_hash：                                          │
-│   0xabcdef1234567890abcdef1234567890                    │
-│   abcdef1234567890abcdef1234567890                      │
-│ 描述：Coffee payment                                    │
-│ 到期時間：3600 秒                                       │
-│ 簽名：...                                               │
-└─────────────────────────────────────────────────────────┘
+Decoded:
+• Amount: 10 microbitcoin (1,000 satoshis)
+• Timestamp: 1234567890
+• payment_hash:
+  0xabcdef1234567890abcdef1234567890
+  abcdef1234567890abcdef1234567890
+• Description: Coffee payment
+• Expiry time: 3600 seconds
+• Signature: ...
 
-payment_secret（BOLT 11 擴展）：
-┌─────────────────────────────────────────────────────────┐
-│ 問題：                                                  │
-│   中間節點可以探測支付是否到達目的地                    │
-│                                                         │
-│ 解決方案：payment_secret                                │
-│   ├── 另一個 32 字節隨機值                              │
-│   ├── 通過洋蔥路由傳遞給最終接收者                      │
-│   ├── 接收者驗證 payment_secret                         │
-│   └── 中間節點無法獲取此值                              │
-└─────────────────────────────────────────────────────────┘`}</pre>
+payment_secret (BOLT 11 Extension):
+
+Problem:
+  Intermediate nodes can probe if payment reaches destination
+
+Solution: payment_secret
+• Another 32-byte random value
+• Passed to final receiver via onion routing
+• Receiver verifies payment_secret
+• Intermediate nodes cannot obtain this value`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">原像的用途</h2>
@@ -184,42 +175,41 @@ payment_secret（BOLT 11 擴展）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`原像的多種用途：
+      class="text-[var(--text-secondary)]">{`Multiple Uses of Preimage
 
-1. 支付證明
-├── 發送者保存原像作為收據
-├── 可以證明支付已被接收
-└── 用於爭議解決
+1. Proof of Payment
+   • Sender saves preimage as receipt
+   • Can prove payment was received
+   • Used for dispute resolution
 
-2. 條件支付（Hold Invoices）
-├── 接收者延遲揭露原像
-├── 等待某些條件滿足
-└── 實現託管式支付
+2. Conditional Payments (Hold Invoices)
+   • Receiver delays revealing preimage
+   • Waits for certain conditions to be met
+   • Implements escrow-style payments
 
-3. 原子交換
-├── 跨鏈原子交換使用相同機制
-├── 確保兩邊交易同時完成
-└── Submarine Swaps 基於此原理
+3. Atomic Swaps
+   • Cross-chain atomic swaps use same mechanism
+   • Ensures both transactions complete simultaneously
+   • Submarine Swaps based on this principle
 
-4. 密碼學承諾
-├── 原像可以編碼任意資料
-├── 揭露原像 = 揭露承諾
-└── 實現各種智能合約功能
+4. Cryptographic Commitments
+   • Preimage can encode arbitrary data
+   • Revealing preimage = revealing commitment
+   • Enables various smart contract functions
 
-示例：使用原像作為密鑰
-┌─────────────────────────────────────────────────────────┐
-│ 場景：付款解鎖數位內容                                   │
-│                                                         │
-│ 1. 商家用 preimage 加密內容                             │
-│    encrypted = AES(content, preimage)                   │
-│                                                         │
-│ 2. 發送加密內容給買家                                    │
-│                                                         │
-│ 3. 買家支付發票                                          │
-│                                                         │
-│ 4. 支付成功後買家獲得 preimage                           │
-│    content = AES_decrypt(encrypted, preimage)           │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Example: Using Preimage as Key
+
+Scenario: Payment unlocks digital content
+
+1. Merchant encrypts content with preimage
+   encrypted = AES(content, preimage)
+
+2. Sends encrypted content to buyer
+
+3. Buyer pays invoice
+
+4. After payment succeeds, buyer obtains preimage
+   content = AES_decrypt(encrypted, preimage)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Keysend 與自生成原像</h2>
@@ -228,35 +218,33 @@ payment_secret（BOLT 11 擴展）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Keysend（自發支付）：
+      class="text-[var(--text-secondary)]">{`Keysend (Spontaneous Payment)
 
-傳統支付：接收者生成原像
-Keysend：發送者生成原像
+Traditional payment: Receiver generates preimage
+Keysend: Sender generates preimage
 
-流程：
-┌─────────────────────────────────────────────────────────┐
-│ 1. Alice 生成 preimage                                  │
-│ 2. Alice 計算 payment_hash = SHA256(preimage)           │
-│ 3. Alice 構建 HTLC 鏈                                   │
-│ 4. Alice 在洋蔥中加密傳遞 preimage 給 Bob               │
-│ 5. Bob 從洋蔥中獲取 preimage                            │
-│ 6. Bob 用 preimage 領取支付                              │
-└─────────────────────────────────────────────────────────┘
+Flow:
+1. Alice generates preimage
+2. Alice calculates payment_hash = SHA256(preimage)
+3. Alice builds HTLC chain
+4. Alice encrypts and passes preimage to Bob via onion
+5. Bob obtains preimage from onion
+6. Bob uses preimage to claim payment
 
-TLV 傳遞原像：
-洋蔥 payload 中包含：
+TLV Passing Preimage:
+Onion payload contains:
   keysend_preimage (TLV type 5482373484)
-  └── 32 bytes preimage
+  -> 32 bytes preimage
 
-優點：
-├── 無需發票
-├── 適合打賞、捐款
-└── 支持流式支付
+Advantages:
+• No invoice needed
+• Suitable for tips, donations
+• Supports streaming payments
 
-缺點：
-├── 沒有金額驗證
-├── 接收者可能不期望收到
-└── 沒有支付描述`}</pre>
+Disadvantages:
+• No amount verification
+• Receiver may not expect it
+• No payment description`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

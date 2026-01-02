@@ -1,0 +1,154 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Payment Retries 支付重試"
+  description="了解閃電網路支付失敗後的重試機制，如何提高支付成功率。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Payment Retries' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Failure Codes', href: '/tech/lightning/failure-codes' }}
+  nextPage={{ title: 'Pathfinding', href: '/tech/lightning/pathfinding' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要重試？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路支付可能因為多種原因失敗：流動性不足、節點離線、臨時網路問題等。
+    智能的重試機制對於良好的用戶體驗至關重要。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>自動重試：</strong>
+      現代閃電實現會自動處理重試邏輯，用戶通常不需要手動干預。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">重試策略</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Payment Retry Flow
+
+First Attempt:
+1. 計算最佳路徑
+2. 構建洋蔥封包
+3. 發送 HTLC
+4. 等待結果
+
+Failure Handling:
+收到失敗回應：
+  • 解密錯誤訊息
+  • 識別失敗節點/通道
+  • 更新 Mission Control 數據
+  • 決定是否重試
+
+Retryable Errors:
+  • TEMPORARY_CHANNEL_FAILURE - 暫時流動性問題
+  • FEE_INSUFFICIENT - 費用不夠，需要調整
+  • EXPIRY_TOO_SOON - 時間鎖太短
+
+Non-Retryable Errors:
+  • INCORRECT_PAYMENT_DETAILS - 發票有誤
+  • PAYMENT_HASH_ALREADY_FULFILLED - 已支付
+  • FINAL_EXPIRY_TOO_SOON - 接收者拒絕`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Mission Control</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Mission Control Learning
+
+Failure Record Example:
+{
+  "channel": "123x456x0",
+  "node": "02abc...",
+  "failure_time": 1700000000,
+  "failure_amt": 100000,
+  "success_probability": 0.3
+}
+
+Probability Updates:
+  • 失敗：降低該通道/節點的成功概率
+  • 成功：提高成功概率
+  • 時間衰減：舊數據逐漸失效
+
+Avoidance Strategy:
+
+Short-term:
+  • 剛失敗的通道暫時排除
+  • 通常幾分鐘到幾小時
+
+Long-term:
+  • 累積歷史數據
+  • 影響路由選擇權重`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">重試配置</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Configuration
+
+# 支付相關設定
+[routerrpc]
+routerrpc.minrtprob=0.01        # 最小路由成功概率
+routerrpc.attemptcost=100       # 每次嘗試的虛擬成本(msat)
+routerrpc.attemptcostppm=1000   # 每次嘗試的比例成本
+routerrpc.maxmchistory=1000     # Mission Control 記錄數量
+routerrpc.mcflushinterval=1h    # 數據持久化間隔
+
+SendPaymentV2 Parameters:
+  • timeout_seconds - 總超時時間
+  • max_parts - MPP 最大分片數
+  • fee_limit_sat - 最大費用限制
+  • no_inflight_updates - 是否接收中間狀態`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">MPP 優勢</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        多路徑支付可以分散風險，部分失敗可以重試而不影響已成功的部分。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">超時處理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        設定合理的超時，避免 HTLC 長時間懸掛。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>冪等性：</strong>
+      使用相同的 payment_hash 重試是安全的 — 接收者只能領取一次。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/failure-codes" class="text-yellow-600 dark:text-yellow-400 hover:underline">錯誤代碼</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/pathfinding" class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑搜索</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/channel-scoring" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道評分</a>
+    </li>
+  </ul>
+</ArticleLayout>

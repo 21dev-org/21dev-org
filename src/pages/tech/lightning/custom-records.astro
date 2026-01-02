@@ -35,36 +35,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`洋蔥 Payload TLV 類型分配：
+      class="text-[var(--text-secondary)]">{`Onion Payload TLV Type Allocation:
 
-類型範圍：
-┌──────────────────────────────────────────────────────────────┐
-│ 0 - 63,999：協議定義（BOLT 規範保留）                        │
-│                                                              │
-│ 常見協議類型：                                               │
-│ ├── 2: amt_to_forward（轉發金額）                            │
-│ ├── 4: outgoing_cltv_value（出站 CLTV）                      │
-│ ├── 6: short_channel_id（下一跳通道）                        │
-│ ├── 8: payment_data（payment_secret + total_msat）           │
-│ ├── 10: encrypted_recipient_data（盲化路徑）                 │
-│ └── 16: payment_metadata                                     │
-│                                                              │
-│ 64,000+：自定義記錄（應用程式使用）                          │
-│ ├── 必須是奇數（odd type = optional）                        │
-│ └── 接收者不認識可以安全忽略                                 │
-└──────────────────────────────────────────────────────────────┘
+Type Ranges:
 
-奇偶規則（it's ok to be odd）：
-┌──────────────────────────────────────────────────────────────┐
-│ 偶數類型：必須理解，否則失敗                                 │
-│ 奇數類型：可選的，不理解可以忽略                             │
-│                                                              │
-│ Custom Records 建議使用奇數類型：                            │
-│ 65537, 65539, 65541, ...                                     │
-│                                                              │
-│ 這確保向後兼容性：                                           │
-│ 老節點可以忽略它不認識的自定義記錄                           │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+0 - 63,999: Protocol-defined (reserved by BOLT spec)
+
+Common Protocol Types:
+  • 2: amt_to_forward (forward amount)
+  • 4: outgoing_cltv_value (outbound CLTV)
+  • 6: short_channel_id (next hop channel)
+  • 8: payment_data (payment_secret + total_msat)
+  • 10: encrypted_recipient_data (blinded paths)
+  • 16: payment_metadata
+
+64,000+: Custom records (application use)
+  • Must be odd (odd type = optional)
+  • Receiver can safely ignore if unrecognized
+
+Odd/Even Rule ("it's ok to be odd"):
+
+Even types: Must understand, otherwise fail
+Odd types: Optional, can ignore if not understood
+
+Custom Records should use odd types:
+  65537, 65539, 65541, ...
+
+This ensures backward compatibility:
+  Old nodes can ignore unrecognized custom records`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見應用</h2>
@@ -73,63 +71,59 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Custom Records 應用場景：
+      class="text-[var(--text-secondary)]">{`Custom Records Use Cases:
 
-1. Keysend（Spontaneous Payments）：
-┌──────────────────────────────────────────────────────────────┐
-│ Type 5482373484 (0x1466a3ac): keysend preimage               │
-│                                                              │
-│ 付款人生成 preimage，放在 custom record 中發送               │
-│ 接收者提取 preimage 完成支付                                 │
-│                                                              │
-│ {                                                            │
-│   5482373484: <32-byte preimage>                             │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘
+1. Keysend (Spontaneous Payments):
 
-2. 訊息傳遞：
-┌──────────────────────────────────────────────────────────────┐
-│ Whatsat / Sphinx Chat 風格：                                 │
-│                                                              │
-│ Type 34349334: 文字訊息                                      │
-│ Type 34349337: 發送者資訊                                    │
-│ Type 34349339: 時間戳                                        │
-│                                                              │
-│ {                                                            │
-│   34349334: "Hello, Lightning!",                             │
-│   34349337: <sender_pubkey>,                                 │
-│   34349339: 1699999999                                       │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘
+Type 5482373484 (0x1466a3ac): keysend preimage
 
-3. 應用識別：
-┌──────────────────────────────────────────────────────────────┐
-│ 識別支付來源應用：                                           │
-│                                                              │
-│ Type 65535: 應用識別符                                       │
-│                                                              │
-│ {                                                            │
-│   65535: "my-app-v1.0"                                       │
-│ }                                                            │
-│                                                              │
-│ 接收者可以根據此資訊進行特殊處理                             │
-└──────────────────────────────────────────────────────────────┘
+Payer generates preimage, sends in custom record
+Receiver extracts preimage to complete payment
 
-4. 訂單資訊：
-┌──────────────────────────────────────────────────────────────┐
-│ 電商場景：                                                   │
-│                                                              │
-│ {                                                            │
-│   65537: "order_id:12345",                                   │
-│   65539: "product:widget",                                   │
-│   65541: "quantity:3"                                        │
-│ }                                                            │
-│                                                              │
-│ 或使用 JSON：                                                │
-│ {                                                            │
-│   65537: '{"order":"12345","product":"widget","qty":3}'      │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+{
+  5482373484: <32-byte preimage>
+}
+
+2. Messaging:
+
+Whatsat / Sphinx Chat style:
+
+Type 34349334: Text message
+Type 34349337: Sender info
+Type 34349339: Timestamp
+
+{
+  34349334: "Hello, Lightning!",
+  34349337: <sender_pubkey>,
+  34349339: 1699999999
+}
+
+3. Application Identification:
+
+Identifying payment source application:
+
+Type 65535: Application identifier
+
+{
+  65535: "my-app-v1.0"
+}
+
+Receiver can apply special handling based on this info
+
+4. Order Information:
+
+E-commerce scenario:
+
+{
+  65537: "order_id:12345",
+  65539: "product:widget",
+  65541: "quantity:3"
+}
+
+Or using JSON:
+{
+  65537: '{"order":"12345","product":"widget","qty":3}'
+}`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用方式</h2>
@@ -138,55 +132,52 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`發送和接收 Custom Records：
+      class="text-[var(--text-secondary)]">{`Sending and Receiving Custom Records:
 
-LND 發送（使用 lncli）：
-┌──────────────────────────────────────────────────────────────┐
-│ # Keysend with custom record                                 │
-│ lncli sendpayment \\                                          │
-│   --dest <pubkey> \\                                          │
-│   --amt 1000 \\                                               │
-│   --keysend \\                                                │
-│   --data 65537=<hex_encoded_data>                            │
-│                                                              │
-│ # 多個 custom records                                        │
-│ lncli sendpayment \\                                          │
-│   --dest <pubkey> \\                                          │
-│   --amt 1000 \\                                               │
-│   --keysend \\                                                │
-│   --data 65537=48656c6c6f \\                                  │
-│   --data 65539=576f726c64                                    │
-└──────────────────────────────────────────────────────────────┘
+LND Sending (using lncli):
 
-LND 接收（訂閱發票）：
-┌──────────────────────────────────────────────────────────────┐
-│ // gRPC 訂閱                                                 │
-│ stream := client.SubscribeInvoices(ctx, &lnrpc.InvoiceSubscription{})
-│                                                              │
-│ for {                                                        │
-│     invoice, _ := stream.Recv()                              │
-│     for _, htlc := range invoice.Htlcs {                     │
-│         // 讀取 custom records                               │
-│         for typ, data := range htlc.CustomRecords {          │
-│             fmt.Printf("Type %d: %x\n", typ, data)           │
-│         }                                                    │
-│     }                                                        │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘
+# Keysend with custom record
+lncli sendpayment \\
+  --dest <pubkey> \\
+  --amt 1000 \\
+  --keysend \\
+  --data 65537=<hex_encoded_data>
 
-Core Lightning：
-┌──────────────────────────────────────────────────────────────┐
-│ # 發送                                                       │
-│ lightning-cli keysend <node_id> <amount> \\                   │
-│   extratlvs='{"65537": "48656c6c6f"}'                        │
-│                                                              │
-│ # 接收（通過 hook 或 listinvoices）                          │
-│ {                                                            │
-│   "extra_tlvs": [                                            │
-│     { "type": 65537, "value": "48656c6c6f" }                 │
-│   ]                                                          │
-│ }                                                            │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+# Multiple custom records
+lncli sendpayment \\
+  --dest <pubkey> \\
+  --amt 1000 \\
+  --keysend \\
+  --data 65537=48656c6c6f \\
+  --data 65539=576f726c64
+
+LND Receiving (subscribe to invoices):
+
+// gRPC subscription
+stream := client.SubscribeInvoices(ctx, &lnrpc.InvoiceSubscription{})
+
+for {
+    invoice, _ := stream.Recv()
+    for _, htlc := range invoice.Htlcs {
+        // Read custom records
+        for typ, data := range htlc.CustomRecords {
+            fmt.Printf("Type %d: %x\\n", typ, data)
+        }
+    }
+}
+
+Core Lightning:
+
+# Send
+lightning-cli keysend <node_id> <amount> \\
+  extratlvs='{"65537": "48656c6c6f"}'
+
+# Receive (via hook or listinvoices)
+{
+  "extra_tlvs": [
+    { "type": 65537, "value": "48656c6c6f" }
+  ]
+}`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">已知類型註冊</h2>
@@ -195,35 +186,33 @@ Core Lightning：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`社區使用的 Custom Record 類型：
+      class="text-[var(--text-secondary)]">{`Community-Used Custom Record Types:
 
-已知類型（非官方，社區共識）：
-┌──────────────────────────────────────────────────────────────┐
-│ 5482373484 (0x1466a3ac): Keysend preimage                    │
-│   用於無發票的自發支付                                       │
-│                                                              │
-│ 34349334: Whatsat 文字訊息                                   │
-│ 34349337: Whatsat 發送者                                     │
-│ 34349339: Whatsat 時間戳                                     │
-│ 34349343: Whatsat 簽名                                       │
-│                                                              │
-│ 7629169: Podcasting 2.0 boost                                │
-│ 7629171: Podcasting 2.0 stream                               │
-│                                                              │
-│ 133773310: Zap (Nostr) sats                                  │
-└──────────────────────────────────────────────────────────────┘
+Known Types (unofficial, community consensus):
 
-選擇新類型的建議：
-┌──────────────────────────────────────────────────────────────┐
-│ 1. 使用足夠大的隨機數（避免碰撞）                            │
-│ 2. 使用奇數（確保可選性）                                    │
-│ 3. 記錄你的類型使用                                          │
-│ 4. 考慮向社區註冊                                            │
-│                                                              │
-│ 範例生成：                                                   │
-│ import random                                                │
-│ type_id = 65536 + random.randint(0, 2**32) | 1  # 確保奇數   │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+5482373484 (0x1466a3ac): Keysend preimage
+  Used for spontaneous payments without invoices
+
+34349334: Whatsat text message
+34349337: Whatsat sender
+34349339: Whatsat timestamp
+34349343: Whatsat signature
+
+7629169: Podcasting 2.0 boost
+7629171: Podcasting 2.0 stream
+
+133773310: Zap (Nostr) sats
+
+Recommendations for Choosing New Types:
+
+1. Use sufficiently large random number (avoid collisions)
+2. Use odd number (ensure optional)
+3. Document your type usage
+4. Consider registering with community
+
+Example generation:
+import random
+type_id = 65536 + random.randint(0, 2**32) | 1  # ensure odd`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制與考量</h2>
@@ -232,45 +221,42 @@ Core Lightning：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Custom Records 限制：
+      class="text-[var(--text-secondary)]">{`Custom Records Limitations:
 
-大小限制：
-┌──────────────────────────────────────────────────────────────┐
-│ 洋蔥 payload 總大小有限：                                    │
-│ ├── 每跳 payload 最大約 1300 bytes                           │
-│ ├── 需要減去協議欄位的空間                                   │
-│ └── Custom records 可用空間約 1000 bytes                     │
-│                                                              │
-│ 建議：                                                       │
-│ ├── 保持資料簡潔                                             │
-│ ├── 大資料使用哈希引用                                       │
-│ └── 考慮壓縮                                                 │
-└──────────────────────────────────────────────────────────────┘
+Size Limits:
 
-隱私考量：
-┌──────────────────────────────────────────────────────────────┐
-│ Custom records 只對最終接收者可見：                          │
-│ ├── 中間節點無法讀取（洋蔥加密）                             │
-│ ├── 但接收者可以看到所有內容                                 │
-│ └── 不要發送敏感資訊給不信任的接收者                         │
-│                                                              │
-│ 注意：                                                       │
-│ ├── 資料未加密，只是洋蔥封裝                                 │
-│ ├── 接收者可以儲存和分享                                     │
-│ └── 考慮額外加密敏感資料                                     │
-└──────────────────────────────────────────────────────────────┘
+Onion payload total size is limited:
+  • Max ~1300 bytes per hop payload
+  • Need to subtract space for protocol fields
+  • Custom records available space ~1000 bytes
 
-兼容性：
-┌──────────────────────────────────────────────────────────────┐
-│ 不是所有節點都支援自定義記錄：                               │
-│ ├── 老版本可能忽略                                           │
-│ ├── 某些實現可能有 bug                                       │
-│ └── 測試目標接收者的支援情況                                 │
-│                                                              │
-│ LND: 完整支援                                                │
-│ Core Lightning: 支援（可能需要配置）                         │
-│ Eclair: 部分支援                                             │
-└──────────────────────────────────────────────────────────────┘`}</pre>
+Recommendations:
+  • Keep data concise
+  • Use hash references for large data
+  • Consider compression
+
+Privacy Considerations:
+
+Custom records only visible to final recipient:
+  • Intermediate nodes cannot read (onion encrypted)
+  • But receiver can see all content
+  • Don't send sensitive info to untrusted receivers
+
+Note:
+  • Data is not encrypted, only onion wrapped
+  • Receiver can store and share
+  • Consider additional encryption for sensitive data
+
+Compatibility:
+
+Not all nodes support custom records:
+  • Old versions may ignore
+  • Some implementations may have bugs
+  • Test target receiver's support
+
+LND: Full support
+Core Lightning: Supported (may need config)
+Eclair: Partial support`}</pre>
   </div>
 
   <div class="grid md:grid-cols-2 gap-4 mb-8">

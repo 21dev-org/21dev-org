@@ -1,0 +1,137 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Static Remote Key 靜態遠程密鑰"
+  description="了解閃電網路的 static_remotekey 功能，如何簡化資金恢復流程。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Static Remote Key' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Channel Types', href: '/tech/lightning/channel-types' }}
+  nextPage={{ title: 'Anchor Outputs', href: '/tech/lightning/anchor-outputs' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Static Remote Key？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    static_remotekey 是一個通道功能，確保對方的 to_remote 輸出始終支付到固定地址。
+    這大大簡化了數據丟失後的資金恢復。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>功能位：</strong>
+      option_static_remotekey（bit 12/13）現在是大多數實現的預設功能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">傳統 vs 靜態密鑰</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統方式（無 static_remotekey）：
+
+to_remote 輸出腳本：
+每個承諾交易使用不同的密鑰：
+remote_pubkey = payment_basepoint +
+                SHA256(per_commitment_point || basepoint) × G
+
+問題：
+• 需要知道 per_commitment_point 才能花費
+• 數據丟失 → 不知道哪個承諾被廣播 → 無法花費
+
+使用 static_remotekey：
+to_remote 輸出始終使用：
+remote_pubkey = payment_basepoint（固定不變）
+
+優點：
+• 只需要種子就能派生 payment_basepoint
+• 不管哪個承諾被廣播都能花費
+• 支持標準 HD 錢包掃描`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">承諾交易結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`使用 static_remotekey 的承諾交易：
+
+Alice 持有的承諾交易：
+輸入：funding_outpoint
+
+輸出：
+├── to_local（Alice）：
+│   OP_IF
+│     <revocationpubkey>
+│   OP_ELSE
+│     <to_self_delay> OP_CSV OP_DROP
+│     <local_delayedpubkey>
+│   OP_ENDIF
+│   OP_CHECKSIG
+│
+└── to_remote（Bob）：
+    <bob_payment_basepoint> OP_CHECKSIG
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    固定密鑰！Bob 只需種子就能花費`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">恢復場景</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`數據丟失恢復流程：
+
+場景：Bob 丟失所有通道數據
+1. Bob 用種子恢復錢包
+2. 派生 payment_basepoint
+3. 聯繫 Alice（通過 SCB 中的資訊）
+4. Alice 廣播她的承諾交易
+5. to_remote 輸出直接支付到 Bob 的固定密鑰
+6. Bob 可以立即花費（無時間鎖）
+
+鏈上掃描恢復：
+使用 static_remotekey：
+• 錢包可以掃描派生地址
+• 找到任何支付到這些地址的輸出
+• 不需要知道具體的通道狀態
+• 類似標準比特幣錢包恢復`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">與 Anchor 結合</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        現代通道同時使用 static_remotekey 和 anchor_outputs。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Taproot 演進</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Simple Taproot Channels 繼續使用靜態密鑰概念。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/data-loss-protection" class="text-yellow-600 dark:text-yellow-400 hover:underline">數據丟失保護</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/channel-types" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道類型</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/key-derivation" class="text-yellow-600 dark:text-yellow-400 hover:underline">密鑰派生</a>
+    </li>
+  </ul>
+</ArticleLayout>

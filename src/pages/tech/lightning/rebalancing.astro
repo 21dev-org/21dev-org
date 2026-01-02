@@ -36,37 +36,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`通道容量示例：
+      class="text-[var(--text-secondary)]">{`Channel Capacity Example:
 
-初始狀態（剛開通道，單方資助）：
-┌─────────────────────────────────────────────────────────┐
-│ 你 ←────────────────[1 BTC]────────────────→ 對方      │
-│                                                         │
-│ 你的餘額：1 BTC (100% 出站)                             │
-│ 對方餘額：0 BTC (0% 入站)                               │
-└─────────────────────────────────────────────────────────┘
+Initial State (just opened, single-funded):
 
-問題：你可以發送 1 BTC，但無法接收任何支付！
+  You <-----------[1 BTC]-----------> Counterparty
 
-發送 0.5 BTC 後：
-┌─────────────────────────────────────────────────────────┐
-│ 你 ←──────[0.5 BTC]──┼──[0.5 BTC]──────→ 對方          │
-│                                                         │
-│ 你的餘額：0.5 BTC (50% 出站)                            │
-│ 對方餘額：0.5 BTC (50% 入站)                            │
-└─────────────────────────────────────────────────────────┘
+  Your balance: 1 BTC (100% outbound)
+  Their balance: 0 BTC (0% inbound)
 
-平衡！雙向都可以發送/接收 0.5 BTC
+Problem: You can send 1 BTC, but cannot receive any payment!
 
-持續接收後：
-┌─────────────────────────────────────────────────────────┐
-│ 你 ←──[0.9 BTC]──┼──────[0.1 BTC]──────→ 對方          │
-│                                                         │
-│ 你的餘額：0.9 BTC (90% 出站)                            │
-│ 對方餘額：0.1 BTC (10% 入站)                            │
-└─────────────────────────────────────────────────────────┘
+After sending 0.5 BTC:
 
-問題：入站容量不足，難以接收大額支付！`}</pre>
+  You <----[0.5 BTC]--+--[0.5 BTC]----> Counterparty
+
+  Your balance: 0.5 BTC (50% outbound)
+  Their balance: 0.5 BTC (50% inbound)
+
+Balanced! Can send/receive 0.5 BTC in both directions
+
+After continuous receiving:
+
+  You <--[0.9 BTC]--+-----[0.1 BTC]----> Counterparty
+
+  Your balance: 0.9 BTC (90% outbound)
+  Their balance: 0.1 BTC (10% inbound)
+
+Problem: Insufficient inbound capacity for large payments!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">再平衡方法</h2>
@@ -77,34 +74,33 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`循環支付原理：
+      class="text-[var(--text-secondary)]">{`Circular Payment Principle:
 
-通過其他通道繞回自己，移動流動性
+Route through other channels back to yourself, moving liquidity
 
-你的節點有多個通道：
-┌─────────────────────────────────────────────────────────┐
-│                      [路由節點 B]                       │
-│                     /            \\                      │
-│                    /              \\                     │
-│        需要出站   /                \\  有出站           │
-│                  /                  \\                   │
-│              [你]                    [路由節點 C]        │
-│                  \\                  /                   │
-│        有入站    \\                /   需要入站         │
-│                    \\              /                     │
-│                     [路由節點 D]                        │
-└─────────────────────────────────────────────────────────┘
+Your node has multiple channels:
 
-循環支付路徑：
-你 → B → C → D → 你
+                   [Router B]
+                  /          \\
+                 /            \\
+    needs out   /              \\ has outbound
+               /                \\
+           [You]                [Router C]
+               \\                /
+    has in     \\              /  needs inbound
+                \\            /
+                 [Router D]
 
-效果：
-├── 你→B 通道：出站減少，入站增加
-├── B→C 通道：不變（只是路由）
-├── C→D 通道：不變（只是路由）
-└── D→你 通道：入站減少，出站增加
+Circular Payment Path:
+  You -> B -> C -> D -> You
 
-成本：路徑上每個節點的路由費用`}</pre>
+Effect:
+  - You->B channel: outbound decreases, inbound increases
+  - B->C channel: unchanged (just routing)
+  - C->D channel: unchanged (just routing)
+  - D->You channel: inbound decreases, outbound increases
+
+Cost: Routing fees from each node on the path`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. Submarine Swaps</h3>
@@ -113,35 +109,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Submarine Swap 再平衡：
+      class="text-[var(--text-secondary)]">{`Submarine Swap Rebalancing:
 
-獲取入站容量（Loop In）：
-┌─────────────────────────────────────────────────────────┐
-│ 鏈上 BTC ──────────────────> Swap 服務                  │
-│                                                         │
-│              LN 支付                                    │
-│ Swap 服務 ──────────────────> 你的節點                  │
-└─────────────────────────────────────────────────────────┘
+Get Inbound Capacity (Loop In):
 
-結果：
-├── 你消耗鏈上 BTC
-├── 獲得閃電網路入站容量
-└── 需要支付 Swap 服務費
+  On-chain BTC -----------> Swap Service
+                                |
+                            LN Payment
+                                v
+  Swap Service -----------> Your Node
 
-獲取出站容量（Loop Out）：
-┌─────────────────────────────────────────────────────────┐
-│ 你的節點 ──────LN 支付──────> Swap 服務                 │
-│                                                         │
-│                  鏈上 BTC                               │
-│ Swap 服務 ──────────────────> 你的鏈上地址              │
-└─────────────────────────────────────────────────────────┘
+  Result:
+    - You spend on-chain BTC
+    - Get Lightning inbound capacity
+    - Pay Swap service fee
 
-結果：
-├── 你消耗閃電網路餘額
-├── 獲得鏈上 BTC + 出站容量恢復
-└── 需要支付 Swap 服務費 + 鏈上手續費
+Get Outbound Capacity (Loop Out):
 
-服務：Lightning Loop (LND)、Boltz Exchange 等`}</pre>
+  Your Node ----LN Payment----> Swap Service
+                                    |
+                               On-chain BTC
+                                    v
+  Swap Service -----------> Your on-chain address
+
+  Result:
+    - You spend Lightning balance
+    - Get on-chain BTC + outbound capacity restored
+    - Pay Swap service fee + on-chain fee
+
+Services: Lightning Loop (LND), Boltz Exchange, etc.`}</pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 購買入站容量</h3>
@@ -150,36 +146,35 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`入站容量市場：
+      class="text-[var(--text-secondary)]">{`Inbound Capacity Market:
 
-服務類型：
+Service Types:
 
 1. LSP (Lightning Service Provider)
-   ├── 向你開通道
-   ├── 他們出資，你獲得入站
-   └── 例：Voltage、Breez LSP
+   - Opens channels to you
+   - They provide funds, you get inbound
+   - Examples: Voltage, Breez LSP
 
-2. 流動性市場
-   ├── Magma (Amboss)
-   ├── Lightning Pool (LND)
-   └── 節點運營者競標提供入站
+2. Liquidity Marketplaces
+   - Magma (Amboss)
+   - Lightning Pool (LND)
+   - Node operators bid to provide inbound
 
-3. 通道租賃
-   ├── 支付租金獲得特定時間的入站
-   └── 租期結束後對方可能關閉通道
+3. Channel Leasing
+   - Pay rent for inbound for specific duration
+   - Counterparty may close channel after lease ends
 
-Lightning Pool 示例：
-┌────────────────────────────────────────────────────────┐
-│ 拍賣市場：                                             │
-│                                                        │
-│ 買方（需要入站）      賣方（提供入站）                 │
-│   ├── 出價金額           ├── 要價金額                  │
-│   ├── 需要容量           ├── 可提供容量                │
-│   └── 租期               └── 最低租期                  │
-│                                                        │
-│ 匹配後：                                               │
-│   賣方向買方開通道，買方支付租金                       │
-└────────────────────────────────────────────────────────┘`}</pre>
+Lightning Pool Example:
+
+  Auction Market:
+
+  Buyer (needs inbound)        Seller (provides inbound)
+    - Bid amount                 - Ask amount
+    - Capacity needed            - Capacity available
+    - Lease duration             - Minimum lease
+
+  After Match:
+    Seller opens channel to buyer, buyer pays lease fee`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">再平衡策略</h2>
@@ -215,7 +210,7 @@ Lightning Pool 示例：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`LND 再平衡工具：
+      class="text-[var(--text-secondary)]">{`LND Rebalancing Tools:
 
 1. bos (Balance of Satoshis)
    bos rebalance --amount 100000 \\
@@ -227,25 +222,25 @@ Lightning Pool 示例：
      -s <source_channel> \\
      -a 100000
 
-3. Lightning Terminal (自動化)
-   ├── 設定目標平衡比例
-   ├── 最大費用預算
-   └── 自動執行再平衡
+3. Lightning Terminal (Automation)
+   - Set target balance ratio
+   - Maximum fee budget
+   - Auto-execute rebalancing
 
-CLN 再平衡：
+CLN Rebalancing:
 
-1. c-lightning-rebalance 插件
+1. c-lightning-rebalance plugin
    lightning-cli rebalance -o <out_scid> \\
      -i <in_scid> \\
      -a 100000sat
 
-2. circular 插件
+2. circular plugin
    lightning-cli circular <amount> \\
      <outgoing_channel> <incoming_channel>
 
-費用計算：
-成本 = Σ(每跳路由費) + 基礎費
-預期收益 > 成本 才值得再平衡`}</pre>
+Fee Calculation:
+  Cost = Sum(routing fee per hop) + base fees
+  Rebalance only when: Expected revenue > Cost`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">再平衡經濟學</h2>
@@ -254,34 +249,34 @@ CLN 再平衡：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`再平衡成本效益分析：
+      class="text-[var(--text-secondary)]">{`Rebalancing Cost-Benefit Analysis:
 
-情境：
-├── 通道容量：1 BTC
-├── 當前狀態：90% 本地 / 10% 遠端
-├── 目標狀態：50% / 50%
-├── 需移動：0.4 BTC
+Scenario:
+  - Channel capacity: 1 BTC
+  - Current state: 90% local / 10% remote
+  - Target state: 50% / 50%
+  - Amount to move: 0.4 BTC
 
-循環支付成本：
-├── 平均路由費：0.1%（1000 ppm）
-├── 路徑長度：3-5 跳
-├── 成本：0.4 BTC × 0.1% × 4 跳 = 0.0016 BTC
-└── 約 1600 sats / 萬 sats 移動
+Circular Payment Cost:
+  - Average routing fee: 0.1% (1000 ppm)
+  - Path length: 3-5 hops
+  - Cost: 0.4 BTC x 0.1% x 4 hops = 0.0016 BTC
+  - About 1600 sats per 10k sats moved
 
-Submarine Swap 成本：
-├── Swap 服務費：~0.5%
-├── 鏈上手續費：~2000 sats
-├── 成本：0.4 BTC × 0.5% + 2000 = ~22000 sats
-└── 更貴但更可靠
+Submarine Swap Cost:
+  - Swap service fee: ~0.5%
+  - On-chain fee: ~2000 sats
+  - Cost: 0.4 BTC x 0.5% + 2000 = ~22000 sats
+  - More expensive but more reliable
 
-什麼時候值得：
+When Is It Worth It?
 
-                 路由收入預期
-再平衡價值 = ────────────────── > 再平衡成本
-               平衡維持時間
+                    Expected routing revenue
+  Rebalance value = ------------------------- > Rebalance cost
+                    Balance maintenance time
 
-如果每天能因為平衡的通道多賺 500 sats，
-那麼 1600 sats 的再平衡成本約 3 天回本。`}</pre>
+  If balanced channels earn extra 500 sats/day,
+  then 1600 sats rebalance cost pays back in ~3 days.`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>

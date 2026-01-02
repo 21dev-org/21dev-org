@@ -1,0 +1,153 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Payment Metadata 支付元數據"
+  description="了解閃電網路支付中的元數據欄位，如何在支付中攜帶額外資訊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Payment Metadata' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Custom Records', href: '/tech/lightning/custom-records' }}
+  nextPage={{ title: 'TLV Streams', href: '/tech/lightning/tlv-streams' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Payment Metadata？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Payment Metadata 允許發票接收者在發票中嵌入任意數據，發送者在支付時將其回傳。
+    這實現了無狀態發票處理。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>功能位：</strong>
+      option_payment_metadata（bit 48/49）允許在發票和支付中包含元數據。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">無狀態發票</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統發票問題：
+
+有狀態處理：
+1. 商家創建發票
+   • 生成 preimage 和 payment_hash
+   • 存儲到數據庫：{hash → preimage, order_id, amount}
+
+2. 等待支付
+   • 需要保持數據庫中的記錄
+   • 可能有大量未支付的發票
+
+3. 收到支付
+   • 查詢數據庫獲取 preimage
+   • 需要數據庫可用
+
+問題：擴展性差，數據庫是瓶頸
+
+無狀態處理（使用 payment_metadata）：
+1. 商家創建發票
+   • preimage = HMAC(secret, order_id || amount || nonce)
+   • payment_hash = SHA256(preimage)
+   • metadata = encrypt(order_id || amount || nonce)
+   • 不需要存儲任何東西！
+
+2. 收到支付
+   • 從 TLV 中提取 payment_metadata
+   • 解密獲取 order_id, amount, nonce
+   • 重新計算 preimage
+   • 驗證並完成支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協議細節</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 11 中的 metadata：
+
+Tagged Field 'm'：
+• 格式：m + 數據長度 + 任意字節
+• 最大長度：取決於發票總長度限制
+
+發票範例（偽碼）：
+lnbc100n1p...
+  m=<encrypted_order_data>
+  h=<payment_hash>
+
+洋蔥 TLV 中的傳輸：
+最終跳的 TLV 載荷：
+{
+  type: 16 (payment_metadata)
+  length: <length>
+  value: <metadata_bytes>
+}
+
+發送者必須將發票中的 metadata 原封不動地傳給接收者`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`常見用途：
+
+1. 訂單關聯：
+metadata = encrypt({
+  order_id: "ORD-12345",
+  items: ["item1", "item2"],
+  timestamp: 1700000000
+})
+
+2. 用戶識別：
+metadata = encrypt({
+  user_id: "user_abc",
+  subscription: "premium",
+  period: "monthly"
+})
+
+3. 回調資訊：
+metadata = encrypt({
+  callback_url: "https://...",
+  webhook_secret: "..."
+})`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">安全考量</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        元數據應該加密，防止路由節點讀取敏感資訊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">大小限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        元數據增加發票大小，建議保持簡潔。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/custom-records" class="text-yellow-600 dark:text-yellow-400 hover:underline">Custom Records</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/tlv-streams" class="text-yellow-600 dark:text-yellow-400 hover:underline">TLV 編碼</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/invoice-encoding" class="text-yellow-600 dark:text-yellow-400 hover:underline">發票編碼</a>
+    </li>
+  </ul>
+</ArticleLayout>

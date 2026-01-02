@@ -36,35 +36,33 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Sphinx 洋蔥封包結構（1366 字節）：
+      class="text-[var(--text-secondary)]">{`Sphinx Onion Packet Structure (1366 bytes)
 
 ┌──────────────────────────────────────────────────────────┐
-│ 版本（1 字節）                                           │
+│ Version (1 byte)                                         │
 ├──────────────────────────────────────────────────────────┤
-│ 臨時公鑰（33 字節）                                      │
-│ ephemeral_pubkey                                         │
+│ Ephemeral Public Key (33 bytes)                          │
 ├──────────────────────────────────────────────────────────┤
-│ 路由資訊（1300 字節）                                    │
+│ Routing Info (1300 bytes)                                │
 │ ┌────────────────────────────────────────────────────┐  │
-│ │ Hop 1 payload（加密）                              │  │
+│ │ Hop 1 payload (encrypted)                          │  │
 │ ├────────────────────────────────────────────────────┤  │
-│ │ Hop 2 payload（雙重加密）                          │  │
+│ │ Hop 2 payload (double encrypted)                   │  │
 │ ├────────────────────────────────────────────────────┤  │
-│ │ Hop 3 payload（三重加密）                          │  │
+│ │ Hop 3 payload (triple encrypted)                   │  │
 │ ├────────────────────────────────────────────────────┤  │
 │ │ ...                                                │  │
 │ ├────────────────────────────────────────────────────┤  │
-│ │ 填充（隨機資料）                                   │  │
+│ │ Padding (random data)                              │  │
 │ └────────────────────────────────────────────────────┘  │
 ├──────────────────────────────────────────────────────────┤
-│ HMAC（32 字節）                                          │
-│ 驗證封包完整性                                           │
+│ HMAC (32 bytes) - verifies packet integrity              │
 └──────────────────────────────────────────────────────────┘
 
-固定大小的重要性：
-├── 每個節點看到相同大小的封包
-├── 無法從大小推斷剩餘跳數
-└── 最多支援 20 跳`}</pre>
+Why Fixed Size Matters:
+• Every node sees same size packet
+• Cannot infer remaining hops from size
+• Supports up to 20 hops`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密過程</h2>
@@ -73,42 +71,34 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`發送者構建洋蔥：
+      class="text-[var(--text-secondary)]">{`Sender Builds Onion
 
-假設路徑：Alice → Bob → Carol → Dave
+Path: Alice -> Bob -> Carol -> Dave
 
-1. 生成臨時密鑰對
-┌──────────────────────────────────────────────────────────┐
-│ ephemeral_privkey = random()                             │
-│ ephemeral_pubkey = ephemeral_privkey × G                 │
-└──────────────────────────────────────────────────────────┘
+1. Generate Ephemeral Key Pair
+ephemeral_privkey = random()
+ephemeral_pubkey = ephemeral_privkey * G
 
-2. 為每跳計算共享密鑰
-┌──────────────────────────────────────────────────────────┐
-│ 使用 ECDH：                                              │
-│                                                          │
-│ shared_secret_bob = SHA256(                              │
-│   ephemeral_privkey × Bob_pubkey                         │
-│ )                                                        │
-│                                                          │
-│ shared_secret_carol = SHA256(                            │
-│   ephemeral_privkey' × Carol_pubkey                      │
-│ )                                                        │
-│ （ephemeral_privkey' 是派生的盲化密鑰）                  │
-│                                                          │
-│ shared_secret_dave = SHA256(                             │
-│   ephemeral_privkey'' × Dave_pubkey                      │
-│ )                                                        │
-└──────────────────────────────────────────────────────────┘
+2. Compute Shared Secret for Each Hop (using ECDH)
 
-3. 逆序加密（從最後一跳開始）
-┌──────────────────────────────────────────────────────────┐
-│ 先加密 Dave 的 payload                                   │
-│ → 用 Carol 的密鑰加密整個封包                            │
-│ → 用 Bob 的密鑰加密整個封包                              │
-│                                                          │
-│ 結果：最外層是 Bob 的加密                                │
-└──────────────────────────────────────────────────────────┘`}</pre>
+shared_secret_bob = SHA256(
+  ephemeral_privkey * Bob_pubkey
+)
+
+shared_secret_carol = SHA256(
+  ephemeral_privkey' * Carol_pubkey
+)
+(ephemeral_privkey' is derived blinded key)
+
+shared_secret_dave = SHA256(
+  ephemeral_privkey'' * Dave_pubkey
+)
+
+3. Encrypt in Reverse Order (start from last hop)
+• First encrypt Dave's payload
+• Then encrypt entire packet with Carol's key
+• Then encrypt entire packet with Bob's key
+• Result: outermost layer is Bob's encryption`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解密過程</h2>
@@ -117,41 +107,37 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`中繼節點處理洋蔥：
+      class="text-[var(--text-secondary)]">{`Relay Node Processes Onion
 
-Bob 收到洋蔥：
-┌──────────────────────────────────────────────────────────┐
-│ 1. 計算共享密鑰                                          │
-│    shared_secret = SHA256(                               │
-│      Bob_privkey × ephemeral_pubkey                      │
-│    )                                                     │
-│                                                          │
-│ 2. 驗證 HMAC                                             │
-│    expected_hmac = HMAC(shared_secret, routing_info)     │
-│    if hmac ≠ expected_hmac: reject                       │
-│                                                          │
-│ 3. 解密路由資訊                                          │
-│    decrypted = ChaCha20(routing_info, shared_secret)     │
-│                                                          │
-│ 4. 讀取自己的 payload                                    │
-│    ├── short_channel_id: 下一跳通道                      │
-│    ├── amt_to_forward: 轉發金額                          │
-│    └── outgoing_cltv_value: CLTV                         │
-│                                                          │
-│ 5. 構建新洋蔥給下一跳                                    │
-│    ├── 盲化臨時公鑰                                      │
-│    ├── 移除自己的 payload                                │
-│    ├── 添加填充                                          │
-│    └── 更新 HMAC                                         │
-└──────────────────────────────────────────────────────────┘
+Bob receives onion:
 
-臨時公鑰盲化：
-┌──────────────────────────────────────────────────────────┐
-│ blinding_factor = SHA256(ephemeral_pubkey || shared_secret)
-│ new_ephemeral = ephemeral_pubkey × blinding_factor       │
-│                                                          │
-│ 每跳都改變臨時公鑰，但下一跳仍能計算正確的共享密鑰      │
-└──────────────────────────────────────────────────────────┘`}</pre>
+1. Compute shared secret
+   shared_secret = SHA256(Bob_privkey * ephemeral_pubkey)
+
+2. Verify HMAC
+   expected_hmac = HMAC(shared_secret, routing_info)
+   if hmac != expected_hmac: reject
+
+3. Decrypt routing info
+   decrypted = ChaCha20(routing_info, shared_secret)
+
+4. Read own payload
+   • short_channel_id: next hop channel
+   • amt_to_forward: forward amount
+   • outgoing_cltv_value: CLTV
+
+5. Build new onion for next hop
+   • Blind ephemeral pubkey
+   • Remove own payload
+   • Add padding
+   • Update HMAC
+
+Ephemeral Pubkey Blinding:
+blinding_factor = SHA256(ephemeral_pubkey || shared_secret)
+new_ephemeral = ephemeral_pubkey * blinding_factor
+
+Each hop changes ephemeral pubkey, but next hop can still
+compute correct shared secret`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Payload 格式</h2>
@@ -160,42 +146,35 @@ Bob 收到洋蔥：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`TLV Payload 格式（現代格式）：
+      class="text-[var(--text-secondary)]">{`TLV Payload Format (Modern)
 
 ┌──────────────────────────────────────────────────────────┐
-│ length (BigSize): payload 長度                           │
+│ length (BigSize): payload length                         │
 ├──────────────────────────────────────────────────────────┤
 │ TLV Records:                                             │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │ type=2: amt_to_forward (tu64)                      │  │
-│ ├────────────────────────────────────────────────────┤  │
-│ │ type=4: outgoing_cltv_value (tu32)                 │  │
-│ ├────────────────────────────────────────────────────┤  │
-│ │ type=6: short_channel_id (8 bytes)                 │  │
-│ ├────────────────────────────────────────────────────┤  │
-│ │ type=8: payment_data (for final hop)               │  │
-│ │   └── payment_secret + total_msat                  │  │
-│ ├────────────────────────────────────────────────────┤  │
-│ │ [其他可選 TLV...]                                  │  │
-│ └────────────────────────────────────────────────────┘  │
+│   type=2: amt_to_forward (tu64)                          │
+│   type=4: outgoing_cltv_value (tu32)                     │
+│   type=6: short_channel_id (8 bytes)                     │
+│   type=8: payment_data (for final hop)                   │
+│           -> payment_secret + total_msat                 │
+│   [other optional TLVs...]                               │
 ├──────────────────────────────────────────────────────────┤
-│ hmac (32 bytes): 下一個封包的 HMAC                       │
+│ hmac (32 bytes): HMAC for next packet                    │
 └──────────────────────────────────────────────────────────┘
 
-中繼節點 vs 最終節點：
-┌──────────────────────────────────────────────────────────┐
-│ 中繼節點 payload：                                       │
-│ ├── short_channel_id: 必須                               │
-│ ├── amt_to_forward: 必須                                 │
-│ └── outgoing_cltv_value: 必須                            │
-│                                                          │
-│ 最終節點 payload：                                       │
-│ ├── amt_to_forward: 支付金額                             │
-│ ├── outgoing_cltv_value: 最終 CLTV                       │
-│ ├── payment_secret: 防止探測                             │
-│ ├── total_msat: MPP 總額                                 │
-│ └── 無 short_channel_id                                  │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Relay Node vs Final Node Payload:
+
+Relay Node:
+• short_channel_id: required
+• amt_to_forward: required
+• outgoing_cltv_value: required
+
+Final Node:
+• amt_to_forward: payment amount
+• outgoing_cltv_value: final CLTV
+• payment_secret: prevents probing
+• total_msat: MPP total
+• NO short_channel_id`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
@@ -237,26 +216,25 @@ Bob 收到洋蔥：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`錯誤訊息的洋蔥加密：
+      class="text-[var(--text-secondary)]">{`Error Message Onion Encryption
 
-錯誤發生時：
-┌──────────────────────────────────────────────────────────┐
-│ 失敗節點構建錯誤訊息：                                   │
-│ ├── failure_code: 錯誤類型                               │
-│ └── data: 額外資訊                                       │
-│                                                          │
-│ 逐跳加密返回：                                           │
-│ 1. 失敗節點用共享密鑰加密錯誤                            │
-│ 2. 每個中繼節點用其共享密鑰再加密                        │
-│ 3. 發送者收到多層加密的錯誤                              │
-│                                                          │
-│ 發送者解密：                                             │
-│ 1. 嘗試用每跳的密鑰解密                                  │
-│ 2. 成功解密的那層對應失敗節點                            │
-│ 3. 讀取錯誤代碼和資訊                                    │
-└──────────────────────────────────────────────────────────┘
+When error occurs:
 
-錯誤訊息結構：
+Failing node builds error message:
+• failure_code: error type
+• data: additional info
+
+Hop-by-hop encrypted return:
+1. Failing node encrypts error with shared secret
+2. Each relay node re-encrypts with its shared secret
+3. Sender receives multi-layer encrypted error
+
+Sender decryption:
+1. Try decrypting with each hop's key
+2. Successfully decrypted layer corresponds to failing node
+3. Read error code and info
+
+Error Message Structure:
 ┌──────────────────────────────────────────────────────────┐
 │ hmac (32 bytes)                                          │
 │ failure_len (2 bytes)                                    │
@@ -272,27 +250,26 @@ Bob 收到洋蔥：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`盲化路徑增強：
+      class="text-[var(--text-secondary)]">{`Route Blinding Enhancement
 
-傳統 Sphinx：
-├── 發送者知道完整路徑
-├── 發送者知道接收者節點
-└── 發票洩露接收者位置
+Traditional Sphinx:
+• Sender knows complete path
+• Sender knows receiver node
+• Invoice exposes receiver location
 
-Sphinx + Route Blinding：
-┌──────────────────────────────────────────────────────────┐
-│ 接收者預先構建盲化路徑：                                 │
-│ ├── 入口節點公鑰（可見）                                 │
-│ ├── 盲化的後續節點                                       │
-│ └── 加密的 payload                                       │
-│                                                          │
-│ 發送者：                                                 │
-│ ├── 構建 Sphinx 到入口節點                               │
-│ ├── 將盲化路徑附加到洋蔥末尾                             │
-│ └── 不知道入口之後的路徑                                 │
-│                                                          │
-│ 結果：發送者不知道接收者的真實位置                       │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Sphinx + Route Blinding:
+
+Receiver pre-builds blinded path:
+• Entry node pubkey (visible)
+• Blinded subsequent nodes
+• Encrypted payloads
+
+Sender:
+• Builds Sphinx to entry node
+• Appends blinded path to onion end
+• Does not know path after entry
+
+Result: Sender does not know receiver's real location`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

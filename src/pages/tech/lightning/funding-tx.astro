@@ -36,37 +36,33 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`注資交易結構：
+      class="text-[var(--text-secondary)]">{`Funding Transaction Structure
 
 ┌──────────────────────────────────────────────────────────┐
 │ Funding Transaction                                      │
 ├──────────────────────────────────────────────────────────┤
-│ 輸入（Inputs）：                                         │
-│   ├── 發起方的 UTXO(s)                                   │
-│   └── [Dual-Fund: 接受方的 UTXO(s)]                      │
+│ Inputs:                                                  │
+│   - Initiator's UTXO(s)                                  │
+│   - [Dual-Fund: Acceptor's UTXO(s)]                      │
 │                                                          │
-│ 輸出（Outputs）：                                        │
-│   ├── [0] Funding Output（通道資金）                     │
-│   │       P2WSH: 2-of-2 multisig                         │
-│   │       金額: 通道總容量                               │
-│   │                                                      │
-│   └── [1+] 找零輸出（如果有）                            │
+│ Outputs:                                                 │
+│   [0] Funding Output (channel funds)                     │
+│       P2WSH: 2-of-2 multisig                             │
+│       Amount: total channel capacity                     │
+│   [1+] Change outputs (if any)                           │
 └──────────────────────────────────────────────────────────┘
 
-Funding Output 腳本：
-┌──────────────────────────────────────────────────────────┐
-│ 2-of-2 多簽腳本（P2WSH）：                               │
-│                                                          │
-│ OP_2                                                     │
-│ <pubkey_A>（按字典序排列較小的公鑰）                     │
-│ <pubkey_B>（按字典序排列較大的公鑰）                     │
-│ OP_2                                                     │
-│ OP_CHECKMULTISIG                                         │
-│                                                          │
-│ 使用的公鑰：                                             │
-│ ├── funding_pubkey（雙方在 open_channel 中交換）         │
-│ └── 按字典序排列確保確定性                               │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Funding Output Script (2-of-2 multisig P2WSH):
+
+OP_2
+<pubkey_A> (lexicographically smaller pubkey)
+<pubkey_B> (lexicographically larger pubkey)
+OP_2
+OP_CHECKMULTISIG
+
+Pubkeys used:
+• funding_pubkey (exchanged in open_channel)
+• Lexicographic order ensures determinism`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開通道流程</h2>
@@ -75,42 +71,42 @@ Funding Output 腳本：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`單向注資通道開設：
+      class="text-[var(--text-secondary)]">{`Single-Funded Channel Opening
 
-Alice（發起方）                    Bob（接受方）
-  │                                    │
-  │──── open_channel ─────────────────>│
-  │     funding_pubkey: A_fund         │
-  │     funding_satoshis: 1000000      │
-  │                                    │
-  │<─── accept_channel ────────────────│
-  │     funding_pubkey: B_fund         │
-  │                                    │
-  │ [Alice 構建注資交易]               │
-  │ [Alice 構建初始承諾交易]           │
-  │                                    │
-  │──── funding_created ──────────────>│
-  │     funding_txid                   │
-  │     funding_output_index           │
-  │     signature（Bob 的承諾交易簽名）│
-  │                                    │
-  │<─── funding_signed ────────────────│
-  │     signature（Alice 承諾交易簽名）│
-  │                                    │
-  │ [Alice 廣播注資交易]               │
-  │                                    │
-  │ [等待確認...]                      │
-  │                                    │
-  │<─── channel_ready ─────────────────│
-  │──── channel_ready ────────────────>│
-  │                                    │
-  │ [通道可用]                         │
+Alice (initiator)                  Bob (acceptor)
+  |                                    |
+  |---- open_channel ----------------->|
+  |     funding_pubkey: A_fund         |
+  |     funding_satoshis: 1000000      |
+  |                                    |
+  |<--- accept_channel ----------------|
+  |     funding_pubkey: B_fund         |
+  |                                    |
+  | [Alice builds funding tx]          |
+  | [Alice builds initial commit tx]   |
+  |                                    |
+  |---- funding_created -------------->|
+  |     funding_txid                   |
+  |     funding_output_index           |
+  |     signature (for Bob's commit)   |
+  |                                    |
+  |<--- funding_signed ----------------|
+  |     signature (for Alice's commit) |
+  |                                    |
+  | [Alice broadcasts funding tx]      |
+  |                                    |
+  | [Waiting for confirmations...]     |
+  |                                    |
+  |<--- channel_ready -----------------|
+  |---- channel_ready ---------------->|
+  |                                    |
+  | [Channel usable]                   |
 
-關鍵順序：
-1. 先交換承諾交易簽名
-2. 確保雙方都能退出後
-3. 才廣播注資交易
-→ 防止資金被永久鎖定`}</pre>
+Critical Sequence:
+1. First exchange commitment tx signatures
+2. Ensure both parties can exit
+3. Then broadcast funding tx
+-> Prevents funds from being locked forever`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考慮</h2>
@@ -152,40 +148,36 @@ Alice（發起方）                    Bob（接受方）
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`雙向注資交易（Interactive TX Construction）：
+      class="text-[var(--text-secondary)]">{`Dual-Funded Transaction (Interactive TX Construction)
 
-交易構建過程：
-┌──────────────────────────────────────────────────────────┐
-│ Alice                                 Bob                │
-│   │                                    │                 │
-│   │──── open_channel2 ────────────────>│                 │
-│   │<─── accept_channel2 ───────────────│                 │
-│   │                                    │                 │
-│   │ [互動式交易構建開始]               │                 │
-│   │                                    │                 │
-│   │──── tx_add_input ─────────────────>│ Alice 添加輸入 │
-│   │<─── tx_add_input ──────────────────│ Bob 添加輸入   │
-│   │──── tx_add_output ────────────────>│ 添加通道輸出   │
-│   │<─── tx_add_output ─────────────────│ Bob 找零       │
-│   │──── tx_add_output ────────────────>│ Alice 找零     │
-│   │                                    │                 │
-│   │──── tx_complete ──────────────────>│                 │
-│   │<─── tx_complete ───────────────────│                 │
-│   │                                    │                 │
-│   │ [交換承諾交易簽名]                 │                 │
-│   │<───  commitment_signed ───────────>│                 │
-│   │                                    │                 │
-│   │ [交換注資交易簽名]                 │                 │
-│   │<─── tx_signatures ────────────────>│                 │
-│   │                                    │                 │
-│   │ [廣播注資交易]                     │                 │
-│   │                                    │                 │
-└──────────────────────────────────────────────────────────┘
+Alice                                 Bob
+  |                                    |
+  |---- open_channel2 ---------------->|
+  |<--- accept_channel2 ---------------|
+  |                                    |
+  | [Interactive tx construction]      |
+  |                                    |
+  |---- tx_add_input ----------------->| Alice adds input
+  |<--- tx_add_input ------------------| Bob adds input
+  |---- tx_add_output ---------------->| Add channel output
+  |<--- tx_add_output -----------------| Bob change
+  |---- tx_add_output ---------------->| Alice change
+  |                                    |
+  |---- tx_complete ------------------>|
+  |<--- tx_complete -------------------|
+  |                                    |
+  | [Exchange commitment tx sigs]      |
+  |<--- commitment_signed ------------>|
+  |                                    |
+  | [Exchange funding tx sigs]         |
+  |<--- tx_signatures ---------------->|
+  |                                    |
+  | [Broadcast funding tx]             |
 
-雙向注資的優點：
-├── 雙方都可以貢獻資金
-├── 開通道時就有雙向容量
-└── 支援流動性購買`}</pre>
+Dual-Funding Benefits:
+• Both parties can contribute funds
+• Bidirectional capacity from start
+• Supports liquidity purchases`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Taproot 通道</h2>
@@ -194,33 +186,29 @@ Alice（發起方）                    Bob（接受方）
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Taproot 通道的注資輸出：
+      class="text-[var(--text-secondary)]">{`Taproot Channel Funding Output
 
-傳統 P2WSH：
-┌──────────────────────────────────────────────────────────┐
-│ 腳本可見：明顯是 2-of-2 多簽                             │
-│ 大小：約 71 字節 witness                                 │
-│ 隱私：可被識別為閃電通道                                 │
-└──────────────────────────────────────────────────────────┘
+Traditional P2WSH:
+• Script visible: obviously 2-of-2 multisig
+• Size: ~71 bytes witness
+• Privacy: identifiable as Lightning channel
 
-Taproot (P2TR)：
-┌──────────────────────────────────────────────────────────┐
-│ 使用 MuSig2 聚合公鑰                                     │
-│                                                          │
-│ 內部公鑰：                                               │
-│   P = MuSig2(funding_pubkey_A, funding_pubkey_B)         │
-│                                                          │
-│ 協商關閉：key path spend                                 │
-│   └── 看起來像普通單簽交易                               │
-│                                                          │
-│ 強制關閉：script path spend                              │
-│   └── 揭露腳本，但只在必要時                             │
-│                                                          │
-│ 優點：                                                   │
-│ ├── 協商關閉時完全隱私                                   │
-│ ├── 更小的交易大小                                       │
-│ └── 更低的費用                                           │
-└──────────────────────────────────────────────────────────┘`}</pre>
+Taproot (P2TR):
+Uses MuSig2 aggregated pubkey
+
+Internal pubkey:
+  P = MuSig2(funding_pubkey_A, funding_pubkey_B)
+
+Cooperative close: key path spend
+  -> Looks like regular single-sig transaction
+
+Force close: script path spend
+  -> Reveals script, but only when necessary
+
+Benefits:
+• Full privacy on cooperative close
+• Smaller transaction size
+• Lower fees`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SCID 派生</h2>
@@ -229,24 +217,25 @@ Taproot (P2TR)：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`從注資交易派生 Short Channel ID：
+      class="text-[var(--text-secondary)]">{`Deriving Short Channel ID from Funding TX
 
-SCID 結構（8 字節）：
-┌──────────────────────────────────────────────────────────┐
-│ 區塊高度（24 位）│ 交易索引（24 位）│ 輸出索引（16 位）  │
-└──────────────────────────────────────────────────────────┘
+SCID Structure (8 bytes):
+┌────────────────┬────────────────┬────────────────┐
+│ Block Height   │ TX Index       │ Output Index   │
+│ (24 bits)      │ (24 bits)      │ (16 bits)      │
+└────────────────┴────────────────┴────────────────┘
 
-派生過程：
-1. 注資交易確認在區塊 700000
-2. 交易在區塊中的位置是第 1234 筆
-3. 通道輸出是交易的第 0 個輸出
-→ SCID = 700000x1234x0
+Derivation Example:
+1. Funding tx confirmed in block 700000
+2. Transaction position in block: 1234th
+3. Channel output is output index 0
+-> SCID = 700000x1234x0
 
-用途：
-├── 唯一識別通道
-├── 路由時引用通道
-├── gossip 公告中使用
-└── 可被 SCID 別名替代（隱私）`}</pre>
+Uses:
+• Uniquely identify channel
+• Reference channel during routing
+• Used in gossip announcements
+• Can be replaced by SCID alias (privacy)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看注資交易</h2>
@@ -255,28 +244,28 @@ SCID 結構（8 字節）：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`查看通道的注資交易：
+      class="text-[var(--text-secondary)]">{`Viewing Channel Funding Transaction
 
-LND：
-# 列出通道
+LND:
+# List channels
 lncli listchannels | jq '.channels[0].channel_point'
-# 輸出格式：<txid>:<output_index>
+# Output format: <txid>:<output_index>
 
-# 查看待確認通道
+# View pending channels
 lncli pendingchannels
 
-CLN：
-# 列出通道
+CLN:
+# List channels
 lightning-cli listpeerchannels | jq '.[0].funding_txid'
 
-# 在區塊瀏覽器查看
-# 訪問 mempool.space/tx/<txid>
+# View in block explorer
+# Visit mempool.space/tx/<txid>
 
-識別閃電通道注資交易：
-├── P2WSH 輸出
-├── 標準多簽腳本
-├── 通常金額較大且整數
-└── 或使用 Taproot（新通道）`}</pre>
+Identifying Lightning Funding Transactions:
+• P2WSH output
+• Standard multisig script
+• Usually large, round amounts
+• Or uses Taproot (newer channels)`}</pre>
   </div>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

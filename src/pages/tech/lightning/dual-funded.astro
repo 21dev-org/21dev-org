@@ -36,44 +36,36 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`單向資金通道（傳統）：
+      class="text-[var(--text-secondary)]">{`Single-Funded Channel (Traditional):
 
-Alice 開啟通道給 Bob，提供 0.1 BTC：
+Alice opens channel to Bob, provides 0.1 BTC:
 
   Funding TX:
-  ┌─────────────────────────────────────┐
-  │ Input: Alice's UTXO (0.1 BTC)       │
-  └─────────────────────────────────────┘
-                    │
-                    ▼
-  ┌─────────────────────────────────────┐
-  │ Output: 2-of-2 multisig             │
-  │ Alice: 0.1 BTC (可發送)              │
-  │ Bob:   0   BTC (無法接收)            │
-  └─────────────────────────────────────┘
+  Input: Alice's UTXO (0.1 BTC)
+           |
+           v
+  Output: 2-of-2 multisig
+  • Alice: 0.1 BTC (can send)
+  • Bob:   0   BTC (can't receive)
 
-問題：Bob 無法收到任何支付，直到 Alice 先發送給他
+Problem: Bob can't receive any payments until Alice sends first
 
 ────────────────────────────────────────────
 
-雙向資金通道：
+Dual-Funded Channel:
 
-Alice 和 Bob 各提供 0.1 BTC：
+Alice and Bob each provide 0.1 BTC:
 
   Funding TX:
-  ┌─────────────────────────────────────┐
-  │ Input 1: Alice's UTXO (0.1 BTC)     │
-  │ Input 2: Bob's UTXO (0.1 BTC)       │
-  └─────────────────────────────────────┘
-                    │
-                    ▼
-  ┌─────────────────────────────────────┐
-  │ Output: 2-of-2 multisig             │
-  │ Alice: 0.1 BTC (可發送，可接收 0.1)  │
-  │ Bob:   0.1 BTC (可發送，可接收 0.1)  │
-  └─────────────────────────────────────┘
+  Input 1: Alice's UTXO (0.1 BTC)
+  Input 2: Bob's UTXO (0.1 BTC)
+           |
+           v
+  Output: 2-of-2 multisig
+  • Alice: 0.1 BTC (can send, receive 0.1)
+  • Bob:   0.1 BTC (can send, receive 0.1)
 
-優勢：雙方立即有雙向流動性！`}</pre>
+Advantage: Both have bidirectional liquidity immediately!`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Interactive-TX 協議</h2>
@@ -202,36 +194,30 @@ Alice 和 Bob 各提供 0.1 BTC：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Liquidity Ads 運作方式：
+      class="text-[var(--text-secondary)]">{`Liquidity Ads Operation:
 
-1. 賣方廣告（通過 node_announcement）：
-   "我願意提供入站流動性"
-   ┌──────────────────────────────────────┐
-   │ funding_weight: 交易大小            │
-   │ lease_fee_base_sat: 基礎費用        │
-   │ lease_fee_basis: 百分比費用         │
-   │ channel_fee_max_base_msat: 最高路由費│
-   │ channel_fee_max_prop_millionths     │
-   └──────────────────────────────────────┘
+1. Seller Advertisement (via node_announcement):
+   "I'm willing to provide inbound liquidity"
+   • funding_weight: transaction size
+   • lease_fee_base_sat: base fee
+   • lease_fee_basis: percentage fee
+   • channel_fee_max_base_msat: max routing fee
+   • channel_fee_max_prop_millionths
 
-2. 買方請求（在 open_channel2 中）：
-   "我想購買 X sats 的入站流動性"
-   ┌──────────────────────────────────────┐
-   │ request_funds: X sats               │
-   │ lease_start_blockheight             │
-   └──────────────────────────────────────┘
+2. Buyer Request (in open_channel2):
+   "I want to buy X sats of inbound liquidity"
+   • request_funds: X sats
+   • lease_start_blockheight
 
-3. 賣方同意（在 accept_channel2 中）：
-   "我會提供 X sats，收費 Y sats"
-   ┌──────────────────────────────────────┐
-   │ will_fund: X sats                   │
-   │ lease_fee: Y sats                   │
-   └──────────────────────────────────────┘
+3. Seller Agrees (in accept_channel2):
+   "I will provide X sats, charge Y sats"
+   • will_fund: X sats
+   • lease_fee: Y sats
 
-租賃期間：
-- 賣方承諾在一定時間內不單方面關閉通道
-- 通過 CSV 時間鎖強制執行
-- 通常租賃期為 4032 區塊（約 1 個月）`}</pre>
+Lease period:
+• Seller commits not to unilaterally close for duration
+• Enforced via CSV timelock
+• Typical lease: 4032 blocks (~1 month)`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
@@ -257,19 +243,19 @@ Alice 和 Bob 各提供 0.1 BTC：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`RBF (Replace-By-Fee) 保護機制：
+      class="text-[var(--text-secondary)]">{`RBF (Replace-By-Fee) Protection:
 
-1. 使用 require_confirmed_inputs
-   - 只接受已確認的 UTXO 作為輸入
-   - 防止對方使用低手續費交易阻止確認
+1. Use require_confirmed_inputs
+   • Only accept confirmed UTXOs as inputs
+   • Prevent opponent from blocking with low-fee tx
 
-2. RBF 規則
-   - 所有輸入必須標記為 RBF 可替換 (sequence < 0xfffffffe)
-   - 如果協商失敗，可以用更高手續費替換
+2. RBF Rules
+   • All inputs must be RBF replaceable (sequence < 0xfffffffe)
+   • If negotiation fails, can replace with higher fee
 
-3. 超時機制
-   - 設定協商超時時間
-   - 超時後自動中止並釋放 UTXO`}</pre>
+3. Timeout Mechanism
+   • Set negotiation timeout
+   • Auto-abort and release UTXOs on timeout`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Splicing 的關係</h2>
@@ -281,20 +267,20 @@ Alice 和 Bob 各提供 0.1 BTC：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`Interactive-TX 應用場景：
+      class="text-[var(--text-secondary)]">{`Interactive-TX Use Cases:
 
-1. 開啟新通道（Dual-Funded Channel Open）
-   - 雙方協商 funding transaction
-   - 使用 open_channel2 / accept_channel2
+1. Opening New Channel (Dual-Funded Channel Open)
+   • Both parties negotiate funding transaction
+   • Use open_channel2 / accept_channel2
 
-2. 拼接通道（Splicing）
-   - 調整現有通道的容量
-   - 使用 splice_init / splice_ack
-   - 複用 tx_add_input, tx_add_output 等訊息
+2. Channel Splicing
+   • Adjust existing channel capacity
+   • Use splice_init / splice_ack
+   • Reuse tx_add_input, tx_add_output messages
 
-3. 未來應用
-   - Channel Factories
-   - 多方通道`}</pre>
+3. Future Applications
+   • Channel Factories
+   • Multi-party channels`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>

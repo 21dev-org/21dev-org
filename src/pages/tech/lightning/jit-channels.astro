@@ -36,39 +36,38 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`傳統通道開設流程：
+      class="text-[var(--text-secondary)]">{`Traditional Channel Opening Flow:
 
-1. 用戶決定要使用閃電網路
-2. 用戶購買/轉入鏈上 BTC
-3. 等待鏈上確認
-4. 開設通道（另一筆鏈上交易）
-5. 等待通道確認
-6. 終於可以使用！
+1. User decides to use Lightning Network
+2. User buys/transfers on-chain BTC
+3. Wait for on-chain confirmation
+4. Open channel (another on-chain TX)
+5. Wait for channel confirmation
+6. Finally can use!
 
-總時間：幾小時到幾天
-入門門檻：需要先有 BTC 和技術知識
+Total time: Hours to days
+Entry barrier: Need BTC and technical knowledge first
 
-JIT 通道流程：
+JIT Channel Flow:
 
-1. 用戶下載錢包，獲得收款地址
-2. 有人向用戶發送支付
-3. LSP 攔截支付，即時開通道
-4. 支付通過新通道完成
-5. 用戶收到資金，通道已建立！
+1. User downloads wallet, gets receiving address
+2. Someone sends payment to user
+3. LSP intercepts payment, instantly opens channel
+4. Payment completes through new channel
+5. User receives funds, channel established!
 
-總時間：幾秒鐘
-入門門檻：無
+Total time: Seconds
+Entry barrier: None
 
-時序比較：
-┌─────────────────────────────────────────────────────────┐
-│ 傳統：                                                  │
-│ [購買 BTC]→[等待確認]→[開通道]→[等待確認]→[使用]       │
-│     └────────── 1-24 小時 ──────────┘                   │
-│                                                         │
-│ JIT：                                                   │
-│ [收到支付請求]→[開通道+轉發支付]→[使用]                 │
-│     └────────── 幾秒鐘 ──────────┘                      │
-└─────────────────────────────────────────────────────────┘`}</pre>
+Timing Comparison:
+
+Traditional:
+[Buy BTC]->[Wait confirm]->[Open channel]->[Wait confirm]->[Use]
+   |________________ 1-24 hours ________________|
+
+JIT:
+[Receive payment request]->[Open channel + forward]->[Use]
+   |________________ seconds ________________|`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
@@ -77,54 +76,54 @@ JIT 通道流程：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`JIT 通道開設流程：
+      class="text-[var(--text-secondary)]">{`JIT Channel Opening Flow:
 
-發送方 → 路由網路 → LSP → 新用戶
+Sender -> Routing Network -> LSP -> New User
 
-步驟 1：支付到達 LSP
-┌─────────────────────────────────────────────────────────┐
-│ 發送方發起支付到用戶的發票                              │
-│                                                         │
-│ LSP 收到 HTLC：                                         │
-│ - payment_hash: abc123...                               │
-│ - amount: 100,000 sats                                  │
-│ - 目標：用戶節點                                        │
-│                                                         │
-│ LSP 發現：用戶沒有通道！                                │
-└─────────────────────────────────────────────────────────┘
+Step 1: Payment Arrives at LSP
 
-步驟 2：LSP 即時開通道
-┌─────────────────────────────────────────────────────────┐
-│ LSP 計算費用：                                          │
-│ - 通道開設費：2,000 sats                                │
-│ - 用戶可收金額：98,000 sats                             │
-│                                                         │
-│ LSP 開設 Zero-Conf 通道：                               │
-│ - 容量：100,000 sats                                    │
-│ - 用戶側：98,000 sats                                   │
-│ - LSP 側：2,000 sats（費用）                            │
-│                                                         │
-│ 使用 SCID Alias 讓通道立即可用                          │
-└─────────────────────────────────────────────────────────┘
+  Sender initiates payment to user's invoice
 
-步驟 3：轉發支付
-┌─────────────────────────────────────────────────────────┐
-│ LSP 通過新通道轉發 HTLC：                               │
-│                                                         │
-│ 入站 HTLC: 100,000 sats                                 │
-│     ↓                                                   │
-│ 出站 HTLC: 98,000 sats（扣除費用）                      │
-│     ↓                                                   │
-│ 用戶揭示 preimage                                       │
-│     ↓                                                   │
-│ 支付完成！                                              │
-└─────────────────────────────────────────────────────────┘
+  LSP receives HTLC:
+    - payment_hash: abc123...
+    - amount: 100,000 sats
+    - target: user node
 
-結果：
-├── 用戶收到 98,000 sats
-├── 用戶有了可用的通道
-├── LSP 收取 2,000 sats 費用
-└── 整個過程對發送方透明`}</pre>
+  LSP discovers: User has no channel!
+
+Step 2: LSP Instantly Opens Channel
+
+  LSP calculates fee:
+    - Channel open fee: 2,000 sats
+    - User receivable: 98,000 sats
+
+  LSP opens Zero-Conf channel:
+    - Capacity: 100,000 sats
+    - User side: 98,000 sats
+    - LSP side: 2,000 sats (fee)
+
+  Uses SCID Alias for immediate usability
+
+Step 3: Forward Payment
+
+  LSP forwards HTLC through new channel:
+
+  Inbound HTLC: 100,000 sats
+      |
+      v
+  Outbound HTLC: 98,000 sats (minus fee)
+      |
+      v
+  User reveals preimage
+      |
+      v
+  Payment complete!
+
+Result:
+  - User receives 98,000 sats
+  - User now has a usable channel
+  - LSP collects 2,000 sats fee
+  - Entire process transparent to sender`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSPS2 規範</h2>
@@ -206,39 +205,38 @@ JIT 通道流程：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`JIT 通道費用結構：
+      class="text-[var(--text-secondary)]">{`JIT Channel Fee Structure:
 
-費用組成：
-1. 固定費用：覆蓋鏈上交易成本
-2. 比例費用：覆蓋流動性成本
+Fee Components:
+  1. Fixed fee: covers on-chain TX cost
+  2. Proportional fee: covers liquidity cost
 
-計算示例：
-最低費用：2,000 sats
-比例費用：0.1%（1000 ppm）
+Calculation Example:
+  Minimum fee: 2,000 sats
+  Proportional fee: 0.1% (1000 ppm)
 
-支付 100,000 sats：
-費用 = max(2000, 100000 × 0.001) = 2,000 sats
+  Payment 100,000 sats:
+  Fee = max(2000, 100000 * 0.001) = 2,000 sats
 
-支付 1,000,000 sats：
-費用 = max(2000, 1000000 × 0.001) = 2,000 sats
+  Payment 1,000,000 sats:
+  Fee = max(2000, 1000000 * 0.001) = 2,000 sats
 
-支付 5,000,000 sats：
-費用 = max(2000, 5000000 × 0.001) = 5,000 sats
+  Payment 5,000,000 sats:
+  Fee = max(2000, 5000000 * 0.001) = 5,000 sats
 
-費用對用戶透明：
-┌─────────────────────────────────────────────────────────┐
-│ 發送方支付：100,000 sats                                │
-│ JIT 費用：  -2,000 sats                                 │
-│ ────────────────────                                    │
-│ 用戶收到：  98,000 sats                                 │
-│                                                         │
-│ 用戶在收款前就知道會收到多少                            │
-└─────────────────────────────────────────────────────────┘
+Fee Transparency to User:
 
-動態費用（根據鏈上費率）：
-├── 低費率時期：較低的 JIT 費用
-├── 高費率時期：較高的 JIT 費用
-└── LSP 可以實時調整報價`}</pre>
+  Sender pays:    100,000 sats
+  JIT fee:         -2,000 sats
+  --------------------
+  User receives:   98,000 sats
+
+  User knows how much they'll receive before payment
+
+Dynamic Fees (based on on-chain fee rate):
+  - Low fee period: lower JIT fees
+  - High fee period: higher JIT fees
+  - LSP can adjust quotes in real-time`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
@@ -273,32 +271,31 @@ JIT 通道流程：
     class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
   >
     <pre
-      class="text-[var(--text-secondary)]">{`JIT + Splicing 的未來：
+      class="text-[var(--text-secondary)]">{`JIT + Splicing Future:
 
-現狀（JIT 通道）：
-每次新用戶需要新通道 → 新的鏈上交易
+Current (JIT Channels):
+  Each new user needs new channel -> new on-chain TX
 
-問題：
-├── 如果有 1000 個新用戶
-├── 需要 1000 個鏈上交易
-└── 鏈上費用累積
+Problem:
+  - If 1000 new users
+  - Need 1000 on-chain TXs
+  - On-chain fees accumulate
 
-Splicing 解決方案：
-┌─────────────────────────────────────────────────────────┐
-│ LSP 有一個大通道池                                      │
-│                                                         │
-│ 新用戶加入 → Splice-in 到現有通道                       │
-│ 用戶離開 → Splice-out 從通道移除                        │
-│                                                         │
-│ 可以批量處理多個用戶的 splice 操作                      │
-│ 減少總體鏈上交易數量                                    │
-└─────────────────────────────────────────────────────────┘
+Splicing Solution:
 
-Phoenix 錢包已經在使用這種模式：
-├── 單一通道模型
-├── 所有操作通過 splice 完成
-├── 更高效的資金管理
-└── 更好的用戶體驗`}</pre>
+  LSP has one large channel pool
+
+  New user joins -> Splice-in to existing channel
+  User leaves -> Splice-out from channel
+
+  Can batch multiple users' splice operations
+  Reduces total on-chain TX count
+
+Phoenix Wallet Already Uses This Model:
+  - Single channel model
+  - All operations via splice
+  - More efficient fund management
+  - Better user experience`}</pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
