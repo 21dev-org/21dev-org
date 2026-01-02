@@ -1,0 +1,467 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Hardware Wallet"
+  description="深入了解 Bitcoin Core 與硬體錢包的整合，使用 HWI 實現安全的冷存儲。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Hardware Wallet' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Watch-Only Wallets', href: '/tech/bitcoin-core/watchonly' }}
+  nextPage={{ title: 'PSBT', href: '/tech/bitcoin-core/psbt' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">硬體錢包整合概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 可以通過 Hardware Wallet Interface (HWI) 與各種硬體錢包整合，
+      實現私鑰離線存儲的同時使用 Core 的完整節點驗證功能。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">支援的硬體錢包</h3>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">Ledger</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• Nano S / S Plus</li>
+            <li>• Nano X</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">Trezor</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• Model One</li>
+            <li>• Model T</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">其他</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• Coldcard</li>
+            <li>• BitBox02</li>
+            <li>• Jade</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="architecture" class="text-2xl font-bold text-[var(--text-primary)]">架構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>硬體錢包整合架構：
+
+┌─────────────────────────────────────────────────────────────┐
+│                     Bitcoin Core                             │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  Watch-Only Wallet                                      ││
+│  │  ├── 公鑰/描述符                                         ││
+│  │  ├── 地址生成                                           ││
+│  │  ├── 餘額追蹤                                           ││
+│  │  └── PSBT 創建                                          ││
+│  └─────────────────────────────────────────────────────────┘│
+│                           │                                  │
+│                           ▼                                  │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  HWI (Hardware Wallet Interface)                        ││
+│  │  ├── Python 工具                                         ││
+│  │  ├── 設備發現                                           ││
+│  │  ├── PSBT 簽名                                          ││
+│  │  └── 密鑰導出                                           ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Hardware Wallet                            │
+│  ├── 私鑰存儲（安全元件）                                    │
+│  ├── 交易簽名                                               │
+│  └── 用戶確認（螢幕 + 按鈕）                                 │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="hwi-install" class="text-2xl font-bold text-[var(--text-primary)]">安裝 HWI</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 安裝 HWI
+pip3 install hwi
+
+# 或從源碼安裝
+git clone https://github.com/bitcoin-core/HWI.git
+cd HWI
+pip3 install .
+
+# 驗證安裝
+hwi --version
+
+# Linux：設置 udev 規則
+sudo cp udev/*.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+# 列出連接的設備
+hwi enumerate
+
+# 輸出示例
+[
+  {
+    "type": "ledger",
+    "model": "ledger_nano_s",
+    "path": "usb:001:005",
+    "fingerprint": "d34db33f",
+    "needs_pin_sent": false,
+    "needs_passphrase_sent": false
+  }
+]</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="setup" class="text-2xl font-bold text-[var(--text-primary)]">設置流程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 步驟 1：獲取硬體錢包的 xpub
+
+# 獲取設備指紋
+hwi enumerate
+
+# 獲取 xpub（BIP-84 Native SegWit）
+hwi -f d34db33f getxpub "m/84h/0h/0h"
+
+# 輸出
+{
+  "xpub": "xpub6C..."
+}
+
+# 步驟 2：創建 watch-only 錢包
+
+bitcoin-cli createwallet "hww" true true "" false true true
+#                        name  disable_private_keys
+#                              blank
+#                                   passphrase
+#                                       avoid_reuse
+#                                            descriptors
+#                                                 load_on_startup
+
+# 步驟 3：導入描述符
+
+# 獲取帶校驗和的描述符
+hwi -f d34db33f getdescriptors
+
+# 導入到錢包
+bitcoin-cli -rpcwallet=hww importdescriptors '[
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)#checksum",
+    "timestamp": "now",
+    "range": [0, 999],
+    "watchonly": true,
+    "active": true,
+    "internal": false
+  },
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xpub.../1/*)#checksum",
+    "timestamp": "now",
+    "range": [0, 999],
+    "watchonly": true,
+    "active": true,
+    "internal": true
+  }
+]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="receive" class="text-2xl font-bold text-[var(--text-primary)]">接收比特幣</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 生成接收地址
+bitcoin-cli -rpcwallet=hww getnewaddress
+
+# 輸出
+bc1q...
+
+# 在硬體錢包上驗證地址（重要！）
+hwi -f d34db33f displayaddress "m/84h/0h/0h/0/0"
+
+# 設備會顯示地址，確認與 Core 生成的一致
+
+# 查看錢包餘額
+bitcoin-cli -rpcwallet=hww getbalance
+
+# 查看交易歷史
+bitcoin-cli -rpcwallet=hww listtransactions</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">安全提示：</strong>
+        在接收大額資金前，務必在硬體錢包螢幕上確認地址，防止惡意軟體篡改地址。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="send" class="text-2xl font-bold text-[var(--text-primary)]">發送比特幣</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 步驟 1：創建 PSBT
+
+bitcoin-cli -rpcwallet=hww walletcreatefundedpsbt \
+  '[]' \
+  '[{"bc1qrecipient...": 0.1}]' \
+  0 \
+  '{"fee_rate": 10}'
+
+# 輸出
+{
+  "psbt": "cHNidP8BAH...",
+  "fee": 0.00001410,
+  "changepos": 1
+}
+
+# 步驟 2：使用 HWI 簽名
+
+hwi -f d34db33f signtx "cHNidP8BAH..."
+
+# 輸出（已簽名的 PSBT）
+{
+  "psbt": "cHNidP8BAH...（已簽名）"
+}
+
+# 步驟 3：完成並廣播
+
+# 完成 PSBT
+bitcoin-cli finalizepsbt "cHNidP8BAH...（已簽名）"
+
+# 輸出
+{
+  "hex": "0200000001...",
+  "complete": true
+}
+
+# 廣播交易
+bitcoin-cli sendrawtransaction "0200000001..."</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="multisig" class="text-2xl font-bold text-[var(--text-primary)]">多簽配置</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 2-of-3 多簽設置（3 個硬體錢包）
+
+# 步驟 1：獲取每個設備的 xpub
+hwi -f device1_fp getxpub "m/48h/0h/0h/2h"  # P2WSH 多簽路徑
+hwi -f device2_fp getxpub "m/48h/0h/0h/2h"
+hwi -f device3_fp getxpub "m/48h/0h/0h/2h"
+
+# 步驟 2：創建多簽錢包
+bitcoin-cli createwallet "multisig-hww" true true "" false true
+
+# 步驟 3：導入多簽描述符
+bitcoin-cli -rpcwallet=multisig-hww importdescriptors '[
+  {
+    "desc": "wsh(sortedmulti(2,[fp1/48h/0h/0h/2h]xpub1.../0/*,[fp2/48h/0h/0h/2h]xpub2.../0/*,[fp3/48h/0h/0h/2h]xpub3.../0/*))#checksum",
+    "timestamp": "now",
+    "range": [0, 100],
+    "watchonly": true,
+    "active": true,
+    "internal": false
+  },
+  {
+    "desc": "wsh(sortedmulti(2,[fp1/48h/0h/0h/2h]xpub1.../1/*,[fp2/48h/0h/0h/2h]xpub2.../1/*,[fp3/48h/0h/0h/2h]xpub3.../1/*))#checksum",
+    "timestamp": "now",
+    "range": [0, 100],
+    "watchonly": true,
+    "active": true,
+    "internal": true
+  }
+]'
+
+# 步驟 4：發送時需要 2 個設備簽名
+# 創建 PSBT
+psbt=$(bitcoin-cli -rpcwallet=multisig-hww walletcreatefundedpsbt ...)
+
+# 第一個設備簽名
+psbt=$(hwi -f device1_fp signtx "$psbt" | jq -r '.psbt')
+
+# 第二個設備簽名
+psbt=$(hwi -f device2_fp signtx "$psbt" | jq -r '.psbt')
+
+# 完成並廣播
+bitcoin-cli finalizepsbt "$psbt"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="gui" class="text-2xl font-bold text-[var(--text-primary)]">GUI 整合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Bitcoin Core GUI 硬體錢包支持：
+
+設置 external_signer：
+1. 確保 HWI 在 PATH 中
+2. 或在 bitcoin.conf 中設置：
+   signer=/path/to/hwi
+
+使用 GUI：
+1. File → Create Wallet
+2. 勾選 "External signer"
+3. Core 自動檢測連接的硬體錢包
+4. 選擇設備並創建錢包
+
+發送交易：
+1. 像普通錢包一樣創建交易
+2. Core 自動創建 PSBT
+3. 提示在硬體錢包上確認
+4. 簽名後自動廣播</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 配置
+
+# 指定外部簽名器
+signer=/usr/local/bin/hwi
+
+# 或使用包裝腳本
+signer=/home/user/hwi-wrapper.sh
+
+# hwi-wrapper.sh 示例：
+#!/bin/bash
+/usr/bin/python3 -m hwi "$@"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="airgapped" class="text-2xl font-bold text-[var(--text-primary)]">氣隙方案</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>完全氣隙（Air-gapped）工作流：
+
+┌─────────────────┐     ┌─────────────────┐
+│  在線電腦        │     │  離線電腦        │
+│  (Bitcoin Core) │     │  (簽名設備)      │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+    創建 PSBT                    │
+         │                       │
+         │──── SD 卡/QR ────────→│
+         │                       │
+         │                  簽名 PSBT
+         │                       │
+         │←─── SD 卡/QR ─────────│
+         │                       │
+    廣播交易                     │
+         │                       │
+
+使用 Coldcard 的氣隙工作流：
+
+1. 導出公鑰（一次性）
+   # 在 Coldcard 上導出到 SD 卡
+   # 將 xpub 導入 Core watch-only 錢包
+
+2. 創建交易
+   bitcoin-cli -rpcwallet=hww walletcreatefundedpsbt ... > unsigned.psbt
+
+3. 傳輸到 Coldcard
+   # 複製 unsigned.psbt 到 SD 卡
+   # 插入 Coldcard
+
+4. 簽名
+   # Coldcard 上確認交易
+   # 簽名後保存到 SD 卡
+
+5. 廣播
+   # 將 signed.psbt 複製回電腦
+   bitcoin-cli finalizepsbt "$(cat signed.psbt)"
+   bitcoin-cli sendrawtransaction "hex..."</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 始終在設備上驗證地址</li>
+          <li>• 仔細檢查交易詳情</li>
+          <li>• 使用 Passphrase 額外保護</li>
+          <li>• 備份種子詞在多個安全位置</li>
+          <li>• 定期更新韌體</li>
+          <li>• 使用自己的全節點</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 不要在不信任的電腦上使用</li>
+          <li>• 不要忽略設備上的警告</li>
+          <li>• 不要分享種子詞</li>
+          <li>• 不要使用來路不明的設備</li>
+          <li>• 不要依賴單一備份</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="troubleshooting" class="text-2xl font-bold text-[var(--text-primary)]">故障排除</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 設備未識別
+# 1. 檢查 udev 規則（Linux）
+# 2. 確認設備已解鎖
+# 3. 確認 Bitcoin 應用已打開（Ledger）
+
+# 列出詳細信息
+hwi enumerate --debug
+
+# 指紋不匹配
+# 確保使用正確的派生路徑
+hwi -f fingerprint getxpub "m/84h/0h/0h"
+
+# PSBT 簽名失敗
+# 1. 確認錢包描述符與設備匹配
+# 2. 檢查 PSBT 中的派生路徑
+bitcoin-cli decodepsbt "psbt..."
+
+# 重新掃描區塊鏈
+bitcoin-cli -rpcwallet=hww rescanblockchain 700000</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">HWI：</strong>標準化的硬體錢包接口</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">PSBT：</strong>安全的交易簽名流程</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">多簽：</strong>支持多設備多簽配置</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">驗證：</strong>務必在設備螢幕上確認</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

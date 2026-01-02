@@ -1,0 +1,447 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Script Validation"
+  description="深入了解 Bitcoin Core 的腳本驗證過程，包括解釋器、操作碼執行和驗證規則。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Script Validation' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'SigOps', href: '/tech/bitcoin-core/sigops' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">腳本驗證概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin 使用基於堆棧的腳本語言來定義交易的花費條件。
+      每當花費一個 UTXO 時，節點必須執行腳本驗證以確保花費者有權使用這些資金。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">驗證流程</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>腳本驗證過程：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 輸入（花費者提供）          輸出（UTXO 中定義）              │
+│                                                             │
+│  scriptSig                  scriptPubKey                    │
+│  (解鎖腳本)                 (鎖定腳本)                       │
+│                                                             │
+│  ┌─────────────┐           ┌─────────────┐                 │
+│  │ <sig>       │    +      │ OP_DUP      │                 │
+│  │ <pubkey>    │           │ OP_HASH160  │                 │
+│  └─────────────┘           │ <hash>      │                 │
+│                            │ OP_EQUALVERIFY│                │
+│                            │ OP_CHECKSIG  │                 │
+│                            └─────────────┘                 │
+│                                                             │
+│  執行順序（Legacy）：                                        │
+│  1. 執行 scriptSig，結果留在堆棧                            │
+│  2. 執行 scriptPubKey，使用堆棧                             │
+│  3. 堆棧頂部為 true → 驗證通過                              │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="stack-machine" class="text-2xl font-bold text-[var(--text-primary)]">堆棧機器</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>堆棧操作示例（P2PKH）：
+
+初始堆棧（scriptSig 執行後）：
+┌─────────────┐
+│  <pubkey>   │  ← 頂部
+├─────────────┤
+│  <sig>      │
+└─────────────┘
+
+執行 OP_DUP：
+┌─────────────┐
+│  <pubkey>   │  ← 複製頂部
+├─────────────┤
+│  <pubkey>   │
+├─────────────┤
+│  <sig>      │
+└─────────────┘
+
+執行 OP_HASH160：
+┌─────────────┐
+│  <pubkeyhash>│ ← 雜湊頂部
+├─────────────┤
+│  <pubkey>   │
+├─────────────┤
+│  <sig>      │
+└─────────────┘
+
+推入 <expected_hash>：
+┌─────────────┐
+│ <exp_hash>  │
+├─────────────┤
+│ <pubkeyhash>│
+├─────────────┤
+│  <pubkey>   │
+├─────────────┤
+│  <sig>      │
+└─────────────┘
+
+執行 OP_EQUALVERIFY：
+（比較並移除頂部兩個元素）
+┌─────────────┐
+│  <pubkey>   │
+├─────────────┤
+│  <sig>      │
+└─────────────┘
+
+執行 OP_CHECKSIG：
+┌─────────────┐
+│    true     │  ← 簽名有效
+└─────────────┘
+
+結果：true → 驗證通過</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="script-types" class="text-2xl font-bold text-[var(--text-primary)]">腳本類型驗證</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>不同腳本類型的驗證：
+
+1. P2PKH (Pay to Public Key Hash)
+   ├── scriptPubKey: OP_DUP OP_HASH160 <hash> OP_EQUALVERIFY OP_CHECKSIG
+   ├── scriptSig: <sig> <pubkey>
+   └── 驗證：公鑰哈希匹配 + 簽名有效
+
+2. P2SH (Pay to Script Hash)
+   ├── scriptPubKey: OP_HASH160 <scripthash> OP_EQUAL
+   ├── scriptSig: <data...> <redeemScript>
+   └── 驗證：
+       ├── 第一階段：redeemScript 哈希匹配
+       └── 第二階段：執行 redeemScript
+
+3. P2WPKH (Native SegWit)
+   ├── scriptPubKey: OP_0 <20-byte-hash>
+   ├── witness: <sig> <pubkey>
+   └── 驗證：類似 P2PKH，使用 witness 數據
+
+4. P2WSH (Native SegWit Script)
+   ├── scriptPubKey: OP_0 <32-byte-hash>
+   ├── witness: <data...> <witnessScript>
+   └── 驗證：類似 P2SH，使用 witness 數據
+
+5. P2TR (Taproot)
+   ├── scriptPubKey: OP_1 <32-byte-pubkey>
+   ├── Key Path: witness = <schnorr_sig>
+   └── Script Path: witness = <data...> <script> <control_block></code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="segwit" class="text-2xl font-bold text-[var(--text-primary)]">SegWit 驗證</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>SegWit 腳本驗證流程：
+
+P2WPKH 驗證：
+
+1. 識別 witness 程序
+   scriptPubKey: OP_0 <20-byte-hash>
+   ├── version = 0
+   └── program = 20 bytes
+
+2. 構造等效 P2PKH 腳本
+   等效腳本: OP_DUP OP_HASH160 <program> OP_EQUALVERIFY OP_CHECKSIG
+
+3. 使用 witness 數據執行
+   witness[0] = signature
+   witness[1] = pubkey
+
+4. 驗證
+   ├── pubkey 哈希 == program
+   └── 簽名對 sighash 有效
+
+P2WSH 驗證：
+
+1. 識別 witness 程序
+   scriptPubKey: OP_0 <32-byte-hash>
+
+2. 驗證 witness script 哈希
+   SHA256(witness[-1]) == program
+
+3. 執行 witness script
+   使用 witness[0:-1] 作為輸入數據</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="taproot" class="text-2xl font-bold text-[var(--text-primary)]">Taproot 驗證</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Taproot 驗證流程：
+
+Key Path 花費：
+┌─────────────────────────────────────────────────────────────┐
+│ witness: <schnorr_signature>                                │
+│                                                             │
+│ 驗證：                                                       │
+│ 1. 簽名長度 = 64 或 65 bytes                                │
+│ 2. 使用 BIP-340 Schnorr 驗證                                │
+│ 3. 公鑰 = scriptPubKey 中的 32 bytes                        │
+└─────────────────────────────────────────────────────────────┘
+
+Script Path 花費：
+┌─────────────────────────────────────────────────────────────┐
+│ witness: <script_data...> <script> <control_block>         │
+│                                                             │
+│ 驗證：                                                       │
+│ 1. 解析 control_block                                        │
+│    ├── leaf_version (1 byte)                                │
+│    ├── internal_key (32 bytes)                              │
+│    └── merkle_path (32 bytes × n)                           │
+│                                                             │
+│ 2. 計算 tapleaf_hash                                         │
+│    tapleaf = H("TapLeaf", leaf_version || script)           │
+│                                                             │
+│ 3. 驗證 Merkle 路徑                                          │
+│    計算 merkle_root，結合 internal_key                       │
+│    output_key = internal_key + H("TapTweak", ...) * G       │
+│                                                             │
+│ 4. 執行 tapscript                                            │
+│    使用新的 Tapscript 規則                                   │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="signature-verification" class="text-2xl font-bold text-[var(--text-primary)]">簽名驗證</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>簽名驗證過程：
+
+ECDSA 簽名（Legacy/SegWit v0）：
+1. 解析簽名
+   ├── DER 編碼
+   ├── r, s 值
+   └── sighash 類型（最後一字節）
+
+2. 計算 sighash
+   ├── 根據 sighash 類型序列化交易
+   └── 雙重 SHA256
+
+3. 驗證
+   ├── 使用 secp256k1 曲線
+   └── ECDSA 驗證算法
+
+Schnorr 簽名（Taproot）：
+1. 解析簽名
+   ├── 64 bytes（無 sighash 類型 = SIGHASH_DEFAULT）
+   └── 65 bytes（有 sighash 類型）
+
+2. 計算 sighash
+   ├── BIP-341 定義的格式
+   └── 單次 SHA256（tagged hash）
+
+3. 驗證
+   ├── BIP-340 Schnorr 驗證
+   └── 使用 x-only 公鑰</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 簽名驗證偽代碼
+
+def verify_ecdsa_signature(tx, input_index, pubkey, sig):
+    """驗證 ECDSA 簽名"""
+    # 解析簽名
+    r, s = parse_der_signature(sig[:-1])
+    sighash_type = sig[-1]
+
+    # 計算 sighash
+    sighash = compute_sighash(tx, input_index, sighash_type)
+
+    # ECDSA 驗證
+    return ecdsa_verify(pubkey, sighash, r, s)
+
+def verify_schnorr_signature(tx, input_index, pubkey, sig):
+    """驗證 Schnorr 簽名"""
+    if len(sig) == 64:
+        sighash_type = SIGHASH_DEFAULT
+        signature = sig
+    else:
+        sighash_type = sig[-1]
+        signature = sig[:-1]
+
+    # 計算 BIP-341 sighash
+    sighash = compute_taproot_sighash(tx, input_index, sighash_type)
+
+    # BIP-340 驗證
+    return schnorr_verify(pubkey, sighash, signature)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="flags" class="text-2xl font-bold text-[var(--text-primary)]">驗證標誌</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>腳本驗證標誌：
+
+┌──────────────────────────────────────────────────────────────┐
+│ 標誌                          │ 說明                         │
+├──────────────────────────────────────────────────────────────┤
+│ SCRIPT_VERIFY_NONE           │ 無額外驗證                    │
+│ SCRIPT_VERIFY_P2SH           │ 啟用 P2SH 驗證               │
+│ SCRIPT_VERIFY_STRICTENC      │ 嚴格 DER 編碼               │
+│ SCRIPT_VERIFY_DERSIG         │ 要求 DER 簽名               │
+│ SCRIPT_VERIFY_LOW_S          │ 要求低 S 值                  │
+│ SCRIPT_VERIFY_NULLDUMMY      │ 多簽虛擬值必須為空           │
+│ SCRIPT_VERIFY_SIGPUSHONLY    │ scriptSig 只能 push         │
+│ SCRIPT_VERIFY_MINIMALDATA    │ 最小數據推送                 │
+│ SCRIPT_VERIFY_DISCOURAGE_UP  │ 禁止升級 nops               │
+│ SCRIPT_VERIFY_CLEANSTACK     │ 執行後堆棧只剩一個元素       │
+│ SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY │ 啟用 CLTV              │
+│ SCRIPT_VERIFY_CHECKSEQUENCEVERIFY │ 啟用 CSV               │
+│ SCRIPT_VERIFY_WITNESS        │ 啟用 SegWit                  │
+│ SCRIPT_VERIFY_TAPROOT        │ 啟用 Taproot                 │
+└──────────────────────────────────────────────────────────────┘
+
+當前共識規則使用的標誌組合因區塊高度而異。</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="errors" class="text-2xl font-bold text-[var(--text-primary)]">驗證錯誤</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 常見腳本驗證錯誤
+
+# 使用 decodescript 分析腳本
+bitcoin-cli decodescript "76a914...88ac"
+
+# 驗證原始交易
+bitcoin-cli decoderawtransaction "0200..."
+
+# 測試交易是否有效
+bitcoin-cli testmempoolaccept '["0200..."]'
+
+# 常見錯誤：
+# - SCRIPT_ERR_SIG_NULLFAIL: 簽名驗證失敗但不為空
+# - SCRIPT_ERR_EVAL_FALSE: 腳本執行結果為 false
+# - SCRIPT_ERR_VERIFY: OP_VERIFY 失敗
+# - SCRIPT_ERR_CHECKSIGVERIFY: 簽名驗證失敗
+# - SCRIPT_ERR_CHECKMULTISIGVERIFY: 多簽驗證失敗
+# - SCRIPT_ERR_OP_COUNT: 操作碼數量超限
+# - SCRIPT_ERR_STACK_SIZE: 堆棧過大
+# - SCRIPT_ERR_SIG_DER: 非 DER 編碼簽名</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="limits" class="text-2xl font-bold text-[var(--text-primary)]">資源限制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">限制</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">值</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">說明</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">腳本大小</td>
+              <td class="py-2">10,000 bytes</td>
+              <td class="py-2">scriptSig + scriptPubKey</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">堆棧元素</td>
+              <td class="py-2">1,000</td>
+              <td class="py-2">主堆棧 + alt 堆棧</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">元素大小</td>
+              <td class="py-2">520 bytes</td>
+              <td class="py-2">單個堆棧元素</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">操作碼</td>
+              <td class="py-2">201</td>
+              <td class="py-2">非 push 操作碼數量</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">公鑰數（多簽）</td>
+              <td class="py-2">20</td>
+              <td class="py-2">OP_CHECKMULTISIG</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">SigOps</td>
+              <td class="py-2">80,000/區塊</td>
+              <td class="py-2">簽名操作限制</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="caching" class="text-2xl font-bold text-[var(--text-primary)]">驗證快取</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>簽名快取機制：
+
+Bitcoin Core 使用多層快取加速驗證：
+
+1. 簽名快取（Signature Cache）
+   ├── 快取已驗證的簽名
+   ├── 鍵：(pubkey, sighash, signature)
+   ├── 值：驗證結果（true）
+   └── 大小：可配置（-maxsigcachesize）
+
+2. 腳本快取（Script Cache）
+   ├── 快取完整腳本驗證結果
+   ├── 鍵：(script, flags, amount, ...)
+   └── 避免重複驗證同一交易
+
+3. 快取命中場景
+   ├── 交易從 mempool 進入區塊
+   ├── 區塊重組時重新驗證
+   └── 節點重啟後重新同步
+
+效益：
+├── 區塊驗證速度提升 2-3 倍
+└── 減少 CPU 密集的橢圓曲線運算</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">堆棧機器：</strong>基於堆棧的腳本執行模型</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">多種類型：</strong>P2PKH、P2SH、SegWit、Taproot</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">驗證標誌：</strong>控制啟用哪些規則</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">資源限制：</strong>防止 DoS 攻擊</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

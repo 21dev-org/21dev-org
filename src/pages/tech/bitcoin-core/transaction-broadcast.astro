@@ -1,0 +1,401 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Transaction Broadcast"
+  description="深入了解 Bitcoin Core 的交易廣播機制，包括傳播策略、隱私保護和故障排除。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Transaction Broadcast' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Transaction', href: '/tech/bitcoin-core/transaction' }}
+  nextPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">交易廣播概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      當你發送比特幣交易時，它需要被廣播到網路中的其他節點，最終被礦工打包進區塊。
+      Bitcoin Core 使用精心設計的廣播策略來平衡速度、可靠性和隱私。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">廣播流程</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易廣播過程：
+
+1. 本地驗證
+   ├── 檢查交易格式
+   ├── 驗證簽名
+   ├── 檢查輸入是否存在
+   └── 驗證手續費足夠
+
+2. 加入本地 Mempool
+   ├── 通過所有策略檢查
+   └── 存儲在記憶體中
+
+3. 向節點公告
+   ├── 發送 inv 消息
+   ├── 包含交易 ID
+   └── 使用 Dandelion 隱私（可選）
+
+4. 節點請求交易
+   ├── 發送 getdata 消息
+   └── 接收完整交易
+
+5. 傳播到全網
+   └── 節點重複步驟 3-4</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="broadcast-methods" class="text-2xl font-bold text-[var(--text-primary)]">廣播方法</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1：使用錢包發送（最常用）
+bitcoin-cli sendtoaddress "bc1q..." 0.1
+
+# 方法 2：廣播已簽名的原始交易
+bitcoin-cli sendrawtransaction "0200000001..."
+
+# 方法 3：通過 PSBT 流程
+bitcoin-cli finalizepsbt "cHNidP8..." true
+# 返回 {"hex": "...", "complete": true}
+bitcoin-cli sendrawtransaction "hex..."
+
+# 方法 4：使用 testmempoolaccept 先測試
+bitcoin-cli testmempoolaccept '["0200000001..."]'
+# 輸出
+[
+  {
+    "txid": "abc123...",
+    "wtxid": "def456...",
+    "allowed": true,
+    "vsize": 141,
+    "fees": {
+      "base": 0.00001410
+    }
+  }
+]
+
+# 確認可接受後再廣播
+bitcoin-cli sendrawtransaction "0200000001..."</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="inv-mechanism" class="text-2xl font-bold text-[var(--text-primary)]">INV 機制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易公告（INV）流程：
+
+發送節點                           接收節點
+    │                                  │
+    │──── inv (txid) ────────────────→│
+    │                                  │
+    │←─── getdata (txid) ─────────────│
+    │                                  │
+    │──── tx (完整交易) ──────────────→│
+    │                                  │
+
+為什麼使用 INV 而不是直接發送交易？
+├── 節省頻寬（可能已有該交易）
+├── 防止 DoS 攻擊
+└── 允許接收者控制下載時機
+
+INV 類型：
+├── MSG_TX (1)：交易
+├── MSG_BLOCK (2)：區塊
+├── MSG_FILTERED_BLOCK (3)：過濾區塊
+├── MSG_CMPCT_BLOCK (4)：緊湊區塊
+└── MSG_WTX (5)：witness 交易（v0.21+）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="privacy" class="text-2xl font-bold text-[var(--text-primary)]">隱私保護</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易廣播隱私措施：
+
+1. 隨機延遲（Poisson Timer）
+   ├── 不立即廣播
+   ├── 平均延遲 ~5 秒
+   └── 防止時間分析
+
+2. 隨機節點選擇
+   ├── 不向所有節點同時公告
+   ├── 分批公告
+   └── 隱藏交易來源
+
+3. 交易來源保護
+   ┌─────────────────────────────────────────────────────────────┐
+   │ 問題：觀察者可以通過「誰先公告」推斷交易來源                   │
+   │                                                             │
+   │ 解決：                                                       │
+   │ ├── 隨機選擇首個公告節點                                     │
+   │ ├── 使用不同的 outbound 連接                                 │
+   │ └── 通過 Tor/I2P 增強匿名性                                  │
+   └─────────────────────────────────────────────────────────────┘
+
+4. INV 批處理
+   ├── 不單獨公告每筆交易
+   ├── 批量公告多筆交易
+   └── 混淆交易時間</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 增強隱私的廣播方式
+
+# 使用 Tor 連接
+# bitcoin.conf
+proxy=127.0.0.1:9050
+listen=0
+
+# 或使用 -walletbroadcast=0 禁用自動廣播
+# 然後手動通過其他方式廣播
+bitcoin-cli -walletbroadcast=0 sendtoaddress "bc1q..." 0.1
+# 獲取原始交易
+bitcoin-cli gettransaction "txid" | jq -r '.hex'
+# 通過其他節點/服務廣播</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rebroadcast" class="text-2xl font-bold text-[var(--text-primary)]">重新廣播</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>錢包交易重新廣播：
+
+情況：交易發送後未被確認
+
+自動重廣播：
+├── 錢包定期重新廣播未確認交易
+├── 間隔約 10-15 分鐘
+├── 直到交易被確認或過期
+└── 可通過 -walletbroadcast=0 禁用
+
+手動重廣播：
+├── 使用 resendwallettransactions（已棄用）
+└── 使用 sendrawtransaction 重新發送
+
+注意事項：
+├── 重廣播可能暴露交易來源
+├── 如果交易被其他節點丟棄，需要提高手續費
+└── 使用 RBF 替換低手續費交易</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 交易卡住時的處理
+
+# 1. 檢查交易狀態
+bitcoin-cli gettransaction "txid"
+
+# 2. 查看是否在 mempool
+bitcoin-cli getmempoolentry "txid"
+
+# 3. 如果支持 RBF，創建替換交易
+bitcoin-cli bumpfee "txid"
+
+# 4. 如果不支持 RBF，嘗試 CPFP
+# 找到交易的找零輸出，創建子交易花費它
+bitcoin-cli send '[{"bc1q...": 0.001}]' null "unset" null '{
+  "inputs": [{"txid": "parent_txid", "vout": 1}],
+  "fee_rate": 50
+}'
+
+# 5. 手動重新廣播
+bitcoin-cli getrawtransaction "txid" | xargs bitcoin-cli sendrawtransaction</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="propagation" class="text-2xl font-bold text-[var(--text-primary)]">傳播速度</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易傳播統計：
+
+典型傳播時間：
+├── 到達 50% 節點：~1-2 秒
+├── 到達 90% 節點：~5-10 秒
+└── 到達 99% 節點：~30 秒
+
+影響因素：
+├── 網路連接數
+├── 節點地理分佈
+├── 交易大小
+├── 手續費率（優先級）
+└── 網路擁塞程度
+
+加速傳播：
+├── 連接更多節點
+├── 使用多個獨立廣播源
+└── 直接連接礦池節點（如果可能）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rejection" class="text-2xl font-bold text-[var(--text-primary)]">拒絕原因</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 常見拒絕原因
+
+# 使用 testmempoolaccept 診斷
+bitcoin-cli testmempoolaccept '["raw_tx_hex"]'
+
+# 常見錯誤：
+
+# 1. 手續費不足
+{
+  "allowed": false,
+  "reject-reason": "min relay fee not met"
+}
+
+# 2. 輸入已被花費
+{
+  "allowed": false,
+  "reject-reason": "missing inputs"
+}
+
+# 3. 交易已存在
+{
+  "allowed": false,
+  "reject-reason": "txn-already-in-mempool"
+}
+
+# 4. 雙花
+{
+  "allowed": false,
+  "reject-reason": "txn-mempool-conflict"
+}
+
+# 5. 非標準交易
+{
+  "allowed": false,
+  "reject-reason": "non-standard"
+}
+
+# 6. 灰塵輸出
+{
+  "allowed": false,
+  "reject-reason": "dust"
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">拒絕原因</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">解決方法</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">min relay fee not met</td>
+              <td class="py-2">增加手續費</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">missing inputs</td>
+              <td class="py-2">等待父交易確認或使用 CPFP</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">txn-mempool-conflict</td>
+              <td class="py-2">使用 RBF 或等待沖突交易確認</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">dust</td>
+              <td class="py-2">增加輸出金額或合併輸出</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">non-standard</td>
+              <td class="py-2">修改交易結構符合標準規則</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="external" class="text-2xl font-bold text-[var(--text-primary)]">外部廣播</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用外部服務廣播（增強隱私）
+
+# 通過 Blockstream API
+curl -X POST -d "raw_tx_hex" https://blockstream.info/api/tx
+
+# 通過 mempool.space
+curl -X POST -d "raw_tx_hex" https://mempool.space/api/tx
+
+# 通過 Tor
+torsocks curl -X POST -d "raw_tx_hex" http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/tx
+
+# 多源廣播腳本
+#!/bin/bash
+TX=$1
+curl -s -X POST -d "$TX" https://blockstream.info/api/tx &
+curl -s -X POST -d "$TX" https://mempool.space/api/tx &
+bitcoin-cli sendrawtransaction "$TX" &
+wait</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控廣播</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用網路日誌
+bitcoin-cli logging '["net"]'
+
+# 監控交易廣播
+tail -f ~/.bitcoin/debug.log | grep -E "inv|getdata|tx"
+
+# 查看交易傳播
+bitcoin-cli getmempoolentry "txid" | jq '.time'
+
+# 查看節點是否收到
+bitcoin-cli getpeerinfo | jq '.[] | {addr, last_transaction}'
+
+# 使用 ZMQ 監控
+# bitcoin.conf
+zmqpubrawtx=tcp://127.0.0.1:28332
+
+# 訂閱交易通知
+import zmq
+context = zmq.Context()
+socket = context.socket(zmq.SUB)
+socket.connect("tcp://127.0.0.1:28332")
+socket.setsockopt_string(zmq.SUBSCRIBE, "rawtx")</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">INV 機制：</strong>先公告再傳輸，節省頻寬</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">隱私保護：</strong>隨機延遲和節點選擇</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">重廣播：</strong>錢包自動重試未確認交易</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">診斷：</strong>使用 testmempoolaccept 測試</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

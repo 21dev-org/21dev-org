@@ -1,0 +1,403 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Backup & Recovery"
+  description="深入了解 Bitcoin Core 錢包的備份和恢復策略，確保資金安全。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Backup & Recovery' },
+  ]}
+  difficulty="beginner"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Wallet Backup', href: '/tech/bitcoin-core/wallet-backup' }}
+  nextPage={{ title: 'Wallet Encryption', href: '/tech/bitcoin-core/wallet-encryption' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">備份與恢復概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      正確的備份策略是保護比特幣資產的關鍵。Bitcoin Core 支持多種備份方法，
+      從簡單的文件複製到完整的描述符導出。了解何時以及如何備份至關重要。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">備份要素</h3>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">私鑰</h4>
+          <p class="text-sm text-[var(--text-secondary)]">控制資金的核心，必須備份</p>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">描述符</h4>
+          <p class="text-sm text-[var(--text-secondary)]">定義如何派生地址</p>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">標籤/元數據</h4>
+          <p class="text-sm text-[var(--text-secondary)]">地址標籤和交易備註</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="backup-methods" class="text-2xl font-bold text-[var(--text-primary)]">備份方法</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1：文件備份（基本）
+
+# 備份錢包文件
+bitcoin-cli -rpcwallet=mywallet backupwallet "/path/to/backup/wallet.dat"
+
+# 手動複製（需要先卸載錢包）
+bitcoin-cli unloadwallet "mywallet"
+cp -r ~/.bitcoin/wallets/mywallet /path/to/backup/
+bitcoin-cli loadwallet "mywallet"
+
+# 方法 2：描述符備份（推薦）
+
+# 導出所有描述符（包含私鑰）
+bitcoin-cli -rpcwallet=mywallet listdescriptors true > wallet_descriptors.json
+
+# 方法 3：轉儲私鑰（Legacy 錢包）
+
+# 導出所有密鑰
+bitcoin-cli -rpcwallet=legacy dumpwallet "/path/to/backup/keys.txt"
+
+# 方法 4：種子詞（如果使用 BIP-39）
+
+# 注意：Bitcoin Core 不原生支持 BIP-39
+# 如果通過其他方式創建的種子詞，務必備份</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="descriptor-backup" class="text-2xl font-bold text-[var(--text-primary)]">描述符備份詳解</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導出描述符（不含私鑰）
+bitcoin-cli -rpcwallet=mywallet listdescriptors
+
+# 導出描述符（含私鑰）- 用於完整備份
+bitcoin-cli -rpcwallet=mywallet listdescriptors true
+
+# 輸出示例
+{
+  "wallet_name": "mywallet",
+  "descriptors": [
+    {
+      "desc": "wpkh([d34db33f/84'/0'/0']xprv.../0/*)#checksum",
+      "timestamp": 1640000000,
+      "active": true,
+      "internal": false,
+      "range": [0, 999],
+      "next": 5
+    },
+    {
+      "desc": "wpkh([d34db33f/84'/0'/0']xprv.../1/*)#checksum",
+      "timestamp": 1640000000,
+      "active": true,
+      "internal": true,
+      "range": [0, 999],
+      "next": 3
+    }
+  ]
+}</code></pre>
+    </div>
+
+    <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-green-400">最佳實踐：</strong>
+        描述符備份是純文本，可以輕鬆驗證內容，並且可以在任何支持描述符的錢包中恢復。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="recovery" class="text-2xl font-bold text-[var(--text-primary)]">恢復錢包</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從文件備份恢復
+
+# 方法 1：直接複製錢包目錄
+cp -r /backup/mywallet ~/.bitcoin/wallets/
+bitcoin-cli loadwallet "mywallet"
+
+# 方法 2：恢復到新位置
+bitcoin-cli restorewallet "restored" "/backup/mywallet"
+
+# 從描述符恢復
+
+# 步驟 1：創建新的空白錢包
+bitcoin-cli createwallet "restored" false false "" false true
+#                                    ^disable_private_keys = false
+#                                          ^blank = false
+#                                               ^passphrase
+#                                                    ^avoid_reuse = false
+#                                                         ^descriptors = true
+
+# 步驟 2：導入描述符
+bitcoin-cli -rpcwallet=restored importdescriptors '[
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xprv.../0/*)#checksum",
+    "timestamp": 0,
+    "active": true,
+    "internal": false,
+    "range": [0, 1000]
+  },
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xprv.../1/*)#checksum",
+    "timestamp": 0,
+    "active": true,
+    "internal": true,
+    "range": [0, 1000]
+  }
+]'
+
+# timestamp: 0 表示從創世區塊開始掃描
+# 或使用 "now" 表示當前時間（不掃描歷史）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rescan" class="text-2xl font-bold text-[var(--text-primary)]">重新掃描</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 恢復錢包後需要重新掃描區塊鏈
+
+# 完整重掃描（從創世區塊）
+bitcoin-cli -rpcwallet=restored rescanblockchain
+
+# 從特定高度開始掃描（更快）
+bitcoin-cli -rpcwallet=restored rescanblockchain 700000
+
+# 使用 importdescriptors 時指定時間戳
+# timestamp 決定從何時開始掃描
+
+# 查看掃描進度
+bitcoin-cli -rpcwallet=restored getwalletinfo | jq '.scanning'
+
+# 輸出示例
+{
+  "duration": 120,
+  "progress": 0.456
+}
+
+# 掃描時間估算：
+# - 完整掃描（prune=0）：30-60 分鐘
+# - 從高度 700000：5-10 分鐘
+# - 修剪節點可能無法完整掃描</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        如果使用修剪節點，可能無法掃描已刪除的區塊。建議使用 timestamp
+        接近錢包創建時間以優化掃描範圍。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="legacy-recovery" class="text-2xl font-bold text-[var(--text-primary)]">Legacy 錢包恢復</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從 dumpwallet 輸出恢復
+
+# 創建新 Legacy 錢包（已棄用但仍支持）
+bitcoin-cli createwallet "legacy-restored" false false "" false false
+#                                                              ^descriptors=false
+
+# 導入私鑰文件
+bitcoin-cli -rpcwallet=legacy-restored importwallet "/backup/keys.txt"
+
+# 從單個私鑰恢復
+bitcoin-cli -rpcwallet=legacy-restored importprivkey "WIF私鑰" "label" true
+#                                                              rescan=true
+
+# 從 HD 種子恢復（如果有）
+# 注意：需要知道 HD 種子（不是 BIP-39 助記詞）
+bitcoin-cli -rpcwallet=legacy-restored sethdseed true "種子"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="verify" class="text-2xl font-bold text-[var(--text-primary)]">驗證備份</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 驗證備份有效性
+
+# 1. 比較描述符
+# 原始錢包
+bitcoin-cli -rpcwallet=original listdescriptors | jq '.descriptors[].desc'
+
+# 恢復的錢包
+bitcoin-cli -rpcwallet=restored listdescriptors | jq '.descriptors[].desc'
+
+# 2. 比較餘額
+bitcoin-cli -rpcwallet=original getbalance
+bitcoin-cli -rpcwallet=restored getbalance
+
+# 3. 比較地址
+bitcoin-cli -rpcwallet=original deriveaddresses \
+  "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)#checksum" '[0, 10]'
+
+# 4. 簽名測試（可選）
+# 創建小額測試交易確認可以正常簽名
+
+# 定期測試備份
+# 建議每次備份後在測試環境驗證恢復流程</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>備份策略建議：
+
+1. 多重備份
+   ├── 至少 3 個備份副本
+   ├── 存放在不同地理位置
+   └── 使用不同存儲介質
+
+2. 備份內容
+   ├── 描述符導出（首選）
+   ├── wallet.dat 文件
+   ├── 加密密碼（安全分開存儲）
+   └── 恢復說明文檔
+
+3. 備份時機
+   ├── 創建錢包後立即備份
+   ├── 添加新密鑰/描述符後
+   ├── 定期備份（每月）
+   └── 大額交易前確認備份
+
+4. 存儲安全
+   ├── 使用加密容器（如 VeraCrypt）
+   ├── 離線存儲優先
+   ├── 考慮金屬備份（種子詞）
+   └── 防火防水保護
+
+5. 恢復測試
+   ├── 定期測試恢復流程
+   ├── 使用測試網練習
+   └── 記錄恢復步驟</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 使用描述符備份</li>
+          <li>• 加密所有備份</li>
+          <li>• 多地點存儲</li>
+          <li>• 定期驗證</li>
+          <li>• 記錄恢復流程</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 單一備份副本</li>
+          <li>• 未加密的雲存儲</li>
+          <li>• 忘記備份密碼</li>
+          <li>• 從不測試恢復</li>
+          <li>• 備份和密碼放一起</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="encryption" class="text-2xl font-bold text-[var(--text-primary)]">備份加密</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 GPG 加密備份
+
+# 加密描述符文件
+gpg --symmetric --cipher-algo AES256 wallet_descriptors.json
+# 輸入密碼後生成 wallet_descriptors.json.gpg
+
+# 解密
+gpg --decrypt wallet_descriptors.json.gpg > wallet_descriptors.json
+
+# 使用 OpenSSL 加密
+openssl enc -aes-256-cbc -salt -pbkdf2 \
+  -in wallet_descriptors.json \
+  -out wallet_descriptors.enc
+
+# 解密
+openssl enc -aes-256-cbc -d -pbkdf2 \
+  -in wallet_descriptors.enc \
+  -out wallet_descriptors.json
+
+# 使用 7zip 加密壓縮
+7z a -p -mhe=on backup.7z wallet_descriptors.json
+
+# Bitcoin Core 錢包加密
+# 錢包本身可以加密
+bitcoin-cli -rpcwallet=mywallet encryptwallet "強密碼"
+# 注意：需要重啟 Bitcoin Core</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="disaster-recovery" class="text-2xl font-bold text-[var(--text-primary)]">災難恢復</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>災難恢復檢查清單：
+
+□ 找到備份
+  ├── 描述符 JSON 文件
+  ├── 或 wallet.dat 文件
+  └── 或私鑰/種子詞
+
+□ 安裝 Bitcoin Core
+  ├── 從官方網站下載
+  └── 驗證簽名
+
+□ 同步區塊鏈
+  ├── 完整同步需要數天
+  └── 或使用 assumeutxo 快速啟動
+
+□ 恢復錢包
+  ├── 導入描述符/文件
+  └── 重新掃描區塊鏈
+
+□ 驗證恢復
+  ├── 檢查餘額
+  ├── 檢查交易歷史
+  └── 測試簽名功能
+
+□ 更新備份
+  └── 確保新環境的備份安全</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">描述符備份：</strong>推薦的現代備份方式</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">多重備份：</strong>至少 3 份，不同位置</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">定期驗證：</strong>測試恢復流程</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">安全存儲：</strong>加密備份，分開存放密碼</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
