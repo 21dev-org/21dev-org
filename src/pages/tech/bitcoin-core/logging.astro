@@ -1,0 +1,338 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Debug Logging"
+  description="深入了解 Bitcoin Core 的日誌系統，配置和分析 debug.log 文件。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Debug Logging' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Test Networks', href: '/tech/bitcoin-core/test-networks' }}
+  nextPage={{ title: 'Contribute', href: '/tech/bitcoin-core/contribute' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">日誌系統概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 的日誌系統提供詳細的運行時資訊，幫助開發者和節點運營者
+      診斷問題、監控性能和理解節點行為。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">日誌文件位置</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw># 預設位置
+~/.bitcoin/debug.log           # Linux/macOS
+%APPDATA%\Bitcoin\debug.log    # Windows
+
+# 自定義數據目錄
+~/.bitcoin-testnet/debug.log   # testnet
+~/.bitcoin-signet/debug.log    # signet
+
+# 日誌文件大小
+# 預設最大 10 MB，超過後會輪換為 debug.log.1</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="categories" class="text-2xl font-bold text-[var(--text-primary)]">日誌類別</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看所有可用的日誌類別
+bitcoin-cli logging
+
+# 輸出示例
+{
+  "net": false,
+  "tor": false,
+  "mempool": false,
+  "http": false,
+  "bench": false,
+  "zmq": false,
+  "walletdb": false,
+  "rpc": false,
+  "estimatefee": false,
+  "addrman": false,
+  "selectcoins": false,
+  "reindex": false,
+  "cmpctblock": false,
+  "rand": false,
+  "prune": false,
+  "proxy": false,
+  "mempoolrej": false,
+  "libevent": false,
+  "coindb": false,
+  "qt": false,
+  "leveldb": false,
+  "validation": false,
+  "i2p": false,
+  "ipc": false,
+  ...
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">類別</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">描述</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">net</td>
+              <td class="py-2">網路連接和消息</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">mempool</td>
+              <td class="py-2">交易池操作</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">validation</td>
+              <td class="py-2">區塊和交易驗證</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">mempoolrej</td>
+              <td class="py-2">被拒絕的交易</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">selectcoins</td>
+              <td class="py-2">幣選擇算法</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">estimatefee</td>
+              <td class="py-2">手續費估算</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">tor</td>
+              <td class="py-2">Tor 連接</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">bench</td>
+              <td class="py-2">性能基準測試</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置日誌</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 啟用特定類別
+debug=net
+debug=mempool
+debug=validation
+
+# 啟用所有類別（產生大量日誌！）
+debug=1
+
+# 禁用日誌文件（只輸出到控制台）
+# nodebuglogfile=1
+
+# 日誌時間戳
+logtimestamps=1
+
+# 微秒級時間戳
+logtimemicros=1
+
+# 包含線程名稱
+logthreadnames=1
+
+# 包含源文件位置
+logsourcelocations=1
+
+# 縮短日誌（無時間戳和類別）
+# logips=1  # 記錄 IP 地址</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 運行時啟用/禁用日誌類別
+bitcoin-cli logging '["net", "mempool"]'      # 啟用
+bitcoin-cli logging '[]' '["net", "mempool"]' # 禁用
+
+# 啟用所有
+bitcoin-cli logging '["all"]'
+
+# 禁用所有
+bitcoin-cli logging '[]' '["all"]'
+
+# 查看當前設置
+bitcoin-cli logging</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="reading" class="text-2xl font-bold text-[var(--text-primary)]">閱讀日誌</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 實時監控日誌
+tail -f ~/.bitcoin/debug.log
+
+# 過濾特定類別
+tail -f ~/.bitcoin/debug.log | grep "\[net\]"
+
+# 過濾新區塊
+tail -f ~/.bitcoin/debug.log | grep "UpdateTip"
+
+# 過濾連接事件
+tail -f ~/.bitcoin/debug.log | grep -E "(Added|Removed) connection"
+
+# 過濾錯誤
+tail -f ~/.bitcoin/debug.log | grep -i error
+
+# 查看最近的驗證錯誤
+grep "ERROR" ~/.bitcoin/debug.log | tail -20
+
+# 統計連接類型
+grep "connection type" ~/.bitcoin/debug.log | sort | uniq -c</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="log-examples" class="text-2xl font-bold text-[var(--text-primary)]">日誌示例</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw># 新區塊
+2024-01-15T12:00:00Z UpdateTip: new best=000000000000000000028ed...
+  height=800000 version=0x20000000 log2_work=94.123456
+  tx=876543210 date='2024-01-15T12:00:00Z' progress=0.999999
+  cache=450.0MiB(3456789txo)
+
+# 節點連接
+2024-01-15T12:00:01Z [net] Added connection peer=123 connection type=outbound-full-relay
+
+# 交易進入 mempool
+2024-01-15T12:00:02Z [mempool] AcceptToMemoryPool: peer=45:
+  accepted abc123... (poolsz 5432 txn, 3456 kB)
+
+# 交易被拒絕
+2024-01-15T12:00:03Z [mempoolrej] def456... from peer=67 was not accepted:
+  min relay fee not met, 100 < 1000
+
+# 區塊驗證
+2024-01-15T12:00:04Z [validation] Validating block 000000000000000000028ed...
+2024-01-15T12:00:05Z [validation] - Connect postprocess: 12.34ms [0.12s]
+
+# 幣選擇
+2024-01-15T12:00:06Z [selectcoins] Fee rate: 10.00 sat/vB
+2024-01-15T12:00:06Z [selectcoins] Target: 50000000 sats
+2024-01-15T12:00:06Z [selectcoins] Algo: Branch and Bound</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="debugging" class="text-2xl font-bold text-[var(--text-primary)]">調試技巧</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 調試網路問題
+bitcoin-cli logging '["net", "addrman"]'
+# 然後查看：
+grep -E "\[net\]|\[addrman\]" ~/.bitcoin/debug.log | tail -100
+
+# 調試交易廣播
+bitcoin-cli logging '["mempool", "mempoolrej", "net"]'
+# 發送交易後查看：
+grep "abc123" ~/.bitcoin/debug.log  # 替換為 txid
+
+# 調試同步問題
+bitcoin-cli logging '["validation", "net", "prune"]'
+grep "UpdateTip\|progress" ~/.bitcoin/debug.log | tail -50
+
+# 調試幣選擇
+bitcoin-cli logging '["selectcoins"]'
+# 創建交易後查看選擇過程
+
+# 性能分析
+bitcoin-cli logging '["bench"]'
+grep "\[bench\]" ~/.bitcoin/debug.log | tail -50</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="log-rotation" class="text-2xl font-bold text-[var(--text-primary)]">日誌輪換</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Bitcoin Core 自動輪換日誌
+# 當 debug.log 達到 10 MB 時，重命名為 debug.log.1
+
+# 使用 logrotate（Linux）配置更精細的輪換
+# /etc/logrotate.d/bitcoin
+
+/home/bitcoin/.bitcoin/debug.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 bitcoin bitcoin
+    postrotate
+        # 通知 bitcoind 重新打開日誌文件
+        kill -HUP $(cat /var/run/bitcoind.pid 2>/dev/null) 2>/dev/null || true
+    endscript
+}
+
+# 手動清理舊日誌
+rm ~/.bitcoin/debug.log.1
+# 或截斷當前日誌
+> ~/.bitcoin/debug.log</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rpc" class="text-2xl font-bold text-[var(--text-primary)]">相關 RPC 命令</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看/設置日誌類別
+bitcoin-cli logging
+bitcoin-cli logging '["net"]'
+
+# 獲取記憶體資訊（包含日誌緩衝區）
+bitcoin-cli getmemoryinfo
+
+# 查看 RPC 伺服器資訊
+bitcoin-cli getrpcinfo
+
+# 上次處理的區塊時間
+bitcoin-cli getblockchaininfo | jq '.time, .mediantime'
+
+# 節點運行時間
+bitcoin-cli uptime</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">日誌類別：</strong>可選擇性啟用特定類型的日誌</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">運行時配置：</strong>無需重啟即可調整日誌級別</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">調試利器：</strong>診斷網路、驗證和錢包問題</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>debug=1 會產生大量日誌，影響性能</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

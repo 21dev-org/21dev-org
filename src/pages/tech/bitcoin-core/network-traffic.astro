@@ -1,0 +1,338 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Network Traffic"
+  description="深入了解 Bitcoin Core 的網路流量管理，頻寬限制和流量監控。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Network Traffic' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Peer Management', href: '/tech/bitcoin-core/peer-management' }}
+  nextPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">網路流量概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 作為全節點需要與網路中的其他節點交換區塊和交易數據。
+      了解和管理網路流量對於運行穩定的節點至關重要，尤其是在頻寬受限的環境中。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">典型流量消耗</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">場景</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">上傳</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">下載</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">初始同步（IBD）</td>
+              <td class="py-2">~1 GB</td>
+              <td class="py-2">~500 GB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">正常運行（每天）</td>
+              <td class="py-2">5-20 GB</td>
+              <td class="py-2">200-500 MB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Blocks-only 模式</td>
+              <td class="py-2">1-5 GB</td>
+              <td class="py-2">150-300 MB</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">流量監控</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看網路流量統計
+bitcoin-cli getnettotals
+
+# 輸出示例
+{
+  "totalbytesrecv": 1234567890,
+  "totalbytessent": 9876543210,
+  "timemillis": 1700000000000,
+  "uploadtarget": {
+    "timeframe": 86400,
+    "target": 0,
+    "target_reached": false,
+    "serve_historical_blocks": true,
+    "bytes_left_in_cycle": 0,
+    "time_left_in_cycle": 0
+  }
+}
+
+# 格式化輸出
+bitcoin-cli getnettotals | jq '{
+  received_gb: (.totalbytesrecv / 1073741824),
+  sent_gb: (.totalbytessent / 1073741824)
+}'
+
+# 查看每個節點的流量
+bitcoin-cli getpeerinfo | jq '.[] | {
+  addr,
+  bytessent: .bytessent,
+  bytesrecv: .bytesrecv,
+  connection_type
+}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="upload-limit" class="text-2xl font-bold text-[var(--text-primary)]">上傳限制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 設置每日上傳限制（MB）
+# 0 = 無限制（預設）
+maxuploadtarget=5000
+
+# 效果：
+# - 達到限制後，停止服務歷史區塊
+# - 仍然中繼新區塊和交易
+# - 24 小時後重置計數器</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>maxuploadtarget 工作原理：
+
+┌─────────────────────────────────────────────────────────────┐
+│  24 小時週期                                                │
+│                                                             │
+│  上傳流量                                                   │
+│  ▲                                                          │
+│  │                              ┌──────────────────────────│
+│  │                             /│ 達到限制後：             │
+│  │                            / │ - 不服務歷史區塊          │
+│  │                           /  │ - 繼續中繼新數據          │
+│  │                          /   └──────────────────────────│
+│  │                         /                                │
+│  │ limit ───────────────/─────────────────────────────────│
+│  │                     /                                    │
+│  │                    /                                     │
+│  │                   /                                      │
+│  │__________________/____________________________________________▶
+│  0                 時間                                 24h │
+│                                                             │
+│  下一個週期：計數器重置                                      │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看上傳限制狀態
+bitcoin-cli getnettotals | jq '.uploadtarget'
+
+# 輸出示例
+{
+  "timeframe": 86400,              # 24 小時
+  "target": 5242880000,            # 5 GB in bytes
+  "target_reached": false,
+  "serve_historical_blocks": true,
+  "bytes_left_in_cycle": 3000000000,
+  "time_left_in_cycle": 43200      # 秒
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="reduce-traffic" class="text-2xl font-bold text-[var(--text-primary)]">減少流量</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - 低頻寬配置
+
+# 減少連接數
+maxconnections=20
+
+# 設置上傳限制
+maxuploadtarget=1000
+
+# 只接收區塊，不中繼交易
+blocksonly=1
+
+# 減少出站連接
+# （不推薦低於 8，影響安全性）
+
+# 啟用 pruning（減少提供歷史區塊的能力）
+prune=550
+
+# 禁用 bloom filters 服務
+peerbloomfilters=0
+
+# 禁用 block filters 服務
+peerblockfilters=0</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">低頻寬模式效果</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 大幅減少上傳流量</li>
+          <li>• 仍然完整驗證</li>
+          <li>• 保持網路安全性</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">注意事項</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 對網路貢獻減少</li>
+          <li>• blocksonly 無法廣播交易</li>
+          <li>• 可能影響閃電網路節點</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="connection-types" class="text-2xl font-bold text-[var(--text-primary)]">連接類型與流量</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>不同連接類型的流量特性：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 連接類型              │ 流量用途                           │
+├─────────────────────────────────────────────────────────────┤
+│ outbound-full-relay   │ 區塊 + 交易 + 地址                 │
+│ (8 個)               │ 雙向流量最高                        │
+├─────────────────────────────────────────────────────────────┤
+│ block-relay-only      │ 只有區塊                           │
+│ (2 個)               │ 流量較低，增強隱私                   │
+├─────────────────────────────────────────────────────────────┤
+│ inbound               │ 服務其他節點                        │
+│ (最多 117 個)        │ 主要是上傳流量                       │
+├─────────────────────────────────────────────────────────────┤
+│ feeler                │ 測試地址                           │
+│ (短暫連接)           │ 流量極低                            │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 按連接類型查看流量
+bitcoin-cli getpeerinfo | jq 'group_by(.connection_type) | .[] | {
+  type: .[0].connection_type,
+  count: length,
+  total_sent: (map(.bytessent) | add),
+  total_recv: (map(.bytesrecv) | add)
+}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="message-breakdown" class="text-2xl font-bold text-[var(--text-primary)]">消息類型分析</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看消息類型統計（需要 debug=net）
+grep "received:" ~/.bitcoin/debug.log | awk '{print $NF}' | sort | uniq -c | sort -rn
+
+# 典型輸出
+# 10000 inv
+#  5000 tx
+#  2000 getdata
+#  1500 headers
+#  1000 block
+#   500 addr
+#   200 ping
+#   200 pong
+
+# 主要流量來源：
+# - block: 區塊數據（最大）
+# - tx: 交易數據
+# - inv: 庫存消息
+# - getdata: 數據請求</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="ibd-optimization" class="text-2xl font-bold text-[var(--text-primary)]">IBD 優化</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - IBD 優化配置
+
+# 增加數據庫緩存（加速驗證，減少重複讀取）
+dbcache=4096
+
+# 增加連接數以加速下載
+maxconnections=50
+
+# 禁用錢包（減少 I/O）
+disablewallet=1
+
+# IBD 期間不監聽入站連接
+listen=0</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 監控 IBD 進度和流量
+watch -n 10 'bitcoin-cli getblockchaininfo | jq "{
+  blocks: .blocks,
+  progress: .verificationprogress,
+  size_gb: (.size_on_disk / 1073741824)
+}"'
+
+# 同時監控網路流量
+watch -n 10 'bitcoin-cli getnettotals | jq "{
+  recv_gb: (.totalbytesrecv / 1073741824),
+  sent_gb: (.totalbytessent / 1073741824)
+}"'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="external-tools" class="text-2xl font-bold text-[var(--text-primary)]">外部監控工具</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 iftop 監控實時流量
+sudo iftop -i eth0 -f "port 8333"
+
+# 使用 nethogs 按進程監控
+sudo nethogs -p 8333
+
+# 使用 vnstat 長期統計
+vnstat -i eth0 -d  # 每日統計
+vnstat -i eth0 -m  # 每月統計
+
+# 使用 ss 查看連接
+ss -tnp | grep bitcoind</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">監控：</strong>使用 getnettotals 追蹤流量</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">限制：</strong>maxuploadtarget 控制每日上傳</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">低頻寬：</strong>blocksonly + 減少連接數</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">平衡：</strong>減少流量可能影響網路貢獻</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

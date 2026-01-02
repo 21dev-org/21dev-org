@@ -1,0 +1,326 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="ScanTxOutSet"
+  description="深入了解 Bitcoin Core 的 scantxoutset RPC，快速掃描 UTXO 集合查找特定輸出。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'ScanTxOutSet' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'UTXO', href: '/tech/bitcoin-core/utxo' }}
+  nextPage={{ title: 'CoinStatsIndex', href: '/tech/bitcoin-core/coinstatsindex' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 ScanTxOutSet？</h2>
+    <p class="text-[var(--text-secondary)]">
+      <code>scantxoutset</code> 是一個強大的 RPC 命令，可以直接掃描 UTXO 集合
+      來查找屬於特定地址或描述符的未花費輸出，無需導入錢包或重新掃描區塊鏈。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">使用場景</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">快速餘額查詢</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 無需導入地址</li>
+            <li>• 無需重新掃描區塊</li>
+            <li>• 即時獲取結果</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">錢包恢復驗證</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 驗證種子詞的餘額</li>
+            <li>• 查找丟失的資金</li>
+            <li>• 審計地址活動</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="usage" class="text-2xl font-bold text-[var(--text-primary)]">基本用法</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 掃描單個地址
+bitcoin-cli scantxoutset start '["addr(bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq)"]'
+
+# 掃描多個地址
+bitcoin-cli scantxoutset start '[
+  "addr(bc1q...)",
+  "addr(3J98...)",
+  "addr(1A1z...)"
+]'
+
+# 使用描述符掃描（推薦）
+bitcoin-cli scantxoutset start '[
+  "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)",
+  "wpkh([d34db33f/84h/0h/0h]xpub.../1/*)"
+]'
+
+# 輸出示例
+{
+  "success": true,
+  "txouts": 125000000,
+  "height": 800000,
+  "bestblock": "00000000000000000002...",
+  "unspents": [
+    {
+      "txid": "abc123...",
+      "vout": 0,
+      "scriptPubKey": "0014...",
+      "desc": "wpkh([d34db33f/84'/0'/0'/0/5]02...)#...",
+      "amount": 0.5,
+      "height": 750000
+    }
+  ],
+  "total_amount": 1.23456789
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="descriptors" class="text-2xl font-bold text-[var(--text-primary)]">支持的描述符</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 地址
+addr(ADDRESS)
+
+# 原始腳本（十六進制）
+raw(HEX)
+
+# 公鑰
+pk(PUBKEY)
+
+# P2PKH
+pkh(PUBKEY)
+
+# P2SH
+sh(SCRIPT)
+
+# P2WPKH (Native SegWit)
+wpkh(PUBKEY)
+
+# P2WSH
+wsh(SCRIPT)
+
+# P2TR (Taproot)
+tr(PUBKEY)
+
+# 多簽
+multi(K, KEY1, KEY2, ...)
+sortedmulti(K, KEY1, KEY2, ...)
+
+# 組合
+sh(wpkh(PUBKEY))
+sh(wsh(multi(2, KEY1, KEY2, KEY3)))
+
+# 派生路徑（用於 HD 錢包）
+wpkh([fingerprint/path]xpub.../0/*)  # 外部地址
+wpkh([fingerprint/path]xpub.../1/*)  # 找零地址</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="range" class="text-2xl font-bold text-[var(--text-primary)]">派生範圍</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 指定派生範圍
+# 格式: "descriptor"#range(START, END)
+
+# 掃描前 100 個地址
+bitcoin-cli scantxoutset start '[
+  {"desc": "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)", "range": 100}
+]'
+
+# 掃描索引 50-150
+bitcoin-cli scantxoutset start '[
+  {"desc": "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)", "range": [50, 150]}
+]'
+
+# 大範圍掃描（尋找丟失資金）
+bitcoin-cli scantxoutset start '[
+  {"desc": "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)", "range": 10000}
+]'</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        範圍越大，掃描時間越長。預設範圍是 1000。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="actions" class="text-2xl font-bold text-[var(--text-primary)]">掃描控制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 開始掃描
+bitcoin-cli scantxoutset start '[...]'
+
+# 中止掃描
+bitcoin-cli scantxoutset abort
+
+# 查看掃描狀態
+bitcoin-cli scantxoutset status
+
+# 狀態輸出
+{
+  "progress": 0.456,   # 0-1 的進度
+  "scantype": "start"
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="examples" class="text-2xl font-bold text-[var(--text-primary)]">實用範例</h2>
+
+    <h3 id="verify-seed" class="text-xl font-semibold text-[var(--text-primary)]">驗證種子詞餘額</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從種子詞派生 xpub（使用其他工具）
+# 然後掃描所有標準派生路徑
+
+# BIP-44 (Legacy)
+bitcoin-cli scantxoutset start '[
+  {"desc": "pkh([fp/44h/0h/0h]xpub.../0/*)", "range": 100},
+  {"desc": "pkh([fp/44h/0h/0h]xpub.../1/*)", "range": 100}
+]'
+
+# BIP-49 (Nested SegWit)
+bitcoin-cli scantxoutset start '[
+  {"desc": "sh(wpkh([fp/49h/0h/0h]xpub.../0/*))", "range": 100},
+  {"desc": "sh(wpkh([fp/49h/0h/0h]xpub.../1/*))", "range": 100}
+]'
+
+# BIP-84 (Native SegWit)
+bitcoin-cli scantxoutset start '[
+  {"desc": "wpkh([fp/84h/0h/0h]xpub.../0/*)", "range": 100},
+  {"desc": "wpkh([fp/84h/0h/0h]xpub.../1/*)", "range": 100}
+]'
+
+# BIP-86 (Taproot)
+bitcoin-cli scantxoutset start '[
+  {"desc": "tr([fp/86h/0h/0h]xpub.../0/*)", "range": 100},
+  {"desc": "tr([fp/86h/0h/0h]xpub.../1/*)", "range": 100}
+]'</code></pre>
+    </div>
+
+    <h3 id="find-multisig" class="text-xl font-semibold text-[var(--text-primary)]">查找多簽餘額</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 2-of-3 多簽
+bitcoin-cli scantxoutset start '[
+  "wsh(sortedmulti(2,[fp1/48h/0h/0h/2h]xpub1.../*,[fp2/48h/0h/0h/2h]xpub2.../*,[fp3/48h/0h/0h/2h]xpub3.../*))#checksum"
+]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="performance" class="text-2xl font-bold text-[var(--text-primary)]">性能考慮</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>掃描性能因素：
+
+1. UTXO 集大小
+   - 當前約 8000 萬個 UTXO
+   - 掃描需要遍歷整個集合
+
+2. 描述符複雜度
+   - 簡單地址：最快
+   - 單個描述符：快
+   - 帶範圍的描述符：需要更多計算
+
+3. 範圍大小
+   - 範圍 100：快（秒級）
+   - 範圍 1000：中等
+   - 範圍 10000+：慢（分鐘級）
+
+4. 硬體
+   - SSD vs HDD：顯著差異
+   - RAM：更多緩存更快
+
+典型掃描時間（SSD）：
+- 單個地址：1-5 秒
+- 100 個派生地址：5-15 秒
+- 1000 個派生地址：30-60 秒</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="scripting" class="text-2xl font-bold text-[var(--text-primary)]">腳本整合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>import subprocess
+import json
+
+def scan_utxos(descriptors: list) -> dict:
+    """掃描 UTXO 集合"""
+    cmd = [
+        'bitcoin-cli',
+        'scantxoutset',
+        'start',
+        json.dumps(descriptors)
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return json.loads(result.stdout)
+
+def check_balance(xpub: str, path: str = "84'/0'/0'") -> float:
+    """檢查 xpub 餘額"""
+    descriptors = [
+        {"desc": f"wpkh([{path}]{xpub}/0/*)", "range": 100},
+        {"desc": f"wpkh([{path}]{xpub}/1/*)", "range": 100},
+    ]
+
+    result = scan_utxos(descriptors)
+    return result.get('total_amount', 0)
+
+def find_utxos_for_address(address: str) -> list:
+    """查找地址的 UTXO"""
+    result = scan_utxos([f"addr({address})"])
+    return result.get('unspents', [])
+
+# 使用
+balance = check_balance("xpub6...")
+print(f"餘額: {balance} BTC")
+
+utxos = find_utxos_for_address("bc1q...")
+for utxo in utxos:
+    print(f"UTXO: {utxo['txid']}:{utxo['vout']} = {utxo['amount']} BTC")</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">即時查詢：</strong>無需導入錢包或重新掃描</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">描述符支持：</strong>支持所有標準描述符類型</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">範圍掃描：</strong>可掃描 HD 錢包的派生地址</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>大範圍掃描耗時較長</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,419 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="GetBlockTemplate"
+  description="深入了解 Bitcoin Core 的 getblocktemplate RPC，用於礦池軟體獲取區塊模板。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'GetBlockTemplate' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Mining', href: '/tech/bitcoin-core/mining' }}
+  nextPage={{ title: 'Difficulty', href: '/tech/bitcoin-core/difficulty' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 GetBlockTemplate？</h2>
+    <p class="text-[var(--text-secondary)]">
+      GetBlockTemplate（GBT）是 BIP-22/23 定義的挖礦協議，允許礦池軟體從 Bitcoin Core
+      獲取區塊模板，自行選擇交易並構建區塊頭進行挖礦。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">GBT vs getwork</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">getblocktemplate</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">getwork（已棄用）</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">交易選擇</td>
+              <td class="py-2">礦工可自選</td>
+              <td class="py-2">節點決定</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Coinbase</td>
+              <td class="py-2">礦工構建</td>
+              <td class="py-2">節點提供</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">長輪詢</td>
+              <td class="py-2">支持</td>
+              <td class="py-2">有限支持</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">BIP</td>
+              <td class="py-2">BIP-22/23</td>
+              <td class="py-2">無</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="usage" class="text-2xl font-bold text-[var(--text-primary)]">基本用法</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取區塊模板
+bitcoin-cli getblocktemplate '{"rules": ["segwit"]}'
+
+# 輸出示例
+{
+  "capabilities": ["proposal"],
+  "version": 536870912,
+  "rules": ["csv", "segwit", "taproot"],
+  "vbavailable": {},
+  "vbrequired": 0,
+  "previousblockhash": "00000000000000000002...",
+  "transactions": [
+    {
+      "data": "02000000...",
+      "txid": "abc123...",
+      "hash": "def456...",
+      "depends": [],
+      "fee": 5000,
+      "sigops": 1,
+      "weight": 561
+    },
+    ...
+  ],
+  "coinbaseaux": {"flags": ""},
+  "coinbasevalue": 625005000,
+  "longpollid": "00000000000000000002...123",
+  "target": "00000000000000000006...",
+  "mintime": 1700000000,
+  "mutable": ["time", "transactions", "prevblock"],
+  "noncerange": "00000000ffffffff",
+  "sigoplimit": 80000,
+  "sizelimit": 4000000,
+  "weightlimit": 4000000,
+  "curtime": 1700000100,
+  "bits": "17034219",
+  "height": 800001,
+  "default_witness_commitment": "6a24aa21a9ed..."
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="fields" class="text-2xl font-bold text-[var(--text-primary)]">字段說明</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">字段</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">描述</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">version</td>
+              <td class="py-2">區塊版本號</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">previousblockhash</td>
+              <td class="py-2">前一區塊雜湊</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">transactions</td>
+              <td class="py-2">交易列表（不含 coinbase）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">coinbasevalue</td>
+              <td class="py-2">最大 coinbase 金額（區塊獎勵 + 手續費）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">target</td>
+              <td class="py-2">難度目標（256 位）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">bits</td>
+              <td class="py-2">壓縮難度目標</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">height</td>
+              <td class="py-2">新區塊高度</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">curtime</td>
+              <td class="py-2">當前時間戳</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="workflow" class="text-2xl font-bold text-[var(--text-primary)]">挖礦流程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>使用 GBT 的挖礦流程：
+
+1. 獲取模板
+   Mining Pool ──getblocktemplate──▶ Bitcoin Core
+               ◀──────template──────
+
+2. 構建 Coinbase 交易
+   ┌─────────────────────────────────────────┐
+   │ Coinbase Transaction                    │
+   │ ├── Input: 空（coinbase 特殊輸入）      │
+   │ │   └── scriptSig: 區塊高度 + 礦池標記  │
+   │ └── Outputs:                            │
+   │     ├── 礦池獎勵地址                    │
+   │     └── witness commitment              │
+   └─────────────────────────────────────────┘
+
+3. 計算 Merkle Root
+   - Coinbase + 模板中的交易
+   - 計算 Merkle Tree 根
+
+4. 構建區塊頭
+   ┌───────────────────────────────────────┐
+   │ Block Header (80 bytes)               │
+   │ ├── version (4 bytes)                 │
+   │ ├── previousblockhash (32 bytes)      │
+   │ ├── merkleroot (32 bytes)             │
+   │ ├── time (4 bytes)                    │
+   │ ├── bits (4 bytes)                    │
+   │ └── nonce (4 bytes)                   │
+   └───────────────────────────────────────┘
+
+5. 挖礦（尋找有效 nonce）
+   while (SHA256(SHA256(header)) > target) {
+     nonce++;
+     // 也可以修改 coinbase 的 extraNonce
+   }
+
+6. 提交區塊
+   Mining Pool ──submitblock──▶ Bitcoin Core</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現示例</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>import { createHash } from 'crypto';
+
+interface BlockTemplate {
+  version: number;
+  previousblockhash: string;
+  transactions: Transaction[];
+  coinbasevalue: number;
+  target: string;
+  bits: string;
+  height: number;
+  curtime: number;
+  default_witness_commitment: string;
+}
+
+class Miner {
+  // 構建 Coinbase 交易
+  buildCoinbase(
+    template: BlockTemplate,
+    poolAddress: string,
+    extraNonce: Buffer
+  ): Buffer {
+    // BIP-34: 區塊高度必須在 coinbase 中
+    const heightScript = this.encodeHeight(template.height);
+
+    // 構建 scriptSig
+    const scriptSig = Buffer.concat([
+      heightScript,
+      extraNonce,
+      Buffer.from('Mining Pool', 'utf8')
+    ]);
+
+    // 構建 coinbase 交易
+    const coinbase = new Transaction();
+    coinbase.addInput(Buffer.alloc(32), 0xffffffff, scriptSig);
+    coinbase.addOutput(poolAddress, template.coinbasevalue);
+
+    // 添加 witness commitment（SegWit）
+    if (template.default_witness_commitment) {
+      coinbase.addOutput(
+        Buffer.from(template.default_witness_commitment, 'hex'),
+        0
+      );
+    }
+
+    return coinbase.serialize();
+  }
+
+  // 計算 Merkle Root
+  calculateMerkleRoot(coinbase: Buffer, transactions: Buffer[]): Buffer {
+    const hashes = [
+      this.doubleSha256(coinbase),
+      ...transactions.map(tx => this.doubleSha256(tx))
+    ];
+
+    while (hashes.length > 1) {
+      const newHashes: Buffer[] = [];
+      for (let i = 0; i < hashes.length; i += 2) {
+        const left = hashes[i];
+        const right = hashes[i + 1] || left;
+        newHashes.push(this.doubleSha256(Buffer.concat([left, right])));
+      }
+      hashes.length = 0;
+      hashes.push(...newHashes);
+    }
+
+    return hashes[0];
+  }
+
+  // 構建區塊頭
+  buildHeader(template: BlockTemplate, merkleRoot: Buffer, nonce: number): Buffer {
+    const header = Buffer.alloc(80);
+    let offset = 0;
+
+    // version
+    header.writeUInt32LE(template.version, offset);
+    offset += 4;
+
+    // previousblockhash
+    Buffer.from(template.previousblockhash, 'hex').reverse().copy(header, offset);
+    offset += 32;
+
+    // merkleroot
+    merkleRoot.copy(header, offset);
+    offset += 32;
+
+    // time
+    header.writeUInt32LE(template.curtime, offset);
+    offset += 4;
+
+    // bits
+    header.writeUInt32LE(parseInt(template.bits, 16), offset);
+    offset += 4;
+
+    // nonce
+    header.writeUInt32LE(nonce, offset);
+
+    return header;
+  }
+
+  // 挖礦主循環
+  async mine(template: BlockTemplate): Promise<Buffer | null> {
+    const target = Buffer.from(template.target, 'hex');
+    let extraNonce = 0;
+
+    while (true) {
+      const coinbase = this.buildCoinbase(
+        template,
+        this.poolAddress,
+        this.encodeExtraNonce(extraNonce)
+      );
+
+      const merkleRoot = this.calculateMerkleRoot(
+        coinbase,
+        template.transactions.map(tx => Buffer.from(tx.data, 'hex'))
+      );
+
+      // 嘗試所有 nonce 值
+      for (let nonce = 0; nonce < 0xffffffff; nonce++) {
+        const header = this.buildHeader(template, merkleRoot, nonce);
+        const hash = this.doubleSha256(header);
+
+        if (hash.compare(target) < 0) {
+          // 找到有效區塊！
+          return this.assembleBlock(header, coinbase, template.transactions);
+        }
+      }
+
+      extraNonce++;
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="longpoll" class="text-2xl font-bold text-[var(--text-primary)]">長輪詢</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用長輪詢等待新模板
+bitcoin-cli getblocktemplate '{
+  "rules": ["segwit"],
+  "longpollid": "00000000000000000002...123"
+}'
+
+# longpollid 來自上一次 getblocktemplate 響應
+# 當有新區塊或 mempool 顯著變化時返回</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>長輪詢工作流程：
+
+┌──────────────┐                    ┌──────────────┐
+│ Mining Pool  │                    │ Bitcoin Core │
+└──────┬───────┘                    └──────┬───────┘
+       │                                   │
+       │──getblocktemplate(longpollid)────▶│
+       │                                   │
+       │          (等待...)                │
+       │                                   │
+       │◀────────new template──────────────│ 新區塊到達
+       │                                   │
+       │──getblocktemplate(new longpollid)▶│
+       │                                   │
+       ▼                                   ▼</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="submitblock" class="text-2xl font-bold text-[var(--text-primary)]">提交區塊</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 提交挖到的區塊
+bitcoin-cli submitblock "hexdata"
+
+# 返回值：
+# null - 成功
+# "duplicate" - 區塊已存在
+# "duplicate-invalid" - 區塊已被標記為無效
+# "inconclusive" - 有效但未成為最佳鏈
+# "rejected" - 被拒絕
+
+# 也可以使用 submitheader 提交區塊頭
+bitcoin-cli submitheader "hexheader"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">BIP-22/23：</strong>標準化的挖礦協議</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">交易選擇：</strong>礦工可自行選擇交易</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">長輪詢：</strong>高效的模板更新機制</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>大多數礦池使用 Stratum 協議</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

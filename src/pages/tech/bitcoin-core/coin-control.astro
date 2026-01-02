@@ -1,0 +1,309 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Coin Control"
+  description="深入了解 Bitcoin Core 的 Coin Control 功能，手動選擇交易輸入以優化隱私和手續費。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Coin Control' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Coin Selection', href: '/tech/bitcoin-core/coin-selection' }}
+  nextPage={{ title: 'Transaction Fees', href: '/tech/bitcoin-core/fees' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Coin Control？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Coin Control 允許用戶手動選擇哪些 UTXO 作為交易輸入，而不是讓錢包自動選擇。
+      這對於優化隱私、管理手續費和整合零散 UTXO 非常有用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">為什麼使用 Coin Control？</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私保護</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 避免混合不同來源的幣</li>
+            <li>• 防止關聯不同地址</li>
+            <li>• 控制找零地址</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">費用優化</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 選擇合適大小的 UTXO</li>
+            <li>• 整合小額 UTXO</li>
+            <li>• 避免不必要的找零</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="list-utxos" class="text-2xl font-bold text-[var(--text-primary)]">列出可用 UTXO</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 列出所有未花費輸出
+bitcoin-cli listunspent
+
+# 輸出示例
+[
+  {
+    "txid": "abc123...",
+    "vout": 0,
+    "address": "bc1q...",
+    "label": "savings",
+    "scriptPubKey": "0014...",
+    "amount": 0.5,
+    "confirmations": 1000,
+    "spendable": true,
+    "solvable": true,
+    "desc": "wpkh([d34db33f/84'/0'/0'/0/5]02...)#...",
+    "safe": true
+  },
+  ...
+]
+
+# 過濾特定確認數
+bitcoin-cli listunspent 6 9999999
+
+# 過濾特定地址
+bitcoin-cli listunspent 1 9999999 '["bc1q..."]'
+
+# 查看詳細資訊
+bitcoin-cli listunspent | jq '.[] | {txid, vout, amount, confirmations, label}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="manual-selection" class="text-2xl font-bold text-[var(--text-primary)]">手動選擇輸入</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1: 使用 createrawtransaction + fundrawtransaction
+
+# 創建原始交易（指定輸入）
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc123...", "vout": 0},
+  {"txid": "def456...", "vout": 1}
+]' '[
+  {"bc1qrecipient...": 0.8},
+  {"bc1qchange...": 0.19}
+]'
+
+# 方法 2: 使用 send 命令（更簡單）
+bitcoin-cli send '[{"bc1q...": 0.5}]' null "unset" null '{
+  "inputs": [
+    {"txid": "abc123...", "vout": 0}
+  ]
+}'
+
+# 方法 3: 使用 walletcreatefundedpsbt
+bitcoin-cli walletcreatefundedpsbt '[
+  {"txid": "abc123...", "vout": 0}
+]' '[
+  {"bc1q...": 0.5}
+]' 0 '{
+  "add_inputs": false
+}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="send-options" class="text-2xl font-bold text-[var(--text-primary)]">Send 命令選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># send 命令的完整選項
+bitcoin-cli send \
+  '[{"bc1qrecipient...": 0.5}]' \
+  6 \                    # conf_target（確認目標區塊數）
+  "economical" \         # estimate_mode
+  null \                 # fee_rate（或指定具體費率）
+  '{
+    "inputs": [
+      {"txid": "abc123...", "vout": 0, "sequence": 4294967293}
+    ],
+    "add_inputs": false,           # 不自動添加輸入
+    "include_watching": false,     # 不包含 watch-only
+    "change_address": "bc1q...",   # 指定找零地址
+    "change_position": 1,          # 找零輸出位置
+    "fee_rate": 10,                # sat/vB
+    "include_unsafe": false,       # 不包含未確認輸入
+    "subtract_fee_from_outputs": [0], # 從輸出扣除手續費
+    "replaceable": true            # 啟用 RBF
+  }'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="privacy" class="text-2xl font-bold text-[var(--text-primary)]">隱私考慮</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coin Control 隱私策略：
+
+1. 避免混合不同來源
+   ┌─────────────────────────────────────────────────────┐
+   │ 不推薦：                                            │
+   │ ├── 輸入 1: 交易所提款 (KYC)                        │
+   │ ├── 輸入 2: Coinjoin 輸出 (匿名)                   │
+   │ └── 結果: 匿名性被破壞                             │
+   ├─────────────────────────────────────────────────────┤
+   │ 推薦：                                              │
+   │ ├── 只使用相同來源的 UTXO                          │
+   │ └── 保持資金池隔離                                 │
+   └─────────────────────────────────────────────────────┘
+
+2. 找零地址管理
+   - 使用新地址接收找零
+   - 避免找零回到已公開的地址
+   - 考慮使用 "subtract_fee_from_outputs" 消除找零
+
+3. UTXO 整合時機
+   - 在低手續費時期整合
+   - 使用 Coinjoin 整合以增強隱私
+   - 避免在交易時整合無關的 UTXO</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">隱私提示：</strong>
+        使用同一交易中的多個輸入會將這些地址關聯起來，這是鏈分析的基礎。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="consolidation" class="text-2xl font-bold text-[var(--text-primary)]">UTXO 整合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 整合小額 UTXO
+
+# 1. 找出小額 UTXO
+bitcoin-cli listunspent | jq '[.[] | select(.amount < 0.001)] | length'
+
+# 2. 創建整合交易（所有輸入到一個地址）
+INPUTS=$(bitcoin-cli listunspent | jq '[.[] | select(.amount < 0.001) | {txid, vout}]')
+TOTAL=$(bitcoin-cli listunspent | jq '[.[] | select(.amount < 0.001) | .amount] | add')
+
+# 3. 使用 send 整合
+bitcoin-cli send "[{\"$(bitcoin-cli getnewaddress)\": $TOTAL}]" null "unset" null "{
+  \"inputs\": $INPUTS,
+  \"subtract_fee_from_outputs\": [0]
+}"
+
+# 或使用 sendall（v24.0+）
+bitcoin-cli sendall '["bc1qconsolidation..."]' null "unset" null '{
+  "inputs": [...],
+  "send_max": true
+}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="labels" class="text-2xl font-bold text-[var(--text-primary)]">標籤管理</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 為地址設置標籤
+bitcoin-cli setlabel "bc1q..." "exchange-deposit"
+
+# 查看特定標籤的 UTXO
+bitcoin-cli listunspent | jq '.[] | select(.label == "exchange-deposit")'
+
+# 列出所有標籤
+bitcoin-cli listlabels
+
+# 按標籤選擇 UTXO 創建交易
+INPUTS=$(bitcoin-cli listunspent | jq '[.[] | select(.label == "savings") | {txid, vout}]')
+bitcoin-cli send '[{"bc1q...": 1.0}]' null "unset" null "{\"inputs\": $INPUTS}"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="avoid-reuse" class="text-2xl font-bold text-[var(--text-primary)]">避免地址重用</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用避免重用功能
+bitcoin-cli createwallet "privacy-wallet" false false "" false false true
+#                                                              ^^ avoid_reuse
+
+# 或對現有錢包
+bitcoin-cli setwalletflag "avoid_reuse" true
+
+# 查看錢包標誌
+bitcoin-cli getwalletinfo | jq '.avoid_reuse'
+
+# 效果：
+# - 已使用過的地址會被標記為 "dirty"
+# - 這些地址的 UTXO 不會被自動選中
+# - 需要手動使用 Coin Control 才能花費</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="example" class="text-2xl font-bold text-[var(--text-primary)]">完整範例</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 場景：從特定來源發送精確金額，無找零
+
+# 1. 列出符合條件的 UTXO
+bitcoin-cli listunspent | jq '.[] | select(.label == "salary" and .amount >= 0.5)'
+
+# 2. 選擇最接近目標金額的 UTXO
+# 假設找到一個 0.502 BTC 的 UTXO
+
+# 3. 計算手續費（假設 141 vB，10 sat/vB）
+# 手續費 = 141 * 10 = 1410 satoshis = 0.0000141 BTC
+
+# 4. 發送金額 + 手續費 ≈ UTXO 金額
+# 0.5 + 0.002 = 0.502 BTC（剛好用完，無找零）
+
+# 5. 創建交易
+bitcoin-cli send '[{"bc1qrecipient...": 0.50198590}]' null "unset" null '{
+  "inputs": [{"txid": "abc123...", "vout": 0}],
+  "add_inputs": false,
+  "subtract_fee_from_outputs": [0]
+}'
+
+# 或使用 PSBT 進行更精細控制
+bitcoin-cli walletcreatefundedpsbt '[
+  {"txid": "abc123...", "vout": 0}
+]' '[
+  {"bc1qrecipient...": 0.502}
+]' 0 '{
+  "add_inputs": false,
+  "subtractFeeFromOutputs": [0],
+  "fee_rate": 10
+}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">手動選擇：</strong>精確控制交易輸入</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">隱私增強：</strong>避免不必要的地址關聯</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">費用優化：</strong>選擇合適大小的 UTXO</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>需要理解 UTXO 模型和隱私影響</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
