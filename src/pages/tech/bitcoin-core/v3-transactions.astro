@@ -1,0 +1,367 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="V3 Transactions"
+  description="深入了解 Bitcoin Core 的 V3 交易（TRUC），專為閃電網路設計的交易策略。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'V3 Transactions' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Package Relay', href: '/tech/bitcoin-core/package-relay' }}
+  nextPage={{ title: 'Anchor Outputs', href: '/tech/bitcoin-core/anchor-outputs' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">V3 交易概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      V3 交易（也稱為 TRUC - Topologically Restricted Until Confirmation）是 Bitcoin Core
+      引入的新交易策略，專門解決閃電網路等二層協議面臨的交易 pinning 攻擊問題。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">關鍵特性</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">限制</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 最多 1 個子交易</li>
+            <li>• 子交易最大 1000 vB</li>
+            <li>• 禁止祖先依賴</li>
+            <li>• 強制 RBF 可替換</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">好處</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 防止 pinning 攻擊</li>
+            <li>• 可預測的 CPFP 成本</li>
+            <li>• 增強閃電網路安全</li>
+            <li>• 簡化手續費估算</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="pinning-problem" class="text-2xl font-bold text-[var(--text-primary)]">Pinning 問題</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易 Pinning 攻擊：
+
+攻擊者利用 mempool 規則阻止合法交易被確認或替換。
+
+典型場景（閃電網路）：
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Alice 和 Bob 有閃電通道                                  │
+│ 2. Bob 想作弊，廣播舊的承諾交易                             │
+│ 3. Alice 需要廣播懲罰交易                                   │
+│ 4. Bob 創建「pin」交易阻止 Alice                            │
+└─────────────────────────────────────────────────────────────┘
+
+Pinning 方法：
+┌─────────────────────────────────────────────────────────────┐
+│ 方法 1：大量低費率子交易                                    │
+│ ├── 創建大量子交易消耗 mempool 限制                        │
+│ ├── 達到 25 祖先/後代限制                                  │
+│ └── 阻止 CPFP 添加新子交易                                 │
+├─────────────────────────────────────────────────────────────┤
+│ 方法 2：大型低費率子交易                                    │
+│ ├── 創建接近 100 KB 的子交易                               │
+│ ├── 低費率但絕對費用高                                     │
+│ └── RBF 需要支付更高絕對費用                               │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rules" class="text-2xl font-bold text-[var(--text-primary)]">V3 規則</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>V3 交易規則（nVersion = 3）：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 規則 1：拓撲限制                                            │
+├─────────────────────────────────────────────────────────────┤
+│ • V3 交易最多有 1 個未確認子交易                            │
+│ • V3 交易最多有 1 個未確認父交易                            │
+│ • 形成簡單的父-子鏈                                         │
+│                                                             │
+│     ┌─────┐                                                 │
+│     │ V3  │ 父交易                                          │
+│     │Parent│                                                │
+│     └──┬──┘                                                 │
+│        │                                                    │
+│        ▼                                                    │
+│     ┌─────┐                                                 │
+│     │ V3  │ 子交易（最多 1 個）                             │
+│     │Child│                                                 │
+│     └─────┘                                                 │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ 規則 2：子交易大小限制                                      │
+├─────────────────────────────────────────────────────────────┤
+│ • 子交易最大 1000 虛擬字節                                  │
+│ • 限制 RBF 替換成本                                         │
+│ • 使 CPFP 費用可預測                                        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ 規則 3：強制 RBF                                            │
+├─────────────────────────────────────────────────────────────┤
+│ • V3 交易視為可替換                                         │
+│ • 無論 nSequence 值                                         │
+│ • 允許隨時替換                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ 規則 4：無非 V3 祖先                                        │
+├─────────────────────────────────────────────────────────────┤
+│ • V3 交易不能有未確認的非 V3 祖先                           │
+│ • 確保整個包裹遵循 V3 規則                                  │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="anti-pinning" class="text-2xl font-bold text-[var(--text-primary)]">防 Pinning 機制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>V3 如何防止 Pinning：
+
+攻擊場景：Bob 嘗試 pin Alice 的懲罰交易
+
+傳統交易（容易被 pin）：
+┌─────────────────────────────────────────────────────────────┐
+│ Bob 的承諾交易                                              │
+│       │                                                     │
+│       ├──→ Bob 的 pin 交易 1（低費率，大）                  │
+│       ├──→ Bob 的 pin 交易 2                               │
+│       ├──→ ... (最多 25 個子交易)                          │
+│       └──→ Alice 無法添加更多子交易！                       │
+│                                                             │
+│ 結果：Alice 的懲罰交易被阻止                                │
+└─────────────────────────────────────────────────────────────┘
+
+V3 交易（防止 pin）：
+┌─────────────────────────────────────────────────────────────┐
+│ Bob 的 V3 承諾交易                                          │
+│       │                                                     │
+│       └──→ Bob 的 pin 嘗試（最多 1000 vB）                  │
+│                                                             │
+│ Alice 可以：                                                │
+│ • RBF 替換 Bob 的子交易（成本可控，最多 1000 vB）           │
+│ • 或 RBF 替換整個承諾交易                                   │
+│                                                             │
+│ 結果：Alice 可以確保懲罰交易被確認                          │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="lightning" class="text-2xl font-bold text-[var(--text-primary)]">閃電網路應用</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路中的 V3 應用：
+
+新的承諾交易結構：
+┌─────────────────────────────────────────────────────────────┐
+│ V3 承諾交易                                                 │
+│ ├── to_local 輸出（延遲 + 撤銷）                            │
+│ ├── to_remote 輸出（P2WPKH）                                │
+│ ├── HTLC 輸出 1                                             │
+│ ├── HTLC 輸出 2                                             │
+│ └── 錨點輸出（用於 CPFP）                                   │
+│                                                             │
+│ 特點：                                                      │
+│ • nVersion = 3                                              │
+│ • 0 費率（通過 CPFP 支付）                                  │
+│ • 錨點輸出供雙方使用                                        │
+└─────────────────────────────────────────────────────────────┘
+
+CPFP 子交易：
+┌─────────────────────────────────────────────────────────────┐
+│ V3 CPFP 交易                                                │
+│ ├── 輸入：錨點輸出                                          │
+│ ├── 輸入：用戶的 UTXO（支付費用）                           │
+│ └── 輸出：找零                                              │
+│                                                             │
+│ 限制：                                                      │
+│ • 最大 1000 vB                                              │
+│ • 足夠包含必要輸入輸出                                      │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="usage" class="text-2xl font-bold text-[var(--text-primary)]">使用方式</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建 V3 交易（使用原始交易 API）
+
+# 設置 nVersion = 3
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc...", "vout": 0}
+]' '[
+  {"bc1q...": 0.001}
+]' 0 true
+# 返回的交易需要修改版本號
+
+# 或使用 Python
+import struct
+
+def set_version_3(raw_tx_hex):
+    """將交易版本設為 3"""
+    tx_bytes = bytes.fromhex(raw_tx_hex)
+    # 版本號是前 4 bytes（小端序）
+    version_3 = struct.pack('<I', 3)
+    return (version_3 + tx_bytes[4:]).hex()
+
+# 檢查交易版本
+bitcoin-cli decoderawtransaction "raw_tx_hex" | jq '.version'</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        V3 交易主要供閃電網路等協議使用。普通用戶通常不需要手動創建 V3 交易。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="comparison" class="text-2xl font-bold text-[var(--text-primary)]">版本比較</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">V1/V2</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">V3 (TRUC)</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最大子交易數</td>
+              <td class="py-2">25</td>
+              <td class="py-2">1</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">子交易大小限制</td>
+              <td class="py-2">~100 KB</td>
+              <td class="py-2">1000 vB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">RBF</td>
+              <td class="py-2">可選（BIP-125）</td>
+              <td class="py-2">強制啟用</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Pinning 風險</td>
+              <td class="py-2">高</td>
+              <td class="py-2">低</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">CPFP 成本預測</td>
+              <td class="py-2">困難</td>
+              <td class="py-2">容易</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">主要用途</td>
+              <td class="py-2">通用</td>
+              <td class="py-2">閃電網路</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="package-relay" class="text-2xl font-bold text-[var(--text-primary)]">與 Package Relay 配合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>V3 + Package Relay 組合：
+
+Package Relay 允許：
+├── 將父子交易作為包裹提交
+├── 包裹整體滿足費率要求即可
+└── 即使父交易 0 費率也能接受
+
+V3 交易的包裹：
+┌─────────────────────────────────────────────────────────────┐
+│ 包裹結構：                                                  │
+│                                                             │
+│ ┌─────────────────────────────────┐                        │
+│ │ V3 父交易（0 費率）              │                        │
+│ │ • 閃電網路承諾交易              │                        │
+│ │ • 無法單獨進入 mempool          │                        │
+│ └────────────┬────────────────────┘                        │
+│              │                                              │
+│              ▼                                              │
+│ ┌─────────────────────────────────┐                        │
+│ │ V3 子交易（高費率，≤1000 vB）   │                        │
+│ │ • CPFP 交易                     │                        │
+│ │ • 支付足夠費用                  │                        │
+│ └─────────────────────────────────┘                        │
+│                                                             │
+│ 包裹作為整體提交，一起進入 mempool                          │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="status" class="text-2xl font-bold text-[var(--text-primary)]">實現狀態</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>V3 交易實現進度：
+
+Bitcoin Core：
+├── v28.0：V3 交易策略規則實現
+├── 需要 Package Relay 配合
+└── 正在積極開發中
+
+閃電網路：
+├── BOLT 規範更新中
+├── LND、CLN、Eclair 準備中
+└── 需要時間遷移
+
+時間線（預估）：
+├── 2024-2025：Bitcoin Core 完整支持
+├── 2025-2026：閃電網路實現採用
+└── 逐步遷移現有通道</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">防 Pinning：</strong>限制子交易數量和大小</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">閃電網路：</strong>增強時間敏感交易安全</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">可預測：</strong>CPFP 費用易於計算</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">開發中：</strong>完整支持仍在實現中</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

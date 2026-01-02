@@ -1,0 +1,326 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Genesis Block"
+  description="深入了解比特幣創世區塊的結構、歷史意義和技術細節。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Genesis Block' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Block Structure', href: '/tech/bitcoin-core/block-structure' }}
+  nextPage={{ title: 'Coinbase Transaction', href: '/tech/bitcoin-core/coinbase-transaction' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">創世區塊概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      創世區塊（Genesis Block）是比特幣區塊鏈的第一個區塊，由中本聰在 2009 年 1 月 3 日創建。
+      它是整個比特幣網路的基礎，所有後續區塊都直接或間接連接到它。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">基本信息</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">區塊信息</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 高度：0</li>
+            <li>• 時間：2009-01-03 18:15:05 UTC</li>
+            <li>• 難度：1</li>
+            <li>• 交易數：1（Coinbase）</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">獎勵</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 區塊獎勵：50 BTC</li>
+            <li>• 但此獎勵無法花費</li>
+            <li>• 可能是故意設計</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="block-hash" class="text-2xl font-bold text-[var(--text-primary)]">區塊哈希</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>創世區塊哈希：
+
+000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+
+特點：
+├── 開頭有 10 個零（十六進制）
+├── 滿足當時的難度目標
+└── 這個哈希是硬編碼在 Bitcoin Core 中的
+
+在代碼中（chainparams.cpp）：
+consensus.hashGenesisBlock = uint256S(
+    "0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+);</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="header" class="text-2xl font-bold text-[var(--text-primary)]">區塊頭</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>創世區塊頭（80 bytes）：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 字段              │ 值                                      │
+├─────────────────────────────────────────────────────────────┤
+│ Version           │ 1                                       │
+│ Previous Block    │ 0000...0000（64 個零）                   │
+│ Merkle Root       │ 4a5e1e4baab89f3a32518a88c31bc87f618f...  │
+│ Timestamp         │ 1231006505 (2009-01-03 18:15:05 UTC)    │
+│ Bits (Difficulty) │ 0x1d00ffff (難度 = 1)                   │
+│ Nonce             │ 2083236893                              │
+└─────────────────────────────────────────────────────────────┘
+
+Previous Block 為全零：
+├── 創世區塊沒有前一個區塊
+├── 這是區塊鏈的起點
+└── 唯一一個 prevhash 為零的區塊</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看創世區塊
+bitcoin-cli getblockhash 0
+# 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+
+bitcoin-cli getblock "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+
+# 輸出
+{
+  "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+  "confirmations": 800000,
+  "height": 0,
+  "version": 1,
+  "merkleroot": "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+  "time": 1231006505,
+  "nonce": 2083236893,
+  "bits": "1d00ffff",
+  "difficulty": 1,
+  "nTx": 1,
+  "nextblockhash": "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="coinbase" class="text-2xl font-bold text-[var(--text-primary)]">Coinbase 交易</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>創世區塊的 Coinbase 交易：
+
+交易哈希：
+4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+
+ScriptSig（輸入腳本）包含的數據：
+04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e
+63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420
+666f722062616e6b73
+
+解碼後：
+├── 04ffff001d01 - 難度 bits
+├── 04 - 長度前綴
+└── "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+
+這是《泰晤士報》2009年1月3日的頭條新聞標題。</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看創世區塊的 Coinbase 交易
+bitcoin-cli getrawtransaction \
+  "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b" \
+  true \
+  "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+
+# 解碼 ScriptSig 中的消息
+echo "5468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73" | xxd -r -p
+# The Times 03/Jan/2009 Chancellor on brink of second bailout for banks</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="message" class="text-2xl font-bold text-[var(--text-primary)]">嵌入的消息</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>"The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+
+這條消息的意義：
+
+1. 時間戳證明
+   ├── 證明區塊不可能在 2009-01-03 之前創建
+   └── 使用當天報紙標題作為不可偽造的時間證明
+
+2. 對金融危機的評論
+   ├── 2008 年金融危機期間
+   ├── 政府對銀行的緊急救助
+   └── 暗示比特幣的創建動機
+
+3. 歷史記錄
+   ├── 永久記錄在區塊鏈中
+   ├── 任何人都可以驗證
+   └── 成為比特幣文化的一部分
+
+《泰晤士報》原文：
+┌─────────────────────────────────────────────────────────────┐
+│ Chancellor Alistair Darling on brink of second bailout     │
+│ for banks                                                   │
+│                                                             │
+│ 財政大臣阿利斯泰爾·達林正處於對銀行進行第二次紓困的邊緣      │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="unspendable" class="text-2xl font-bold text-[var(--text-primary)]">無法花費的獎勵</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>創世區塊的 50 BTC 獎勵無法花費：
+
+原因（技術層面）：
+├── 創世區塊的 Coinbase 交易不在 UTXO 集中
+├── Bitcoin Core 代碼中特殊處理
+└── 創世區塊是硬編碼的，不是從網路同步的
+
+可能的原因（推測）：
+├── 代碼缺陷（意外）
+├── 故意設計（象徵意義）
+└── 中本聰不希望自己獲得這些幣
+
+結果：
+├── 50 BTC 永久鎖定
+├── 實際流通量減少 50 BTC
+└── 成為比特幣歷史的一部分
+
+注意：
+├── 後續區塊的 Coinbase 可以正常花費
+└── 只有創世區塊有這個特性</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// Bitcoin Core 中的創世區塊處理
+// src/chainparams.cpp
+
+static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce,
+    uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+{
+    const char* pszTimestamp = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
+
+    // 創建 Coinbase 交易
+    CMutableTransaction txNew;
+    txNew.nVersion = 1;
+    txNew.vin.resize(1);
+    txNew.vout.resize(1);
+
+    // ScriptSig 包含報紙標題
+    txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4)
+        << std::vector<unsigned char>((const unsigned char*)pszTimestamp,
+           (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+
+    // 輸出到中本聰的公鑰
+    txNew.vout[0].nValue = genesisReward;  // 50 BTC
+    txNew.vout[0].scriptPubKey = CScript() << ParseHex("04678a...") << OP_CHECKSIG;
+
+    // 創建區塊
+    CBlock genesis;
+    genesis.nTime = nTime;
+    genesis.nBits = nBits;
+    genesis.nNonce = nNonce;
+    genesis.nVersion = nVersion;
+    genesis.vtx.push_back(MakeTransactionRef(std::move(txNew)));
+    genesis.hashPrevBlock.SetNull();  // 沒有前一個區塊
+    genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
+    return genesis;
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="testnet" class="text-2xl font-bold text-[var(--text-primary)]">測試網創世區塊</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>不同網路的創世區塊：
+
+主網（Mainnet）：
+├── 哈希：000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+├── 時間：2009-01-03 18:15:05 UTC
+└── 消息：The Times 03/Jan/2009...
+
+測試網3（Testnet3）：
+├── 哈希：000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943
+├── 時間：2011-02-02
+└── Nonce：414098458
+
+Signet：
+├── 哈希：00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6
+└── 使用不同的共識規則
+
+Regtest：
+├── 哈希：0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206
+└── 難度 = 1，用於本地測試</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="verification" class="text-2xl font-bold text-[var(--text-primary)]">驗證創世區塊</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>import hashlib
+import struct
+
+def double_sha256(data):
+    return hashlib.sha256(hashlib.sha256(data).digest()).digest()
+
+# 創世區塊頭（小端序）
+version = struct.pack('<I', 1)
+prev_block = bytes(32)  # 全零
+merkle_root = bytes.fromhex(
+    '3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a'
+)[::-1]  # 反轉為小端序
+timestamp = struct.pack('<I', 1231006505)
+bits = struct.pack('<I', 0x1d00ffff)
+nonce = struct.pack('<I', 2083236893)
+
+header = version + prev_block + merkle_root + timestamp + bits + nonce
+
+# 計算區塊哈希
+block_hash = double_sha256(header)[::-1].hex()
+print(f"區塊哈希: {block_hash}")
+# 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">起點：</strong>區塊高度 0，所有區塊的祖先</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">消息：</strong>包含《泰晤士報》標題作為時間戳</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">獎勵：</strong>50 BTC 永久無法花費</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">硬編碼：</strong>在 Bitcoin Core 代碼中定義</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

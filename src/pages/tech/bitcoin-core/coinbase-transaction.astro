@@ -1,0 +1,366 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Coinbase Transaction"
+  description="深入了解比特幣 Coinbase 交易的結構、規則和特殊屬性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Coinbase Transaction' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Genesis Block', href: '/tech/bitcoin-core/genesis-block' }}
+  nextPage={{ title: 'Transaction', href: '/tech/bitcoin-core/transaction' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">Coinbase 交易概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Coinbase 交易是每個區塊的第一筆交易，由礦工創建用於領取區塊獎勵和交易手續費。
+      它是比特幣發行的唯一方式，也是新幣進入流通的途徑。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">特殊性質</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">與普通交易的區別</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 沒有真正的輸入</li>
+            <li>• 輸入的 txid 為全零</li>
+            <li>• 可以包含任意數據</li>
+            <li>• 輸出需要 100 個確認</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">包含內容</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 區塊獎勵</li>
+            <li>• 所有交易手續費</li>
+            <li>• 區塊高度（BIP-34）</li>
+            <li>• 礦工自定義數據</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="structure" class="text-2xl font-bold text-[var(--text-primary)]">交易結構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 交易結構：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 輸入（只有一個）                                             │
+├─────────────────────────────────────────────────────────────┤
+│ txid        │ 0000...0000（32 bytes 全零）                  │
+│ vout        │ 0xFFFFFFFF（-1，特殊標記）                     │
+│ scriptSig   │ coinbase 數據（2-100 bytes）                  │
+│ sequence    │ 0xFFFFFFFF 或其他值                           │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ 輸出（一個或多個）                                           │
+├─────────────────────────────────────────────────────────────┤
+│ value       │ 獎勵 + 手續費 ≤ 允許的最大值                   │
+│ scriptPubKey│ 礦工的收款地址腳本                            │
+└─────────────────────────────────────────────────────────────┘
+
+輸入的特殊性：
+├── txid 全零：沒有引用任何前一個交易
+├── vout = -1：標記這是 coinbase
+└── scriptSig：可以是任意數據（coinbase data）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="coinbase-data" class="text-2xl font-bold text-[var(--text-primary)]">Coinbase 數據</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>ScriptSig（Coinbase Data）結構：
+
+必須包含（BIP-34，高度 227,931+）：
+├── 區塊高度（壓縮格式）
+└── 1-8 bytes 的高度編碼
+
+可選包含：
+├── Extra Nonce（額外隨機數）
+├── 礦池標識
+├── 礦工自定義消息
+└── Witness commitment（SegWit）
+
+長度限制：
+├── 最小：2 bytes
+└── 最大：100 bytes
+
+示例解析：
+┌─────────────────────────────────────────────────────────────┐
+│ 03 | 80380c | 04... | 2f... | 00000000...                  │
+│ │    │        │       │       │                             │
+│ │    │        │       │       └── Extra Nonce              │
+│ │    │        │       └────────── 礦池標識（如 /Foundry/）  │
+│ │    │        └────────────────── 其他數據                  │
+│ │    └─────────────────────────── 區塊高度（803968）        │
+│ └──────────────────────────────── 長度（3 bytes）          │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看最新區塊的 Coinbase
+HASH=$(bitcoin-cli getbestblockhash)
+BLOCK=$(bitcoin-cli getblock $HASH 2)
+echo $BLOCK | jq '.tx[0]'
+
+# 解碼 Coinbase 數據
+COINBASE_HEX=$(echo $BLOCK | jq -r '.tx[0].vin[0].coinbase')
+echo $COINBASE_HEX | xxd -r -p
+
+# 提取區塊高度
+# 假設 coinbase 開頭是 03 XX XX XX（3 bytes 高度）
+HEIGHT_HEX=$(echo $COINBASE_HEX | cut -c3-8)
+echo $((16#$(echo $HEIGHT_HEX | fold -w2 | tac | tr -d '\n')))</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="block-reward" class="text-2xl font-bold text-[var(--text-primary)]">區塊獎勵</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊獎勵減半歷史：
+
+┌──────────────────────────────────────────────────────────────┐
+│ 高度範圍           │ 獎勵      │ 時間                        │
+├──────────────────────────────────────────────────────────────┤
+│ 0 - 209,999        │ 50 BTC    │ 2009-01 至 2012-11         │
+│ 210,000 - 419,999  │ 25 BTC    │ 2012-11 至 2016-07         │
+│ 420,000 - 629,999  │ 12.5 BTC  │ 2016-07 至 2020-05         │
+│ 630,000 - 839,999  │ 6.25 BTC  │ 2020-05 至 2024-04         │
+│ 840,000 - 1,049,999│ 3.125 BTC │ 2024-04 至 ~2028           │
+│ ...                │ ...       │ 持續減半                    │
+└──────────────────────────────────────────────────────────────┘
+
+計算公式：
+reward = 50 * 10^8 / (2 ^ (height / 210000)) satoshis
+
+最終發行量：
+├── 總計約 2100 萬 BTC
+├── 預計 2140 年左右挖完
+└── 實際略少（舍入損失 + 銷毀）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>def get_block_subsidy(height: int) -> int:
+    """計算區塊獎勵（satoshis）"""
+    INITIAL_REWARD = 50 * 100_000_000  # 50 BTC
+    HALVING_INTERVAL = 210_000
+
+    halvings = height // HALVING_INTERVAL
+    if halvings >= 64:
+        return 0
+
+    return INITIAL_REWARD >> halvings
+
+# 示例
+print(f"高度 0: {get_block_subsidy(0) / 1e8} BTC")      # 50.0
+print(f"高度 210000: {get_block_subsidy(210000) / 1e8} BTC")  # 25.0
+print(f"高度 840000: {get_block_subsidy(840000) / 1e8} BTC")  # 3.125</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="maturity" class="text-2xl font-bold text-[var(--text-primary)]">成熟度要求</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 成熟度規則：
+
+100 個區塊確認要求：
+├── Coinbase 輸出需要 100 個確認才能花費
+├── 防止重組造成的雙花問題
+└── COINBASE_MATURITY = 100
+
+為什麼需要 100 確認？
+┌─────────────────────────────────────────────────────────────┐
+│ 區塊 N（包含 Coinbase）                                     │
+│     ↓                                                       │
+│ 區塊 N+1                                                    │
+│     ↓                                                       │
+│   ...                                                       │
+│     ↓                                                       │
+│ 區塊 N+100 ← 此時 Coinbase 可以花費                         │
+│                                                             │
+│ 如果發生重組：                                              │
+│ ├── 區塊 N 可能被孤立                                       │
+│ ├── Coinbase 交易消失                                       │
+│ └── 花費該 Coinbase 的交易變成無效                          │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 Coinbase 是否成熟
+bitcoin-cli listunspent 0 9999999 '[]' true '{"include_immature_coinbase": true}'
+
+# 查看錢包的不成熟餘額
+bitcoin-cli getbalances
+# {
+#   "mine": {
+#     "trusted": 1.0,
+#     "untrusted_pending": 0,
+#     "immature": 6.25  ← 未成熟的 Coinbase
+#   }
+# }
+
+# 嘗試花費未成熟 Coinbase 會失敗
+# Error: bad-txns-premature-spend-of-coinbase</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="witness-commitment" class="text-2xl font-bold text-[var(--text-primary)]">Witness Commitment</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>SegWit Witness Commitment：
+
+位置：Coinbase 交易的一個輸出
+格式：OP_RETURN + 0x24 + 0xaa21a9ed + commitment
+
+┌─────────────────────────────────────────────────────────────┐
+│ 6a24aa21a9ed + 32-byte-commitment                           │
+│ │ │  │                                                      │
+│ │ │  └── Witness commitment 標記                            │
+│ │ └───── 長度（36 bytes）                                   │
+│ └─────── OP_RETURN                                          │
+└─────────────────────────────────────────────────────────────┘
+
+Commitment 計算：
+├── wtxid_commitment = SHA256(SHA256(witness_root || witness_nonce))
+├── witness_root = 區塊中所有 wtxid 的 Merkle 根
+└── witness_nonce = Coinbase witness 中的 32 bytes
+
+為什麼需要？
+├── SegWit 的 witness 數據不在 Merkle 根中
+├── 需要額外承諾來驗證 witness 數據
+└── 確保 witness 數據完整性</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="pool-identification" class="text-2xl font-bold text-[var(--text-primary)]">礦池標識</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>常見礦池標識：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 礦池            │ Coinbase 標識                             │
+├─────────────────────────────────────────────────────────────┤
+│ F2Pool          │ /F2Pool/                                  │
+│ AntPool         │ /AntPool/                                 │
+│ ViaBTC          │ /ViaBTC/                                  │
+│ Foundry USA     │ /Foundry USA Pool/                        │
+│ Binance Pool    │ /Binance/                                 │
+│ Poolin          │ /poolin.com/                              │
+│ SlushPool       │ /slush/                                   │
+│ BTC.com         │ /BTC.COM/                                 │
+└─────────────────────────────────────────────────────────────┘
+
+標識用途：
+├── 識別區塊礦工
+├── 礦池市場份額分析
+└── 網路去中心化監測</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 提取最近區塊的礦池標識
+for i in {0..9}; do
+  HASH=$(bitcoin-cli getblockhash $(($(bitcoin-cli getblockcount) - i)))
+  COINBASE=$(bitcoin-cli getblock $HASH 2 | jq -r '.tx[0].vin[0].coinbase')
+  echo "Block $i: $(echo $COINBASE | xxd -r -p | strings)"
+done</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="extra-nonce" class="text-2xl font-bold text-[var(--text-primary)]">Extra Nonce</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Extra Nonce 的作用：
+
+區塊頭中的 Nonce 只有 32 位：
+├── 最多 4,294,967,296 種組合
+├── 現代礦機每秒數百 TH/s
+└── 幾秒內就會耗盡
+
+解決方案：Extra Nonce
+┌─────────────────────────────────────────────────────────────┐
+│ 區塊頭 Nonce（4 bytes）+ Coinbase Extra Nonce（8+ bytes）  │
+│                                                             │
+│ 修改 Extra Nonce：                                          │
+│ 1. Coinbase 交易改變                                        │
+│ 2. Merkle Root 改變                                         │
+│ 3. 區塊頭改變                                               │
+│ 4. 區塊哈希改變                                             │
+└─────────────────────────────────────────────────────────────┘
+
+典型 Extra Nonce：
+├── Extra Nonce 1：4 bytes（礦池分配）
+└── Extra Nonce 2：4+ bytes（礦工本地）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="validation" class="text-2xl font-bold text-[var(--text-primary)]">驗證規則</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 交易驗證規則：
+
+1. 結構檢查
+   ├── 必須是區塊的第一筆交易
+   ├── 只能有一個輸入
+   ├── 輸入 txid 必須為全零
+   └── 輸入 vout 必須為 0xFFFFFFFF
+
+2. ScriptSig 檢查
+   ├── 長度 2-100 bytes
+   └── 必須以區塊高度開頭（BIP-34）
+
+3. 金額檢查
+   ├── 總輸出 ≤ 區塊獎勵 + 交易手續費
+   └── 不能超過允許的最大值
+
+4. SegWit 檢查（如適用）
+   ├── 必須有 witness commitment 輸出
+   └── Coinbase witness 格式正確
+
+5. 其他
+   ├── 版本號有效
+   └── 輸出腳本標準（策略規則）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">新幣發行：</strong>唯一的比特幣發行方式</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">獎勵減半：</strong>每 210,000 區塊減半</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">成熟度：</strong>需要 100 個確認才能花費</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">數據：</strong>可包含礦池標識和任意消息</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

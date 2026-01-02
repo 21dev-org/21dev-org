@@ -1,0 +1,396 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Initial Block Download"
+  description="深入了解 Bitcoin Core 的初始區塊下載（IBD）過程，優化同步速度的策略。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Initial Block Download' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Headers-First Sync', href: '/tech/bitcoin-core/headers-first' }}
+  nextPage={{ title: 'AssumeValid', href: '/tech/bitcoin-core/assumevalid' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">IBD 概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      初始區塊下載（Initial Block Download，IBD）是新節點同步完整區塊鏈的過程。
+      這個過程涉及下載、驗證超過 600 GB 的區塊數據，是運行全節點的關鍵步驟。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">同步統計</h3>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">數據量</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 區塊數據：~600 GB</li>
+            <li>• 區塊頭：~60 MB</li>
+            <li>• UTXO 集：~8 GB</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">時間估算</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• SSD + 快速網路：4-8 小時</li>
+            <li>• HDD：24-72 小時</li>
+            <li>• 修剪模式：2-4 小時</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">資源需求</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• RAM：建議 4+ GB</li>
+            <li>• CPU：多核更快</li>
+            <li>• I/O：SSD 強烈推薦</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="phases" class="text-2xl font-bold text-[var(--text-primary)]">同步階段</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>IBD 三個階段：
+
+階段 1：下載區塊頭（Headers-First）
+┌─────────────────────────────────────────────────────────────┐
+│ 1. 連接到節點                                               │
+│ 2. 發送 getheaders 消息                                     │
+│ 3. 接收區塊頭（每次最多 2000 個）                           │
+│ 4. 驗證區塊頭（PoW、連接性）                                │
+│ 5. 構建區塊頭鏈                                             │
+│ 6. 識別最長有效鏈                                           │
+│                                                             │
+│ 速度：幾分鐘                                                 │
+│ 數據：~60 MB                                                 │
+└─────────────────────────────────────────────────────────────┘
+
+階段 2：下載區塊
+┌─────────────────────────────────────────────────────────────┐
+│ 1. 根據區塊頭鏈請求區塊                                     │
+│ 2. 並行下載（從多個節點）                                   │
+│ 3. 驗證區塊（交易、Merkle 根）                              │
+│ 4. 更新 UTXO 集                                             │
+│ 5. 存儲區塊到磁盤                                           │
+│                                                             │
+│ 速度：主要瓶頸                                               │
+│ 數據：~600 GB                                                │
+└─────────────────────────────────────────────────────────────┘
+
+階段 3：趕上最新
+┌─────────────────────────────────────────────────────────────┐
+│ 1. 切換到正常同步模式                                       │
+│ 2. 接收新區塊公告                                           │
+│ 3. 下載並驗證新區塊                                         │
+│ 4. 維護 mempool                                             │
+│                                                             │
+│ IBD 完成！                                                   │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="optimization" class="text-2xl font-bold text-[var(--text-primary)]">優化配置</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - IBD 優化配置
+
+# 增加數據庫緩存（更快的 UTXO 操作）
+# 預設 450 MB，建議 IBD 期間增加
+dbcache=4096
+
+# 增加連接數（更多下載源）
+maxconnections=50
+
+# 增加下載緩衝區
+maxreceivebuffer=10000
+maxsendbuffer=10000
+
+# 禁用錢包（減少 I/O）
+disablewallet=1
+
+# 不監聽入站連接（專注下載）
+listen=0
+
+# 使用多個 DNS 種子
+dnsseed=1
+
+# 可選：指定高速節點
+addnode=fast-node-1.example.com
+addnode=fast-node-2.example.com</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟動 IBD 優化的 bitcoind
+bitcoind -dbcache=4096 -maxconnections=50 -listen=0
+
+# 監控同步進度
+watch -n 10 'bitcoin-cli getblockchaininfo | jq "{
+  blocks: .blocks,
+  headers: .headers,
+  progress: .verificationprogress,
+  size_gb: (.size_on_disk / 1073741824)
+}"'
+
+# 預估完成時間
+bitcoin-cli getblockchaininfo | jq '.verificationprogress * 100'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="assumevalid" class="text-2xl font-bold text-[var(--text-primary)]">AssumeValid</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>AssumeValid 加速：
+
+工作原理：
+├── 跳過特定區塊高度之前的簽名驗證
+├── 仍然驗證區塊結構、Merkle 根、UTXO
+└── 假設這些區塊的簽名是有效的
+
+預設配置：
+├── 硬編碼在 Bitcoin Core 中
+├── 每個版本更新
+└── 指向數月前的區塊
+
+效果：
+├── IBD 速度提升 ~60%
+├── 主要節省 CPU 時間
+└── 不影響安全性（仍驗證 PoW）
+
+禁用（完全驗證）：
+bitcoind -assumevalid=0
+
+自定義：
+bitcoind -assumevalid=區塊哈希</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="assumeutxo" class="text-2xl font-bold text-[var(--text-primary)]">AssumeUTXO</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>AssumeUTXO 快速啟動（v24.0+）：
+
+┌─────────────────────────────────────────────────────────────┐
+│ 傳統 IBD                    │ AssumeUTXO                   │
+├─────────────────────────────────────────────────────────────┤
+│ 從創世區塊開始              │ 從 UTXO 快照開始             │
+│ 下載所有區塊                │ 載入預計算 UTXO 集           │
+│ 驗證所有交易                │ 幾分鐘內可用                  │
+│ 幾小時到幾天                │ 後台繼續驗證                  │
+└─────────────────────────────────────────────────────────────┘
+
+使用流程：
+1. 下載 UTXO 快照（幾 GB）
+2. 載入快照
+   bitcoin-cli loadtxoutset /path/to/utxo.dat
+3. 立即開始使用（追趕最新區塊）
+4. 後台驗證歷史區塊
+
+快照內容：
+├── UTXO 集序列化數據
+├── 區塊高度和哈希
+└── 雜湊承諾（用於驗證）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="pruning" class="text-2xl font-bold text-[var(--text-primary)]">修剪模式</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - 修剪模式
+
+# 保留最少 550 MB（硬下限）
+prune=550
+
+# 或指定保留更多空間（MB）
+prune=10000  # 10 GB
+
+# 修剪模式的 IBD：
+# ├── 仍需下載所有區塊（驗證需要）
+# ├── 驗證後刪除舊區塊
+# ├── 只保留最新的 N MB
+# └── 同步時間略短（減少寫入）</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        修剪節點無法服務歷史區塊給其他節點，且某些 RPC（如 getrawtransaction）功能受限。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控進度</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看同步狀態
+bitcoin-cli getblockchaininfo
+
+# 輸出重點字段
+{
+  "blocks": 750000,              # 已驗證區塊
+  "headers": 800000,             # 已下載區塊頭
+  "verificationprogress": 0.95,  # 驗證進度 (0-1)
+  "initialblockdownload": true,  # 是否在 IBD 中
+  "size_on_disk": 500000000000   # 磁盤使用
+}
+
+# 監控腳本
+#!/bin/bash
+while true; do
+    INFO=$(bitcoin-cli getblockchaininfo)
+    BLOCKS=$(echo $INFO | jq '.blocks')
+    HEADERS=$(echo $INFO | jq '.headers')
+    PROGRESS=$(echo $INFO | jq '.verificationprogress * 100')
+    SIZE=$(echo $INFO | jq '.size_on_disk / 1073741824')
+    IBD=$(echo $INFO | jq '.initialblockdownload')
+
+    echo "$(date): Blocks=$BLOCKS/$HEADERS Progress=${PROGRESS}% Size=${SIZE}GB IBD=$IBD"
+    sleep 60
+done
+
+# 查看網路流量
+bitcoin-cli getnettotals | jq '{
+  recv_gb: (.totalbytesrecv / 1073741824),
+  sent_gb: (.totalbytessent / 1073741824)
+}'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="troubleshooting" class="text-2xl font-bold text-[var(--text-primary)]">問題排除</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>常見問題和解決方案：
+
+1. 同步緩慢
+   原因：
+   ├── HDD 而非 SSD
+   ├── dbcache 設置過低
+   ├── 連接節點少
+   └── 網路頻寬不足
+
+   解決：
+   ├── 使用 SSD
+   ├── 增加 dbcache=4096
+   ├── 增加 maxconnections
+   └── 添加高速節點
+
+2. 節點卡住
+   原因：
+   ├── 連接到慢節點
+   ├── 磁盤空間不足
+   └── 內存不足
+
+   解決：
+   ├── 重啟節點
+   ├── 清理磁盤空間
+   └── 增加內存或減少 dbcache
+
+3. "Not enough peers"
+   解決：
+   ├── 檢查防火牆
+   ├── 添加 addnode
+   └── 等待節點發現
+
+4. 驗證錯誤
+   解決：
+   ├── 可能是數據損壞
+   └── 使用 -reindex-chainstate</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 重建索引（數據損壞時）
+bitcoind -reindex
+
+# 只重建鏈狀態
+bitcoind -reindex-chainstate
+
+# 查看 debug.log 診斷
+tail -f ~/.bitcoin/debug.log | grep -E "UpdateTip|progress|Error"
+
+# 檢查連接
+bitcoin-cli getpeerinfo | jq '.[].subver' | sort | uniq -c</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="hardware" class="text-2xl font-bold text-[var(--text-primary)]">硬體建議</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">配置</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">最低要求</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">推薦配置</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">存儲</td>
+              <td class="py-2">700 GB HDD</td>
+              <td class="py-2">1 TB+ NVMe SSD</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">RAM</td>
+              <td class="py-2">2 GB</td>
+              <td class="py-2">8+ GB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">CPU</td>
+              <td class="py-2">雙核</td>
+              <td class="py-2">四核+</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">網路</td>
+              <td class="py-2">10 Mbps</td>
+              <td class="py-2">100+ Mbps</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">IBD 時間</td>
+              <td class="py-2">2-7 天</td>
+              <td class="py-2">4-8 小時</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Headers-First：</strong>先下載區塊頭，再下載區塊</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">優化：</strong>增加 dbcache、使用 SSD</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">AssumeUTXO：</strong>分鐘級啟動新節點</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">耐心：</strong>完整同步需要時間和資源</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

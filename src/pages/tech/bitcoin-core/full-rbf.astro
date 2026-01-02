@@ -1,0 +1,341 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Full RBF"
+  description="深入了解 Bitcoin Core 的 Full RBF 策略，與傳統 RBF 的區別及影響。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Full RBF' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'RBF', href: '/tech/bitcoin-core/rbf' }}
+  nextPage={{ title: 'CPFP', href: '/tech/bitcoin-core/cpfp' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">Full RBF 概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Full RBF（Complete Replace-By-Fee）允許替換 mempool 中的任何未確認交易，
+      無論原始交易是否標記為可替換。這與傳統的選擇性 RBF（BIP-125）形成對比。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">RBF 類型比較</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">選擇性 RBF（BIP-125）</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• nSequence &lt; 0xFFFFFFFE</li>
+            <li>• 發送者明確選擇</li>
+            <li>• 錢包可識別</li>
+            <li>• 預設策略</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">Full RBF</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 任何未確認交易</li>
+            <li>• 無需發送者標記</li>
+            <li>• 需要節點啟用</li>
+            <li>• v24.0+ 可選</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="history" class="text-2xl font-bold text-[var(--text-primary)]">歷史背景</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF 演進歷史：
+
+2013: 交易替換最初被禁用
+      └── 防止垃圾交易攻擊
+
+2016: BIP-125 選擇性 RBF
+      ├── nSequence 信號機制
+      ├── 發送者可選擇加入
+      └── 接收者可識別
+
+2022: Full RBF 討論
+      ├── mempoolfullrbf 選項提議
+      ├── Bitcoin Core v24.0 加入
+      └── 預設關閉
+
+2023: Full RBF 逐漸採用
+      ├── 更多節點啟用
+      └── 礦池開始接受
+
+爭議點：
+┌─────────────────────────────────────────────────────────────┐
+│ 支持者：                        │ 反對者：                 │
+├─────────────────────────────────────────────────────────────┤
+│ • 反映經濟現實                  │ • 破壞 0-conf 交易       │
+│ • 防止交易卡住                  │ • 影響商家體驗           │
+│ • 簡化用戶體驗                  │ • 改變社會契約           │
+│ • 減少 pinning 攻擊             │ • 歷史行為改變           │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 啟用 Full RBF（v24.0+）
+mempoolfullrbf=1
+
+# 預設值（關閉）
+mempoolfullrbf=0
+
+# v28.0+ 可能成為預設行為</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查節點的 Full RBF 設置
+bitcoin-cli getmempoolinfo | jq '.fullrbf'
+
+# 查看 mempool 策略
+bitcoin-cli getmempoolinfo
+
+# 輸出示例
+{
+  "loaded": true,
+  "size": 50000,
+  "bytes": 25000000,
+  "usage": 80000000,
+  "total_fee": 1.5,
+  "maxmempool": 300000000,
+  "mempoolminfee": 0.00001000,
+  "minrelaytxfee": 0.00001000,
+  "incrementalrelayfee": 0.00001000,
+  "unbroadcastcount": 0,
+  "fullrbf": true  # Full RBF 狀態
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="behavior" class="text-2xl font-bold text-[var(--text-primary)]">行為差異</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易替換行為：
+
+選擇性 RBF（mempoolfullrbf=0）：
+┌─────────────────────────────────────────────────────────────┐
+│ 原始交易                        │ 替換結果                 │
+├─────────────────────────────────────────────────────────────┤
+│ nSequence = 0xFFFFFFFD (可替換) │ ✓ 允許替換              │
+│ nSequence = 0xFFFFFFFF (最終)   │ ✗ 拒絕替換              │
+└─────────────────────────────────────────────────────────────┘
+
+Full RBF（mempoolfullrbf=1）：
+┌─────────────────────────────────────────────────────────────┐
+│ 原始交易                        │ 替換結果                 │
+├─────────────────────────────────────────────────────────────┤
+│ nSequence = 0xFFFFFFFD (可替換) │ ✓ 允許替換              │
+│ nSequence = 0xFFFFFFFF (最終)   │ ✓ 允許替換（忽略標記）  │
+└─────────────────────────────────────────────────────────────┘
+
+替換規則（兩者相同）：
+├── 新交易手續費 > 舊交易手續費
+├── 新費率 >= 舊費率 + 增量
+├── 新交易不能添加未確認輸入
+└── 新交易信號數必須 >= 舊交易</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implications" class="text-2xl font-bold text-[var(--text-primary)]">實際影響</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Full RBF 對不同角色的影響：
+
+用戶/發送者：
+├── 優勢：可以替換任何卡住的交易
+├── 優勢：不需要提前決定是否可替換
+└── 風險：第三方可能嘗試替換你的交易
+
+商家/接收者：
+├── 0-conf 變得不可靠
+├── 需要等待至少 1 確認
+└── 或使用額外的安全措施
+
+礦池/礦工：
+├── 可以接受更高手續費的替換
+├── 經濟激勵明確
+└── 大多數礦池已支持
+
+閃電網路：
+├── 有助於及時關閉通道
+├── 防止某些 pinning 攻擊
+└── 增強安全性</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">Full RBF 好處</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 解決交易卡住問題</li>
+          <li>• 簡化用戶體驗</li>
+          <li>• 反映挖礦經濟現實</li>
+          <li>• 減少 pinning 攻擊</li>
+          <li>• 增強閃電網路安全</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">需要考慮</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 0-conf 交易不再安全</li>
+          <li>• 商家需要調整流程</li>
+          <li>• 可能增加雙花嘗試</li>
+          <li>• 需要等待確認</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="zero-conf" class="text-2xl font-bold text-[var(--text-primary)]">0-Conf 安全性</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>0-Conf 交易安全性分析：
+
+即使沒有 Full RBF，0-conf 也有風險：
+┌─────────────────────────────────────────────────────────────┐
+│ 攻擊向量                        │ Full RBF 前 │ Full RBF 後│
+├─────────────────────────────────────────────────────────────┤
+│ 礦工直接挖雙花                  │ 可能        │ 可能       │
+│ 找到接受 RBF 的礦池             │ 可能        │ 更容易     │
+│ 通過特定節點廣播                │ 可能        │ 可能       │
+│ 賄賂礦工                        │ 可能        │ 可能       │
+└─────────────────────────────────────────────────────────────┘
+
+結論：
+├── 0-conf 從來不是絕對安全的
+├── Full RBF 只是降低了攻擊成本
+└── 安全接收應等待確認
+
+替代方案：
+├── 等待 1+ 確認
+├── 使用閃電網路（即時確認）
+├── 客戶身份驗證（非匿名場景）
+└── 較小金額可接受風險</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="example" class="text-2xl font-bold text-[var(--text-primary)]">使用範例</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 場景：交易卡住，需要替換
+
+# 1. 發送原始交易（無 RBF 標記）
+bitcoin-cli sendtoaddress "bc1q..." 0.1
+
+# 交易卡住（手續費太低）...
+
+# 2. 在支持 Full RBF 的節點上創建替換交易
+# 使用相同的輸入，更高的手續費
+
+# 獲取原始交易的輸入
+bitcoin-cli gettransaction "txid" | jq '.decoded.vin'
+
+# 創建替換交易
+bitcoin-cli createrawtransaction '[
+  {"txid": "same_utxo_txid", "vout": 0}
+]' '[
+  {"bc1q...": 0.0999}  # 減少輸出 = 增加手續費
+]'
+
+# 簽名並廣播
+bitcoin-cli signrawtransactionwithwallet "hex..."
+bitcoin-cli sendrawtransaction "signed_hex..."
+
+# 3. 如果連接的節點支持 Full RBF，替換會成功
+# 即使原始交易沒有 RBF 標記</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="network-status" class="text-2xl font-bold text-[var(--text-primary)]">網路狀態</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Full RBF 採用狀態（估計）：
+
+節點：
+├── 約 30-40% 節點啟用 Full RBF
+└── 比例持續增長
+
+礦池：
+├── 大多數主要礦池接受 Full RBF
+├── 礦池有經濟激勵接受更高費用
+└── 實際替換成功率較高
+
+實際效果：
+├── 如果足夠多節點/礦工支持
+├── Full RBF 替換可以成功
+└── 即使你的節點未啟用
+
+檢查節點支持：
+bitcoin-cli getpeerinfo | jq '.[].services_str' | grep -c FULLRBF</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="future" class="text-2xl font-bold text-[var(--text-primary)]">未來展望</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Full RBF 的未來：
+
+趨勢：
+├── 可能成為預設行為（v28.0+？）
+├── 選擇性 RBF 標記可能變得不必要
+└── 網路會逐漸收斂到這個行為
+
+建議：
+┌─────────────────────────────────────────────────────────────┐
+│ 對於發送者：                                                │
+│ ├── 使用 RBF 標記（向後兼容）                               │
+│ ├── 設置合理的初始手續費                                   │
+│ └── 準備好使用 RBF/CPFP                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 對於接收者：                                                │
+│ ├── 不要依賴 0-conf                                        │
+│ ├── 等待至少 1 確認                                        │
+│ └── 或使用閃電網路                                         │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Full RBF：</strong>允許替換任何未確認交易</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">配置：</strong>mempoolfullrbf=1 啟用</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">趨勢：</strong>逐漸被更多節點和礦工採用</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>0-conf 交易應謹慎對待</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
