@@ -1,0 +1,284 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Bumpfee"
+  description="學習使用 bumpfee RPC 命令提高卡住交易的手續費，加速確認。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Bumpfee' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'RBF', href: '/tech/bitcoin-core/rbf' }}
+  nextPage={{ title: 'CPFP', href: '/tech/bitcoin-core/cpfp' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        bumpfee 是 Bitcoin Core 提供的 RPC 命令，用於提高未確認交易的手續費。
+        當交易因手續費過低而卡在 mempool 中時，這是最簡單的加速方法。
+      </p>
+
+      <h2>基本用法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 基本語法
+bitcoin-cli bumpfee &lt;txid&gt;
+
+# 返回結果
+{
+  "txid": "new_txid...",      # 新交易的 TXID
+  "origfee": 0.00001000,      # 原始手續費
+  "fee": 0.00002500,          # 新手續費
+  "errors": []
+}
+
+# 指定目標確認塊數
+bitcoin-cli bumpfee &lt;txid&gt; '{"conf_target": 6}'
+
+# 指定費率
+bitcoin-cli bumpfee &lt;txid&gt; '{"fee_rate": 25}'  # 25 sat/vB</code></pre>
+
+      <h2>參數選項</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">參數</th>
+                <th class="text-left py-2">類型</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">conf_target</td>
+                <td class="py-2">number</td>
+                <td class="py-2">目標確認區塊數</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">fee_rate</td>
+                <td class="py-2">number</td>
+                <td class="py-2">指定費率 (sat/vB)</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">replaceable</td>
+                <td class="py-2">boolean</td>
+                <td class="py-2">新交易是否可再次替換</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">estimate_mode</td>
+                <td class="py-2">string</td>
+                <td class="py-2">ECONOMICAL 或 CONSERVATIVE</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>前提條件</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易必須滿足:
+1. 是錢包創建的交易
+2. 仍在 mempool 中（未確認）
+3. 標記為可替換 (RBF)
+   - nSequence &lt; 0xfffffffe
+   - 或通過 -walletrbf=1 創建
+
+# 檢查交易是否可 bump
+bitcoin-cli gettransaction &lt;txid&gt;
+{
+  ...
+  "bip125-replaceable": "yes",  # 必須是 "yes"
+  "confirmations": 0,            # 必須是 0
+  ...
+}</code></pre>
+
+      <h2>工作原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>bumpfee 內部流程:
+
+1. 驗證原交易可替換
+2. 計算需要的新費率
+3. 創建替換交易:
+   - 相同的輸入
+   - 調整找零輸出（減少以增加費用）
+   - 或添加新輸入（如果找零不夠）
+4. 簽名新交易
+5. 廣播新交易
+
+// 費用來源優先級
+1. 減少找零輸出
+2. 如果找零不夠，添加額外輸入
+3. 如果仍不夠，失敗</code></pre>
+
+      <h2>實際示例</h2>
+
+      <h3>場景：加速卡住的交易</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 1. 發送交易（低費率）
+bitcoin-cli sendtoaddress "bc1q..." 0.1
+
+# 返回: abc123... (txid)
+
+# 2. 交易卡住了，檢查狀態
+bitcoin-cli gettransaction abc123...
+# confirmations: 0, fee: -0.00000141
+
+# 3. 提高手續費
+bitcoin-cli bumpfee abc123... '{"fee_rate": 50}'
+
+# 返回:
+{
+  "txid": "def456...",
+  "origfee": 0.00000141,
+  "fee": 0.00005600,
+  "errors": []
+}
+
+# 4. 新交易 def456... 替換了原交易
+# 原交易 abc123... 從 mempool 中移除</code></pre>
+
+      <h3>場景：多次 bump</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 第一次 bump
+bitcoin-cli bumpfee abc123... '{"fee_rate": 20}'
+# 新 txid: def456...
+
+# 費率還是不夠，再次 bump
+bitcoin-cli bumpfee def456... '{"fee_rate": 50}'
+# 新 txid: ghi789...
+
+# 注意：每次 bump 都是新交易
+# 舊交易會被替換</code></pre>
+
+      <h2>psbtbumpfee</h2>
+      <p>
+        對於需要外部簽名的錢包，使用 psbtbumpfee：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 生成 PSBT 而不是直接廣播
+bitcoin-cli psbtbumpfee &lt;txid&gt; '{"fee_rate": 30}'
+
+{
+  "psbt": "cHNidP8B...",
+  "origfee": 0.00001000,
+  "fee": 0.00003000,
+  "errors": []
+}
+
+# 然後用外部設備簽名
+# 最後用 finalizepsbt 和 sendrawtransaction 廣播</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 常見錯誤
+
+# 1. 交易不可替換
+bitcoin-cli bumpfee &lt;txid&gt;
+# error: Transaction is not BIP 125 replaceable
+
+# 解決: 只能使用 CPFP
+
+# 2. 交易已確認
+bitcoin-cli bumpfee &lt;txid&gt;
+# error: Transaction has been mined, or is conflicted
+
+# 解決: 無需操作，交易已完成
+
+# 3. 費用不足
+bitcoin-cli bumpfee &lt;txid&gt; '{"fee_rate": 5}'
+# error: Insufficient fee
+
+# 解決: 使用更高的費率
+
+# 4. 資金不足
+bitcoin-cli bumpfee &lt;txid&gt; '{"fee_rate": 1000}'
+# error: Unable to create transaction
+
+# 解決: 降低費率或添加更多資金到錢包</code></pre>
+
+      <h2>費率估算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 在 bump 前先估算合適的費率
+bitcoin-cli estimatesmartfee 6
+{
+  "feerate": 0.00025000,  # BTC/kvB
+  "blocks": 6
+}
+
+# 轉換為 sat/vB
+# 0.00025 BTC/kvB = 25 sat/vB
+
+# 然後使用這個費率
+bitcoin-cli bumpfee &lt;txid&gt; '{"fee_rate": 25}'
+
+# 或直接使用 conf_target
+bitcoin-cli bumpfee &lt;txid&gt; '{"conf_target": 6}'</code></pre>
+
+      <h2>GUI 操作</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>在 Bitcoin Core GUI 中:
+
+1. 打開「交易」標籤
+2. 找到卡住的交易（0 確認）
+3. 右鍵點擊交易
+4. 選擇「增加交易費用」(Increase transaction fee)
+5. 確認新費用
+6. 錢包自動創建並廣播替換交易</code></pre>
+
+      <h2>最佳實踐</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>啟用 RBF：</strong>在 bitcoin.conf 中設置 walletrbf=1</li>
+          <li><strong>預留找零：</strong>確保交易有找零輸出以便 bump</li>
+          <li><strong>監控 mempool：</strong>及時發現卡住的交易</li>
+          <li><strong>合理估算：</strong>使用 estimatesmartfee 確定費率</li>
+          <li><strong>不要過度 bump：</strong>避免浪費手續費</li>
+        </ul>
+      </div>
+
+      <h2>與 CPFP 的比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">特性</th>
+                <th class="text-left py-2">bumpfee (RBF)</th>
+                <th class="text-left py-2">CPFP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">前提</td>
+                <td class="py-2">交易標記 RBF</td>
+                <td class="py-2">有可花費輸出</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">執行者</td>
+                <td class="py-2">發送者</td>
+                <td class="py-2">接收者或發送者</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">效率</td>
+                <td class="py-2">更高</td>
+                <td class="py-2">需要額外交易</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">TXID 變化</td>
+                <td class="py-2">是</td>
+                <td class="py-2">否</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>

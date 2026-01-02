@@ -1,0 +1,241 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Rescan Blockchain"
+  description="了解如何使用 rescanblockchain 命令重新掃描區塊鏈以發現錢包交易。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Rescan Blockchain' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Wallet Backup', href: '/tech/bitcoin-core/wallet-backup' }}
+  nextPage={{ title: 'Reindex', href: '/tech/bitcoin-core/reindex' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        rescanblockchain 命令重新掃描區塊鏈以查找與錢包相關的交易。當導入密鑰、
+        恢復錢包或錢包數據損壞時，這個命令非常有用。
+      </p>
+
+      <h2>基本用法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 掃描整個區塊鏈（從創世區塊開始）
+bitcoin-cli rescanblockchain
+
+# 從指定高度開始掃描
+bitcoin-cli rescanblockchain 800000
+
+# 指定掃描範圍
+bitcoin-cli rescanblockchain 800000 840000
+
+# 返回結果
+{
+  "start_height": 800000,
+  "stop_height": 840000
+}</code></pre>
+
+      <h2>何時需要 rescan？</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <ul class="space-y-2 mb-0">
+          <li><strong>導入私鑰：</strong>importprivkey 默認會觸發 rescan</li>
+          <li><strong>導入描述符：</strong>importdescriptors 後需要 rescan</li>
+          <li><strong>恢復錢包：</strong>從備份恢復後更新交易歷史</li>
+          <li><strong>錢包損壞：</strong>交易記錄缺失或不完整</li>
+          <li><strong>watch-only 地址：</strong>導入後發現歷史交易</li>
+        </ul>
+      </div>
+
+      <h2>導入密鑰時的 rescan</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># importprivkey 默認會 rescan（很慢）
+bitcoin-cli importprivkey "KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn"
+
+# 跳過 rescan（導入多個密鑰時）
+bitcoin-cli importprivkey "KwDiBf..." "" false
+
+# 導入完成後手動 rescan
+bitcoin-cli rescanblockchain 0
+
+# 使用描述符時
+bitcoin-cli importdescriptors '[{
+  "desc": "wpkh([...]/84h/0h/0h/0/*)#xxxxx",
+  "timestamp": 1609459200,
+  "range": [0, 999]
+}]'
+
+# timestamp 告訴錢包從何時開始掃描</code></pre>
+
+      <h2>掃描時間估算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 掃描速度取決於:
+// - 硬體性能（SSD vs HDD）
+// - 區塊鏈大小
+// - 錢包中的地址數量
+
+典型時間（2024 年，SSD）:
+- 全量掃描: 30-60 分鐘
+- 最近 10,000 區塊: 1-2 分鐘
+- 最近 100,000 區塊: 5-10 分鐘
+
+// 如果知道密鑰創建時間，可以大幅縮短
+// 例如：密鑰在 2023 年創建
+// 只需從 2023 年初的區塊開始掃描</code></pre>
+
+      <h2>優化 rescan</h2>
+
+      <h3>使用時間戳</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 計算起始區塊高度
+# 如果知道密鑰創建於 2023-01-01
+
+# 查找該日期附近的區塊
+bitcoin-cli getblockchaininfo
+# 使用區塊瀏覽器找到對應高度
+
+# 從該高度開始掃描
+bitcoin-cli rescanblockchain 770000
+
+# 使用描述符時直接指定時間戳
+bitcoin-cli importdescriptors '[{
+  "desc": "wpkh(...)#xxx",
+  "timestamp": 1672531200,  # 2023-01-01
+  "range": [0, 999]
+}]'</code></pre>
+
+      <h3>批量導入</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 錯誤做法：每個密鑰都 rescan
+for key in keys:
+    bitcoin-cli importprivkey "$key"  # 每次都掃描！
+
+# 正確做法：先導入，最後掃描一次
+for key in keys:
+    bitcoin-cli importprivkey "$key" "" false  # 跳過 rescan
+
+# 最後一次性掃描
+bitcoin-cli rescanblockchain $start_height</code></pre>
+
+      <h2>進度監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 方法 1: 查看日誌
+tail -f ~/.bitcoin/debug.log | grep -i rescan
+
+# 方法 2: 使用 getwalletinfo
+bitcoin-cli getwalletinfo
+{
+  ...
+  "scanning": {
+    "duration": 30,
+    "progress": 0.45
+  },
+  ...
+}
+
+# 方法 3: GUI
+# 狀態欄會顯示掃描進度</code></pre>
+
+      <h2>abortrescan</h2>
+      <p>
+        如果需要中斷正在進行的掃描：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 停止掃描
+bitcoin-cli abortrescan
+
+# 注意:
+# - 已掃描的部分會保留
+# - 稍後可以從中斷處繼續
+# - 部分錢包功能在掃描期間可能不可用</code></pre>
+
+      <h2>常見問題</h2>
+
+      <h3>餘額不正確</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 症狀: 導入密鑰後餘額為 0
+
+# 原因 1: 沒有 rescan
+bitcoin-cli rescanblockchain
+
+# 原因 2: 起始高度太晚
+# 使用更早的高度或 0
+bitcoin-cli rescanblockchain 0
+
+# 原因 3: 使用了錯誤的地址類型
+# 檢查描述符是否正確（wpkh vs pkh vs tr）</code></pre>
+
+      <h3>掃描太慢</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 解決方案:
+
+# 1. 使用 SSD
+# HDD 會慢很多
+
+# 2. 增加 dbcache
+# 在 bitcoin.conf 中:
+dbcache=4000  # 4GB
+
+# 3. 縮小掃描範圍
+# 只掃描必要的區塊
+
+# 4. 使用 blocksonly 模式
+# 減少 mempool 相關開銷
+blocksonly=1</code></pre>
+
+      <h2>與 reindex 的區別</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">特性</th>
+                <th class="text-left py-2">rescanblockchain</th>
+                <th class="text-left py-2">reindex</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">用途</td>
+                <td class="py-2">更新錢包交易</td>
+                <td class="py-2">重建區塊索引</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">速度</td>
+                <td class="py-2">較快</td>
+                <td class="py-2">很慢（數小時）</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">影響範圍</td>
+                <td class="py-2">僅錢包</td>
+                <td class="py-2">整個節點</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">執行方式</td>
+                <td class="py-2">RPC 命令</td>
+                <td class="py-2">啟動參數</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>最佳實踐</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>記錄創建時間：</strong>備份時記錄密鑰創建時間</li>
+          <li><strong>使用描述符：</strong>描述符支持時間戳，更高效</li>
+          <li><strong>批量操作：</strong>多個密鑰一次性導入後再掃描</li>
+          <li><strong>使用 SSD：</strong>顯著提高掃描速度</li>
+          <li><strong>增加內存：</strong>提高 dbcache 設置</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>

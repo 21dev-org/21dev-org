@@ -1,0 +1,231 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Selfish Mining"
+  description="了解自私挖礦攻擊策略，其對網路的影響，以及比特幣的防護機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Selfish Mining' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Double Spend', href: '/tech/bitcoin-core/double-spend' }}
+  nextPage={{ title: 'Eclipse Attack', href: '/tech/bitcoin-core/eclipse-attack' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        自私挖礦（Selfish Mining）是一種攻擊策略，攻擊者通過策略性地延遲區塊廣播
+        來獲得超過其算力佔比的區塊獎勵。這種攻擊在 2013 年由 Eyal 和 Sirer 首次描述。
+      </p>
+
+      <h2>攻擊原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>誠實挖礦策略:
+1. 挖到區塊立即廣播
+2. 收到新區塊立即切換到新鏈
+
+自私挖礦策略:
+1. 挖到區塊暫時保留（私有鏈）
+2. 繼續在私有鏈上挖礦
+3. 策略性地釋放區塊以浪費誠實礦工的算力
+
+目標: 使誠實礦工在即將被廢棄的區塊上浪費算力</code></pre>
+
+      <h2>攻擊流程</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>狀態 0: 私有鏈 = 公開鏈
+  攻擊者挖到區塊 → 進入狀態 1（領先 1 個區塊）
+
+狀態 1: 私有鏈領先 1 個區塊
+  情況 A: 誠實礦工挖到區塊
+    → 攻擊者立即釋放私有區塊
+    → 競爭傳播（gamma 決定誰贏）
+    → 回到狀態 0
+
+  情況 B: 攻擊者再挖到區塊
+    → 進入狀態 2（領先 2 個區塊）
+
+狀態 2: 私有鏈領先 2 個區塊
+  誠實礦工挖到區塊時:
+    → 攻擊者釋放全部私有鏈
+    → 誠實礦工的區塊被孤立
+    → 回到狀態 0（攻擊者獲得 2 個區塊獎勵）
+
+狀態 n (n >= 2): 私有鏈領先 n 個區塊
+  維持優勢，逐步釋放</code></pre>
+
+      <h2>關鍵參數</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">參數</th>
+                <th class="text-left py-2">含義</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">α (alpha)</td>
+                <td class="py-2">攻擊者算力佔比</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">γ (gamma)</td>
+                <td class="py-2">競爭時攻擊者區塊被接受的概率</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">1 - α</td>
+                <td class="py-2">誠實礦工算力佔比</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>收益分析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 自私挖礦收益公式（簡化）
+攻擊者收益 = f(α, γ)
+
+// 當 γ = 0（攻擊者網路劣勢）
+// 攻擊者需要 α > 1/3 才能獲利
+
+// 當 γ = 1（攻擊者網路優勢）
+// 攻擊者只需要 α > 0 就能獲利（理論上）
+
+// 當 γ = 0.5（中立網路）
+// 攻擊者需要 α > 1/4 才能獲利
+
+實際閾值（考慮網路延遲）:
+α_threshold ≈ (1 - γ) / (3 - 2γ)
+
+γ = 0:   α_threshold = 1/3 ≈ 33.3%
+γ = 0.5: α_threshold = 1/4 = 25%
+γ = 1:   α_threshold = 0</code></pre>
+
+      <h2>為什麼現實中很少見？</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>高算力門檻：</strong>需要至少 25-33% 算力</li>
+          <li><strong>機會成本：</strong>失敗時損失大量電力成本</li>
+          <li><strong>可檢測：</strong>異常的孤塊率會引起注意</li>
+          <li><strong>協議改進：</strong>更好的區塊傳播減少 γ 優勢</li>
+          <li><strong>聲譽風險：</strong>大礦池攻擊會損害比特幣價值</li>
+        </ul>
+      </div>
+
+      <h2>防護機制</h2>
+
+      <h3>1. 快速區塊傳播</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Compact Blocks (BIP-152)
+減少區塊傳播時間:
+- 傳統區塊: 數秒
+- Compact Blocks: 毫秒級
+
+效果: 降低 γ 值，使網路更「公平」
+
+// FIBRE (Fast Internet Bitcoin Relay Engine)
+專用中繼網路，進一步減少延遲</code></pre>
+
+      <h3>2. 分叉選擇規則</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 當前規則: 最長鏈（最多累積 PoW）
+// 這使得自私挖礦仍然可能
+
+// 提議的改進:
+
+// Freshness Preferred
+優先選擇「更新」的區塊（先收到的）
+缺點: 增加網路分裂風險
+
+// Unforgeable Timestamps
+使用 VDF 等證明區塊創建時間
+缺點: 複雜性高
+
+// 目前: 沒有完美解決方案</code></pre>
+
+      <h2>變體攻擊</h2>
+
+      <h3>Stubborn Mining</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 更激進的自私挖礦變體
+
+Lead Stubborn:
+- 即使落後也不放棄私有鏈
+- 希望能追上並超過公開鏈
+
+Equal Fork Stubborn:
+- 在競爭狀態時繼續挖私有鏈
+- 而不是立即切換
+
+Trail Stubborn:
+- 落後時也繼續嘗試
+- 高風險高回報</code></pre>
+
+      <h3>FAW Attack (Fork After Withholding)</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 結合礦池的攻擊
+
+攻擊者加入誠實礦池:
+1. 提交部分工作量證明給礦池
+2. 找到完整區塊時保留
+3. 等待其他礦工找到區塊
+4. 發布自己的區塊造成分叉
+
+效果:
+- 從礦池獲得獎勵（基於提交的 shares）
+- 同時破壞礦池的區塊</code></pre>
+
+      <h2>檢測指標</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 可能表明自私挖礦的跡象
+
+1. 孤塊率異常
+正常: ~0.1%
+異常: > 1%
+
+2. 區塊時間戳分布異常
+正常: 大致符合泊松分布
+異常: 集中或異常間隔
+
+3. 區塊傳播模式
+正常: 均勻來源
+異常: 大量區塊來自同一來源
+
+// 監控命令
+bitcoin-cli getchaintips
+# 查看分叉情況</code></pre>
+
+      <h2>對去中心化的影響</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>自私挖礦的存在意味著:
+
+1. 大礦池有額外優勢
+   - 網路位置優勢 (高 γ)
+   - 更容易達到閾值算力
+
+2. 可能導致算力集中
+   - 小礦工加入大礦池更有利
+   - 獨立挖礦相對不利
+
+3. 博弈論影響
+   - 如果大家都自私挖礦，網路效率下降
+   - 納什均衡可能不是「全部誠實」</code></pre>
+
+      <h2>研究論文</h2>
+
+      <ul>
+        <li><a href="https://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf">Majority is not Enough (2014)</a> - 原始論文</li>
+        <li><a href="https://eprint.iacr.org/2015/796">Stubborn Mining (2015)</a> - 變體分析</li>
+        <li><a href="https://arxiv.org/abs/1507.06183">Optimal Selfish Mining (2016)</a> - 最優策略</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,265 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Sybil Attack"
+  description="了解 Sybil 攻擊如何影響比特幣 P2P 網路，以及防護機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Sybil Attack' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Eclipse Attack', href: '/tech/bitcoin-core/eclipse-attack' }}
+  nextPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Sybil 攻擊是指攻擊者在 P2P 網路中創建大量虛假身份（節點），
+        以獲得對網路不成比例的影響力。在比特幣中，這可能導致日蝕攻擊、
+        交易審查或網路分析。
+      </p>
+
+      <h2>攻擊原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常網路:
+         ┌─────┐
+    ┌────┤Node A├────┐
+    │    └─────┘    │
+┌───▼───┐       ┌───▼───┐
+│Node B │       │Node C │
+└───┬───┘       └───┬───┘
+    │    ┌─────┐    │
+    └────┤Node D├────┘
+         └─────┘
+
+每個節點是獨立實體，網路去中心化
+
+Sybil 攻擊:
+         ┌─────┐
+    ┌────┤Node A├────┐
+    │    └─────┘    │
+┌───▼───┐       ┌───▼───┐
+│Sybil 1│       │Sybil 2│  ← 同一攻擊者控制
+└───┬───┘       └───┬───┘
+    │    ┌─────┐    │
+    └────┤Sybil 3├───┘  ← 同一攻擊者控制
+         └─────┘
+
+攻擊者控制大量「獨立」節點</code></pre>
+
+      <h2>攻擊目標</h2>
+
+      <h3>1. 日蝕攻擊的前置步驟</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Sybil 節點用於日蝕攻擊
+
+1. 創建數千個 Sybil 節點
+2. 向目標節點宣傳 Sybil 節點地址
+3. 填滿目標的 AddrMan 數據庫
+4. 等待目標重啟
+5. 目標連接到 Sybil 節點
+6. 完成日蝕，目標被隔離</code></pre>
+
+      <h3>2. 網路監控和去匿名化</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 追蹤交易來源
+
+攻擊者運行大量節點，分佈在網路各處
+
+當交易廣播時:
+- 記錄哪個節點最先發送該交易
+- 分析傳播模式
+- 推斷交易發起者的 IP 地址
+
+效果:
+- 破壞交易隱私
+- 關聯比特幣地址和真實身份</code></pre>
+
+      <h3>3. 交易審查</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 如果控制足夠多的連接
+
+策略:
+1. Sybil 節點拒絕中繼某些交易
+2. 如果受害者主要連接到 Sybil 節點
+3. 受害者的交易無法傳播到礦工
+
+限制:
+- 只要有一個誠實連接就會失敗
+- 需要配合日蝕攻擊才有效</code></pre>
+
+      <h2>比特幣的 Sybil 抵抗</h2>
+
+      <h3>工作量證明</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// PoW 是核心防禦
+
+共識層面:
+- 區塊有效性由 PoW 決定
+- 不是由節點數量決定
+- 1000 個 Sybil 節點 ≠ 1000 倍投票權
+
+Sybil 節點不能:
+- 創建無效區塊
+- 修改共識規則
+- 偽造交易
+
+但 Sybil 節點可以:
+- 影響 P2P 層（非共識層）
+- 延遲信息傳播
+- 監控網路</code></pre>
+
+      <h3>AddrMan 設計</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 地址管理器的 Sybil 抵抗
+
+設計特點:
+1. 桶隨機化
+   bucket = hash(source_group, addr_group)
+   - 單一來源無法填滿所有桶
+
+2. 地址老化
+   - 舊地址被新地址替換
+   - 防止地址囤積
+
+3. 嘗試連接驗證
+   - 只有成功連接的地址進入 tried 表
+   - 離線節點被逐漸淘汰
+
+4. 來源多樣性
+   - 記錄地址來源
+   - 限制單一來源的影響</code></pre>
+
+      <h3>連接限制</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 網路級別限制
+
+1. 每個 /16 網段限制
+   - 同一網段最多 2 個出站連接
+   - 增加 IP 多樣性要求
+
+2. 出站連接主動選擇
+   - 8 個全中繼出站連接
+   - 2 個僅區塊中繼連接
+   - 由本地節點選擇，不受 Sybil 影響
+
+3. 入站連接驅逐
+   - 保護有價值的連接
+   - 優先驅逐可疑連接</code></pre>
+
+      <h2>攻擊成本分析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 有效 Sybil 攻擊的成本
+
+IP 地址需求:
+- 需要大量不同 /16 網段的 IP
+- 雲服務商 IP 通常集中在少數網段
+- 需要多個提供商或專用資源
+
+計算示例:
+目標: 控制 50% 的比特幣節點連接
+估計活躍節點: ~15,000
+每節點出站連接: 10
+總出站連接: 150,000
+攻擊者需要: 75,000+ 個有效 IP
+
+成本:
+- 雲服務器: $0.5-5/月/IP
+- 月成本: $37,500 - $375,000
+- 還需要足夠的帶寬和存儲</code></pre>
+
+      <h2>防護措施</h2>
+
+      <h3>節點運營者</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 1. 添加可信節點
+addnode=trusted-friend.example.com:8333
+addnode=known-good-node.example.com:8333
+
+# 2. 使用多種網路
+# 同時連接 clearnet, Tor, I2P
+proxy=127.0.0.1:9050
+listen=1
+onlynet=ipv4
+onlynet=ipv6
+onlynet=onion
+
+# 3. 監控連接
+bitcoin-cli getpeerinfo | jq '[.[].addr]'
+# 檢查連接多樣性
+
+# 4. 限制入站
+maxconnections=50  # 減少入站攻擊面</code></pre>
+
+      <h3>協議改進</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 已實現的改進
+
+1. 錨點連接 (Anchors)
+   - 記住上次連接的節點
+   - 重啟時優先重連
+
+2. 僅區塊中繼連接
+   - 不宣告，難以被發現
+   - 增加隱蔽性
+
+3. BIP-324 加密 P2P
+   - 防止中間人攻擊
+   - 增加監控成本
+
+// 討論中的改進
+
+4. ASMap
+   - 使用 AS 號而非 /16 網段
+   - 更準確的網路拓撲
+
+5. 聲譽系統
+   - 跟蹤節點行為
+   - 懲罰惡意行為</code></pre>
+
+      <h2>檢測 Sybil 節點</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 可能的指標
+
+1. 網段集中
+   bitcoin-cli getpeerinfo | \
+     jq '[.[].addr | split(":")[0] | split(".")[0:2] | join(".")]
+         | group_by(.) | map({subnet: .[0], count: length})
+         | sort_by(-.count)'
+
+2. 用戶代理相似
+   bitcoin-cli getpeerinfo | \
+     jq '[.[].subver] | group_by(.) | map({ua: .[0], count: length})'
+
+3. 連接時間相似
+   # 大量節點同時上線可能可疑
+
+4. 行為模式
+   # 中繼模式異常
+   # 響應時間相似</code></pre>
+
+      <h2>與其他攻擊的關係</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <ul class="space-y-2 mb-0">
+          <li><strong>日蝕攻擊：</strong>Sybil 是日蝕的必要前提</li>
+          <li><strong>路由攻擊：</strong>BGP 劫持可增強 Sybil 效果</li>
+          <li><strong>交易分析：</strong>Sybil 節點收集隱私數據</li>
+          <li><strong>審查攻擊：</strong>需要 Sybil 配合日蝕</li>
+        </ul>
+      </div>
+
+      <h2>研究論文</h2>
+
+      <ul>
+        <li><a href="https://www.microsoft.com/en-us/research/publication/the-sybil-attack/">The Sybil Attack (2002)</a> - 原始論文</li>
+        <li><a href="https://eprint.iacr.org/2015/263.pdf">Eclipse Attacks on Bitcoin (2015)</a></li>
+        <li><a href="https://arxiv.org/abs/1906.09724">TxProbe (2019)</a> - 交易傳播分析</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

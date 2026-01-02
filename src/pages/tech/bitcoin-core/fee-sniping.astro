@@ -1,0 +1,226 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Fee Sniping"
+  description="了解手續費狙擊攻擊的原理，以及 nLockTime 如何用於防護。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Fee Sniping' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Transaction Fees', href: '/tech/bitcoin-core/fees' }}
+  nextPage={{ title: 'Timelock', href: '/tech/bitcoin-core/timelock' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        手續費狙擊（Fee Sniping）是一種理論上的礦工攻擊，礦工試圖重新挖掘已確認的區塊
+        以獲取其中的高手續費交易。Bitcoin Core 使用 nLockTime 來防止這種攻擊。
+      </p>
+
+      <h2>攻擊原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
+區塊 N: 包含高手續費交易 (總手續費: 5 BTC)
+區塊 N+1: 礦工 A 正在挖掘
+
+Fee Sniping 攻擊:
+1. 礦工 B 看到區塊 N 有很高的手續費
+2. 礦工 B 決定重新挖掘區塊 N
+3. 礦工 B 在區塊 N-1 上挖礦
+4. 如果成功，獲得區塊 N 的所有手續費
+
+風險:
+- 如果礦工 A 先完成區塊 N+1
+- 礦工 B 需要挖 2 個區塊才能追上
+- 通常不划算，但高手續費時可能有利可圖</code></pre>
+
+      <h2>為什麼是問題？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 經濟激勵可能導致不穩定
+
+假設:
+- 區塊 N 手續費: 10 BTC
+- 區塊 N+1 預期手續費: 0.5 BTC
+- 礦工算力: 20%
+
+期望收益比較:
+誠實挖礦 (N+1):
+  0.2 × (6.25 + 0.5) = 1.35 BTC
+
+狙擊 (重挖 N):
+  0.2 × (6.25 + 10) = 3.25 BTC (如果成功)
+
+如果狙擊成功率 > 41%，則狙擊更有利
+
+// 大礦工或礦池可能有足夠高的成功率</code></pre>
+
+      <h2>nLockTime 防護</h2>
+      <p>
+        Bitcoin Core 創建的交易默認設置 nLockTime 為當前區塊高度：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 設置策略
+
+交易創建時:
+if (current_height > 0) {
+    // 設置為當前高度
+    tx.nLockTime = current_height;
+
+    // 10% 的概率減 1（防止區塊高度洩露隱私）
+    if (GetRand(10) == 0 && tx.nLockTime > 0) {
+        tx.nLockTime--;
+    }
+}
+
+效果:
+- 交易只能被包含在區塊 N 或之後
+- 礦工無法將交易放入重新挖掘的區塊 N-1
+- 降低了狙擊的吸引力</code></pre>
+
+      <h2>工作原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景:
+當前區塊高度: 840000
+交易 TX 創建，nLockTime = 840000
+
+正常流程:
+TX 被包含在區塊 840001 ✓
+
+Fee Sniping 嘗試:
+礦工想重新挖掘區塊 840000
+但 TX 的 nLockTime = 840000
+TX 不能被包含在區塊 839999
+礦工無法獲得 TX 的手續費
+狙擊失去吸引力 ✓
+
+// 注意: TX 可以被包含在 840000 或之後的任何區塊
+// 所以正常操作不受影響</code></pre>
+
+      <h2>nSequence 的作用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 只在 nSequence &lt; 0xffffffff 時生效
+
+Bitcoin Core 的設置:
+- 如果啟用 RBF: nSequence = 0xfffffffd
+  (允許 RBF，同時啟用 nLockTime)
+
+- 如果禁用 RBF: nSequence = 0xfffffffe
+  (禁用 RBF，但仍啟用 nLockTime)
+
+// 只有 nSequence = 0xffffffff 時 nLockTime 被忽略
+// 這在現代錢包中很少使用</code></pre>
+
+      <h2>為什麼只是部分解決？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 防護的局限性
+
+1. 只保護新交易
+   - 舊交易（已在 mempool 中的）沒有這個保護
+   - 礦工可能從重新挖掘中獲得一些手續費
+
+2. 礦工可以創建自己的交易
+   - 礦工可以用自己的交易替換
+   - 只是獲取手續費，不是竊取
+
+3. 不能阻止區塊重組
+   - 51% 攻擊仍然可能
+   - nLockTime 只是降低激勵
+
+4. 交易可能已在目標區塊中
+   - nLockTime = N 的交易可以在區塊 N 中
+   - 重新挖掘區塊 N 時仍可包含</code></pre>
+
+      <h2>未來考慮</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 隨著區塊獎勵減少，手續費比例增加
+
+2024 年:
+- 區塊獎勵: 3.125 BTC
+- 平均手續費: 0.1-1 BTC
+- 手續費佔比: 3-25%
+
+未來:
+- 區塊獎勵: 趨近 0
+- 手續費將是主要收入
+- Fee sniping 激勵可能增加
+
+可能的改進:
+- 更強的時間鎖機制
+- 協議級別的狙擊懲罰
+- 社會共識（礦池聲譽）</code></pre>
+
+      <h2>錢包實現</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 檢查錢包是否正確設置 nLockTime
+
+# 創建交易
+bitcoin-cli createrawtransaction '[...]' '{...}'
+
+# 解碼並檢查
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+{
+  ...
+  "locktime": 840000,  # 應該是當前高度附近
+  "vin": [
+    {
+      ...
+      "sequence": 4294967293  # 0xfffffffd, 啟用 nLockTime
+    }
+  ]
+}
+
+# 如果 locktime = 0 且 sequence = 0xffffffff
+# 錢包可能沒有實現 fee sniping 保護</code></pre>
+
+      <h2>對用戶的影響</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>透明：</strong>用戶通常不需要關心這個機制</li>
+          <li><strong>無額外成本：</strong>不增加交易大小或手續費</li>
+          <li><strong>兼容性：</strong>與 RBF 和相對時間鎖兼容</li>
+          <li><strong>隱私：</strong>隨機減 1 避免洩露錢包類型</li>
+        </ul>
+      </div>
+
+      <h2>程序示例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import random
+
+def set_anti_fee_sniping(tx, current_height):
+    """設置 nLockTime 以防止 fee sniping"""
+
+    # 基本設置為當前高度
+    tx.nLockTime = current_height
+
+    # 10% 概率減 1（隱私保護）
+    if random.randint(0, 9) == 0 and tx.nLockTime > 0:
+        tx.nLockTime -= 1
+
+    # 確保 nSequence 啟用 nLockTime
+    for inp in tx.vin:
+        if inp.nSequence == 0xffffffff:
+            inp.nSequence = 0xfffffffe  # 啟用 nLockTime
+
+    return tx
+
+# 使用
+tx = create_transaction(inputs, outputs)
+tx = set_anti_fee_sniping(tx, get_current_height())</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>nLockTime：</strong>交易級別的絕對時間鎖</li>
+        <li><strong>nSequence：</strong>輸入級別的序列號，影響 nLockTime 行為</li>
+        <li><strong>BIP-68：</strong>相對時間鎖（使用 nSequence）</li>
+        <li><strong>區塊重組：</strong>Fee sniping 是重組的經濟動機之一</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
