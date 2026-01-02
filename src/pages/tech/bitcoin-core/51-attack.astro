@@ -1,0 +1,319 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="51% Attack"
+  description="了解 51% 攻擊的原理、成本、歷史案例，以及比特幣的防護機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: '51% Attack' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Double Spend', href: '/tech/bitcoin-core/double-spend' }}
+  nextPage={{ title: 'Selfish Mining', href: '/tech/bitcoin-core/selfish-mining' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        51% 攻擊是指單一實體控制超過一半的網路算力，從而能夠操縱區塊鏈的攻擊。
+        雖然對比特幣而言成本極高，但這仍是 PoW 區塊鏈面臨的理論威脅。
+      </p>
+
+      <h2>攻擊原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>最長鏈規則:
+- 比特幣節點遵循累積工作量最大的鏈
+- 擁有 51% 算力意味著可以比其他人更快出塊
+- 最終可以創建比誠實鏈更長的攻擊鏈
+
+攻擊流程:
+1. 攻擊者私下挖礦，不廣播區塊
+2. 同時在公開鏈上進行交易
+3. 等待交易確認後獲得商品/服務
+4. 發布私有鏈，覆蓋原有交易
+5. 實現雙重支付
+
+時間線:
+公開鏈: [A]-[B]-[C]-[D]-[E]     (包含攻擊者的付款)
+私有鏈: [A]-[B']-[C']-[D']-[E']-[F']  (不包含付款)
+                                ↑
+                          攻擊者發布，成為主鏈</code></pre>
+
+      <h2>攻擊者能做什麼？</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <h3 class="text-lg font-semibold mb-4">可以做到：</h3>
+        <ul class="space-y-2 mb-4">
+          <li>雙重支付自己的交易</li>
+          <li>阻止某些交易被確認</li>
+          <li>阻止其他礦工獲得區塊獎勵</li>
+          <li>撤銷已確認的交易（有限範圍）</li>
+        </ul>
+        <h3 class="text-lg font-semibold mb-4">無法做到：</h3>
+        <ul class="space-y-2 mb-0">
+          <li>創建無效交易</li>
+          <li>偷取他人的比特幣</li>
+          <li>改變區塊獎勵數量</li>
+          <li>無中生有創造比特幣</li>
+          <li>改變共識規則</li>
+        </ul>
+      </div>
+
+      <h2>攻擊成本</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>比特幣 51% 攻擊成本估算 (2024):
+
+硬體成本:
+- 全網算力: ~600 EH/s
+- 需要: 300+ EH/s
+- ASIC 礦機: ~$3000/台 (100 TH/s)
+- 所需礦機: ~300 萬台
+- 硬體成本: ~$90 億美元
+
+運營成本:
+- 電力: ~100 MW 每 EH/s
+- 總電力: ~30 GW
+- 電費: ~$0.05/kWh
+- 每小時成本: ~$150 萬
+
+實際障礙:
+1. 礦機供應有限
+2. 電力基礎設施不足
+3. 攻擊會導致比特幣價格崩潰
+4. 攻擊者的礦機也會貶值
+
+// 經濟激勵使攻擊不划算
+// 有如此算力，誠實挖礦更有利可圖</code></pre>
+
+      <h2>確認數與安全性</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>雙重支付成功率 vs 確認數:
+
+假設攻擊者算力 = 30%:
+1 確認: 成功率 ~45%
+2 確認: 成功率 ~25%
+3 確認: 成功率 ~15%
+6 確認: 成功率 ~2%
+10 確認: 成功率 ~0.1%
+
+假設攻擊者算力 = 10%:
+1 確認: 成功率 ~20%
+6 確認: 成功率 ~0.1%
+
+// Satoshi 的原始計算
+// 見白皮書第 11 節
+
+推薦確認數:
+小額交易: 1-2 確認
+中額交易: 3-6 確認
+大額交易: 6+ 確認
+超大額交易: 60+ 確認 (交易所)</code></pre>
+
+      <h2>歷史案例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 比特幣從未發生成功的 51% 攻擊
+// 但其他 PoW 幣種有過案例
+
+Ethereum Classic (ETC) - 2019:
+- 多次 51% 攻擊
+- 數百萬美元雙重支付
+- 導致增加確認數要求
+
+Bitcoin Gold (BTG) - 2018, 2020:
+- 多次攻擊
+- 交易所損失數百萬美元
+
+Verge (XVG) - 2018:
+- 利用時間戳漏洞
+- 多次攻擊
+
+共同點:
+- 算力較低的幣種
+- 可租用算力進行攻擊
+- 主要針對交易所</code></pre>
+
+      <h2>算力租用攻擊</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 對小幣種的威脅
+
+NiceHash 等算力市場:
+- 可以按小時租用算力
+- 不需要擁有硬體
+- 降低攻擊門檻
+
+攻擊經濟學:
+成本 = 租用算力費用 × 攻擊時間
+收益 = 雙重支付金額
+
+如果 收益 > 成本，攻擊可能發生
+
+比特幣的優勢:
+- 全網算力太大
+- 沒有足夠算力可租用
+- 專用 ASIC 無法用於其他幣
+
+風險較高的幣種:
+- 算力低
+- 使用通用算法 (GPU 可挖)
+- 交易所確認數少</code></pre>
+
+      <h2>防護機制</h2>
+
+      <h3>比特幣現有防護</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>1. 難度調整
+   - 每 2016 區塊調整
+   - 使算力增長不能瞬間壓倒網路
+
+2. 區塊獎勵
+   - 誠實挖礦有穩定收入
+   - 攻擊風險高且收益不確定
+
+3. 網路監控
+   - 異常區塊重組會被發現
+   - 社區可以響應
+
+4. 多確認要求
+   - 高價值交易等待更多確認
+   - 增加攻擊成本
+
+5. 去中心化挖礦
+   - 多個礦池分散算力
+   - 沒有單一實體控制 51%</code></pre>
+
+      <h3>額外防護措施</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 一些幣種採用的額外措施
+
+Checkpoints (檢查點):
+- 硬編碼已知的區塊雜湊
+- 防止深度重組
+- 比特幣使用但較淺
+
+延遲最終性:
+- 要求更長的重組等待時間
+- 給予社區響應時間
+
+混合共識:
+- PoW + PoS 結合
+- 增加攻擊複雜度
+
+算法抗 ASIC:
+- 使專用硬體難以製造
+- 但也降低了攻擊成本
+
+// 比特幣的設計選擇是依賴經濟激勵</code></pre>
+
+      <h2>礦池中心化風險</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 礦池 vs 51% 攻擊
+
+礦池算力分佈 (假設):
+Foundry USA: 25%
+AntPool: 20%
+F2Pool: 15%
+Binance: 10%
+其他: 30%
+
+風險分析:
+- 單一礦池不超過 51%
+- 但礦池運營商可以串謀
+- 或被政府強制合作
+
+實際情況:
+- 礦池是協調者，不控制算力
+- 礦工可以隨時切換礦池
+- 礦池攻擊會失去礦工信任
+
+歷史事件:
+2014 年 GHash.io 接近 51%:
+- 社區擔憂
+- 礦工主動離開
+- 礦池承諾不超過 40%</code></pre>
+
+      <h2>檢測與響應</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 識別可能的 51% 攻擊
+
+監控指標:
+1. 異常的區塊重組深度
+   bitcoin-cli getchaintips
+   # 查看分叉情況
+
+2. 算力突然變化
+   # 監控難度調整
+
+3. 區塊時間異常
+   # 區塊產生速度突然加快
+
+4. 交易消失
+   # 已確認交易從鏈上消失
+
+響應措施:
+1. 暫停交易確認
+2. 增加確認數要求
+3. 通知社區和交易所
+4. 如果嚴重，考慮人工干預
+
+// 人工干預是最後手段
+// 可能需要社會共識來選擇鏈</code></pre>
+
+      <h2>國家級攻擊</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 理論上的國家級威脅
+
+資源能力:
+- 大國有足夠資金
+- 可以徵用電力設施
+- 可以沒收境內礦機
+
+可能動機:
+- 打擊比特幣採用
+- 經濟戰爭
+- 審查特定交易
+
+實際障礙:
+1. 全球分佈的算力
+   - 沒有單一國家控制 51%
+   - 中國禁礦後算力分散
+
+2. 國際協調困難
+   - 需要多國合作
+   - 利益不一致
+
+3. 攻擊效果有限
+   - 無法摧毀網路
+   - 只能暫時中斷
+   - 社區會響應
+
+4. 經濟代價
+   - 持有比特幣的人損失
+   - 可能包括本國公民</code></pre>
+
+      <h2>對用戶的建議</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>等待確認：</strong>大額交易等待 6 個以上確認</li>
+          <li><strong>監控重組：</strong>注意區塊鏈瀏覽器的重組警告</li>
+          <li><strong>分散風險：</strong>不要在單一交易中轉移所有資金</li>
+          <li><strong>使用聲譽好的服務：</strong>選擇等待足夠確認的交易所</li>
+          <li><strong>關注網路狀態：</strong>了解當前的算力分佈</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Double Spend：</strong>雙重支付攻擊</li>
+        <li><strong>Selfish Mining：</strong>自私挖礦策略</li>
+        <li><strong>Consensus：</strong>共識機制</li>
+        <li><strong>Mining：</strong>挖礦過程</li>
+        <li><strong>Block Reorg：</strong>區塊重組</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

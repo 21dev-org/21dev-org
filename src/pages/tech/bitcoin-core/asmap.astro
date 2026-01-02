@@ -1,0 +1,290 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="ASMap"
+  description="了解 ASMap 如何使用自治系統映射來增強比特幣節點的對等連接多樣性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'ASMap' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Eclipse Attack', href: '/tech/bitcoin-core/eclipse-attack' }}
+  nextPage={{ title: 'AddrMan', href: '/tech/bitcoin-core/addrman' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        ASMap（Autonomous System Map）是 Bitcoin Core 的一項功能，使用自治系統號碼
+        來識別 IP 地址的網路歸屬，從而更好地分散對等連接，增強對日蝕攻擊的抵抗力。
+      </p>
+
+      <h2>為什麼需要 ASMap？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統方法的問題:
+
+Bitcoin Core 默認使用 /16 網段來分散連接:
+- 每個 /16 網段最多 2 個出站連接
+- 假設: 不同 /16 屬於不同實體
+
+問題:
+1. 大型組織擁有多個 /16 網段
+   例: 某雲服務商可能擁有 50+ 個 /16
+
+2. 多個小組織共享 /16
+   例: 小型 ISP 可能只有部分 /16
+
+3. 攻擊者可以獲得多個 /16 的 IP
+   - 租用多個雲服務商
+   - 每個服務商不同 /16
+   - 但都由攻擊者控制
+
+結果: /16 分散不能有效防止日蝕攻擊</code></pre>
+
+      <h2>自治系統 (AS)</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>什麼是自治系統？
+
+AS (Autonomous System):
+- 網際網路的路由單位
+- 由單一組織管理的 IP 網段集合
+- 由唯一的 ASN (AS Number) 識別
+
+範例:
+AS13335 - Cloudflare
+AS15169 - Google
+AS16509 - Amazon AWS
+AS32934 - Facebook
+
+AS 的特點:
+- 一個 AS 可以包含多個不連續的 IP 範圍
+- 反映真實的網路所有權
+- 比 /16 更準確地識別「誰控制這些 IP」
+
+// 使用 AS 進行連接分散更有效</code></pre>
+
+      <h2>ASMap 工作原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ASMap 文件:
+- 包含 IP 前綴到 ASN 的映射
+- 壓縮的二進制格式
+- 約 1-2 MB 大小
+
+使用流程:
+1. 節點載入 ASMap 文件
+2. 對每個對等節點 IP，查詢其 ASN
+3. 使用 ASN 而非 /16 來分散連接
+4. 每個 AS 最多 2 個出站連接
+
+連接選擇:
+舊方法: bucket = hash(IP & 0xFFFF0000)
+新方法: bucket = hash(ASN)
+
+效果:
+- 即使攻擊者有多個 /16
+- 如果都在同一 AS，只能有 2 個連接
+- 大幅增加日蝕攻擊難度</code></pre>
+
+      <h2>啟用 ASMap</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 1. 獲取 ASMap 文件
+# Bitcoin Core 不包含 ASMap，需要自行獲取或生成
+
+# 官方工具生成
+cd bitcoin/contrib/asmap
+python3 asmap-tool.py encode
+
+# 或下載預生成的
+# (需要驗證來源可信)
+
+# 2. 配置 Bitcoin Core
+# bitcoin.conf
+asmap=/path/to/asmap.dat
+
+# 或啟動參數
+bitcoind -asmap=/path/to/asmap.dat
+
+# 3. 驗證啟用
+bitcoin-cli getnetworkinfo
+{
+  ...
+  "localaddresses": [...],
+  "asmap": "/path/to/asmap.dat"  # 顯示已載入
+}
+
+# 4. 檢查對等連接的 AS 分佈
+bitcoin-cli getpeerinfo | jq '.[].mapped_as'</code></pre>
+
+      <h2>生成 ASMap</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 從 RPKI/BGP 數據生成 ASMap
+
+# 方法 1: 使用 Bitcoin Core 工具
+cd bitcoin/contrib/asmap
+
+# 下載 RIR 數據
+./download_rir_data.sh
+
+# 處理數據
+python3 asmap-tool.py encode \
+    --input delegated-*.txt \
+    --output asmap.dat
+
+# 方法 2: 使用 RIPE RIS 數據
+# 更準確但更複雜
+
+# 驗證 ASMap
+python3 asmap-tool.py decode asmap.dat
+python3 asmap-tool.py diff old.dat new.dat
+
+# 文件格式
+# 二進制壓縮的 trie 結構
+# 包含 IP 前綴 -> ASN 映射</code></pre>
+
+      <h2>安全考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ASMap 的信任問題:
+
+1. 數據來源
+   - RIR (區域網際網路註冊機構) 數據
+   - BGP 路由表數據
+   - 需要信任數據提供者
+
+2. 更新頻率
+   - AS 分配會變化
+   - 定期更新 ASMap 是好習慣
+   - 但過時的 ASMap 比沒有好
+
+3. 驗證
+   - 自行生成最安全
+   - 下載時驗證簽名
+   - 可以比較不同來源
+
+潛在攻擊:
+- 惡意 ASMap 可能誤導連接選擇
+- 但不能直接造成資金損失
+- 最壞情況是日蝕攻擊</code></pre>
+
+      <h2>與 AddrMan 的整合</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>AddrMan 使用 ASMap:
+
+地址管理器的桶分配:
+Without ASMap:
+  bucket = hash(source_group, addr_group)
+  其中 group = IP & 0xFFFF0000 (即 /16)
+
+With ASMap:
+  bucket = hash(source_as, addr_as)
+  其中 AS = asmap_lookup(IP)
+
+優勢:
+1. 地址存儲更分散
+   - 同一 AS 的地址在同一桶
+   - 不同 AS 的地址分散到不同桶
+
+2. 出站連接選擇更好
+   - 優先連接不同 AS 的節點
+   - 增加網路拓撲多樣性
+
+3. 更好的攻擊抵抗
+   - 攻擊者需要控制多個 AS
+   - 成本大幅增加</code></pre>
+
+      <h2>對日蝕攻擊的影響</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>日蝕攻擊成本對比:
+
+Without ASMap:
+- 攻擊者需要: 多個 /16 網段的 IP
+- 成本: 租用多個雲服務商 VPS
+- 難度: 中等
+
+With ASMap:
+- 攻擊者需要: 多個 AS 的 IP
+- 成本: 需要在真正不同的網路獲得 IP
+- 難度: 顯著增加
+
+範例:
+攻擊者在 AWS 租用 100 個 VPS:
+- Without ASMap: 可能覆蓋 20+ 個 /16
+- With ASMap: 全部只算 1 個 AS (Amazon)
+
+// ASMap 使攻擊成本線性增加
+// 攻擊者需要在真正獨立的網路佈署</code></pre>
+
+      <h2>限制與權衡</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>數據準確性：</strong>BGP 數據可能不完整或過時</li>
+          <li><strong>更新需求：</strong>需要定期更新 ASMap</li>
+          <li><strong>隱私考量：</strong>ASMap 需要外部數據源</li>
+          <li><strong>大型 AS：</strong>某些 AS 非常大，可能仍有風險</li>
+          <li><strong>AS 劫持：</strong>BGP 劫持可能影響 ASMap 效果</li>
+        </ul>
+      </div>
+
+      <h2>實際效果</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查連接的 AS 多樣性
+
+bitcoin-cli getpeerinfo | jq '[.[].mapped_as] | unique | length'
+# 顯示連接了多少個不同的 AS
+
+# 詳細查看
+bitcoin-cli getpeerinfo | jq '.[] | {addr: .addr, as: .mapped_as}'
+
+# 理想情況:
+# 10 個出站連接來自 10 個不同的 AS
+# 而不是集中在少數幾個大型雲服務商
+
+# 比較有無 ASMap 的差異
+# 啟用前後運行上述命令
+# 觀察 AS 多樣性變化</code></pre>
+
+      <h2>未來發展</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>可能的改進:
+
+1. 內建 ASMap
+   - Bitcoin Core 包含預設 ASMap
+   - 定期隨軟體更新
+
+2. 動態更新
+   - 節點自動獲取更新
+   - 需要解決信任問題
+
+3. 分散式驗證
+   - 多節點比對 ASMap
+   - 檢測惡意修改
+
+4. 更細粒度分類
+   - 考慮 AS 大小
+   - 動態調整連接限制
+
+// 目前 ASMap 是可選功能
+// 但推薦運行全節點的用戶啟用</code></pre>
+
+      <h2>相關資源</h2>
+
+      <ul>
+        <li><a href="https://github.com/bitcoin/bitcoin/blob/master/contrib/asmap/README.md">Bitcoin Core ASMap 文檔</a></li>
+        <li><a href="https://bgp.he.net/">Hurricane Electric BGP 查詢</a></li>
+        <li><a href="https://www.cidr-report.org/">CIDR Report</a></li>
+      </ul>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Eclipse Attack：</strong>日蝕攻擊</li>
+        <li><strong>AddrMan：</strong>地址管理器</li>
+        <li><strong>Peer Management：</strong>對等節點管理</li>
+        <li><strong>Sybil Attack：</strong>女巫攻擊</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

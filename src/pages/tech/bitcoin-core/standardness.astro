@@ -1,0 +1,293 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Transaction Standardness"
+  description="了解比特幣交易的標準性規則，區分共識有效性與節點策略。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Standardness' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+  nextPage={{ title: 'Script Validation', href: '/tech/bitcoin-core/script-validation' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        交易標準性（Standardness）是 Bitcoin Core 的策略層規則，與共識規則分開。
+        標準交易會被節點中繼和包含在區塊模板中，非標準交易雖然可能共識有效，
+        但不會被大多數節點傳播。
+      </p>
+
+      <h2>共識 vs 標準性</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>共識規則 (Consensus):
+- 所有節點必須遵守
+- 違反會導致區塊/交易被拒絕
+- 變更需要硬分叉或軟分叉
+- 例: 簽名必須有效、不能雙花
+
+標準性規則 (Standardness/Policy):
+- 只影響未確認交易的傳播
+- 節點可以自行配置
+- 變更只需軟體升級
+- 例: 最小交易大小、腳本類型限制
+
+範例:
+交易使用 OP_NOP6:
+- 共識: 有效（OP_NOP6 什麼都不做）
+- 標準性: 非標準（不允許使用 NOP）
+- 結果: 不會被中繼，但礦工可以自己挖</code></pre>
+
+      <h2>標準交易類型</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>被認為「標準」的輸出類型:
+
+1. P2PKH (Pay to Public Key Hash)
+   OP_DUP OP_HASH160 &lt;hash&gt; OP_EQUALVERIFY OP_CHECKSIG
+   地址: 1...
+
+2. P2SH (Pay to Script Hash)
+   OP_HASH160 &lt;hash&gt; OP_EQUAL
+   地址: 3...
+
+3. P2WPKH (Pay to Witness Public Key Hash)
+   OP_0 &lt;20-byte-hash&gt;
+   地址: bc1q...
+
+4. P2WSH (Pay to Witness Script Hash)
+   OP_0 &lt;32-byte-hash&gt;
+   地址: bc1q... (較長)
+
+5. P2TR (Pay to Taproot)
+   OP_1 &lt;32-byte-pubkey&gt;
+   地址: bc1p...
+
+6. Nulldata (OP_RETURN)
+   OP_RETURN &lt;data&gt;
+   最大 80 字節數據
+
+7. Multisig (裸多簽，已不推薦)
+   m &lt;pubkeys&gt; n OP_CHECKMULTISIG</code></pre>
+
+      <h2>標準性規則</h2>
+
+      <h3>交易大小限制</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 交易大小規則
+
+最大標準交易大小:
+MAX_STANDARD_TX_WEIGHT = 400,000 WU
+= 100,000 vBytes
+
+最小交易大小:
+MIN_STANDARD_TX_NONWITNESS_SIZE = 82 bytes
+// 防止 CVE-2017-12842 攻擊
+
+輸出大小:
+最小非粉塵輸出值（見 dust 規則）
+
+OP_RETURN 數據:
+MAX_OP_RETURN_RELAY = 83 bytes
+// OP_RETURN + push + 80 bytes data</code></pre>
+
+      <h3>腳本規則</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 腳本標準性
+
+允許的操作碼:
+- 大多數標準操作碼
+- 禁止: OP_CAT, OP_SUBSTR, OP_LEFT, OP_RIGHT 等
+
+P2SH 限制:
+- RedeemScript 最大 520 bytes
+- 最多 15 個公鑰（多簽）
+
+P2WSH 限制:
+- Witness script 最大 3600 bytes
+- 最多 20 個公鑰
+
+Taproot:
+- 更寬鬆的限制
+- 允許任意腳本（受共識限制）
+
+// 標準性比共識更嚴格
+// 為未來升級留出空間</code></pre>
+
+      <h3>簽名規則</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簽名標準性
+
+ECDSA 簽名:
+- 必須是低 S 值（BIP-146）
+- 必須是嚴格 DER 編碼
+- 不允許不必要的零填充
+
+Schnorr 簽名 (Taproot):
+- 必須是 64 或 65 字節
+- 嚴格的編碼要求
+
+公鑰:
+- 必須是壓縮格式（33 字節）
+- 除非是舊 P2PK 輸出
+
+// 這些規則防止可延展性
+// 並為將來的腳本升級做準備</code></pre>
+
+      <h2>非標準但有效的交易</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 這些交易共識有效但非標準
+
+1. 使用未知見證版本
+   OP_16 &lt;data&gt;  // 版本 16
+   // 為未來軟分叉保留
+
+2. 超大 OP_RETURN
+   OP_RETURN &lt;200 bytes data&gt;
+   // 共識允許，但超過標準限制
+
+3. 非標準腳本類型
+   OP_TRUE  // 任何人可花費
+   // 有效但不會被中繼
+
+4. 非壓縮公鑰
+   &lt;65-byte uncompressed pubkey&gt;
+   // 舊格式，仍然有效
+
+5. 過小的交易
+   &lt; 82 bytes（非見證部分）
+
+如何確認這類交易?
+- 直接提交給礦工
+- 礦工自己挖掘
+- 使用特殊中繼服務</code></pre>
+
+      <h2>為什麼要標準性？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>標準性規則的目的:
+
+1. 安全緩衝
+   - 限制新功能的暴露
+   - 允許漸進式測試
+   - 發現問題後可以收緊
+
+2. DoS 防護
+   - 限制複雜腳本
+   - 防止 CPU 密集型驗證
+   - 保護節點資源
+
+3. 未來升級
+   - 保留 OP_NOP 為軟分叉
+   - 保留見證版本為升級
+   - 不會被現有交易佔用
+
+4. 可延展性修復
+   - 強制低 S 簽名
+   - 嚴格編碼
+   - 減少 TXID 變化風險
+
+5. 網路效率
+   - 減少區塊大小浪費
+   - 統一腳本驗證
+   - 優化傳播</code></pre>
+
+      <h2>配置選項</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf 中的相關選項
+
+# 接受非標準交易（不推薦主網）
+acceptnonstdtxn=1   # 默認 0
+
+# 允許裸多簽
+permitbaremultisig=1  # 默認 1
+
+# OP_RETURN 數據限制
+datacarriersize=83   # 默認 83 bytes
+
+# 數據載體
+datacarrier=1        # 默認 1，允許 OP_RETURN
+
+# 粉塵限制
+dustrelayfee=0.00003  # sat/vB
+
+# 測試網上更寬鬆
+# testnet/regtest 默認 acceptnonstdtxn=1</code></pre>
+
+      <h2>測試非標準交易</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用 testmempoolaccept 檢查標準性
+
+bitcoin-cli testmempoolaccept '["&lt;raw_tx_hex&gt;"]'
+{
+  "txid": "...",
+  "allowed": false,
+  "reject-reason": "non-standard"
+}
+
+# 常見拒絕原因
+"scriptpubkey"          # 非標準輸出類型
+"scriptsig-size"        # ScriptSig 太大
+"scriptsig-not-pushonly"# ScriptSig 包含非 PUSH 操作
+"scriptpubkey-size"     # ScriptPubKey 太大
+"dust"                  # 輸出值太小
+"tx-size"               # 交易太大或太小
+"non-mandatory-script-verify-flag" # 腳本驗證失敗
+
+# 在 regtest 上測試
+bitcoin-cli -regtest sendrawtransaction &lt;hex&gt;</code></pre>
+
+      <h2>標準性的演進</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>歷史變化:
+
+2010: 最初的標準性規則
+- 限制腳本類型
+- 保護網路
+
+2012: P2SH 成為標準
+- BIP-16 軟分叉
+- 標準性先於共識啟用
+
+2015: CLTV/CSV 標準化
+- 新操作碼添加到標準集
+
+2017: SegWit 標準化
+- P2WPKH, P2WSH 成為標準
+- 見證版本 0
+
+2021: Taproot 標準化
+- P2TR 成為標準
+- 見證版本 1
+
+未來:
+- 新的見證版本 (2-16)
+- 新的操作碼
+- 標準性會逐步放寬</code></pre>
+
+      <h2>對開發者的影響</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>使用標準類型：</strong>優先使用 P2WPKH, P2WSH, P2TR</li>
+          <li><strong>測試交易：</strong>使用 testmempoolaccept 驗證</li>
+          <li><strong>了解限制：</strong>腳本大小、公鑰數量等</li>
+          <li><strong>Regtest 測試：</strong>非標準交易可在 regtest 測試</li>
+          <li><strong>關注升級：</strong>新版本可能放寬標準性</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Mempool Policy：</strong>完整的 mempool 接受規則</li>
+        <li><strong>Script Validation：</strong>腳本驗證過程</li>
+        <li><strong>Dust Limits：</strong>粉塵輸出限制</li>
+        <li><strong>ScriptPubKey Types：</strong>輸出腳本類型</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

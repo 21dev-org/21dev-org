@@ -1,0 +1,256 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Mempool Eviction"
+  description="了解 Bitcoin Core 如何在 mempool 滿載時驅逐低優先級交易。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Mempool Eviction' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+  nextPage={{ title: 'Fee Estimation', href: '/tech/bitcoin-core/fee-estimation' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        當 mempool 達到容量上限時，Bitcoin Core 需要驅逐低費率的交易以騰出空間。
+        驅逐策略確保 mempool 保留最有價值的交易，同時防止記憶體耗盡。
+      </p>
+
+      <h2>Mempool 容量限制</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>默認配置:
+maxmempool = 300 MB  # 默認 mempool 大小
+mempoolexpiry = 336  # 交易過期時間（小時，14天）
+
+配置選項:
+# bitcoin.conf
+maxmempool=300      # 設置為 300 MB
+maxmempool=1000     # 設置為 1 GB（需要更多記憶體）
+mempoolexpiry=336   # 14 天後過期
+
+查看當前狀態:
+bitcoin-cli getmempoolinfo
+{
+  "loaded": true,
+  "size": 45000,           # 交易數量
+  "bytes": 28500000,       # 總大小（bytes）
+  "usage": 95000000,       # 記憶體使用（含索引）
+  "total_fee": 1.25,       # 總手續費
+  "maxmempool": 300000000, # 容量上限
+  "mempoolminfee": 0.00001000,  # 最低接受費率
+  "minrelaytxfee": 0.00001000,  # 最低中繼費率
+  "incrementalrelayfee": 0.00001000
+}</code></pre>
+
+      <h2>驅逐策略</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>驅逐優先級（從低到高）:
+
+1. 祖先費率（Ancestor Fee Rate）
+   - 考慮整個交易包的費率
+   - 父交易 + 當前交易的總費率
+   - 低祖先費率優先被驅逐
+
+2. 後代費率（Descendant Fee Rate）
+   - 考慮子交易的「拉動」效應
+   - 但驅逐時整個後代鏈一起移除
+
+驅逐流程:
+1. 計算所有交易的祖先費率
+2. 找到祖先費率最低的交易
+3. 移除該交易及其所有後代
+4. 重複直到 mempool 低於限制
+
+// 注意: 驅逐是按「包」進行的
+// 不能只驅逐父交易而保留子交易</code></pre>
+
+      <h2>動態最低費率</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// mempool 滿時自動提高最低費率
+
+當 mempool 接近滿載:
+1. 計算「驅逐費率」
+   eviction_rate = 最低被驅逐交易的費率
+2. 設置 mempoolminfee
+   mempoolminfee = eviction_rate + incrementalrelayfee
+
+效果:
+- 新交易必須付更高費率才能進入
+- 自動形成費率市場
+- 防止低價值交易佔用空間
+
+查看當前最低費率:
+bitcoin-cli getmempoolinfo | jq '.mempoolminfee'
+
+// 當 mempool 清空時
+// mempoolminfee 會回落到 minrelaytxfee</code></pre>
+
+      <h2>費率計算細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>祖先費率計算:
+
+單交易費率:
+fee_rate = fee / vsize
+
+祖先費率:
+ancestor_fee_rate = ancestor_fees / ancestor_vsize
+
+其中:
+- ancestor_fees = 自己的費用 + 所有未確認祖先的費用
+- ancestor_vsize = 自己的大小 + 所有未確認祖先的大小
+
+範例:
+交易 A: 200 vB, 200 sat (1 sat/vB)
+交易 B: 200 vB, 600 sat (3 sat/vB), 依賴 A
+
+B 的祖先費率:
+= (200 + 600) / (200 + 200)
+= 800 / 400
+= 2 sat/vB
+
+// 儘管 B 自己是 3 sat/vB
+// 但祖先費率只有 2 sat/vB</code></pre>
+
+      <h2>驅逐示例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: mempool 滿載，需要驅逐 1 MB
+
+交易池中的交易:
+TX_A: 500 vB, ancestor_fee_rate = 1 sat/vB
+TX_B: 300 vB, ancestor_fee_rate = 2 sat/vB
+TX_C: 800 vB, ancestor_fee_rate = 0.5 sat/vB  ← 最低
+TX_D: 200 vB, ancestor_fee_rate = 5 sat/vB
+TX_E: 400 vB, ancestor_fee_rate = 1.5 sat/vB
+
+驅逐順序:
+1. 首先驅逐 TX_C (0.5 sat/vB) → 釋放 800 vB
+2. 然後驅逐 TX_A (1 sat/vB) → 釋放 500 vB
+
+結果:
+- 驅逐了 1300 vB
+- 新的 mempoolminfee ≈ 1 sat/vB + increment
+- 保留了較高費率的交易</code></pre>
+
+      <h2>後代限制</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>防止過長的交易鏈:
+
+默認限制:
+MAX_ANCESTORS = 25      # 最大祖先數量
+MAX_DESCENDANTS = 25    # 最大後代數量
+MAX_ANCESTOR_SIZE = 101 KB   # 祖先鏈最大大小
+MAX_DESCENDANT_SIZE = 101 KB # 後代鏈最大大小
+
+為什麼需要限制?
+1. 驅逐一個交易可能連帶驅逐大量後代
+2. 驗證長鏈需要更多計算
+3. 防止 DoS 攻擊
+
+超過限制的後果:
+- 交易被拒絕進入 mempool
+- 需要等待部分祖先確認
+- 或使用 CPFP 打包確認
+
+查看交易的祖先/後代:
+bitcoin-cli getmempoolentry &lt;txid&gt; | jq '.fees'</code></pre>
+
+      <h2>RBF 與驅逐的互動</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>RBF 替換 vs 驅逐:
+
+RBF 替換:
+- 主動替換，由用戶發起
+- 需要滿足 BIP-125 規則
+- 新交易必須支付更高總費用
+
+驅逐:
+- 被動移除，由系統執行
+- 基於相對費率
+- 不產生新交易
+
+互動情況:
+1. 如果交易被驅逐，RBF 失去意義
+   - 原交易不在 mempool
+   - 新交易按普通交易處理
+
+2. 如果 mempool 滿，RBF 更容易
+   - 被替換交易可能已接近驅逐門檻
+   - 新交易更容易滿足費率要求
+
+3. 驅逐後重新廣播
+   - 交易可以重新進入（如果費率夠高）
+   - 但在擁擠時可能再次被驅逐</code></pre>
+
+      <h2>時間過期</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>除了費率驅逐，還有時間過期:
+
+默認: mempoolexpiry = 336 小時 (14 天)
+
+工作方式:
+- 每個交易記錄進入時間
+- 定期清理超過 expiry 的交易
+- 與費率驅逐獨立
+
+為什麼需要?
+1. 防止交易永久佔用空間
+2. 清理「死」交易（如過期的時間鎖）
+3. 保持 mempool 新鮮
+
+// 注意: 過期不意味著交易無效
+// 交易可能仍在其他節點的 mempool
+// 或者可以重新廣播</code></pre>
+
+      <h2>監控與調試</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看 mempool 統計
+bitcoin-cli getmempoolinfo
+
+# 查看費率分佈
+bitcoin-cli getrawmempool true | jq '
+  [.[]] |
+  group_by(.fees.ancestor | . * 100000000 / .ancestorsize | floor) |
+  map({rate: .[0].fees.ancestor * 100000000 / .[0].ancestorsize | floor, count: length})
+'
+
+# 查看即將被驅逐的交易
+bitcoin-cli getrawmempool true | jq '
+  to_entries |
+  sort_by(.value.fees.ancestor / .value.ancestorsize) |
+  .[0:10] |
+  map({txid: .key, rate: .value.fees.ancestor * 100000000 / .value.ancestorsize})
+'
+
+# 監控 mempool 變化
+watch -n 10 'bitcoin-cli getmempoolinfo | jq "{size, bytes, mempoolminfee}"'</code></pre>
+
+      <h2>對用戶的影響</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>費率估算：</strong>在擁擠時期使用更高費率</li>
+          <li><strong>RBF 準備：</strong>啟用 RBF 以便加速卡住的交易</li>
+          <li><strong>監控狀態：</strong>關注 mempoolminfee 變化</li>
+          <li><strong>避免長鏈：</strong>不要創建太長的未確認交易鏈</li>
+          <li><strong>及時確認：</strong>在費率低時盡快確認交易</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Mempool Policy：</strong>Mempool 接受策略</li>
+        <li><strong>Fee Estimation：</strong>手續費估算</li>
+        <li><strong>RBF：</strong>Replace-by-Fee</li>
+        <li><strong>CPFP：</strong>Child Pays For Parent</li>
+        <li><strong>Ancestor Limits：</strong>祖先後代限制</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

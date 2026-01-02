@@ -1,0 +1,378 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="UTXO Set"
+  description="了解比特幣 UTXO 集合的結構、存儲方式，以及對節點性能的影響。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'UTXO Set' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'UTXO', href: '/tech/bitcoin-core/utxo' }}
+  nextPage={{ title: 'Chain State', href: '/tech/bitcoin-core/chain-state' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        UTXO 集合是比特幣網路當前狀態的核心表示，包含所有未花費的交易輸出。
+        這個數據結構對節點性能至關重要，影響區塊驗證速度和記憶體使用。
+      </p>
+
+      <h2>UTXO 集合概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>什麼是 UTXO 集合？
+
+定義:
+- 所有未花費交易輸出的集合
+- 代表「誰擁有多少比特幣」
+- 驗證新交易的唯一必要數據
+
+特點:
+- 動態變化（每個區塊更新）
+- 大小隨時間增長（但有粉塵限制）
+- 必須完全正確（共識關鍵）
+
+當前規模 (2024):
+- 約 1.5 億個 UTXO
+- 磁碟大小約 8-10 GB
+- 記憶體中約 4-6 GB（帶索引）</code></pre>
+
+      <h2>數據結構</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>UTXO 記錄內容:
+
+Key (鍵):
+- 交易 ID (32 bytes)
+- 輸出索引 (varint)
+
+Value (值):
+- 金額 (satoshis)
+- scriptPubKey (鎖定腳本)
+- 區塊高度 (coinbase 成熟度)
+- 是否是 coinbase
+
+結構示例:
+{
+  key: {
+    txid: "abc123...",
+    vout: 0
+  },
+  value: {
+    amount: 100000000,  // 1 BTC
+    scriptPubKey: "76a914...88ac",
+    height: 800000,
+    isCoinbase: false
+  }
+}
+
+// 使用 LevelDB 存儲在磁碟
+// 熱數據緩存在記憶體中</code></pre>
+
+      <h2>存儲位置</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 數據目錄:
+
+~/.bitcoin/
+├── blocks/           # 區塊數據
+├── chainstate/       # UTXO 集合 ← 這裡
+│   ├── LOCK
+│   ├── LOG
+│   ├── CURRENT
+│   ├── MANIFEST-*
+│   └── *.ldb         # LevelDB 數據文件
+└── ...
+
+chainstate/ 目錄:
+- LevelDB 格式
+- 不能直接讀取
+- 包含所有 UTXO
+- 包含最佳區塊雜湊
+
+查看大小:
+du -sh ~/.bitcoin/chainstate/
+# 約 8-10 GB</code></pre>
+
+      <h2>dbcache 配置</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>UTXO 緩存對性能至關重要:
+
+默認配置:
+dbcache=450  # 450 MB
+
+推薦配置:
+# 小型設備 (4GB RAM)
+dbcache=300
+
+# 普通桌面 (8GB RAM)
+dbcache=1000
+
+# 服務器 (16GB+ RAM)
+dbcache=4000
+
+# IBD 期間（初始同步）
+dbcache=8000  # 或更多
+
+性能影響:
+- 更大緩存 = 更少磁碟 I/O
+- IBD 速度可能提升 50%+
+- 正常運行影響較小
+
+設置方式:
+# bitcoin.conf
+dbcache=2000</code></pre>
+
+      <h2>UTXO 集合操作</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊處理時的 UTXO 操作:
+
+連接區塊 (Connect):
+for tx in block.transactions:
+    # 移除花費的 UTXO
+    for input in tx.inputs:
+        utxo_set.remove(input.prevout)
+
+    # 添加新的 UTXO
+    for i, output in enumerate(tx.outputs):
+        utxo_set.add({
+            txid: tx.txid,
+            vout: i,
+            amount: output.value,
+            script: output.scriptPubKey
+        })
+
+斷開區塊 (Disconnect):
+# 反向操作
+for tx in reversed(block.transactions):
+    # 移除新創建的 UTXO
+    for i in range(len(tx.outputs)):
+        utxo_set.remove({txid: tx.txid, vout: i})
+
+    # 恢復被花費的 UTXO
+    for input in tx.inputs:
+        utxo_set.add(undo_data[input])
+
+// undo 數據存儲在 rev*.dat 文件中</code></pre>
+
+      <h2>查詢 UTXO</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
+
+# 查詢特定 UTXO
+bitcoin-cli gettxout &lt;txid&gt; &lt;vout&gt;
+{
+  "bestblock": "000000000...",
+  "confirmations": 1000,
+  "value": 0.00100000,
+  "scriptPubKey": {
+    "asm": "OP_DUP OP_HASH160 ... OP_EQUALVERIFY OP_CHECKSIG",
+    "hex": "76a914...88ac",
+    "address": "1A1zP1..."
+  },
+  "coinbase": false
+}
+
+# 查詢 UTXO 集合信息
+bitcoin-cli gettxoutsetinfo
+{
+  "height": 850000,
+  "bestblock": "000000000...",
+  "txouts": 150000000,
+  "bogosize": 11000000000,
+  "hash_serialized_3": "...",
+  "total_amount": 19500000.00000000
+}
+
+# 使用 scantxoutset 搜索
+bitcoin-cli scantxoutset start '["addr(bc1q...)"]'</code></pre>
+
+      <h2>UTXO 增長管理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>UTXO 膨脹問題:
+
+原因:
+- 每筆交易可能增加 UTXO
+- 合併比創建少
+- 粉塵輸出累積
+
+緩解措施:
+1. Dust 限制
+   - 過小的輸出不被中繼
+   - 減少無意義 UTXO
+
+2. 費用結構
+   - 創建 UTXO 消耗區塊空間
+   - 經濟激勵合併 UTXO
+
+3. 定期整合
+   - 錢包可以合併小額 UTXO
+   - 在低費率時操作
+
+UTXO 集合大小歷史:
+2013: ~1 百萬
+2017: ~5 千萬
+2021: ~8 千萬
+2024: ~1.5 億
+
+// 增長速度在減緩</code></pre>
+
+      <h2>AssumeUTXO</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>快速同步功能:
+
+傳統 IBD:
+1. 下載所有區塊
+2. 重放每個交易
+3. 構建 UTXO 集合
+4. 需要數小時到數天
+
+AssumeUTXO:
+1. 下載預生成的 UTXO 快照
+2. 驗證快照雜湊
+3. 立即可用（分鐘級）
+4. 後台驗證完整區塊鏈
+
+使用方式:
+# bitcoin.conf
+assumeutxo=&lt;hash&gt;  # 或使用內建值
+
+# 載入快照
+bitcoin-cli loadtxoutset &lt;path&gt;
+
+安全性:
+- 快照雜湊硬編碼在代碼中
+- 後台完成完整驗證
+- 驗證完成前有輕微信任假設</code></pre>
+
+      <h2>UTXO 驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易驗證流程:
+
+def verify_transaction(tx, utxo_set):
+    total_input = 0
+
+    for input in tx.inputs:
+        # 查找 UTXO
+        utxo = utxo_set.get(input.prevout)
+        if utxo is None:
+            return False, "Missing input"
+
+        # Coinbase 成熟度檢查
+        if utxo.is_coinbase:
+            if current_height - utxo.height < 100:
+                return False, "Immature coinbase"
+
+        # 驗證解鎖腳本
+        if not verify_script(input.scriptSig, utxo.scriptPubKey):
+            return False, "Script verification failed"
+
+        total_input += utxo.amount
+
+    total_output = sum(out.value for out in tx.outputs)
+
+    # 檢查費用
+    if total_input < total_output:
+        return False, "Insufficient funds"
+
+    return True, total_input - total_output  # 返回費用</code></pre>
+
+      <h2>性能優化</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>UTXO 相關性能優化:
+
+1. 緩存層次
+   - L1: 記憶體中的 CCoinsViewCache
+   - L2: 記憶體中的 CCoinsViewDB cache
+   - L3: 磁碟上的 LevelDB
+
+2. 批量寫入
+   - 不每次交易都寫磁碟
+   - 區塊結束時批量刷新
+   - 減少磁碟 I/O
+
+3. 壓縮存儲
+   - scriptPubKey 壓縮
+   - varint 編碼
+   - 減少存儲空間
+
+4. 並行驗證
+   - 腳本驗證可以並行
+   - UTXO 查詢是瓶頸
+
+// 調試性能
+bitcoin-cli getmempoolinfo | jq '.usage'
+bitcoin-cli getblockchaininfo | jq '.verificationprogress'</code></pre>
+
+      <h2>故障恢復</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>UTXO 集合損壞恢復:
+
+症狀:
+- 節點無法啟動
+- 驗證錯誤
+- 數據不一致
+
+恢復選項:
+
+1. Reindex (重新索引)
+bitcoind -reindex
+# 從區塊文件重建
+# 需要數小時
+
+2. Reindex-chainstate
+bitcoind -reindex-chainstate
+# 只重建 UTXO
+# 較快但仍需要時間
+
+3. 刪除並重新同步
+rm -rf ~/.bitcoin/chainstate
+bitcoind
+# 完全重新同步
+
+4. 使用 AssumeUTXO
+# 快速恢復到最近狀態
+# 然後後台驗證
+
+預防:
+- 正常關機 (bitcoin-cli stop)
+- 避免硬體故障
+- 定期檢查磁碟健康</code></pre>
+
+      <h2>監控 UTXO 狀態</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控命令
+
+# UTXO 集合統計
+bitcoin-cli gettxoutsetinfo
+bitcoin-cli gettxoutsetinfo "muhash"  # 包含雜湊
+
+# 記憶體使用
+bitcoin-cli getmemoryinfo
+
+# 數據庫信息
+bitcoin-cli getblockchaininfo | jq '{
+  blocks,
+  headers,
+  size_on_disk,
+  pruned
+}'
+
+# 監控腳本
+watch -n 60 'bitcoin-cli gettxoutsetinfo | jq "{txouts, total_amount}"'</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>UTXO：</strong>未花費交易輸出基礎</li>
+        <li><strong>Chain State：</strong>鏈狀態管理</li>
+        <li><strong>LevelDB：</strong>底層數據庫</li>
+        <li><strong>AssumeUTXO：</strong>快速同步功能</li>
+        <li><strong>DbCache：</strong>緩存配置</li>
+        <li><strong>CoinStatsIndex：</strong>UTXO 統計索引</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
