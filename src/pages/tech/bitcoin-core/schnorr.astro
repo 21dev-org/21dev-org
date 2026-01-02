@@ -1,0 +1,633 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Schnorr Signatures"
+  description="BIP-340 Schnorr 簽名：更高效的數位簽名與金鑰聚合"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Schnorr Signatures' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Compact Block Filters', href: '/tech/bitcoin-core/compact-block-filters' }}
+  nextPage={{ title: 'Multisig', href: '/tech/bitcoin-core/multisig' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Schnorr 簽名是由 Claus Schnorr 在 1989 年提出的數位簽名方案。
+    由於專利限制（2008 年到期），比特幣最初採用了 ECDSA。
+    BIP-340 在 2021 年 Taproot 升級中將 Schnorr 簽名引入比特幣，
+    帶來更高效率、更好的隱私性和原生多簽支援。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>啟用時間：</strong>
+      Schnorr 簽名在區塊高度 709,632（2021 年 11 月 14 日）隨 Taproot 啟用。
+      它是所有 Taproot (P2TR) 交易的基礎。
+    </p>
+  </div>
+
+  <h2 id="math">數學基礎</h2>
+
+  <h3>橢圓曲線</h3>
+  <pre><code class="language-text" is:raw>secp256k1 曲線:
+
+方程式: y² = x³ + 7 (mod p)
+
+參數:
+p = 2²⁵⁶ - 2³² - 977 (有限域)
+n = 曲線階數 (點的數量)
+G = 基點 (生成元)
+
+私鑰: d ∈ [1, n-1]
+公鑰: P = d × G (橢圓曲線點乘法)
+
+重要性質:
+- 已知 P 和 G，無法計算 d (離散對數難題)
+- 點加法和標量乘法運算封閉</code></pre>
+
+  <h3>Schnorr vs ECDSA</h3>
+  <pre><code class="language-text" is:raw>ECDSA 簽名:
+1. 選擇隨機數 k
+2. R = k × G
+3. r = R.x mod n
+4. s = k⁻¹ × (z + r × d) mod n
+5. 簽名 = (r, s)
+
+ECDSA 問題:
+- 簽名可塑性: (r, s) 和 (r, -s) 都有效
+- 無法線性聚合多個簽名
+- 驗證需要計算 k⁻¹ (較慢)
+
+Schnorr 簽名:
+1. 選擇隨機數 k
+2. R = k × G
+3. e = H(R || P || m)
+4. s = k + e × d mod n
+5. 簽名 = (R, s)
+
+Schnorr 優勢:
+- 無簽名可塑性 (R 是固定的)
+- 線性特性允許金鑰聚合
+- 驗證只需乘法 (更快)
+- 可進行批量驗證</code></pre>
+
+  <h2 id="bip340">BIP-340 規範</h2>
+
+  <h3>公鑰格式</h3>
+  <pre><code class="language-text" is:raw>BIP-340 公鑰 (x-only):
+
+傳統壓縮公鑰: 33 bytes
+┌──────────────────────────────────────┐
+│ 0x02/0x03 │ 32-byte x coordinate     │
+└──────────────────────────────────────┘
+            ↑
+      表示 y 是偶數或奇數
+
+BIP-340 公鑰: 32 bytes
+┌──────────────────────────────────────┐
+│ 32-byte x coordinate                 │
+└──────────────────────────────────────┘
+
+規則:
+- 只使用 x 座標
+- 隱式假設 y 是偶數 (even y)
+- 如果計算出的 y 是奇數，則取反私鑰
+
+優點:
+- 節省 1 byte
+- 簡化驗證邏輯</code></pre>
+
+  <h3>簽名格式</h3>
+  <pre><code class="language-text" is:raw>BIP-340 簽名: 64 bytes
+
+┌──────────────────────────────────────┐
+│ R.x (32 bytes)                       │
+├──────────────────────────────────────┤
+│ s (32 bytes)                         │
+└──────────────────────────────────────┘
+
+vs ECDSA DER 編碼:
+- ECDSA: 70-72 bytes (可變長度)
+- Schnorr: 64 bytes (固定長度)
+
+R 的 y 座標:
+- 同樣隱式假設偶數
+- 簽名時若 R.y 是奇數，取反 k</code></pre>
+
+  <h3>Tagged Hash</h3>
+  <pre><code class="language-typescript" is:raw>// BIP-340 使用 tagged hash 防止跨協議攻擊
+function taggedHash(tag: string, data: Uint8Array): Uint8Array {
+  // 計算 tag 的雜湊
+  const tagHash = sha256(new TextEncoder().encode(tag));
+
+  // tagged_hash = SHA256(SHA256(tag) || SHA256(tag) || data)
+  return sha256(
+    concatBytes([tagHash, tagHash, data])
+  );
+}
+
+// BIP-340 定義的標籤
+const TAGS = {
+  BIP0340_challenge: 'BIP0340/challenge',
+  BIP0340_aux: 'BIP0340/aux',
+  BIP0340_nonce: 'BIP0340/nonce',
+};
+
+// 計算挑戰 e
+function computeChallenge(
+  rx: Uint8Array,
+  px: Uint8Array,
+  message: Uint8Array
+): bigint {
+  const hash = taggedHash(
+    'BIP0340/challenge',
+    concatBytes([rx, px, message])
+  );
+  return bytesToBigInt(hash) % SECP256K1_ORDER;
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>簽名算法</h3>
+  <pre><code class="language-typescript" is:raw>import { secp256k1 } from '@noble/curves/secp256k1';
+
+const CURVE_ORDER = secp256k1.CURVE.n;
+
+interface SchnorrSignature {
+  rx: Uint8Array; // 32 bytes
+  s: Uint8Array;  // 32 bytes
+}
+
+function schnorrSign(
+  message: Uint8Array,
+  privateKey: Uint8Array,
+  auxRand: Uint8Array = crypto.getRandomValues(new Uint8Array(32))
+): SchnorrSignature {
+  // 1. 確保私鑰對應的公鑰 y 是偶數
+  let d = bytesToBigInt(privateKey);
+  const P = secp256k1.ProjectivePoint.fromPrivateKey(privateKey);
+  if (!hasEvenY(P)) {
+    d = CURVE_ORDER - d;
+  }
+  const dBytes = bigIntToBytes(d, 32);
+
+  // 2. 計算公鑰 x 座標
+  const px = bigIntToBytes(P.x, 32);
+
+  // 3. 生成隨機數 k
+  // t = d XOR tagged_hash("BIP0340/aux", auxRand)
+  const t = xor(dBytes, taggedHash('BIP0340/aux', auxRand));
+
+  // k = tagged_hash("BIP0340/nonce", t || px || message)
+  const kHash = taggedHash(
+    'BIP0340/nonce',
+    concatBytes([t, px, message])
+  );
+  let k = bytesToBigInt(kHash) % CURVE_ORDER;
+  if (k === 0n) throw new Error('Invalid k');
+
+  // 4. R = k × G
+  const R = secp256k1.ProjectivePoint.BASE.multiply(k);
+  if (!hasEvenY(R)) {
+    k = CURVE_ORDER - k;
+  }
+  const rx = bigIntToBytes(R.x, 32);
+
+  // 5. 計算挑戰 e
+  const e = computeChallenge(rx, px, message);
+
+  // 6. s = k + e × d mod n
+  const s = (k + e * d) % CURVE_ORDER;
+
+  return {
+    rx,
+    s: bigIntToBytes(s, 32)
+  };
+}
+
+function hasEvenY(point: secp256k1.ProjectivePoint): boolean {
+  const affine = point.toAffine();
+  return affine.y % 2n === 0n;
+}</code></pre>
+
+  <h3>驗證算法</h3>
+  <pre><code class="language-typescript" is:raw>function schnorrVerify(
+  message: Uint8Array,
+  signature: SchnorrSignature,
+  publicKey: Uint8Array // 32-byte x-only
+): boolean {
+  const { rx, s } = signature;
+
+  // 1. 解析公鑰
+  const P = liftX(bytesToBigInt(publicKey));
+  if (!P) return false;
+
+  // 2. 解析 r 和 s
+  const r = bytesToBigInt(rx);
+  const sVal = bytesToBigInt(s);
+
+  // 驗證範圍
+  if (r >= secp256k1.CURVE.p || sVal >= CURVE_ORDER) {
+    return false;
+  }
+
+  // 3. 計算挑戰 e
+  const e = computeChallenge(rx, publicKey, message);
+
+  // 4. 計算 R' = s × G - e × P
+  const sG = secp256k1.ProjectivePoint.BASE.multiply(sVal);
+  const eP = P.multiply(e);
+  const R = sG.subtract(eP);
+
+  // 5. 驗證 R' == R
+  if (R.equals(secp256k1.ProjectivePoint.ZERO)) {
+    return false;
+  }
+
+  const RAffine = R.toAffine();
+
+  // R 的 y 必須是偶數
+  if (RAffine.y % 2n !== 0n) {
+    return false;
+  }
+
+  // R 的 x 必須等於 r
+  return RAffine.x === r;
+}
+
+// 從 x 座標恢復點 (假設 y 是偶數)
+function liftX(x: bigint): secp256k1.ProjectivePoint | null {
+  const p = secp256k1.CURVE.p;
+
+  if (x >= p) return null;
+
+  // y² = x³ + 7 mod p
+  const ySq = (x ** 3n + 7n) % p;
+
+  // 計算平方根
+  const y = modPow(ySq, (p + 1n) / 4n, p);
+
+  if ((y * y) % p !== ySq) return null;
+
+  // 選擇偶數 y
+  const yFinal = y % 2n === 0n ? y : p - y;
+
+  return secp256k1.ProjectivePoint.fromAffine({
+    x,
+    y: yFinal
+  });
+}</code></pre>
+
+  <h3>批量驗證</h3>
+  <pre><code class="language-typescript" is:raw>// Schnorr 簽名支持高效批量驗證
+function schnorrBatchVerify(
+  items: Array&lt;{
+    message: Uint8Array;
+    signature: SchnorrSignature;
+    publicKey: Uint8Array;
+  }&gt;
+): boolean {
+  if (items.length === 0) return true;
+  if (items.length === 1) {
+    return schnorrVerify(
+      items[0].message,
+      items[0].signature,
+      items[0].publicKey
+    );
+  }
+
+  // 隨機權重 (防止攻擊者找到抵消的簽名)
+  const weights: bigint[] = items.map((_, i) =>
+    i === 0 ? 1n : bytesToBigInt(crypto.getRandomValues(new Uint8Array(16)))
+  );
+
+  // 計算:
+  // Σ(aᵢ × sᵢ) × G = Σ(aᵢ × Rᵢ) + Σ(aᵢ × eᵢ × Pᵢ)
+  let leftSum = 0n;
+  let rightPoint = secp256k1.ProjectivePoint.ZERO;
+
+  for (let i = 0; i &lt; items.length; i++) {
+    const { message, signature, publicKey } = items[i];
+    const { rx, s } = signature;
+    const a = weights[i];
+
+    // 左邊: Σ(aᵢ × sᵢ)
+    leftSum = (leftSum + a * bytesToBigInt(s)) % CURVE_ORDER;
+
+    // 右邊: aᵢ × Rᵢ
+    const R = liftX(bytesToBigInt(rx));
+    if (!R) return false;
+    rightPoint = rightPoint.add(R.multiply(a));
+
+    // 右邊: aᵢ × eᵢ × Pᵢ
+    const P = liftX(bytesToBigInt(publicKey));
+    if (!P) return false;
+    const e = computeChallenge(rx, publicKey, message);
+    rightPoint = rightPoint.add(P.multiply((a * e) % CURVE_ORDER));
+  }
+
+  // 驗證: leftSum × G == rightPoint
+  const leftPoint = secp256k1.ProjectivePoint.BASE.multiply(leftSum);
+  return leftPoint.equals(rightPoint);
+}
+
+// 批量驗證速度:
+// - 單個驗證: 2 次標量乘法
+// - 批量 n 個: (n+1) 次標量乘法 + n 次點加法
+// - 速度提升: 約 n/(n+1) ≈ 50% (對於大批量)</code></pre>
+
+  <h2 id="key-aggregation">金鑰聚合</h2>
+
+  <h3>MuSig2 概述</h3>
+  <pre><code class="language-text" is:raw>Schnorr 的線性特性允許金鑰聚合:
+
+基本概念:
+- 多個參與者的公鑰可以聚合成一個
+- 多個簽名可以聚合成一個
+- 外部觀察者無法區分單簽和多簽
+
+2-of-2 範例:
+Alice: 私鑰 dₐ, 公鑰 Pₐ = dₐ × G
+Bob:   私鑰 d_b, 公鑰 P_b = d_b × G
+
+聚合公鑰:
+P = Pₐ + P_b = (dₐ + d_b) × G
+
+聯合簽名:
+sₐ = kₐ + e × dₐ
+s_b = k_b + e × d_b
+s = sₐ + s_b = (kₐ + k_b) + e × (dₐ + d_b)
+
+結果: 單一 64 byte 簽名，驗證如同單簽</code></pre>
+
+  <h3>MuSig2 協議</h3>
+  <pre><code class="language-typescript" is:raw>// MuSig2: 兩輪多簽協議
+
+interface MuSig2Context {
+  pubkeys: Uint8Array[];
+  aggregatedPubkey: Uint8Array;
+  keyAggCoefficients: bigint[];
+}
+
+// 步驟 1: 金鑰聚合
+function keyAgg(pubkeys: Uint8Array[]): MuSig2Context {
+  // 排序公鑰以確保確定性
+  const sorted = [...pubkeys].sort((a, b) =>
+    bytesToBigInt(a) < bytesToBigInt(b) ? -1 : 1
+  );
+
+  // 計算聚合係數 (防止 rogue key 攻擊)
+  const L = taggedHash(
+    'KeyAgg list',
+    concatBytes(sorted)
+  );
+
+  const coefficients: bigint[] = [];
+  let aggPoint = secp256k1.ProjectivePoint.ZERO;
+
+  for (const pk of sorted) {
+    // aᵢ = H(L || Pᵢ)
+    const aHash = taggedHash(
+      'KeyAgg coefficient',
+      concatBytes([L, pk])
+    );
+    const a = bytesToBigInt(aHash) % CURVE_ORDER;
+    coefficients.push(a);
+
+    // P = Σ(aᵢ × Pᵢ)
+    const P = liftX(bytesToBigInt(pk))!;
+    aggPoint = aggPoint.add(P.multiply(a));
+  }
+
+  return {
+    pubkeys: sorted,
+    aggregatedPubkey: bigIntToBytes(aggPoint.toAffine().x, 32),
+    keyAggCoefficients: coefficients
+  };
+}
+
+// 步驟 2: 第一輪 - 承諾 nonces
+interface NonceCommitment {
+  R1: secp256k1.ProjectivePoint;
+  R2: secp256k1.ProjectivePoint;
+}
+
+function generateNonce(): {
+  secret: [bigint, bigint];
+  public: NonceCommitment;
+} {
+  const k1 = bytesToBigInt(crypto.getRandomValues(new Uint8Array(32))) % CURVE_ORDER;
+  const k2 = bytesToBigInt(crypto.getRandomValues(new Uint8Array(32))) % CURVE_ORDER;
+
+  return {
+    secret: [k1, k2],
+    public: {
+      R1: secp256k1.ProjectivePoint.BASE.multiply(k1),
+      R2: secp256k1.ProjectivePoint.BASE.multiply(k2)
+    }
+  };
+}
+
+// 步驟 3: 聚合 nonces
+function aggregateNonces(
+  nonces: NonceCommitment[],
+  message: Uint8Array,
+  aggPubkey: Uint8Array
+): { R: secp256k1.ProjectivePoint; b: bigint } {
+  // 聚合 R1 和 R2
+  let aggR1 = secp256k1.ProjectivePoint.ZERO;
+  let aggR2 = secp256k1.ProjectivePoint.ZERO;
+
+  for (const nonce of nonces) {
+    aggR1 = aggR1.add(nonce.R1);
+    aggR2 = aggR2.add(nonce.R2);
+  }
+
+  // b = H(aggR1 || aggR2 || aggPubkey || message)
+  const bHash = taggedHash(
+    'MuSig/noncecoef',
+    concatBytes([
+      pointToBytes(aggR1),
+      pointToBytes(aggR2),
+      aggPubkey,
+      message
+    ])
+  );
+  const b = bytesToBigInt(bHash) % CURVE_ORDER;
+
+  // R = aggR1 + b × aggR2
+  const R = aggR1.add(aggR2.multiply(b));
+
+  return { R, b };
+}
+
+// 步驟 4: 創建部分簽名
+function partialSign(
+  ctx: MuSig2Context,
+  myIndex: number,
+  myPrivateKey: bigint,
+  myNonce: [bigint, bigint],
+  R: secp256k1.ProjectivePoint,
+  b: bigint,
+  message: Uint8Array
+): bigint {
+  // e = H(R.x || aggPubkey || message)
+  const rx = bigIntToBytes(R.toAffine().x, 32);
+  const e = computeChallenge(rx, ctx.aggregatedPubkey, message);
+
+  // 調整私鑰
+  let d = myPrivateKey * ctx.keyAggCoefficients[myIndex];
+  d = d % CURVE_ORDER;
+
+  // k = k1 + b × k2
+  const [k1, k2] = myNonce;
+  let k = (k1 + b * k2) % CURVE_ORDER;
+
+  // 調整 k (如果 R.y 是奇數)
+  if (!hasEvenY(R)) {
+    k = CURVE_ORDER - k;
+  }
+
+  // s = k + e × d
+  return (k + e * d) % CURVE_ORDER;
+}
+
+// 步驟 5: 聚合簽名
+function aggregateSignatures(
+  partialSigs: bigint[],
+  R: secp256k1.ProjectivePoint
+): SchnorrSignature {
+  let s = 0n;
+  for (const sig of partialSigs) {
+    s = (s + sig) % CURVE_ORDER;
+  }
+
+  return {
+    rx: bigIntToBytes(R.toAffine().x, 32),
+    s: bigIntToBytes(s, 32)
+  };
+}</code></pre>
+
+  <h2 id="adaptor-signatures">適配器簽名</h2>
+  <pre><code class="language-text" is:raw>Adaptor Signatures (適配器簽名):
+
+用途:
+- 原子交換 (Atomic Swaps)
+- 支付通道
+- 無腳本腳本 (Scriptless Scripts)
+
+概念:
+Alice 創建一個「不完整」的簽名 s'
+Bob 擁有秘密 t
+完整簽名 s = s' + t
+
+流程:
+1. Alice 知道 T = t × G (但不知道 t)
+2. Alice 創建 R' = R + T
+3. Alice 的適配器簽名: s' = k + e × d
+4. Bob 驗證 s' × G = R' + e × P - T
+5. Bob 發布完整簽名: s = s' + t
+6. Alice 從 s - s' = t 學到秘密
+
+應用: 閃電網路 PTLC (Point Time Locked Contracts)</code></pre>
+
+  <h2 id="taproot-integration">Taproot 整合</h2>
+  <pre><code class="language-text" is:raw>Schnorr 在 Taproot 中的角色:
+
+1. Key Path 花費
+   - 直接使用 Schnorr 簽名
+   - 外部看來如同單簽交易
+   - 最高效的花費方式
+
+2. Script Path 花費
+   - Tapscript 中的 OP_CHECKSIG 使用 Schnorr
+   - 比 ECDSA 更高效
+
+3. 隱私提升
+   - 多簽看起來像單簽
+   - 沒有使用的腳本路徑完全隱藏
+   - 所有 Taproot 輸出看起來相同
+
+4. 效率提升
+   - 64 byte 簽名 vs 70-72 byte ECDSA
+   - 32 byte 公鑰 vs 33 byte 壓縮公鑰
+   - 批量驗證加速</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <pre><code class="language-text" is:raw>安全注意事項:
+
+1. 隨機數生成
+   - k 必須是安全的隨機數
+   - 重複使用 k 會洩露私鑰！
+   - BIP-340 使用 aux_rand 增加熵
+
+2. Rogue Key 攻擊
+   - 多簽時攻擊者可能選擇特殊公鑰
+   - MuSig2 使用係數防止此攻擊
+
+3. 側信道攻擊
+   - 確保恆定時間實現
+   - 避免基於秘密的分支
+
+4. 驗證要點
+   - 必須驗證 R 的 y 座標是偶數
+   - 必須驗證 r 和 s 在有效範圍內
+   - 必須驗證公鑰在曲線上</code></pre>
+
+  <h2 id="comparison">與 ECDSA 比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>ECDSA</th>
+        <th>Schnorr</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>簽名大小</td>
+        <td>70-72 bytes</td>
+        <td>64 bytes</td>
+      </tr>
+      <tr>
+        <td>公鑰大小</td>
+        <td>33 bytes</td>
+        <td>32 bytes</td>
+      </tr>
+      <tr>
+        <td>簽名可塑性</td>
+        <td>存在</td>
+        <td>無</td>
+      </tr>
+      <tr>
+        <td>金鑰聚合</td>
+        <td>不支援</td>
+        <td>原生支援</td>
+      </tr>
+      <tr>
+        <td>批量驗證</td>
+        <td>不支援</td>
+        <td>支援</td>
+      </tr>
+      <tr>
+        <td>安全證明</td>
+        <td>複雜</td>
+        <td>簡單</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki" target="_blank" rel="noopener noreferrer">BIP-340: Schnorr Signatures</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki" target="_blank" rel="noopener noreferrer">BIP-327: MuSig2</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+    <li><a href="/tech/bitcoin-core/libsecp256k1">libsecp256k1</a></li>
+    <li><a href="/tech/bitcoin-core/multisig">Multisig</a></li>
+  </ul>
+</ArticleLayout>

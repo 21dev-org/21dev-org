@@ -1,0 +1,634 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Bloom Filters"
+  description="BIP-37 布隆過濾器：SPV 客戶端交易過濾與隱私問題"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Bloom Filters' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+  nextPage={{ title: 'Compact Block Filters', href: '/tech/bitcoin-core/compact-block-filters' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    布隆過濾器（Bloom Filter）是一種空間效率極高的機率性資料結構，
+    用於測試元素是否屬於某個集合。BIP-37 將其引入比特幣，
+    讓輕量級客戶端（SPV）能夠只接收與自己相關的交易。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+    <p class="text-sm text-amber-700 dark:text-amber-400">
+      <strong>⚠️ 已棄用：</strong>
+      由於嚴重的隱私問題，BIP-37 布隆過濾器已被 BIP-157/158 Compact Block Filters 取代。
+      Bitcoin Core 默認禁用 bloom filter 服務。
+    </p>
+  </div>
+
+  <h2 id="data-structure">資料結構</h2>
+
+  <h3>布隆過濾器原理</h3>
+  <pre><code class="language-text" is:raw>布隆過濾器結構:
+┌─────────────────────────────────────────────────────┐
+│ Bit Array (m bits)                                  │
+│ ┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐ │
+│ │0│1│0│0│1│0│0│1│0│0│0│1│0│0│0│0│1│0│0│1│0│0│0│1│ │
+│ └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘ │
+│   ↑       ↑       ↑                               │
+│   │       │       │                               │
+│   └───────┼───────┘                               │
+│           │                                        │
+│     k 個雜湊函數                                    │
+└─────────────────────────────────────────────────────┘
+
+插入元素:
+1. 對元素計算 k 個雜湊值
+2. 將對應的 k 個位元設為 1
+
+查詢元素:
+1. 計算 k 個雜湊值
+2. 檢查對應位元是否全為 1
+   - 全為 1: 可能存在 (有誤判率)
+   - 有任何 0: 絕對不存在
+
+特性:
+- 不會漏報 (false negative = 0)
+- 可能誤判 (false positive > 0)
+- 無法刪除元素</code></pre>
+
+  <h3>參數設計</h3>
+  <pre><code class="language-text" is:raw>布隆過濾器參數:
+
+m = 過濾器大小 (bits)
+n = 預期元素數量
+k = 雜湊函數數量
+p = 誤判率 (false positive rate)
+
+最佳雜湊函數數量:
+k = (m/n) × ln(2) ≈ 0.693 × (m/n)
+
+誤判率計算:
+p ≈ (1 - e^(-kn/m))^k
+
+給定 n 和 p，計算所需大小:
+m = -n × ln(p) / (ln(2))²
+
+範例:
+- n = 100 個元素
+- p = 0.01 (1% 誤判率)
+- m ≈ 958 bits ≈ 120 bytes
+- k ≈ 7 個雜湊函數</code></pre>
+
+  <h2 id="bip37">BIP-37 規範</h2>
+
+  <h3>過濾器結構</h3>
+  <pre><code class="language-text" is:raw>BIP-37 Bloom Filter:
+
+┌─────────────────────────────────────┐
+│ nFilterBytes (VarInt)               │
+├─────────────────────────────────────┤
+│ filter[nFilterBytes] (bytes)        │
+├─────────────────────────────────────┤
+│ nHashFuncs (uint32)                 │
+├─────────────────────────────────────┤
+│ nTweak (uint32)                     │
+├─────────────────────────────────────┤
+│ nFlags (uint8)                      │
+└─────────────────────────────────────┘
+
+限制:
+- 最大大小: 36,000 bytes
+- 最大雜湊函數: 50
+- 如果 filter 為空且 nHashFuncs = 0，匹配所有交易
+
+nFlags 選項:
+- BLOOM_UPDATE_NONE (0): 不自動更新
+- BLOOM_UPDATE_ALL (1): 匹配時加入 outpoint
+- BLOOM_UPDATE_P2PUBKEY_ONLY (2): 僅 P2PK/P2MS 時更新</code></pre>
+
+  <h3>雜湊函數</h3>
+  <pre><code class="language-typescript" is:raw>// BIP-37 使用 MurmurHash3 雜湊函數
+function murmurHash3(data: Uint8Array, seed: number): number {
+  const c1 = 0xcc9e2d51;
+  const c2 = 0x1b873593;
+  const r1 = 15;
+  const r2 = 13;
+  const m = 5;
+  const n = 0xe6546b64;
+
+  let hash = seed;
+  const len = data.length;
+  const nblocks = Math.floor(len / 4);
+
+  // Process 4-byte blocks
+  for (let i = 0; i < nblocks; i++) {
+    let k = data[i * 4] |
+            (data[i * 4 + 1] << 8) |
+            (data[i * 4 + 2] << 16) |
+            (data[i * 4 + 3] << 24);
+
+    k = Math.imul(k, c1);
+    k = (k << r1) | (k >>> (32 - r1));
+    k = Math.imul(k, c2);
+
+    hash ^= k;
+    hash = (hash << r2) | (hash >>> (32 - r2));
+    hash = Math.imul(hash, m) + n;
+  }
+
+  // Process remaining bytes
+  let k1 = 0;
+  const tailIndex = nblocks * 4;
+  switch (len & 3) {
+    case 3: k1 ^= data[tailIndex + 2] << 16;
+    case 2: k1 ^= data[tailIndex + 1] << 8;
+    case 1:
+      k1 ^= data[tailIndex];
+      k1 = Math.imul(k1, c1);
+      k1 = (k1 << r1) | (k1 >>> (32 - r1));
+      k1 = Math.imul(k1, c2);
+      hash ^= k1;
+  }
+
+  // Finalization
+  hash ^= len;
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b);
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+
+  return hash >>> 0;
+}
+
+// BIP-37 雜湊函數生成
+function bloomHash(
+  data: Uint8Array,
+  hashNum: number,
+  tweak: number,
+  filterSize: number
+): number {
+  const seed = (hashNum * 0xfba4c795 + tweak) >>> 0;
+  return murmurHash3(data, seed) % (filterSize * 8);
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>布隆過濾器類別</h3>
+  <pre><code class="language-typescript" is:raw>class BloomFilter {
+  private filter: Uint8Array;
+  private nHashFuncs: number;
+  private nTweak: number;
+  private nFlags: number;
+
+  constructor(
+    nElements: number,
+    fpRate: number,
+    nTweak: number = 0,
+    nFlags: number = 0
+  ) {
+    // 計算最佳過濾器大小
+    const LN2SQUARED = 0.4804530139182014246671025263266649717305529515945455;
+    const LN2 = 0.6931471805599453094172321214581765680755001343602552;
+
+    let nFilterBytes = Math.floor(
+      Math.min(
+        (-1.0 / LN2SQUARED * nElements * Math.log(fpRate)) / 8.0,
+        36000 // MAX_BLOOM_FILTER_SIZE
+      )
+    );
+    nFilterBytes = Math.max(1, nFilterBytes);
+
+    this.filter = new Uint8Array(nFilterBytes);
+
+    // 計算最佳雜湊函數數量
+    this.nHashFuncs = Math.floor(
+      Math.min(
+        (this.filter.length * 8 / nElements) * LN2,
+        50 // MAX_HASH_FUNCS
+      )
+    );
+    this.nHashFuncs = Math.max(1, this.nHashFuncs);
+
+    this.nTweak = nTweak;
+    this.nFlags = nFlags;
+  }
+
+  // 插入元素
+  insert(data: Uint8Array): void {
+    if (this.filter.length === 0) return;
+
+    for (let i = 0; i < this.nHashFuncs; i++) {
+      const index = bloomHash(
+        data,
+        i,
+        this.nTweak,
+        this.filter.length
+      );
+      this.filter[Math.floor(index / 8)] |= (1 << (index % 8));
+    }
+  }
+
+  // 查詢元素
+  contains(data: Uint8Array): boolean {
+    if (this.filter.length === 0) return true; // 空過濾器匹配所有
+
+    for (let i = 0; i < this.nHashFuncs; i++) {
+      const index = bloomHash(
+        data,
+        i,
+        this.nTweak,
+        this.filter.length
+      );
+      if (!(this.filter[Math.floor(index / 8)] & (1 << (index % 8)))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // 序列化
+  serialize(): Uint8Array {
+    const result = new Uint8Array(
+      this.filter.length + 4 + 4 + 1 + 3 // filter + funcs + tweak + flags + varint
+    );
+
+    let offset = 0;
+
+    // Filter length (varint)
+    const filterLen = encodeVarInt(this.filter.length);
+    result.set(filterLen, offset);
+    offset += filterLen.length;
+
+    // Filter data
+    result.set(this.filter, offset);
+    offset += this.filter.length;
+
+    // nHashFuncs
+    new DataView(result.buffer).setUint32(offset, this.nHashFuncs, true);
+    offset += 4;
+
+    // nTweak
+    new DataView(result.buffer).setUint32(offset, this.nTweak, true);
+    offset += 4;
+
+    // nFlags
+    result[offset] = this.nFlags;
+
+    return result.slice(0, offset + 1);
+  }
+}
+
+// 使用範例
+const filter = new BloomFilter(
+  10,     // 預期 10 個元素
+  0.0001, // 0.01% 誤判率
+  0,      // tweak
+  1       // BLOOM_UPDATE_ALL
+);
+
+// 加入地址
+const address = hexToBytes('76a914...88ac');
+filter.insert(address);
+
+// 加入公鑰
+const pubkey = hexToBytes('02...');
+filter.insert(pubkey);
+
+// 檢查是否匹配
+console.log(filter.contains(address)); // true
+console.log(filter.contains(otherData)); // 可能 false 或 true (誤判)</code></pre>
+
+  <h2 id="p2p-messages">P2P 訊息</h2>
+
+  <h3>filterload</h3>
+  <pre><code class="language-text" is:raw>filterload 訊息:
+設定節點的布隆過濾器
+
+┌─────────────────────────────────────┐
+│ filter (VarBytes)                   │
+├─────────────────────────────────────┤
+│ nHashFuncs (uint32)                 │
+├─────────────────────────────────────┤
+│ nTweak (uint32)                     │
+├─────────────────────────────────────┤
+│ nFlags (uint8)                      │
+└─────────────────────────────────────┘
+
+效果:
+- 節點只會發送匹配過濾器的交易
+- 節點會發送 merkleblock 而非完整區塊
+- 之前設定的過濾器會被替換</code></pre>
+
+  <h3>filteradd</h3>
+  <pre><code class="language-text" is:raw>filteradd 訊息:
+向現有過濾器加入元素
+
+┌─────────────────────────────────────┐
+│ data (VarBytes, max 520 bytes)      │
+└─────────────────────────────────────┘
+
+用途:
+- 動態更新過濾器
+- 加入新發現的地址或公鑰
+- 不需要重新傳送整個過濾器</code></pre>
+
+  <h3>filterclear</h3>
+  <pre><code class="language-text" is:raw>filterclear 訊息:
+清除布隆過濾器
+
+- 無內容
+- 恢復接收所有交易
+- 停止使用 merkleblock</code></pre>
+
+  <h3>merkleblock</h3>
+  <pre><code class="language-text" is:raw>merkleblock 訊息:
+只包含匹配交易的 Merkle 證明
+
+┌─────────────────────────────────────┐
+│ block_header (80 bytes)             │
+├─────────────────────────────────────┤
+│ total_transactions (uint32)         │
+├─────────────────────────────────────┤
+│ hashes (VarInt + 32-byte[])         │
+├─────────────────────────────────────┤
+│ flags (VarBytes)                    │
+└─────────────────────────────────────┘
+
+Merkle 樹遍歷:
+         Root
+        /    \
+      AB      CD
+     / \     / \
+    A   B   C   D  ← 交易雜湊
+
+如果只有 B 匹配:
+- hashes: [A, B, CD]
+- flags: 標記遍歷路徑</code></pre>
+
+  <h2 id="matching">交易匹配</h2>
+
+  <h3>匹配規則</h3>
+  <pre><code class="language-text" is:raw>BIP-37 交易匹配規則:
+
+1. 測試 TXID
+   - SHA256(SHA256(tx)) 是否匹配
+
+2. 對每個輸出:
+   - 測試 scriptPubKey 的每個 data push
+   - 包括公鑰、公鑰雜湊、腳本雜湊等
+
+3. 對每個輸入:
+   - 測試 previous outpoint (txid + index)
+   - 測試 scriptSig 的每個 data push
+   - 測試 witness 的每個 data push
+
+4. 如果輸出匹配且 nFlags != NONE:
+   - 自動將該 outpoint 加入過濾器
+   - 確保能匹配後續花費此輸出的交易
+
+匹配優先級:
+TX → Outputs → Inputs</code></pre>
+
+  <h3>SPV 客戶端流程</h3>
+  <pre><code class="language-typescript" is:raw>class SPVClient {
+  private filter: BloomFilter;
+  private addresses: Set&lt;string&gt;;
+  private watchedOutpoints: Set&lt;string&gt;;
+
+  constructor() {
+    // 初始化過濾器
+    this.filter = new BloomFilter(100, 0.0001);
+    this.addresses = new Set();
+    this.watchedOutpoints = new Set();
+  }
+
+  // 加入監控地址
+  addAddress(address: string): void {
+    const decoded = decodeAddress(address);
+    this.filter.insert(decoded.hash);
+    this.addresses.add(address);
+  }
+
+  // 連接節點後發送過濾器
+  async onConnect(peer: Peer): Promise&lt;void&gt; {
+    // 設定過濾器
+    await peer.send('filterload', this.filter.serialize());
+
+    // 請求區塊頭
+    await peer.send('getheaders', {
+      locator: this.getBlockLocator(),
+      stop: ZERO_HASH
+    });
+  }
+
+  // 處理 merkleblock
+  async onMerkleBlock(
+    header: BlockHeader,
+    hashes: string[],
+    flags: Uint8Array
+  ): Promise&lt;void&gt; {
+    // 驗證 Merkle 證明
+    const { matches, merkleRoot } = this.verifyMerkleProof(
+      hashes,
+      flags,
+      header.merkleRoot
+    );
+
+    if (merkleRoot !== header.merkleRoot) {
+      throw new Error('Invalid merkle proof');
+    }
+
+    // 記錄匹配的交易
+    for (const txid of matches) {
+      this.pendingTxs.add(txid);
+    }
+  }
+
+  // 處理匹配的交易
+  async onTransaction(tx: Transaction): Promise&lt;void&gt; {
+    // 檢查輸出
+    for (let i = 0; i &lt; tx.outputs.length; i++) {
+      const output = tx.outputs[i];
+      if (this.isOurScript(output.scriptPubKey)) {
+        // 記錄 UTXO
+        this.utxos.add({
+          txid: tx.txid,
+          vout: i,
+          value: output.value,
+          script: output.scriptPubKey
+        });
+
+        // 更新過濾器以追蹤花費
+        const outpoint = `${tx.txid}:${i}`;
+        this.watchedOutpoints.add(outpoint);
+      }
+    }
+
+    // 檢查輸入 (偵測花費)
+    for (const input of tx.inputs) {
+      const outpoint = `${input.txid}:${input.vout}`;
+      if (this.watchedOutpoints.has(outpoint)) {
+        // 我們的 UTXO 被花費了
+        this.utxos.delete(outpoint);
+      }
+    }
+  }
+}</code></pre>
+
+  <h2 id="privacy-issues">隱私問題</h2>
+
+  <h3>地址關聯</h3>
+  <pre><code class="language-text" is:raw>隱私洩漏分析:
+
+問題 1: 過濾器直接暴露興趣
+┌─────────────────────────────────────────────┐
+│ SPV Client                 Full Node        │
+│     │                          │            │
+│     │ ──── filterload ────▶    │            │
+│     │   (包含地址雜湊)           │            │
+│     │                          │            │
+│     │         節點知道:                      │
+│     │         - 客戶端的所有地址             │
+│     │         - 地址之間的關聯性             │
+│     │         - 錢包餘額估計                 │
+└─────────────────────────────────────────────┘
+
+問題 2: 時序分析
+- 新地址加入時發送 filteradd
+- 可以追蹤錢包的活動模式
+- 交易時間與過濾器更新相關聯
+
+問題 3: 誤判率過低
+- 0.0001% 誤判率 ≈ 幾乎無誤判
+- 節點可以確定過濾器內容
+- 無法獲得 "人群中隱藏" 的效果</code></pre>
+
+  <h3>攻擊向量</h3>
+  <pre><code class="language-text" is:raw>攻擊 1: 過濾器反推
+
+惡意節點可以:
+1. 收集所有已知的公鑰/地址
+2. 對每個測試是否匹配過濾器
+3. 重建客戶端的地址列表
+
+成功條件:
+- 誤判率低時幾乎 100% 準確
+- 地址數據庫越大越準確
+
+攻擊 2: 交易圖分析
+
+透過觀察:
+- 哪些交易被請求
+- filteradd 的時機
+- 多次連接的模式變化
+
+可以:
+- 連結多個地址到同一錢包
+- 追蹤資金流向
+- 估計錢包餘額
+
+攻擊 3: Sybil 攻擊
+
+惡意運營商:
+1. 運行多個全節點
+2. 收集不同時間的過濾器
+3. 比對分析以消除誤判
+4. 構建完整的用戶檔案</code></pre>
+
+  <h3>緩解措施（不足）</h3>
+  <pre><code class="language-text" is:raw>嘗試的緩解措施:
+
+1. 提高誤判率
+   - 加入更多假陽性
+   - 問題: 增加頻寬消耗
+   - 問題: 仍可被統計分析
+
+2. 使用多個節點
+   - 每個節點用不同過濾器
+   - 問題: 複雜度增加
+   - 問題: Sybil 攻擊仍有效
+
+3. 加入假地址
+   - 在過濾器中插入無關地址
+   - 問題: 很難生成「看起來真實」的假地址
+   - 問題: 節點可能識別出假地址
+
+結論: BIP-37 的設計本質上無法保護隱私</code></pre>
+
+  <h2 id="deprecation">棄用狀態</h2>
+  <pre><code class="language-text" is:raw>Bitcoin Core 的處理:
+
+v0.19.0 (2019年11月):
+- 默認禁用 bloom filter 服務
+- 需要 -peerbloomfilters=1 啟用
+
+v0.21.0 (2021年1月):
+- 移除 wallet 的 bloom filter 功能
+- 推薦使用 BIP-157/158
+
+替代方案:
+- BIP-157/158: Compact Block Filters (Neutrino)
+- 自建全節點或信任的 Electrum 服務器
+- 使用 SPV 模式但接受隱私風險
+
+服務位標記:
+- NODE_BLOOM (1 << 2) = 支持 bloom filter
+- NODE_COMPACT_FILTERS (1 << 6) = 支持 compact filters</code></pre>
+
+  <h2 id="comparison">與 Compact Block Filters 比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>BIP-37 Bloom</th>
+        <th>BIP-157/158 Compact</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>隱私保護</td>
+        <td>差 (暴露地址)</td>
+        <td>好 (客戶端下載)</td>
+      </tr>
+      <tr>
+        <td>頻寬使用</td>
+        <td>低 (按需)</td>
+        <td>中 (下載過濾器)</td>
+      </tr>
+      <tr>
+        <td>伺服器負擔</td>
+        <td>高 (計算匹配)</td>
+        <td>低 (預計算)</td>
+      </tr>
+      <tr>
+        <td>DoS 抗性</td>
+        <td>差</td>
+        <td>好</td>
+      </tr>
+      <tr>
+        <td>誤判處理</td>
+        <td>伺服器端</td>
+        <td>客戶端</td>
+      </tr>
+      <tr>
+        <td>狀態</td>
+        <td>已棄用</td>
+        <td>推薦使用</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0037.mediawiki" target="_blank" rel="noopener noreferrer">BIP-37: Bloom Filtering</a></li>
+    <li><a href="https://eprint.iacr.org/2014/763.pdf" target="_blank" rel="noopener noreferrer">On the Privacy of Bloom Filters</a></li>
+    <li><a href="/tech/bitcoin-core/compact-block-filters">Compact Block Filters (BIP-157/158)</a></li>
+    <li><a href="/tech/bitcoin-core/p2p-protocol">P2P Protocol</a></li>
+  </ul>
+</ArticleLayout>

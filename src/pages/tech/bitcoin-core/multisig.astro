@@ -1,0 +1,696 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Multisig"
+  description="多重簽名：m-of-n 閾值簽名的實作與應用"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Multisig' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Schnorr Signatures', href: '/tech/bitcoin-core/schnorr' }}
+  nextPage={{ title: 'Coinjoin', href: '/tech/bitcoin-core/coinjoin' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    多重簽名（Multisig）允許創建需要多個私鑰授權才能花費的比特幣地址。
+    常見的配置如 2-of-3（三把鑰匙中的任意兩把）提供了安全性和容錯能力的平衡。
+    多簽是企業託管、共同帳戶和進階安全方案的基礎。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>實作方式：</strong>
+      傳統多簽使用 P2SH 或 P2WSH 包裝 OP_CHECKMULTISIG。
+      Taproot 引入了基於 Schnorr 的 MuSig2，可實現更高效的多簽。
+    </p>
+  </div>
+
+  <h2 id="script-types">腳本類型</h2>
+
+  <h3>Bare Multisig (不推薦)</h3>
+  <pre><code class="language-text" is:raw>Bare Multisig (P2MS):
+直接在 scriptPubKey 中放置多簽腳本
+
+scriptPubKey:
+OP_2 &lt;PubKey1&gt; &lt;PubKey2&gt; &lt;PubKey3&gt; OP_3 OP_CHECKMULTISIG
+
+scriptSig:
+OP_0 &lt;Sig1&gt; &lt;Sig2&gt;
+
+問題:
+- 公鑰直接暴露在輸出中
+- 浪費區塊空間
+- 不標準，大多數節點不轉發
+
+限制:
+- 最多 3 個公鑰 (標準規則)
+- 共識規則允許最多 20 個公鑰</code></pre>
+
+  <h3>P2SH Multisig</h3>
+  <pre><code class="language-text" is:raw>P2SH Wrapped Multisig:
+
+redeemScript (2-of-3):
+OP_2 &lt;PubKey1&gt; &lt;PubKey2&gt; &lt;PubKey3&gt; OP_3 OP_CHECKMULTISIG
+
+scriptPubKey (發送地址):
+OP_HASH160 &lt;HASH160(redeemScript)&gt; OP_EQUAL
+
+scriptSig (花費時):
+OP_0 &lt;Sig1&gt; &lt;Sig2&gt; &lt;redeemScript&gt;
+
+地址格式: 3xxx... (以 3 開頭)
+
+優點:
+- 發送方不需知道多簽細節
+- 公鑰在花費前隱藏
+- 標準交易格式
+
+缺點:
+- 花費時 redeemScript 暴露
+- 手續費較高 (包含完整腳本)</code></pre>
+
+  <h3>P2WSH Multisig</h3>
+  <pre><code class="language-text" is:raw>Native SegWit Multisig (推薦):
+
+witnessScript (2-of-3):
+OP_2 &lt;PubKey1&gt; &lt;PubKey2&gt; &lt;PubKey3&gt; OP_3 OP_CHECKMULTISIG
+
+scriptPubKey:
+OP_0 &lt;SHA256(witnessScript)&gt;
+
+witness:
+OP_0 &lt;Sig1&gt; &lt;Sig2&gt; &lt;witnessScript&gt;
+
+地址格式: bc1q... (較長的 bech32)
+
+優點:
+- SegWit 折扣 (見證數據 1/4 權重)
+- 更低手續費
+- 無簽名可塑性
+
+範例地址:
+bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3</code></pre>
+
+  <h3>P2TR Multisig (MuSig2)</h3>
+  <pre><code class="language-text" is:raw>Taproot 多簽 (最佳方案):
+
+方法 1: Key Path (MuSig2)
+- 聚合所有公鑰為單一公鑰
+- 產生單一 64 byte 簽名
+- 外部無法區分單簽/多簽
+
+方法 2: Script Path
+- 使用 Tapscript 中的 OP_CHECKSIGADD
+- 支援任意 m-of-n 配置
+- 僅在需要時暴露使用的分支
+
+優點:
+- 最高隱私 (key path)
+- 最小交易大小
+- 靈活的備用腳本
+
+地址格式: bc1p...</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>P2WSH 多簽地址</h3>
+  <pre><code class="language-typescript" is:raw>import { bech32 } from 'bech32';
+import * as crypto from 'crypto';
+
+interface MultisigConfig {
+  m: number;           // 所需簽名數
+  n: number;           // 公鑰總數
+  pubkeys: Uint8Array[]; // 壓縮公鑰 (33 bytes each)
+}
+
+function createWitnessScript(config: MultisigConfig): Uint8Array {
+  const { m, n, pubkeys } = config;
+
+  if (pubkeys.length !== n) {
+    throw new Error('公鑰數量不匹配');
+  }
+  if (m > n || m < 1 || n > 20) {
+    throw new Error('無效的 m-of-n 配置');
+  }
+
+  // 排序公鑰 (BIP-67 標準)
+  const sortedPubkeys = [...pubkeys].sort((a, b) => {
+    for (let i = 0; i < 33; i++) {
+      if (a[i] !== b[i]) return a[i] - b[i];
+    }
+    return 0;
+  });
+
+  // 構建 witnessScript
+  const parts: number[] = [];
+
+  // OP_m
+  parts.push(0x50 + m); // OP_1 = 0x51, OP_2 = 0x52, etc.
+
+  // 公鑰
+  for (const pubkey of sortedPubkeys) {
+    parts.push(33); // push 33 bytes
+    parts.push(...pubkey);
+  }
+
+  // OP_n
+  parts.push(0x50 + n);
+
+  // OP_CHECKMULTISIG
+  parts.push(0xae);
+
+  return new Uint8Array(parts);
+}
+
+function createP2WSHAddress(
+  witnessScript: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  // SHA256 of witnessScript
+  const scriptHash = crypto.createHash('sha256')
+    .update(witnessScript)
+    .digest();
+
+  const prefix = network === 'mainnet' ? 'bc' : 'tb';
+  const version = 0;
+
+  const words = bech32.toWords(scriptHash);
+  words.unshift(version);
+
+  return bech32.encode(prefix, words);
+}
+
+// 使用範例
+const pubkeys = [
+  hexToBytes('02...'), // Alice's pubkey
+  hexToBytes('03...'), // Bob's pubkey
+  hexToBytes('02...'), // Carol's pubkey
+];
+
+const witnessScript = createWitnessScript({
+  m: 2,
+  n: 3,
+  pubkeys
+});
+
+const address = createP2WSHAddress(witnessScript);
+console.log('2-of-3 地址:', address);</code></pre>
+
+  <h3>創建多簽交易</h3>
+  <pre><code class="language-typescript" is:raw>interface MultisigInput {
+  txid: string;
+  vout: number;
+  value: bigint;
+  witnessScript: Uint8Array;
+  sequence?: number;
+}
+
+interface Output {
+  address: string;
+  value: bigint;
+}
+
+function createMultisigTx(
+  inputs: MultisigInput[],
+  outputs: Output[],
+  locktime: number = 0
+): Uint8Array {
+  const parts: Uint8Array[] = [];
+
+  // Version (2 for SegWit)
+  parts.push(new Uint8Array([0x02, 0x00, 0x00, 0x00]));
+
+  // Marker and flag
+  parts.push(new Uint8Array([0x00, 0x01]));
+
+  // Input count
+  parts.push(encodeVarInt(inputs.length));
+
+  // Inputs
+  for (const input of inputs) {
+    // Previous output
+    parts.push(hexToBytes(input.txid).reverse());
+    parts.push(uint32LE(input.vout));
+    // Empty scriptSig for SegWit
+    parts.push(new Uint8Array([0x00]));
+    // Sequence
+    parts.push(uint32LE(input.sequence ?? 0xffffffff));
+  }
+
+  // Output count
+  parts.push(encodeVarInt(outputs.length));
+
+  // Outputs
+  for (const output of outputs) {
+    parts.push(uint64LE(output.value));
+    const scriptPubKey = addressToScriptPubKey(output.address);
+    parts.push(encodeVarInt(scriptPubKey.length));
+    parts.push(scriptPubKey);
+  }
+
+  // Witness (placeholder - will be filled with signatures)
+  for (const input of inputs) {
+    // Witness item count (m signatures + 1 empty + 1 witnessScript)
+    const m = input.witnessScript[0] - 0x50;
+    parts.push(encodeVarInt(m + 2));
+
+    // OP_0 (dummy for CHECKMULTISIG bug)
+    parts.push(new Uint8Array([0x00]));
+
+    // Placeholder for signatures
+    for (let i = 0; i < m; i++) {
+      parts.push(new Uint8Array([0x00])); // empty sig placeholder
+    }
+
+    // WitnessScript
+    parts.push(encodeVarInt(input.witnessScript.length));
+    parts.push(input.witnessScript);
+  }
+
+  // Locktime
+  parts.push(uint32LE(locktime));
+
+  return concatBytes(parts);
+}</code></pre>
+
+  <h3>多簽簽名流程</h3>
+  <pre><code class="language-typescript" is:raw>// BIP-143 SegWit 簽名雜湊
+function signatureHashSegwit(
+  tx: Uint8Array,
+  inputIndex: number,
+  witnessScript: Uint8Array,
+  value: bigint,
+  sigHashType: number = 0x01 // SIGHASH_ALL
+): Uint8Array {
+  // ... BIP-143 實作 (參見 sighash.astro)
+}
+
+// 創建單個簽名
+function signMultisigInput(
+  tx: Uint8Array,
+  inputIndex: number,
+  input: MultisigInput,
+  privateKey: Uint8Array,
+  sigHashType: number = 0x01
+): Uint8Array {
+  // 計算簽名雜湊
+  const sigHash = signatureHashSegwit(
+    tx,
+    inputIndex,
+    input.witnessScript,
+    input.value,
+    sigHashType
+  );
+
+  // ECDSA 簽名
+  const signature = secp256k1.sign(sigHash, privateKey);
+
+  // DER 編碼 + sigHashType
+  return concatBytes([
+    signature.toDERRawBytes(),
+    new Uint8Array([sigHashType])
+  ]);
+}
+
+// 組合多個簽名
+function combineSignatures(
+  tx: Uint8Array,
+  inputIndex: number,
+  input: MultisigInput,
+  signatures: Uint8Array[]
+): Uint8Array {
+  // 解析交易並找到 witness 位置
+  const { m, pubkeys } = parseWitnessScript(input.witnessScript);
+
+  if (signatures.length < m) {
+    throw new Error(`需要 ${m} 個簽名，只有 ${signatures.length} 個`);
+  }
+
+  // 按公鑰順序排列簽名
+  const orderedSigs = orderSignaturesByPubkey(
+    signatures,
+    pubkeys,
+    tx,
+    inputIndex,
+    input
+  );
+
+  // 構建 witness
+  const witnessItems: Uint8Array[] = [];
+
+  // OP_0 (CHECKMULTISIG bug workaround)
+  witnessItems.push(new Uint8Array([]));
+
+  // m 個簽名
+  for (let i = 0; i < m; i++) {
+    witnessItems.push(orderedSigs[i]);
+  }
+
+  // witnessScript
+  witnessItems.push(input.witnessScript);
+
+  return serializeWitness(witnessItems);
+}
+
+// 解析 witnessScript
+function parseWitnessScript(script: Uint8Array): {
+  m: number;
+  n: number;
+  pubkeys: Uint8Array[];
+} {
+  const m = script[0] - 0x50;
+  const pubkeys: Uint8Array[] = [];
+
+  let offset = 1;
+  while (script[offset] === 33) {
+    offset++;
+    pubkeys.push(script.slice(offset, offset + 33));
+    offset += 33;
+  }
+
+  const n = script[offset] - 0x50;
+
+  return { m, n, pubkeys };
+}</code></pre>
+
+  <h2 id="psbt">PSBT 多簽流程</h2>
+  <pre><code class="language-text" is:raw>PSBT (BIP-174) 多簽工作流程:
+
+1. 協調者創建 PSBT
+   ┌─────────────────────────────────────┐
+   │ Coordinator                          │
+   │ - 創建未簽名交易                      │
+   │ - 包含所有 UTXO 信息                  │
+   │ - 包含 witnessScript                 │
+   └─────────────────────────────────────┘
+                  │
+                  ▼ PSBT (base64)
+
+2. 分發給簽名者
+   ┌──────┐    ┌──────┐    ┌──────┐
+   │Signer│    │Signer│    │Signer│
+   │  A   │    │  B   │    │  C   │
+   └──────┘    └──────┘    └──────┘
+       │           │           │
+       ▼           ▼           ▼
+   簽名 A       簽名 B       簽名 C
+
+3. 收集簽名
+   ┌─────────────────────────────────────┐
+   │ Combiner                             │
+   │ - 合併所有部分簽名的 PSBT             │
+   │ - 驗證簽名有效性                      │
+   └─────────────────────────────────────┘
+                  │
+                  ▼
+
+4. 最終化並廣播
+   ┌─────────────────────────────────────┐
+   │ Finalizer                            │
+   │ - 構建最終 witness                    │
+   │ - 驗證交易有效                        │
+   │ - 廣播到網路                          │
+   └─────────────────────────────────────┘</code></pre>
+
+  <h3>PSBT 多簽實作</h3>
+  <pre><code class="language-typescript" is:raw>interface PSBTInput {
+  previousTxid: string;
+  previousVout: number;
+  witnessUtxo?: {
+    value: bigint;
+    scriptPubKey: Uint8Array;
+  };
+  witnessScript?: Uint8Array;
+  partialSignatures?: Map&lt;Uint8Array, Uint8Array&gt;;
+  sigHashType?: number;
+}
+
+class MultisigPSBT {
+  private inputs: PSBTInput[] = [];
+  private outputs: Output[] = [];
+
+  // 簽名者添加簽名
+  sign(inputIndex: number, privateKey: Uint8Array): void {
+    const input = this.inputs[inputIndex];
+    if (!input.witnessScript || !input.witnessUtxo) {
+      throw new Error('Missing witnessScript or witnessUtxo');
+    }
+
+    // 計算簽名雜湊
+    const sigHash = this.computeSigHash(inputIndex);
+
+    // 創建簽名
+    const pubkey = secp256k1.getPublicKey(privateKey, true);
+    const signature = secp256k1.sign(sigHash, privateKey);
+    const sigWithType = concatBytes([
+      signature.toDERRawBytes(),
+      new Uint8Array([input.sigHashType ?? 0x01])
+    ]);
+
+    // 添加部分簽名
+    if (!input.partialSignatures) {
+      input.partialSignatures = new Map();
+    }
+    input.partialSignatures.set(pubkey, sigWithType);
+  }
+
+  // 合併多個 PSBT
+  static combine(psbts: MultisigPSBT[]): MultisigPSBT {
+    const result = new MultisigPSBT();
+    result.inputs = psbts[0].inputs.map(input => ({ ...input }));
+    result.outputs = [...psbts[0].outputs];
+
+    // 合併所有簽名
+    for (let i = 1; i &lt; psbts.length; i++) {
+      for (let j = 0; j &lt; result.inputs.length; j++) {
+        const otherSigs = psbts[i].inputs[j].partialSignatures;
+        if (otherSigs) {
+          if (!result.inputs[j].partialSignatures) {
+            result.inputs[j].partialSignatures = new Map();
+          }
+          for (const [pubkey, sig] of otherSigs) {
+            result.inputs[j].partialSignatures!.set(pubkey, sig);
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // 最終化 PSBT
+  finalize(): Uint8Array {
+    for (const input of this.inputs) {
+      const { m, pubkeys } = parseWitnessScript(input.witnessScript!);
+
+      if (!input.partialSignatures ||
+          input.partialSignatures.size < m) {
+        throw new Error(`不足的簽名: 需要 ${m} 個`);
+      }
+
+      // 按公鑰順序選擇簽名
+      const orderedSigs: Uint8Array[] = [];
+      for (const pubkey of pubkeys) {
+        const sig = input.partialSignatures.get(pubkey);
+        if (sig && orderedSigs.length < m) {
+          orderedSigs.push(sig);
+        }
+      }
+
+      // 構建 witness
+      input.finalWitness = buildWitness(orderedSigs, input.witnessScript!);
+    }
+
+    return this.extractTransaction();
+  }
+}
+
+function buildWitness(
+  signatures: Uint8Array[],
+  witnessScript: Uint8Array
+): Uint8Array[][] {
+  return [
+    [new Uint8Array([])], // OP_0
+    ...signatures.map(s => [s]),
+    [witnessScript]
+  ];
+}</code></pre>
+
+  <h2 id="taproot-multisig">Taproot 多簽</h2>
+
+  <h3>OP_CHECKSIGADD</h3>
+  <pre><code class="language-text" is:raw>Tapscript 多簽 (BIP-342):
+
+新操作碼 OP_CHECKSIGADD:
+- 取代 OP_CHECKMULTISIG
+- 更高效且可批量驗證
+
+傳統多簽腳本 (2-of-3):
+OP_2 &lt;pk1&gt; &lt;pk2&gt; &lt;pk3&gt; OP_3 OP_CHECKMULTISIG
+問題: O(n×m) 簽名驗證
+
+Tapscript 多簽腳本:
+&lt;pk1&gt; OP_CHECKSIG
+&lt;pk2&gt; OP_CHECKSIGADD
+&lt;pk3&gt; OP_CHECKSIGADD
+OP_2 OP_NUMEQUAL
+
+OP_CHECKSIGADD 行為:
+1. 彈出 n (累計數), pk, sig
+2. 如果 sig 非空且有效: 返回 n+1
+3. 如果 sig 為空: 返回 n
+4. 如果 sig 非空但無效: 失敗
+
+優點:
+- 每個簽名只驗證一次
+- 支持批量驗證
+- 空簽名表示「跳過此公鑰」</code></pre>
+
+  <h3>FROST 門檻簽名</h3>
+  <pre><code class="language-text" is:raw>FROST (Flexible Round-Optimized Schnorr Threshold):
+
+優於傳統多簽:
+- t-of-n 門檻，無需 n 個公鑰
+- 產生單一聚合公鑰和簽名
+- 隱私: 無法區分單簽/門檻簽
+
+流程概覽:
+1. 密鑰生成 (DKG)
+   - 每個參與者生成份額
+   - 聯合計算聚合公鑰
+
+2. 簽名 (兩輪)
+   - 第一輪: 承諾 nonces
+   - 第二輪: 產生部分簽名
+   - 聚合為最終簽名
+
+特點:
+- 任意 t 個參與者可簽名
+- 不需要信任的協調者
+- 可與 Taproot key path 結合</code></pre>
+
+  <h2 id="security">安全最佳實踐</h2>
+  <pre><code class="language-text" is:raw>多簽安全注意事項:
+
+1. 密鑰管理
+   - 每個簽名者獨立管理私鑰
+   - 考慮硬體錢包
+   - 地理分散存儲
+
+2. 備份
+   - 備份所有公鑰 (恢復地址需要)
+   - 備份 redeemScript/witnessScript
+   - 考慮使用 Output Descriptors
+
+3. 配置選擇
+   ┌────────────────────────────────────────┐
+   │ 配置     │ 適用場景                    │
+   ├────────────────────────────────────────┤
+   │ 2-of-2   │ 雙方共同控制                │
+   │ 2-of-3   │ 個人安全 (主要+備份+託管)   │
+   │ 3-of-5   │ 企業 (多批准人)             │
+   │ 7-of-11  │ DAO/協議金庫                │
+   └────────────────────────────────────────┘
+
+4. 驗證
+   - 在簽名前驗證地址正確
+   - 每個簽名者獨立驗證交易內容
+   - 檢查找零地址屬於自己
+
+5. 時間鎖備份
+   - 考慮加入時間鎖緊急恢復路徑
+   - 防止密鑰永久丟失</code></pre>
+
+  <h2 id="applications">應用場景</h2>
+  <pre><code class="language-text" is:raw>多簽使用案例:
+
+1. 企業資金管理
+   - CFO + CEO + 董事 (2-of-3)
+   - 防止單人挪用
+
+2. 交易所冷錢包
+   - 多部門批准
+   - 多地理位置密鑰
+
+3. 繼承規劃
+   - 家庭成員 + 律師 + 時間鎖
+   - 確保資產可繼承
+
+4. 託管服務
+   - 買方 + 賣方 + 仲裁方 (2-of-3)
+   - 爭議解決機制
+
+5. 個人安全
+   - 主設備 + 硬體錢包 + 備份
+   - 單設備丟失不致損失資金
+
+6. 多簽名保險庫
+   - 即時: 2-of-3
+   - 延遲: 1-of-3 (時間鎖)
+   - 恢復: 緊急密鑰</code></pre>
+
+  <h2 id="comparison">方案比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>P2SH 多簽</th>
+        <th>P2WSH 多簽</th>
+        <th>Taproot MuSig2</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>地址格式</td>
+        <td>3xxx...</td>
+        <td>bc1q...</td>
+        <td>bc1p...</td>
+      </tr>
+      <tr>
+        <td>隱私</td>
+        <td>花費時暴露</td>
+        <td>花費時暴露</td>
+        <td>完全隱藏</td>
+      </tr>
+      <tr>
+        <td>簽名大小</td>
+        <td>~73B × m</td>
+        <td>~73B × m</td>
+        <td>64B</td>
+      </tr>
+      <tr>
+        <td>手續費</td>
+        <td>最高</td>
+        <td>中等</td>
+        <td>最低</td>
+      </tr>
+      <tr>
+        <td>互動輪數</td>
+        <td>1</td>
+        <td>1</td>
+        <td>2-3</td>
+      </tr>
+      <tr>
+        <td>支援狀態</td>
+        <td>通用</td>
+        <td>通用</td>
+        <td>需新錢包</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki" target="_blank" rel="noopener noreferrer">BIP-11: M-of-N Standard Transactions</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0067.mediawiki" target="_blank" rel="noopener noreferrer">BIP-67: Deterministic Pay-to-script-hash</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki" target="_blank" rel="noopener noreferrer">BIP-327: MuSig2</a></li>
+    <li><a href="/tech/bitcoin-core/psbt">PSBT</a></li>
+    <li><a href="/tech/bitcoin-core/schnorr">Schnorr Signatures</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+  </ul>
+</ArticleLayout>

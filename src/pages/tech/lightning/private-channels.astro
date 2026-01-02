@@ -1,0 +1,332 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Private Channels 私有通道"
+  description="了解閃電網路私有通道（Unannounced Channels）的運作原理、使用場景和隱私特性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Private Channels' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Gossip Protocol', href: '/tech/lightning/gossip' }}
+  nextPage={{ title: 'Probing & Privacy', href: '/tech/lightning/probing-privacy' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是私有通道？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    私有通道（Private Channels 或 Unannounced Channels）是不廣播到閃電網路 gossip 協議的通道。
+    與公開通道不同，私有通道不會出現在網路圖中，其他節點無法知道它們的存在。
+    它們主要用於終端用戶錢包和需要隱私的場景。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>術語說明：</strong>
+      「私有」並不意味著加密或特殊安全性。它只是表示通道不在網路中公開宣布。
+      通道本身的安全性與公開通道相同。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">公開 vs 私有通道</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`公開通道 (Public/Announced)：
+┌─────────────────────────────────────────────────────────┐
+│ 通道開設後：                                            │
+│ 1. 發送 channel_announcement 訊息                       │
+│ 2. 發送 channel_update 訊息                             │
+│ 3. 全網節點更新路由圖                                   │
+│                                                         │
+│ 所有人都知道：                                          │
+│ ├── 通道存在                                            │
+│ ├── 兩端節點 ID                                         │
+│ ├── 通道容量                                            │
+│ ├── 費率設定                                            │
+│ └── 時間鎖要求                                          │
+│                                                         │
+│ 用途：路由節點、公共基礎設施                            │
+└─────────────────────────────────────────────────────────┘
+
+私有通道 (Private/Unannounced)：
+┌─────────────────────────────────────────────────────────┐
+│ 通道開設後：                                            │
+│ 1. 不發送 channel_announcement                          │
+│ 2. 不發送公開的 channel_update                          │
+│ 3. 網路圖中不存在此通道                                 │
+│                                                         │
+│ 只有通道雙方知道：                                      │
+│ ├── 通道存在                                            │
+│ ├── 容量和餘額                                          │
+│ └── 詳細設定                                            │
+│                                                         │
+│ 外部觀察者只能看到：                                    │
+│ └── 鏈上的資金交易（無法確定是閃電通道）               │
+│                                                         │
+│ 用途：終端用戶錢包、隱私需求                            │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">如何創建私有通道</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`創建私有通道：
+
+open_channel 訊息中的 channel_flags：
+┌─────────────────────────────────────────────────────────┐
+│ channel_flags:                                          │
+│   bit 0: announce_channel                               │
+│          0 = 私有（不宣布）                             │
+│          1 = 公開（宣布）                               │
+└─────────────────────────────────────────────────────────┘
+
+LND 命令：
+lncli openchannel --private \\
+  --node_key <peer_pubkey> \\
+  --local_amt 1000000
+
+CLN 命令：
+lightning-cli fundchannel \\
+  <peer_id> 1000000 \\
+  announce=false
+
+協商流程：
+1. 發起方在 open_channel 中設定 channel_flags=0
+2. 接收方在 accept_channel 中同意
+3. 通道開設完成後不廣播
+4. 雙方各自維護通道信息`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由提示 (Route Hints)</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`私有通道的支付接收：
+
+問題：發送方不知道私有通道存在，如何路由？
+
+解決方案：Route Hints（路由提示）
+
+發票中包含私有通道信息：
+lnbc100n1...
+├── payment_hash
+├── amount
+├── description
+└── r (route hints):
+    └── [{
+          "pubkey": "<LSP_node_id>",
+          "short_channel_id": "123x456x0",
+          "fee_base_msat": 1000,
+          "fee_proportional_millionths": 100,
+          "cltv_expiry_delta": 40
+        }]
+
+發送方路徑計算：
+1. 發送方收到發票
+2. 讀取 route hints
+3. 路由到 hints 中的節點
+4. 使用 hints 中的通道到達接收方
+
+┌─────────────────────────────────────────────────────────┐
+│ 發送方 → [公開網路] → LSP → [私有通道] → 接收方        │
+│                         ↑                               │
+│                    route hint 提供                      │
+└─────────────────────────────────────────────────────────┘
+
+隱私洩露：
+├── 發送方知道私有通道存在（從發票）
+├── 發送方知道通道容量估計（從費率限制）
+└── LSP 知道支付來源和目的地`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">移動錢包</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        手機錢包不需要被其他節點路由支付，使用私有通道與 LSP 連接可以減少隱私洩露。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">商家錢包</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        商家可能不想公開自己的節點身份和通道信息。私有通道加上 Route Hints 足以接收支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私敏感用戶</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        不想讓別人知道自己有閃電節點或有多少資金鎖定在通道中。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">企業內部</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        企業內部的閃電基礎設施可能不想對外公開，使用私有通道可以隱藏內部結構。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SCID Alias</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`SCID Alias（短通道 ID 別名）：
+
+問題：
+├── 傳統 SCID 格式：區塊高度:交易索引:輸出索引
+├── 例如：700000:1234:0
+└── 這洩露了資金交易的鏈上位置！
+
+SCID Alias 解決方案：
+├── 使用隨機生成的別名 SCID
+├── 格式仍是 8 字節，但不對應真實區塊
+└── 只有通道雙方知道映射關係
+
+功能位：option_scid_alias (bit 46/47)
+
+示例：
+真實 SCID: 700000x1234x0  （不公開）
+Alias SCID: 0x00abcdef12345678  （用於 route hints）
+
+優點：
+├── 發票不洩露資金交易位置
+├── 支持 Zero-Conf 通道（無真實 SCID）
+└── 更好的隱私保護
+
+在 route hints 中使用 alias：
+{
+  "short_channel_id": "alias_scid",  // 使用別名
+  ...
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私限制</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">鏈上可見性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        資金交易仍然在鏈上可見。雖然無法確定是閃電通道，
+        但有經驗的分析者可能識別出 2-of-2 多簽模式。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">Route Hints 洩露</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        發票中的 route hints 會告訴發送方私有通道的存在。
+        接收多次支付會逐漸洩露更多信息。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">對手方知道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道對手方（如 LSP）完全知道你的支付活動。
+        選擇可信任的對手方很重要。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">探測攻擊</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        攻擊者可以通過發送失敗的支付來探測私有通道的存在和餘額。
+        見 <a href="/tech/lightning/probing-privacy" class="underline">探測與隱私</a>。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Route Blinding 結合</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`增強隱私：Route Blinding + 私有通道
+
+Route Hints 的問題：
+├── 暴露私有通道信息給發送方
+└── 發送方知道接收方連接的節點
+
+Route Blinding 解決方案：
+├── 接收方創建盲化路徑
+├── 發送方只知道入口節點
+└── 不知道後續路徑和最終目的地
+
+組合使用：
+┌─────────────────────────────────────────────────────────┐
+│ 發送方 → 入口節點 → [盲化路徑] → LSP → [私有通道] → 你  │
+│                         ↑          ↑                     │
+│                    Route Blinding  私有                  │
+│                         ↓                                │
+│            發送方只知道這個節點                          │
+└─────────────────────────────────────────────────────────┘
+
+見：/tech/lightning/route-blinding`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >所有實現</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND、CLN、Eclair、LDK 都完整支持私有通道和 route hints。
+        SCID Alias 也已被廣泛支持。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/07-routing-gossip.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 7 - Gossip Protocol</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/gossip"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/route-blinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Route Blinding</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/probing-privacy"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">探測與隱私</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/probing-privacy"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">探測與隱私</a
+      >
+      深入探討閃電網路的隱私威脅和保護措施。
+    </p>
+  </div>
+</ArticleLayout>

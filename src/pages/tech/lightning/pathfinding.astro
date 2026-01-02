@@ -1,0 +1,394 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Pathfinding 路徑搜索"
+  description="深入了解閃電網路的路徑搜索演算法，如何在去中心化網路中找到最佳支付路徑。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Pathfinding' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Fees & Economics', href: '/tech/lightning/fees' }}
+  nextPage={{ title: 'Multi-Path Payments', href: '/tech/lightning/mpp' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是路徑搜索？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    路徑搜索（Pathfinding）是在閃電網路中找到從發送方到接收方的支付路徑的過程。
+    由於網路是去中心化的，每個節點只知道公開的網路圖和自己的私有通道信息，
+    必須使用演算法在有限信息下找到可行且低成本的路徑。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>挑戰：</strong>
+      路徑搜索不只是找到最短路徑。需要考慮費用、容量限制、可靠性、時間鎖等多個因素，
+      且通道餘額是動態變化且部分未知的。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路圖結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`閃電網路圖的構成：
+
+節點（Vertices）：
+├── 每個閃電節點是一個頂點
+├── 由 33 字節公鑰標識
+└── 通過 node_announcement 訊息公布
+
+邊（Edges）：
+├── 每個公開通道是一條邊
+├── 實際上是雙向邊（兩個方向獨立）
+├── 通過 channel_announcement 公布
+└── 通過 channel_update 更新屬性
+
+邊的屬性：
+┌─────────────────────────────────────────────────────────┐
+│ short_channel_id: 通道標識                              │
+│ capacity: 總容量（已知）                                │
+│ balance: 各方餘額（未知！）                             │
+│                                                         │
+│ 每個方向的參數：                                        │
+│ ├── base_fee: 基礎費用                                  │
+│ ├── fee_rate: 比例費用（ppm）                          │
+│ ├── cltv_delta: 時間鎖增量                             │
+│ ├── htlc_min: 最小 HTLC                                │
+│ └── htlc_max: 最大 HTLC                                │
+└─────────────────────────────────────────────────────────┘
+
+典型網路規模（2024）：
+├── 節點：~15,000
+├── 通道：~50,000
+├── 總容量：~5,000 BTC
+└── 圖大小：~10MB`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">基礎演算法</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Dijkstra 演算法變體：
+
+基本思路：
+找到從源點到目標的最低「成本」路徑
+
+成本函數設計：
+cost(edge) = f(fee, probability, time_lock, ...)
+
+LND 的成本函數示例：
+cost = fee
+     + amount × risk_factor × cltv_delta
+     + amount × (1 - success_probability) × penalty
+
+參數解釋：
+├── fee: 直接費用成本
+├── risk_factor: 時間價值（資金鎖定成本）
+├── cltv_delta: 這一跳增加的時間鎖
+├── success_probability: 基於歷史的成功率估計
+└── penalty: 失敗的懲罰因子
+
+演算法流程：
+1. 從目標節點反向搜索（更高效）
+2. 維護優先隊列（按成本排序）
+3. 每次取出成本最低的節點
+4. 更新鄰居節點的最優路徑
+5. 直到到達源節點
+
+偽代碼：
+function dijkstra(source, target, amount):
+  dist[target] = 0
+  queue.add(target, 0)
+
+  while queue not empty:
+    node = queue.pop_min()
+
+    for edge in node.incoming_edges:
+      if can_forward(edge, amount):
+        new_cost = dist[node] + edge_cost(edge, amount)
+        if new_cost < dist[edge.source]:
+          dist[edge.source] = new_cost
+          prev[edge.source] = edge
+          queue.update(edge.source, new_cost)
+
+  return reconstruct_path(prev, source, target)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量不確定性</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道餘額不確定性：
+
+問題：
+├── 只知道總容量，不知道各方餘額
+├── 餘額實時變化
+└── 選中的路徑可能因餘額不足而失敗
+
+示例：
+通道容量：1 BTC
+可能的餘額分佈：
+├── Alice: 0.0 BTC, Bob: 1.0 BTC
+├── Alice: 0.3 BTC, Bob: 0.7 BTC
+├── Alice: 0.5 BTC, Bob: 0.5 BTC
+├── Alice: 1.0 BTC, Bob: 0.0 BTC
+└── 任何中間值...
+
+概率模型：
+假設餘額均勻分佈在 [0, capacity]
+
+P(can_forward amount) ≈ (capacity - amount) / capacity
+
+amount = 0.1 BTC, capacity = 1 BTC
+P(success) ≈ 0.9 (90%)
+
+amount = 0.9 BTC, capacity = 1 BTC
+P(success) ≈ 0.1 (10%)
+
+多跳成功率：
+P(path success) = P(hop1) × P(hop2) × ... × P(hopN)
+
+3 跳路徑，每跳 90% 成功率：
+P(success) = 0.9³ = 0.729 (73%)
+
+這就是為什麼大額支付經常失敗！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">任務控制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Mission Control（LND 的學習機制）：
+
+概念：從支付歷史學習路徑可靠性
+
+記錄每次嘗試：
+┌─────────────────────────────────────────────────────────┐
+│ 支付嘗試 #1:                                            │
+│ - 路徑: A → B → C → D                                   │
+│ - 結果: 失敗 at B→C (TEMPORARY_CHANNEL_FAILURE)         │
+│ - 學到: B→C 可能餘額不足                               │
+│                                                         │
+│ 支付嘗試 #2:                                            │
+│ - 路徑: A → E → F → D（避開 B→C）                       │
+│ - 結果: 成功                                            │
+│ - 學到: E→F→D 路徑可靠                                 │
+└─────────────────────────────────────────────────────────┘
+
+Mission Control 數據結構：
+{
+  "node_pairs": {
+    "B→C": {
+      "last_fail_time": "2024-01-01T12:00:00Z",
+      "fail_amount": 100000,  // 失敗的金額
+      "success_amount": 50000  // 成功過的金額
+    }
+  }
+}
+
+成功率估計更新：
+if (amount > fail_amount):
+  P(success) = 0  // 一定失敗
+else if (amount <= success_amount):
+  P(success) = high  // 可能成功
+else:
+  P(success) = interpolate(...)
+
+衰減機制：
+├── 舊數據權重降低（餘額會變化）
+├── 一定時間後重新嘗試失敗的路徑
+└── 典型衰減時間：1-24 小時`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">多路徑搜索</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`MPP 的路徑搜索：
+
+問題：如何找到能組合成功的多條路徑？
+
+方法 1：貪婪分割
+1. 找最佳單路徑，分配最大可能金額
+2. 在殘餘圖上重複
+3. 直到總金額滿足
+
+方法 2：最小費用流
+├── 建模為網路流問題
+├── 容量 = 估計可用餘額
+├── 成本 = 費用 + 風險
+└── 求解最小成本最大流
+
+方法 3：機會主義
+1. 嘗試單路徑發送全額
+2. 如果失敗，減半金額重試
+3. 遞歸分割直到成功或放棄
+
+LND 的方法：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 計算多條候選路徑（K 最短路徑）                       │
+│ 2. 評估每條路徑的成功概率和成本                         │
+│ 3. 選擇最優組合（總成本最低且概率足夠）                │
+│ 4. 並行發送各分片                                       │
+│ 5. 失敗的分片重新尋路                                   │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優化技術</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">圖剪枝</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        移除明顯不可行的邊（容量太小、費率太高、節點離線）。
+        減少搜索空間，加速計算。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">A* 啟發式</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用啟發式函數估計剩餘成本，優先探索更有前途的路徑。
+        適用於大型網路。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">路徑緩存</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        緩存常用目的地的路徑。定期刷新以反映網路變化。
+        注意緩存失效策略。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">雙向搜索</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果知道接收方的私有通道信息（route hints），可以從兩端同時搜索，
+        在中間相遇。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Trampoline 路由</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Trampoline 路由如何改變路徑搜索：
+
+傳統模式：
+├── 發送方維護完整網路圖
+├── 發送方計算完整路徑
+└── 計算成本高，移動設備不友好
+
+Trampoline 模式：
+├── 發送方只知道幾個 Trampoline 節點
+├── 發送方計算到 Trampoline 的路徑
+├── Trampoline 節點計算後續路徑
+└── 大大減少發送方的計算和存儲需求
+
+路徑搜索職責分配：
+┌─────────────────────────────────────────────────────────┐
+│ 發送方：                                                │
+│ └── 搜索到第一個 Trampoline 的路徑                     │
+│                                                         │
+│ Trampoline 1：                                          │
+│ └── 搜索到 Trampoline 2（或目的地）的路徑              │
+│                                                         │
+│ Trampoline 2：                                          │
+│ └── 搜索到最終目的地的路徑                             │
+└─────────────────────────────────────────────────────────┘
+
+見：/tech/lightning/trampoline`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現差異</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LND</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 Mission Control 學習機制，Dijkstra + A* 混合，支持 MPP 分片。
+        成本函數考慮費用、時間鎖、歷史成功率。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >CLN</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用概率模型估計成功率，Dijkstra 變體，插件可擴展路徑選擇。
+        renepay 插件提供高級路徑搜索。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LDK</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        概率評分器（Probabilistic Scorer），可定制成本函數，
+        適合集成到各種應用中。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightningnetwork/lnd/blob/master/routing/pathfind.go"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Pathfinding 源碼</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/routing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路由與尋路</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/mpp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">多路徑支付</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/fees"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">費用與經濟</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/mpp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">多路徑支付</a
+      >
+      如何利用多條路徑提高大額支付的成功率。
+    </p>
+  </div>
+</ArticleLayout>

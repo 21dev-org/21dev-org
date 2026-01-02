@@ -1,0 +1,399 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Failure Codes 錯誤代碼"
+  description="了解閃電網路支付失敗的錯誤代碼，包括 BOLT 4 定義的各種失敗類型及其處理方式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Failure Codes' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Cooperative Close', href: '/tech/lightning/cooperative-close' }}
+  nextPage={{ title: 'Feature Bits', href: '/tech/lightning/feature-bits' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是錯誤代碼？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    當閃電網路支付失敗時，失敗節點會返回一個加密的錯誤訊息給發送者。
+    這些錯誤訊息包含標準化的錯誤代碼，幫助發送者理解失敗原因並決定如何重試。
+    錯誤代碼定義在 BOLT 4 中。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>洋蔥加密錯誤：</strong>
+      錯誤訊息使用洋蔥路由的共享密鑰加密，只有發送者能解密並確定是哪個節點返回了錯誤。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤類型分類</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錯誤代碼結構：
+
+┌─────────────────────────────────────────────────────────┐
+│ 錯誤代碼格式（2 字節）                                  │
+├─────────────────────────────────────────────────────────┤
+│ Bit 15 (BADONION):  1 = HMAC 驗證失敗                  │
+│ Bit 14 (PERM):      1 = 永久錯誤，不要重試              │
+│ Bit 13 (NODE):      1 = 節點錯誤，可嘗試繞過            │
+│ Bit 12 (UPDATE):    1 = 包含 channel_update            │
+│ Bits 0-11:          具體錯誤類型代碼                    │
+└─────────────────────────────────────────────────────────┘
+
+錯誤分類：
+├── 臨時錯誤（可重試）
+│   └── 資源暫時不可用、餘額不足等
+├── 永久錯誤（不重試）
+│   └── 金額太小、CLTV 過期、通道不存在等
+├── 節點錯誤
+│   └── 節點問題，可繞過此節點重試
+└── 洋蔥錯誤
+    └── HMAC 失敗，路由資料損壞`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見錯誤代碼</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">臨時錯誤（可重試）</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`TEMPORARY_NODE_FAILURE (0x2002)
+├── 節點暫時無法處理支付
+├── 原因：節點忙碌、重啟中、維護中
+└── 處理：稍後重試或繞過此節點
+
+TEMPORARY_CHANNEL_FAILURE (0x1007)
+├── 通道暫時無法轉發
+├── 原因：餘額不足、HTLC 數量限制
+├── 可能包含：channel_update
+└── 處理：選擇其他路徑重試
+
+EXPIRY_TOO_SOON (0x100E)
+├── CLTV expiry 太接近當前區塊
+├── 原因：支付處理太慢
+└── 處理：使用更大的 CLTV delta 重試
+
+MPP_TIMEOUT (0x0017)
+├── 多路徑支付超時
+├── 原因：部分支付未能及時到達
+└── 處理：重新發送所有部分
+
+CHANNEL_DISABLED (0x1009)
+├── 通道已停用
+├── 原因：對方節點離線或維護中
+├── 包含：channel_update（disabled 標誌）
+└── 處理：更新路由表，選擇其他路徑`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">永久錯誤（不重試）</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS (0x400F)
+├── 支付詳情錯誤（最終節點返回）
+├── 原因：
+│   ├── payment_hash 不匹配
+│   ├── 金額不正確
+│   ├── 發票已過期
+│   └── 發票已被支付
+└── 處理：檢查發票是否正確
+
+UNKNOWN_NEXT_PEER (0x400A)
+├── 下一跳節點未知
+├── 原因：通道不存在或已關閉
+└── 處理：更新路由圖，重新計算路徑
+
+AMOUNT_BELOW_MINIMUM (0x100B)
+├── 金額低於最小限制
+├── 原因：低於 htlc_minimum_msat
+├── 包含：channel_update
+└── 處理：增加金額或選擇其他通道
+
+FEE_INSUFFICIENT (0x100C)
+├── 手續費不足
+├── 原因：低於通道要求的費率
+├── 包含：channel_update
+└── 處理：使用新費率重新計算
+
+INCORRECT_CLTV_EXPIRY (0x100D)
+├── CLTV expiry 值不正確
+├── 原因：不符合 cltv_expiry_delta
+├── 包含：channel_update
+└── 處理：使用正確的 delta 重試
+
+FINAL_INCORRECT_CLTV_EXPIRY (0x4012)
+├── 最終節點的 CLTV 不正確
+├── 原因：expiry 不匹配發票要求
+└── 處理：使用發票指定的 min_final_cltv_expiry
+
+FINAL_INCORRECT_HTLC_AMOUNT (0x4013)
+├── 最終節點收到的金額不正確
+├── 原因：金額與發票不符
+└── 處理：確保發送正確金額`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">洋蔥錯誤</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`INVALID_ONION_VERSION (0x8002)
+├── 洋蔥版本不支援
+└── BADONION 標誌 + PERM 標誌
+
+INVALID_ONION_HMAC (0x8003)
+├── HMAC 驗證失敗
+├── 原因：洋蔥資料被篡改或密鑰錯誤
+└── 處理：路徑可能有問題
+
+INVALID_ONION_KEY (0x8004)
+├── 洋蔥密鑰無效
+├── 原因：無法解密下一層
+└── 處理：重新計算洋蔥
+
+INVALID_ONION_PAYLOAD (0x8016)
+├── 洋蔥 payload 格式錯誤
+├── 原因：TLV 編碼錯誤
+└── 處理：檢查發送端實現
+
+INVALID_ONION_BLINDING (0x801A)
+├── 盲化路由錯誤
+├── 原因：盲化點計算失敗
+└── 處理：重新計算盲化路徑`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">完整錯誤代碼表</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錯誤代碼速查表：
+
+代碼     名稱                              標誌              處理
+─────────────────────────────────────────────────────────────────────
+0x0002   invalid_realm                     BADONION+PERM     不重試
+0x0003   temporary_node_failure            NODE              可重試
+0x0004   permanent_node_failure            PERM+NODE         不重試
+0x0005   required_node_feature_missing     PERM+NODE         不重試
+0x0006   invalid_onion_version             BADONION+PERM     不重試
+0x0007   invalid_onion_hmac                BADONION+PERM     不重試
+0x0008   invalid_onion_key                 BADONION+PERM     不重試
+0x0009   amount_below_minimum              UPDATE            用新參數重試
+0x000A   fee_insufficient                  UPDATE            用新費率重試
+0x000B   incorrect_cltv_expiry             UPDATE            用新 delta 重試
+0x000C   expiry_too_soon                   UPDATE            用更大 expiry 重試
+0x000D   incorrect_or_unknown_payment_details  PERM          檢查發票
+0x000E   incorrect_payment_amount          PERM              檢查金額
+0x000F   final_expiry_too_soon             -                 加大 CLTV
+0x0010   final_incorrect_cltv_expiry       PERM              用正確 CLTV
+0x0011   final_incorrect_htlc_amount       PERM              用正確金額
+0x0012   channel_disabled                  UPDATE            選其他路徑
+0x0013   expiry_too_far                    -                 減小 CLTV
+0x0014   invalid_onion_payload             BADONION+PERM     檢查實現
+0x0015   mpp_timeout                       -                 重發所有部分
+0x0016   invalid_onion_blinding            BADONION+PERM     重算盲化路徑
+0x0018   unknown_next_peer                 PERM              更新路由圖`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤訊息結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錯誤訊息格式：
+
+update_fail_htlc 訊息：
+┌─────────────────────────────────────────────────────────┐
+│ channel_id: 32 bytes                                    │
+│ id: u64（HTLC ID）                                      │
+│ reason: 加密的錯誤訊息                                  │
+└─────────────────────────────────────────────────────────┘
+
+加密的錯誤訊息解密後：
+┌─────────────────────────────────────────────────────────┐
+│ hmac: 32 bytes                                          │
+│ failure_len: 2 bytes                                    │
+│ failuremsg: failure_len bytes                           │
+│   ├── failure_code: 2 bytes                             │
+│   └── data: 取決於 failure_code                         │
+│ pad_len: 2 bytes                                        │
+│ pad: pad_len bytes                                      │
+└─────────────────────────────────────────────────────────┘
+
+帶 channel_update 的錯誤（UPDATE 標誌）：
+┌─────────────────────────────────────────────────────────┐
+│ failure_code: 2 bytes                                   │
+│ len: 2 bytes                                            │
+│ channel_update: len bytes                               │
+│   ├── signature: 64 bytes                               │
+│   ├── chain_hash: 32 bytes                              │
+│   ├── short_channel_id: 8 bytes                         │
+│   ├── timestamp: 4 bytes                                │
+│   ├── message_flags: 1 byte                             │
+│   ├── channel_flags: 1 byte                             │
+│   ├── cltv_expiry_delta: 2 bytes                        │
+│   ├── htlc_minimum_msat: 8 bytes                        │
+│   ├── fee_base_msat: 4 bytes                            │
+│   ├── fee_proportional_millionths: 4 bytes             │
+│   └── htlc_maximum_msat: 8 bytes（可選）                │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤處理策略</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">更新路由資訊</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        收到帶 UPDATE 標誌的錯誤時，應該驗證並更新本地路由表中的通道資訊。
+        這包括費率、最小金額、CLTV delta 等參數。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">避免失敗節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        收到節點錯誤時，應該在 Mission Control 中記錄。
+        後續路徑計算時暫時避開此節點或通道，直到懲罰期過後。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">重試邏輯</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        臨時錯誤可以重試，永久錯誤應該放棄或使用完全不同的路徑。
+        設定最大重試次數避免無限循環。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">錯誤識別</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        解密錯誤訊息時，使用共享密鑰逐層嘗試。
+        成功解密的層對應返回錯誤的節點。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Mission Control 整合</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Mission Control 如何使用錯誤：
+
+收到錯誤後的處理：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 解密錯誤，識別失敗節點                               │
+│ 2. 根據錯誤類型決定懲罰程度                             │
+│ 3. 更新節點/通道的成功概率                              │
+│ 4. 下次路徑計算時使用更新後的概率                       │
+└─────────────────────────────────────────────────────────┘
+
+懲罰策略示例：
+
+錯誤類型                              懲罰程度        衰減時間
+─────────────────────────────────────────────────────────────────
+TEMPORARY_CHANNEL_FAILURE             輕度            1 小時
+CHANNEL_DISABLED                      中度            6 小時
+UNKNOWN_NEXT_PEER                     重度            永久
+INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS  不懲罰          N/A
+
+概率更新公式：
+新概率 = 舊概率 × 衰減因子
+
+示例：
+├── 初始成功概率：95%
+├── 收到 TEMPORARY_CHANNEL_FAILURE
+├── 懲罰：成功概率降至 60%
+├── 1 小時後開始衰減恢復
+└── 24 小時後恢復到基準概率`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">調試支付失敗</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`查看支付失敗原因：
+
+LND:
+# 查看支付歷史
+lncli listpayments --include_incomplete
+
+# 查看特定支付
+lncli trackpayment <payment_hash>
+
+# 詳細錯誤資訊
+lncli sendpayment --debug_send ...
+
+CLN:
+# 查看支付狀態
+lightning-cli listsendpays
+
+# 查看支付嘗試
+lightning-cli listsendpays <bolt11>
+
+常見失敗場景診斷：
+
+"TEMPORARY_CHANNEL_FAILURE"
+├── 檢查：對方通道餘額
+├── 檢查：HTLC 數量是否達到上限
+└── 解決：選擇其他路徑或稍後重試
+
+"INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS"
+├── 檢查：發票是否過期
+├── 檢查：金額是否正確
+├── 檢查：是否已支付過
+└── 解決：請求新發票
+
+"UNKNOWN_NEXT_PEER"
+├── 檢查：目標通道是否存在
+├── 檢查：路由圖是否過時
+└── 解決：同步路由圖並重試`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/04-onion-routing.md#failure-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 4 - Failure Messages</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/pathfinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑尋找</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/onion-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">洋蔥訊息</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/feature-bits"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">功能位</a
+      >
+      如何協商節點能力。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,570 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Coinjoin"
+  description="Coinjoin：透過交易混合提升比特幣隱私"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Coinjoin' },
+  ]}
+  difficulty="intermediate"
+  readingTime="16 分鐘"
+  prevPage={{ title: 'Multisig', href: '/tech/bitcoin-core/multisig' }}
+  nextPage={{ title: 'Silent Payments', href: '/tech/bitcoin-core/silent-payments' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Coinjoin 是一種隱私增強技術，通過將多個用戶的交易輸入和輸出混合在一起，
+    使外部觀察者難以追蹤資金流向。這是比特幣生態系統中最成熟的隱私解決方案之一。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心原理：</strong>
+      Coinjoin 利用比特幣交易可以有多個輸入和輸出的特性。
+      當多人將自己的輸入和輸出放入同一筆交易，外部觀察者無法確定哪個輸入對應哪個輸出。
+    </p>
+  </div>
+
+  <h2 id="problem">隱私問題</h2>
+
+  <h3>區塊鏈分析</h3>
+  <pre><code class="language-text" is:raw>比特幣隱私弱點:
+
+1. 地址重用
+   - 多次使用同一地址
+   - 所有交易可被關聯
+
+2. 交易圖分析
+   ┌────────┐     ┌────────┐     ┌────────┐
+   │ UTXO A │────▶│   TX   │────▶│ Output │
+   │ UTXO B │────▶│        │────▶│ Change │
+   └────────┘     └────────┘     └────────┘
+
+   分析師可推斷:
+   - A 和 B 屬於同一錢包 (共同輸入)
+   - Change 也屬於該錢包
+
+3. 金額關聯
+   輸入: 1.5 BTC + 0.3 BTC = 1.8 BTC
+   輸出: 1.0 BTC + 0.7999 BTC (手續費 0.0001)
+
+   觀察者可猜測哪個是支付，哪個是找零
+
+4. 時間戳分析
+   - 交易時間模式
+   - IP 地址 (透過節點觀察)</code></pre>
+
+  <h3>鏈上監控</h3>
+  <pre><code class="language-text" is:raw>鏈分析公司技術:
+
+1. 叢集分析 (Clustering)
+   - 共同輸入假設
+   - 找零檢測
+   - 地址重用追蹤
+
+2. 啟發式規則
+   - 最大輸出可能是支付
+   - 圓整數字可能是支付
+   - 特定腳本類型識別
+
+3. 外部數據
+   - 交易所 KYC 數據
+   - 商家地址數據庫
+   - 已知服務地址
+
+結果: 比特幣交易可被高度追蹤</code></pre>
+
+  <h2 id="concept">Coinjoin 原理</h2>
+
+  <h3>基本概念</h3>
+  <pre><code class="language-text" is:raw>Coinjoin 交易結構:
+
+傳統交易:
+┌─────────────┐     ┌─────────────┐
+│ Alice Input │────▶│ Bob Output  │
+└─────────────┘     └─────────────┘
+完全可追蹤
+
+Coinjoin 交易:
+┌─────────────┐     ┌─────────────┐
+│ Alice 1 BTC │     │ ??? 1 BTC   │
+├─────────────┤     ├─────────────┤
+│ Bob 1 BTC   │────▶│ ??? 1 BTC   │
+├─────────────┤     ├─────────────┤
+│Carol 1 BTC  │     │ ??? 1 BTC   │
+└─────────────┘     └─────────────┘
+
+外部觀察者:
+- 知道 3 人各投入 1 BTC
+- 不知道哪個輸出屬於誰
+- 匿名集 = 3 (可能的發送者數量)</code></pre>
+
+  <h3>等額輸出</h3>
+  <pre><code class="language-text" is:raw>為什麼需要等額輸出:
+
+不等額 Coinjoin (有問題):
+輸入:                   輸出:
+Alice: 1.5 BTC    ──▶   1.5 BTC (顯然是 Alice)
+Bob:   0.7 BTC    ──▶   0.7 BTC (顯然是 Bob)
+Carol: 0.3 BTC    ──▶   0.3 BTC (顯然是 Carol)
+
+金額本身就暴露了關聯！
+
+等額 Coinjoin (正確):
+輸入:                   輸出:
+Alice: 1.5 BTC    ──▶   1.0 BTC (可能是任何人)
+                  ──▶   1.0 BTC (可能是任何人)
+Bob:   1.2 BTC    ──▶   1.0 BTC (可能是任何人)
+                  ──▶   0.4999 BTC (Alice 找零?)
+Carol: 1.0 BTC    ──▶   0.1999 BTC (Bob 找零?)
+
+等額輸出無法區分所有者</code></pre>
+
+  <h2 id="protocols">協議實作</h2>
+
+  <h3>JoinMarket</h3>
+  <pre><code class="language-text" is:raw>JoinMarket 協議:
+
+參與者角色:
+- Maker: 提供流動性，收取費用
+- Taker: 發起 Coinjoin，支付費用
+
+流程:
+1. Maker 在訂單簿公告可用 UTXO 和費用
+2. Taker 選擇多個 Maker
+3. Taker 創建交易模板
+4. 各方提供簽名
+5. Taker 廣播交易
+
+特點:
+- 去中心化訂單簿
+- Maker 賺取收益
+- Taker 獲得隱私
+- 支持任意金額
+
+訂單類型:
+- Absolute fee: 固定費用
+- Relative fee: 按比例收費</code></pre>
+
+  <h3>Wasabi Wallet (WabiSabi)</h3>
+  <pre><code class="language-text" is:raw>WabiSabi 協議:
+
+創新:
+- 可變金額 (不限等額)
+- 匿名憑證系統
+- 高匿名集
+
+流程:
+1. 輸入註冊
+   - 用戶提交 UTXO
+   - 獲得匿名憑證
+
+2. 輸出註冊
+   - 用 Tor 新電路連接
+   - 憑證兌換輸出註冊權
+   - 協調者無法關聯輸入輸出
+
+3. 簽名階段
+   - 所有人簽名
+   - 廣播交易
+
+憑證系統:
+┌─────────────────────────────────────┐
+│ Input Registration                   │
+│ User: "我有 0.5 BTC UTXO"            │
+│ Coordinator: "這是匿名憑證 C"         │
+└─────────────────────────────────────┘
+          ↓ (不同 Tor 連接)
+┌─────────────────────────────────────┐
+│ Output Registration                  │
+│ User: "我有憑證 C，請註冊 0.5 BTC 輸出"│
+│ Coordinator: "OK" (無法關聯到上面)    │
+└─────────────────────────────────────┘</code></pre>
+
+  <h3>Whirlpool (Samourai)</h3>
+  <pre><code class="language-text" is:raw>Whirlpool 協議:
+
+特點:
+- 固定面額池
+- 零連結找零
+- 持續混合
+
+面額池:
+- 0.5 BTC
+- 0.05 BTC
+- 0.01 BTC
+- 0.001 BTC
+
+零連結找零 (Tx0):
+輸入: 1.7 BTC
+       ↓
+輸出:
+- 0.5 BTC × 3 (進入池)
+- 0.199x BTC (找零到新錢包)
+- 費用
+
+特點:
+- 找零永遠不會與混合輸出接觸
+- 每次混合都是免費的（首次付費）
+- Postmix 輸出可無限重混</code></pre>
+
+  <h2 id="implementation">技術實作</h2>
+
+  <h3>基本 Coinjoin 構建</h3>
+  <pre><code class="language-typescript" is:raw>interface CoinjoinInput {
+  txid: string;
+  vout: number;
+  value: bigint;
+  pubkey: Uint8Array;
+  // 私鑰由各方保管，不共享
+}
+
+interface CoinjoinOutput {
+  scriptPubKey: Uint8Array;
+  value: bigint;
+}
+
+interface CoinjoinRound {
+  inputs: CoinjoinInput[];
+  outputs: CoinjoinOutput[];
+  participants: number;
+  denomination: bigint;
+}
+
+// 協調者創建交易模板
+function createCoinjoinTemplate(
+  round: CoinjoinRound
+): Uint8Array {
+  // 驗證參與者輸入足夠
+  const totalInput = round.inputs.reduce((sum, i) => sum + i.value, 0n);
+  const totalOutput = round.outputs.reduce((sum, o) => sum + o.value, 0n);
+
+  if (totalInput <= totalOutput) {
+    throw new Error('輸入不足以覆蓋輸出和手續費');
+  }
+
+  // 隨機化輸入和輸出順序 (防止位置洩露)
+  const shuffledInputs = shuffle(round.inputs);
+  const shuffledOutputs = shuffle(round.outputs);
+
+  // 構建未簽名交易
+  return buildUnsignedTx(shuffledInputs, shuffledOutputs);
+}
+
+// 參與者驗證並簽名
+function participantSign(
+  txTemplate: Uint8Array,
+  myInputs: CoinjoinInput[],
+  myOutputs: CoinjoinOutput[],
+  privateKeys: Map&lt;string, Uint8Array&gt;
+): Map&lt;number, Uint8Array&gt; {
+  // 驗證我的輸出存在
+  for (const output of myOutputs) {
+    if (!txContainsOutput(txTemplate, output)) {
+      throw new Error('交易模板缺少我的輸出');
+    }
+  }
+
+  // 驗證總輸出合理
+  if (!validateOutputAmounts(txTemplate)) {
+    throw new Error('輸出金額異常');
+  }
+
+  // 為我的輸入簽名
+  const signatures = new Map&lt;number, Uint8Array&gt;();
+
+  for (const input of myInputs) {
+    const inputIndex = findInputIndex(txTemplate, input);
+    const outpoint = `${input.txid}:${input.vout}`;
+    const privateKey = privateKeys.get(outpoint);
+
+    if (!privateKey) {
+      throw new Error('找不到私鑰');
+    }
+
+    const signature = signInput(txTemplate, inputIndex, privateKey);
+    signatures.set(inputIndex, signature);
+  }
+
+  return signatures;
+}
+
+// 組合所有簽名
+function finalizeCoinjoin(
+  txTemplate: Uint8Array,
+  allSignatures: Map&lt;number, Uint8Array&gt;[]
+): Uint8Array {
+  const combinedSigs = new Map&lt;number, Uint8Array&gt;();
+
+  for (const sigs of allSignatures) {
+    for (const [index, sig] of sigs) {
+      if (combinedSigs.has(index)) {
+        throw new Error('重複的輸入簽名');
+      }
+      combinedSigs.set(index, sig);
+    }
+  }
+
+  // 驗證所有輸入都有簽名
+  const inputCount = getInputCount(txTemplate);
+  for (let i = 0; i &lt; inputCount; i++) {
+    if (!combinedSigs.has(i)) {
+      throw new Error(`輸入 ${i} 缺少簽名`);
+    }
+  }
+
+  return addSignatures(txTemplate, combinedSigs);
+}</code></pre>
+
+  <h3>盲簽名方案</h3>
+  <pre><code class="language-typescript" is:raw>// 使用盲簽名防止協調者關聯輸入輸出
+import { schnorr } from '@noble/curves/secp256k1';
+
+interface BlindSignatureRequest {
+  blindedMessage: Uint8Array;
+  blindingFactor: bigint;
+}
+
+// 用戶: 盲化輸出地址
+function blindOutput(
+  outputScript: Uint8Array,
+  coordinatorPubkey: Uint8Array
+): BlindSignatureRequest {
+  // 隨機盲化因子
+  const k = randomScalar();
+
+  // 計算盲化訊息
+  const messageHash = sha256(outputScript);
+  const R = schnorr.utils.lift_x(coordinatorPubkey);
+
+  // 盲化
+  const blindedMessage = blindMessage(messageHash, k, R);
+
+  return {
+    blindedMessage,
+    blindingFactor: k
+  };
+}
+
+// 協調者: 簽署盲化訊息
+function signBlinded(
+  blindedMessage: Uint8Array,
+  privateKey: Uint8Array
+): Uint8Array {
+  // 協調者不知道原始訊息內容
+  return blindSign(blindedMessage, privateKey);
+}
+
+// 用戶: 解盲簽名
+function unblindSignature(
+  blindedSignature: Uint8Array,
+  blindingFactor: bigint
+): Uint8Array {
+  // 移除盲化因子，得到有效簽名
+  return unblind(blindedSignature, blindingFactor);
+}
+
+// 輸出註冊時使用解盲後的簽名證明資格
+function registerOutput(
+  outputScript: Uint8Array,
+  unblindedSignature: Uint8Array,
+  coordinatorPubkey: Uint8Array
+): boolean {
+  // 驗證簽名有效
+  const messageHash = sha256(outputScript);
+  return schnorr.verify(
+    unblindedSignature,
+    messageHash,
+    coordinatorPubkey
+  );
+}</code></pre>
+
+  <h2 id="analysis">匿名集分析</h2>
+  <pre><code class="language-text" is:raw>匿名集 (Anonymity Set):
+
+定義: 無法區分的可能發送者數量
+
+範例 Coinjoin:
+5 個等額輸出 (各 0.1 BTC)
+→ 匿名集 = 5
+→ 每個輸出有 20% 機率屬於任何參與者
+
+影響因素:
+1. 參與者數量
+   - 更多參與者 = 更大匿名集
+
+2. 等額輸出數量
+   - 只有等額輸出計入匿名集
+
+3. 後續行為
+   - 合併輸出會降低匿名集
+   - 與已知地址交互會洩露信息
+
+複合匿名集:
+多次 Coinjoin 的效果
+
+第一次: 匿名集 5
+第二次: 每個輸出又混合 5
+理論最大: 5 × 5 = 25
+
+實際計算更複雜，需考慮重疊</code></pre>
+
+  <h2 id="attacks">攻擊與防禦</h2>
+
+  <h3>已知攻擊</h3>
+  <pre><code class="language-text" is:raw>攻擊向量:
+
+1. Sybil 攻擊
+   - 攻擊者控制多數參與者
+   - 只有攻擊者的輸入混在一起
+   - 防禦: 增加參與者數量，驗證獨立性
+
+2. 時間分析
+   - 輸入和輸出的時間關聯
+   - 防禦: 隨機延遲，批量處理
+
+3. 金額分析
+   - 找零金額可能洩露信息
+   - 防禦: 使用固定面額，零連結找零
+
+4. 區塊鏈分析
+   - 追蹤 Coinjoin 前後的交易
+   - 防禦: 多次混合，避免合併輸出
+
+5. 協調者攻擊
+   - 中心化協調者記錄關聯
+   - 防禦: 盲簽名，去中心化</code></pre>
+
+  <h3>最佳實踐</h3>
+  <pre><code class="language-text" is:raw>Coinjoin 最佳實踐:
+
+1. 多次混合
+   - 至少 3-5 次獨立 Coinjoin
+   - 每次使用不同時間
+
+2. 隔離錢包
+   - Premix: 準備混合的資金
+   - Postmix: 混合後的乾淨資金
+   - 永不混合
+
+3. 避免地址重用
+   - 每次收款使用新地址
+   - 使用 HD 錢包
+
+4. 避免合併輸出
+   - 不要將多個 Coinjoin 輸出合併
+   - 分開使用每個輸出
+
+5. 使用 Tor
+   - 隱藏 IP 地址
+   - 防止網路層追蹤
+
+6. 等待確認
+   - 在使用前等待多個確認
+   - 防止雙花攻擊分析</code></pre>
+
+  <h2 id="legal">法律考量</h2>
+  <pre><code class="language-text" is:raw>法律狀態 (各地區不同):
+
+注意事項:
+- Coinjoin 本身是合法的比特幣交易
+- 某些司法管轄區可能有限制
+- 交易所可能標記 Coinjoin 輸出
+
+監管發展:
+- 一些混合服務被制裁
+- 隱私權 vs 反洗錢法規
+- 了解當地法律
+
+技術中立性:
+- Coinjoin 只是多方交易
+- 與普通交易技術上無法區分
+- 隱私是基本權利</code></pre>
+
+  <h2 id="future">未來發展</h2>
+  <pre><code class="language-text" is:raw>Coinjoin 演進:
+
+1. Taproot 增強
+   - MuSig2 讓多方交易看起來像單簽
+   - 更高效，更難檢測
+
+2. PayJoin
+   - 發送者和接收者共同創建交易
+   - 打破「共同輸入」假設
+   - 每筆支付都是微型 Coinjoin
+
+3. 跨鏈原子 Coinjoin
+   - 使用原子交換
+   - 在多條鏈之間混合
+
+4. 閃電網路隱私
+   - 鏈下交易本身更隱私
+   - 與 Coinjoin 結合使用
+
+5. 協議標準化
+   - BIP 標準化 Coinjoin 格式
+   - 錢包間互操作性</code></pre>
+
+  <h2 id="comparison">方案比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>JoinMarket</th>
+        <th>Wasabi</th>
+        <th>Whirlpool</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>模型</td>
+        <td>Maker/Taker</td>
+        <td>協調者</td>
+        <td>協調者</td>
+      </tr>
+      <tr>
+        <td>金額</td>
+        <td>任意</td>
+        <td>可變</td>
+        <td>固定面額</td>
+      </tr>
+      <tr>
+        <td>匿名集</td>
+        <td>可選</td>
+        <td>大 (100+)</td>
+        <td>5 每輪</td>
+      </tr>
+      <tr>
+        <td>費用</td>
+        <td>市場定價</td>
+        <td>0.3%</td>
+        <td>固定費</td>
+      </tr>
+      <tr>
+        <td>零連結</td>
+        <td>否</td>
+        <td>部分</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td>去中心化</td>
+        <td>高</td>
+        <td>中</td>
+        <td>中</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/CoinJoin" target="_blank" rel="noopener noreferrer">CoinJoin Wiki</a></li>
+    <li><a href="https://github.com/JoinMarket-Org/joinmarket-clientserver" target="_blank" rel="noopener noreferrer">JoinMarket</a></li>
+    <li><a href="https://github.com/zkSNACKs/WalletWasabi" target="_blank" rel="noopener noreferrer">Wasabi Wallet</a></li>
+    <li><a href="/tech/bitcoin-core/silent-payments">Silent Payments</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+  </ul>
+</ArticleLayout>

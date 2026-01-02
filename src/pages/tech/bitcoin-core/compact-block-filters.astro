@@ -1,0 +1,736 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Compact Block Filters"
+  description="BIP-157/158 緊湊區塊過濾器：Neutrino 協議的隱私友好輕客戶端方案"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Compact Block Filters' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Bloom Filters', href: '/tech/bitcoin-core/bloom-filters' }}
+  nextPage={{ title: 'Schnorr Signatures', href: '/tech/bitcoin-core/schnorr' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Compact Block Filters（緊湊區塊過濾器）是 BIP-157/158 定義的輕客戶端協議，
+    也稱為 Neutrino。與 BIP-37 布隆過濾器不同，它讓客戶端下載預先計算的過濾器，
+    在本地進行匹配，從根本上保護用戶隱私。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>推薦方案：</strong>
+      Compact Block Filters 是目前推薦的 SPV 方案，Bitcoin Core 從 v0.19.0 開始支援。
+      Lightning Network 的 LND 客戶端使用此協議實現 Neutrino 模式。
+    </p>
+  </div>
+
+  <h2 id="architecture">架構對比</h2>
+
+  <h3>BIP-37 vs BIP-157/158</h3>
+  <pre><code class="language-text" is:raw>BIP-37 (Bloom Filter) 架構:
+┌─────────────────────────────────────────────┐
+│ SPV Client                 Full Node        │
+│     │                          │            │
+│     │ ──── filterload ────▶    │            │
+│     │   (暴露用戶地址)           │            │
+│     │                          │            │
+│     │ ◀── merkleblock ─────    │            │
+│     │   (伺服器選擇性回應)       │            │
+│     │                          │            │
+│ 問題: 伺服器知道用戶的所有地址              │
+└─────────────────────────────────────────────┘
+
+BIP-157/158 (Compact Block Filter) 架構:
+┌─────────────────────────────────────────────┐
+│ SPV Client                 Full Node        │
+│     │                          │            │
+│     │ ──── getcfilters ───▶    │            │
+│     │   (不暴露任何信息)         │            │
+│     │                          │            │
+│     │ ◀──── cfilter ───────    │            │
+│     │   (每區塊的過濾器)         │            │
+│     │                          │            │
+│ 客戶端本地匹配:                             │
+│ if filter.match(myAddresses):               │
+│     getblock(blockHash)                     │
+│                                             │
+│ 優勢: 伺服器不知道用戶監控什麼              │
+└─────────────────────────────────────────────┘</code></pre>
+
+  <h2 id="golomb-rice">Golomb-Rice 編碼</h2>
+
+  <h3>編碼原理</h3>
+  <pre><code class="language-text" is:raw>Golomb-Rice 編碼:
+
+用於高效壓縮稀疏集合的整數編碼
+
+假設參數 P = 2^m (Rice 編碼)
+
+編碼過程:
+1. 計算商: q = n / P
+2. 計算餘數: r = n % P
+
+輸出:
+- q 個 1 bits + 一個 0 bit (一元編碼)
+- r 的 m-bit 二進制表示
+
+範例 (P = 4, m = 2):
+┌─────────┬───────┬───────┬────────────┐
+│ n       │ q     │ r     │ 編碼       │
+├─────────┼───────┼───────┼────────────┤
+│ 0       │ 0     │ 0     │ 0 00       │
+│ 1       │ 0     │ 1     │ 0 01       │
+│ 3       │ 0     │ 3     │ 0 11       │
+│ 4       │ 1     │ 0     │ 10 00      │
+│ 7       │ 1     │ 3     │ 10 11      │
+│ 12      │ 3     │ 0     │ 1110 00    │
+└─────────┴───────┴───────┴────────────┘
+
+BIP-158 參數:
+- P = 19 (針對 basic filter)
+- 每個元素約 10.96 bits</code></pre>
+
+  <h3>GCS (Golomb-Coded Set)</h3>
+  <pre><code class="language-text" is:raw>GCS 構建過程:
+
+1. 收集所有元素 (地址、腳本等)
+2. 對每個元素計算 64-bit 雜湊:
+   h = SipHash(key, element)
+3. 映射到有限範圍:
+   mapped = h % (N × M)
+   其中 N = 元素數量, M = 誤判率參數
+4. 排序所有映射值
+5. 計算相鄰差值
+6. 使用 Golomb-Rice 編碼差值
+
+範例:
+元素: [A, B, C, D]
+雜湊: [1847, 3921, 592, 7283]
+排序: [592, 1847, 3921, 7283]
+差值: [592, 1255, 2074, 3362]
+編碼: Golomb-Rice 壓縮差值序列</code></pre>
+
+  <h2 id="filter-types">過濾器類型</h2>
+
+  <h3>Basic Filter (0x00)</h3>
+  <pre><code class="language-text" is:raw>Basic Filter 包含:
+
+對於區塊中的每筆交易:
+1. 所有輸出的 scriptPubKey (除空腳本和 OP_RETURN)
+2. 所有非 coinbase 輸入的 previous output scriptPubKey
+
+不包含:
+- OP_RETURN 輸出 (不可花費)
+- 空腳本
+- Witness 數據
+- 交易 ID
+
+這設計允許:
+- 檢測支付到我的地址 (輸出)
+- 檢測花費我的 UTXO (輸入的前輸出)
+
+參數:
+- M = 784931 (誤判率 ≈ 1/784931 ≈ 0.00013%)
+- P = 19
+- 每元素 ≈ 10.96 bits</code></pre>
+
+  <h3>過濾器大小估算</h3>
+  <pre><code class="language-text" is:raw>過濾器大小計算:
+
+size ≈ N × (P + log2(M/N)) / 8 bytes
+
+平均區塊:
+- 約 2,500 筆交易
+- 約 5,000 個腳本元素
+- 過濾器大小 ≈ 20 KB
+
+整條鏈過濾器:
+- 約 850,000 個區塊 (2024年)
+- 總大小 ≈ 4-5 GB
+
+vs 完整區塊鏈:
+- 完整鏈 ≈ 550 GB
+- 過濾器僅 ~1% 大小</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>SipHash</h3>
+  <pre><code class="language-typescript" is:raw>// BIP-158 使用 SipHash-2-4
+class SipHash {
+  private v0: bigint;
+  private v1: bigint;
+  private v2: bigint;
+  private v3: bigint;
+
+  constructor(key: Uint8Array) {
+    const k0 = this.readUint64LE(key, 0);
+    const k1 = this.readUint64LE(key, 8);
+
+    this.v0 = k0 ^ 0x736f6d6570736575n;
+    this.v1 = k1 ^ 0x646f72616e646f6dn;
+    this.v2 = k0 ^ 0x6c7967656e657261n;
+    this.v3 = k1 ^ 0x7465646279746573n;
+  }
+
+  private readUint64LE(data: Uint8Array, offset: number): bigint {
+    let result = 0n;
+    for (let i = 0; i < 8; i++) {
+      result |= BigInt(data[offset + i]) << BigInt(i * 8);
+    }
+    return result;
+  }
+
+  private rotl(x: bigint, b: number): bigint {
+    return ((x << BigInt(b)) | (x >> BigInt(64 - b))) & 0xffffffffffffffffn;
+  }
+
+  private sipRound(): void {
+    this.v0 = (this.v0 + this.v1) & 0xffffffffffffffffn;
+    this.v1 = this.rotl(this.v1, 13);
+    this.v1 ^= this.v0;
+    this.v0 = this.rotl(this.v0, 32);
+
+    this.v2 = (this.v2 + this.v3) & 0xffffffffffffffffn;
+    this.v3 = this.rotl(this.v3, 16);
+    this.v3 ^= this.v2;
+
+    this.v0 = (this.v0 + this.v3) & 0xffffffffffffffffn;
+    this.v3 = this.rotl(this.v3, 21);
+    this.v3 ^= this.v0;
+
+    this.v2 = (this.v2 + this.v1) & 0xffffffffffffffffn;
+    this.v1 = this.rotl(this.v1, 17);
+    this.v1 ^= this.v2;
+    this.v2 = this.rotl(this.v2, 32);
+  }
+
+  hash(data: Uint8Array): bigint {
+    const len = data.length;
+    let m: bigint;
+
+    // Process 8-byte blocks
+    for (let i = 0; i + 8 <= len; i += 8) {
+      m = this.readUint64LE(data, i);
+      this.v3 ^= m;
+      this.sipRound();
+      this.sipRound();
+      this.v0 ^= m;
+    }
+
+    // Process remaining bytes
+    m = BigInt(len) << 56n;
+    const remaining = len % 8;
+    for (let i = 0; i < remaining; i++) {
+      m |= BigInt(data[len - remaining + i]) << BigInt(i * 8);
+    }
+
+    this.v3 ^= m;
+    this.sipRound();
+    this.sipRound();
+    this.v0 ^= m;
+
+    // Finalization
+    this.v2 ^= 0xffn;
+    for (let i = 0; i < 4; i++) {
+      this.sipRound();
+    }
+
+    return this.v0 ^ this.v1 ^ this.v2 ^ this.v3;
+  }
+}</code></pre>
+
+  <h3>GCS 過濾器</h3>
+  <pre><code class="language-typescript" is:raw>class GCSFilter {
+  private n: number;
+  private p: number;
+  private m: bigint;
+  private data: Uint8Array;
+
+  constructor(
+    elements: Uint8Array[],
+    key: Uint8Array,
+    p: number = 19,
+    m: bigint = 784931n
+  ) {
+    this.n = elements.length;
+    this.p = p;
+    this.m = m;
+
+    if (this.n === 0) {
+      this.data = new Uint8Array(0);
+      return;
+    }
+
+    // 計算雜湊值並映射到範圍
+    const siphash = new SipHash(key);
+    const range = BigInt(this.n) * this.m;
+
+    const values: bigint[] = elements.map(elem => {
+      const hash = siphash.hash(elem);
+      return (hash * range) >> 64n; // 快速模運算近似
+    });
+
+    // 排序
+    values.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+    // 計算差值並編碼
+    const deltas: bigint[] = [];
+    let prev = 0n;
+    for (const v of values) {
+      deltas.push(v - prev);
+      prev = v;
+    }
+
+    this.data = this.golombRiceEncode(deltas);
+  }
+
+  private golombRiceEncode(values: bigint[]): Uint8Array {
+    const bits: number[] = [];
+
+    for (const v of values) {
+      const q = v >> BigInt(this.p);
+      const r = v & ((1n << BigInt(this.p)) - 1n);
+
+      // Unary encode q
+      for (let i = 0n; i < q; i++) {
+        bits.push(1);
+      }
+      bits.push(0);
+
+      // Binary encode r
+      for (let i = this.p - 1; i >= 0; i--) {
+        bits.push(Number((r >> BigInt(i)) & 1n));
+      }
+    }
+
+    // Convert bits to bytes
+    const bytes = new Uint8Array(Math.ceil(bits.length / 8));
+    for (let i = 0; i < bits.length; i++) {
+      if (bits[i]) {
+        bytes[Math.floor(i / 8)] |= 1 << (7 - (i % 8));
+      }
+    }
+
+    return bytes;
+  }
+
+  // 檢查元素是否可能在過濾器中
+  match(element: Uint8Array, key: Uint8Array): boolean {
+    if (this.n === 0) return false;
+
+    const siphash = new SipHash(key);
+    const range = BigInt(this.n) * this.m;
+    const target = (siphash.hash(element) * range) >> 64n;
+
+    // 解碼並搜索
+    const values = this.golombRiceDecode();
+    let sum = 0n;
+    for (const delta of values) {
+      sum += delta;
+      if (sum === target) return true;
+      if (sum > target) return false;
+    }
+
+    return false;
+  }
+
+  // 批量匹配 (更高效)
+  matchAny(elements: Uint8Array[], key: Uint8Array): boolean {
+    if (this.n === 0 || elements.length === 0) return false;
+
+    const siphash = new SipHash(key);
+    const range = BigInt(this.n) * this.m;
+
+    // 計算所有目標值並排序
+    const targets = elements
+      .map(elem => (siphash.hash(elem) * range) >> 64n)
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+    // 解碼過濾器值
+    const values = this.golombRiceDecode();
+
+    // 合併搜索
+    let sum = 0n;
+    let ti = 0;
+
+    for (const delta of values) {
+      sum += delta;
+
+      while (ti < targets.length && targets[ti] < sum) {
+        ti++;
+      }
+
+      if (ti < targets.length && targets[ti] === sum) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private golombRiceDecode(): bigint[] {
+    const values: bigint[] = [];
+    let bitPos = 0;
+
+    const getBit = (): number => {
+      const byteIndex = Math.floor(bitPos / 8);
+      const bitIndex = 7 - (bitPos % 8);
+      bitPos++;
+      return (this.data[byteIndex] >> bitIndex) & 1;
+    };
+
+    for (let i = 0; i < this.n; i++) {
+      // Decode unary q
+      let q = 0n;
+      while (getBit() === 1) {
+        q++;
+      }
+
+      // Decode binary r
+      let r = 0n;
+      for (let j = 0; j < this.p; j++) {
+        r = (r << 1n) | BigInt(getBit());
+      }
+
+      values.push((q << BigInt(this.p)) + r);
+    }
+
+    return values;
+  }
+
+  serialize(): Uint8Array {
+    const nBytes = encodeVarInt(this.n);
+    const result = new Uint8Array(nBytes.length + this.data.length);
+    result.set(nBytes);
+    result.set(this.data, nBytes.length);
+    return result;
+  }
+}</code></pre>
+
+  <h2 id="p2p-protocol">P2P 協議</h2>
+
+  <h3>訊息類型</h3>
+  <pre><code class="language-text" is:raw>BIP-157 定義的 P2P 訊息:
+
+1. getcfheaders - 請求過濾器頭
+┌─────────────────────────────────────┐
+│ FilterType (uint8)                  │
+├─────────────────────────────────────┤
+│ StartHeight (uint32)                │
+├─────────────────────────────────────┤
+│ StopHash (32 bytes)                 │
+└─────────────────────────────────────┘
+
+2. cfheaders - 過濾器頭回應
+┌─────────────────────────────────────┐
+│ FilterType (uint8)                  │
+├─────────────────────────────────────┤
+│ StopHash (32 bytes)                 │
+├─────────────────────────────────────┤
+│ PreviousFilterHeader (32 bytes)     │
+├─────────────────────────────────────┤
+│ FilterHashes (VarInt + 32-byte[])   │
+└─────────────────────────────────────┘
+
+3. getcfilters - 請求過濾器
+┌─────────────────────────────────────┐
+│ FilterType (uint8)                  │
+├─────────────────────────────────────┤
+│ StartHeight (uint32)                │
+├─────────────────────────────────────┤
+│ StopHash (32 bytes)                 │
+└─────────────────────────────────────┘
+
+4. cfilter - 過濾器回應
+┌─────────────────────────────────────┐
+│ FilterType (uint8)                  │
+├─────────────────────────────────────┤
+│ BlockHash (32 bytes)                │
+├─────────────────────────────────────┤
+│ Filter (VarBytes)                   │
+└─────────────────────────────────────┘
+
+5. getcfcheckpt - 請求過濾器檢查點
+6. cfcheckpt - 過濾器檢查點回應</code></pre>
+
+  <h3>過濾器頭鏈</h3>
+  <pre><code class="language-text" is:raw>過濾器頭 (Filter Header) 結構:
+
+每個區塊的過濾器頭:
+FilterHeader = SHA256(SHA256(FilterHash || PrevFilterHeader))
+
+形成過濾器頭鏈:
+┌──────────┐     ┌──────────┐     ┌──────────┐
+│ Block N  │────▶│ Block N+1│────▶│ Block N+2│
+├──────────┤     ├──────────┤     ├──────────┤
+│ Filter N │     │Filter N+1│     │Filter N+2│
+├──────────┤     ├──────────┤     ├──────────┤
+│FilterHdr │────▶│FilterHdr │────▶│FilterHdr │
+│    N     │     │   N+1    │     │   N+2    │
+└──────────┘     └──────────┘     └──────────┘
+
+驗證過程:
+1. 從多個節點獲取 cfheaders
+2. 驗證頭鏈連續性
+3. 多數共識確認正確性
+4. 之後可以從任何節點獲取過濾器
+5. 過濾器雜湊必須匹配頭鏈中的值</code></pre>
+
+  <h2 id="client-workflow">客戶端工作流程</h2>
+  <pre><code class="language-typescript" is:raw>class NeutrinoClient {
+  private filterHeaders: Map&lt;string, Uint8Array&gt; = new Map();
+  private peers: Peer[] = [];
+  private watchedScripts: Uint8Array[] = [];
+
+  // 初始化同步
+  async sync(): Promise&lt;void&gt; {
+    // 1. 同步區塊頭
+    await this.syncBlockHeaders();
+
+    // 2. 同步過濾器頭 (從多個節點)
+    await this.syncFilterHeaders();
+
+    // 3. 驗證過濾器頭共識
+    this.verifyFilterHeaderConsensus();
+
+    // 4. 下載並掃描過濾器
+    await this.scanFilters();
+  }
+
+  private async syncFilterHeaders(): Promise&lt;void&gt; {
+    const headersByPeer: Map&lt;string, Uint8Array[]&gt;[] = [];
+
+    // 從多個節點獲取過濾器頭
+    await Promise.all(
+      this.peers.map(async (peer, i) => {
+        const headers = await this.getFilterHeadersFromPeer(peer);
+        headersByPeer[i] = headers;
+      })
+    );
+
+    // 檢查共識
+    // 多數節點必須返回相同的頭鏈
+  }
+
+  private async scanFilters(): Promise&lt;void&gt; {
+    const bestHeight = this.getBestBlockHeight();
+    const startHeight = this.getLastScannedHeight();
+
+    for (let height = startHeight; height <= bestHeight; height++) {
+      const blockHash = this.getBlockHash(height);
+
+      // 獲取過濾器
+      const filter = await this.getFilter(blockHash);
+
+      // 驗證過濾器雜湊
+      const filterHash = sha256(sha256(filter));
+      const expectedHash = this.filterHeaders.get(blockHash);
+      if (!filterHash.equals(expectedHash)) {
+        throw new Error('Filter hash mismatch');
+      }
+
+      // 本地匹配
+      const gcs = GCSFilter.deserialize(filter);
+      const key = blockHash.slice(0, 16); // 使用 block hash 作為 key
+
+      if (gcs.matchAny(this.watchedScripts, key)) {
+        // 過濾器匹配！下載完整區塊
+        const block = await this.getBlock(blockHash);
+        await this.processBlock(block);
+      }
+
+      this.setLastScannedHeight(height);
+    }
+  }
+
+  // 處理匹配的區塊
+  private async processBlock(block: Block): Promise&lt;void&gt; {
+    for (const tx of block.transactions) {
+      // 檢查輸出
+      for (let i = 0; i &lt; tx.outputs.length; i++) {
+        const output = tx.outputs[i];
+        if (this.isWatchedScript(output.scriptPubKey)) {
+          this.addUtxo({
+            txid: tx.txid,
+            vout: i,
+            value: output.value,
+            script: output.scriptPubKey,
+            height: block.height
+          });
+        }
+      }
+
+      // 檢查輸入
+      for (const input of tx.inputs) {
+        const outpoint = `${input.prevTxid}:${input.prevVout}`;
+        if (this.hasUtxo(outpoint)) {
+          this.spendUtxo(outpoint, tx.txid);
+        }
+      }
+    }
+  }
+
+  // 添加監控腳本
+  addWatchedScript(script: Uint8Array): void {
+    this.watchedScripts.push(script);
+  }
+
+  // 添加監控地址
+  addWatchedAddress(address: string): void {
+    const script = addressToScript(address);
+    this.watchedScripts.push(script);
+  }
+}</code></pre>
+
+  <h2 id="security">安全考量</h2>
+
+  <h3>誤判處理</h3>
+  <pre><code class="language-text" is:raw>誤判 (False Positive) 處理:
+
+誤判率: ≈ 1/784931 ≈ 0.00013%
+
+當過濾器顯示匹配但實際不匹配:
+1. 客戶端下載完整區塊
+2. 在本地驗證發現沒有相關交易
+3. 浪費頻寬但不影響安全
+
+影響:
+- 每 ~770,000 個腳本可能有 1 次誤判
+- 對單個地址來說幾乎不會誤判
+- 監控更多地址時誤判累積
+
+vs BIP-37:
+- BIP-37: 伺服器可以選擇性回應 (可遺漏交易)
+- BIP-158: 客戶端下載區塊驗證 (無法遺漏)</code></pre>
+
+  <h3>隱私保護</h3>
+  <pre><code class="language-text" is:raw>隱私優勢:
+
+1. 伺服器不知道用戶查詢內容
+   - 用戶下載所有過濾器
+   - 匹配在本地進行
+   - 伺服器只知道「用戶在同步」
+
+2. 區塊下載可以混淆
+   - 可以隨機下載額外區塊
+   - 使用多個節點分散請求
+   - Tor 增加額外隱私
+
+3. 無法進行過濾器反推
+   - 伺服器不接收用戶過濾器
+   - 沒有可分析的數據
+
+限制:
+- 下載區塊時仍暴露興趣
+- 交易廣播需額外隱私措施
+- 最佳方案仍是運行全節點</code></pre>
+
+  <h2 id="bitcoin-core">Bitcoin Core 支援</h2>
+  <pre><code class="language-text" is:raw>Bitcoin Core 配置:
+
+啟用 compact block filter 索引:
+$ bitcoind -blockfilterindex=basic
+
+啟用 P2P 過濾器服務:
+$ bitcoind -peerblockfilters=1
+
+RPC 命令:
+$ bitcoin-cli getblockfilter &lt;blockhash&gt; "basic"
+{
+  "filter": "...",
+  "header": "..."
+}
+
+服務位:
+NODE_COMPACT_FILTERS = (1 &lt;&lt; 6)
+
+磁碟空間:
+- 過濾器索引約 4-5 GB
+- vs 完整區塊鏈 ~550 GB</code></pre>
+
+  <h2 id="applications">應用場景</h2>
+  <pre><code class="language-text" is:raw>使用 Compact Block Filters 的項目:
+
+1. LND (Lightning Network Daemon)
+   - Neutrino 後端模式
+   - 不需要完整節點即可運行閃電節點
+   - 適合資源受限設備
+
+2. BTCPay Server
+   - 支援 Neutrino 輕量模式
+   - 降低商家入門門檻
+
+3. 移動錢包
+   - 不依賴中心化服務
+   - 保護用戶隱私
+   - 節省儲存和頻寬
+
+4. 冷錢包餘額查詢
+   - 無需暴露地址給第三方
+   - 安全驗證交易</code></pre>
+
+  <h2 id="comparison">方案比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>全節點</th>
+        <th>Electrum</th>
+        <th>BIP-37</th>
+        <th>BIP-157/158</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>隱私</td>
+        <td>最佳</td>
+        <td>差</td>
+        <td>差</td>
+        <td>好</td>
+      </tr>
+      <tr>
+        <td>儲存需求</td>
+        <td>~550 GB</td>
+        <td>~50 MB</td>
+        <td>~50 MB</td>
+        <td>~5 GB</td>
+      </tr>
+      <tr>
+        <td>頻寬</td>
+        <td>高</td>
+        <td>低</td>
+        <td>低</td>
+        <td>中</td>
+      </tr>
+      <tr>
+        <td>去中心化</td>
+        <td>最佳</td>
+        <td>需信任</td>
+        <td>中</td>
+        <td>好</td>
+      </tr>
+      <tr>
+        <td>安全驗證</td>
+        <td>完整</td>
+        <td>SPV</td>
+        <td>SPV</td>
+        <td>SPV</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0157.mediawiki" target="_blank" rel="noopener noreferrer">BIP-157: Client Side Block Filtering</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki" target="_blank" rel="noopener noreferrer">BIP-158: Compact Block Filters</a></li>
+    <li><a href="https://github.com/lightninglabs/neutrino" target="_blank" rel="noopener noreferrer">Neutrino (Go 實現)</a></li>
+    <li><a href="/tech/bitcoin-core/bloom-filters">Bloom Filters (BIP-37)</a></li>
+    <li><a href="/tech/bitcoin-core/p2p-protocol">P2P Protocol</a></li>
+  </ul>
+</ArticleLayout>

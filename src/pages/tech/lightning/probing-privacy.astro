@@ -1,0 +1,347 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Probing & Privacy 探測與隱私"
+  description="了解閃電網路的隱私威脅，包括餘額探測、支付關聯和去匿名化攻擊，以及可用的保護措施。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Probing & Privacy' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Private Channels', href: '/tech/lightning/private-channels' }}
+  nextPage={{ title: 'Channel Jamming', href: '/tech/lightning/channel-jamming' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">閃電網路隱私概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路提供了比鏈上交易更好的隱私性——支付不記錄在公開區塊鏈上，使用洋蔥路由隱藏路徑。
+    但它並非完美匿名。節點可以看到經過它們的支付，通道餘額可以被探測，
+    支付可以被關聯。了解這些威脅對於保護隱私至關重要。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>重要提醒：</strong>
+      閃電網路的隱私正在持續改進，但目前它不應被視為匿名系統。
+      如果你需要強隱私，需要採取額外措施並了解當前的限制。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">餘額探測攻擊</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Balance Probing（餘額探測）：
+
+攻擊者想知道 Alice-Bob 通道的餘額分佈
+
+方法：發送故意失敗的支付
+┌─────────────────────────────────────────────────────────┐
+│ 攻擊者 → ... → Alice → Bob → 不存在的目的地            │
+│                                                         │
+│ 使用錯誤的 payment_hash，支付必定失敗                   │
+│ 但失敗的位置揭示了信息！                                │
+└─────────────────────────────────────────────────────────┘
+
+探測過程：
+1. 發送 1 BTC 的探測支付
+   → 失敗：TEMPORARY_CHANNEL_FAILURE（Alice→Bob 容量不足）
+   → 結論：Alice 方餘額 < 1 BTC
+
+2. 發送 0.5 BTC 的探測支付
+   → 失敗：UNKNOWN_PAYMENT_HASH（到達目的地後失敗）
+   → 結論：Alice 方餘額 >= 0.5 BTC
+
+3. 發送 0.75 BTC...
+   → 繼續二分搜索
+
+4. 經過 ~10 次探測
+   → 精確知道餘額到 sat 級別！
+
+問題：
+├── 完全免費（失敗的支付不收費）
+├── 難以阻止（看起來像正常失敗）
+└── 可以大規模進行`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付關聯</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Payment Correlation（支付關聯）攻擊：
+
+HTLC 跨跳使用相同的 payment_hash：
+
+A → B → C → D
+    │       │
+    └───────┴─ 相同的 payment_hash
+
+如果攻擊者控制 B 和 D：
+┌─────────────────────────────────────────────────────────┐
+│ B 看到：from A, hash=abc123, amount=100k               │
+│ D 看到：to ?, hash=abc123, amount=99k (扣除費用)       │
+│                                                         │
+│ 關聯！同一筆支付                                        │
+│ 知道：A 支付給 D 後面的某人                             │
+│ 金額：約 100k sats                                      │
+└─────────────────────────────────────────────────────────┘
+
+更糟的情況：首尾節點控制
+如果攻擊者控制 A 和 D 的對手方：
+├── 知道發送方確切身份
+├── 知道接收方確切身份
+├── 知道確切金額
+└── 完全去匿名化！
+
+PTLCs 解決方案：
+使用不同的 point 代替相同的 hash：
+A → B: point_AB
+B → C: point_BC (不同!)
+C → D: point_CD (不同!)
+
+無法通過 point 關聯支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時序分析</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Timing Analysis（時序分析）：
+
+攻擊者可以通過時間關聯支付：
+
+場景：攻擊者控制入口和出口附近的節點
+
+入口時間：T₀
+中間延遲：~100ms（網路延遲）
+出口時間：T₀ + ~100ms
+
+┌─────────────────────────────────────────────────────────┐
+│ 如果在 T₀ 只有一個入站 HTLC                             │
+│ 在 T₀+100ms 只有一個對應大小的出站 HTLC                │
+│ → 很可能是同一筆支付                                   │
+└─────────────────────────────────────────────────────────┘
+
+緩解措施：
+├── 增加隨機延遲（但增加支付時間）
+├── 批量處理 HTLC（複雜度高）
+└── 使用 Tor 增加網路層匿名
+
+路徑長度推斷：
+CLTV 時間鎖遞減可以揭示路徑位置：
+├── 入口節點看到大的 CLTV
+├── 出口節點看到小的 CLTV
+└── 差值 ÷ delta = 大致跳數`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路圖分析</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">通道圖洩露</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        公開通道在網路圖中可見，洩露：節點連接、通道容量、費率設定、在線時間模式。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">資金追蹤</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道開設/關閉交易在鏈上可見。可以追蹤資金來源和流向，關聯不同通道。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">節點身份</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點公鑰是永久身份。IP 地址、Tor 地址、別名都可能洩露身份。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">餘額歷史</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        定期探測可以構建通道餘額的歷史變化，推斷支付流向和金額。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護措施</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">1. 私有通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 <a href="/tech/lightning/private-channels" class="underline">私有通道</a>
+        避免在網路圖中公開你的通道和連接。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">2. Route Blinding</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 <a href="/tech/lightning/route-blinding" class="underline">路徑盲化</a>
+        隱藏接收方的位置，發送方只知道入口節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">3. Tor 網路</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過 Tor 運行節點，隱藏真實 IP 地址。注意 Tor 也有其限制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">4. 多路徑支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        <a href="/tech/lightning/mpp" class="underline">MPP</a> 將支付分割成多個部分，
+        增加關聯難度（但相同 payment_hash 仍可關聯）。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">5. PTLCs（未來）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        <a href="/tech/lightning/ptlcs" class="underline">PTLCs</a> 消除跨跳的 hash 關聯，
+        是解決支付關聯問題的根本方案。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">探測防禦</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`防禦餘額探測的方法：
+
+1. 影子路由（Shadow Routing）
+   ├── 在真實路徑後添加虛假跳
+   ├── CLTV 看起來更長
+   └── 難以判斷真實目的地位置
+
+2. 隨機化錯誤
+   ├── 即使餘額充足也隨機返回失敗
+   ├── 增加探測不確定性
+   └── 但會影響正常支付成功率
+
+3. 費用速率限制
+   ├── 限制失敗支付的頻率
+   ├── 減慢探測速度
+   └── 需要平衡正常使用
+
+4. 最小 HTLC 設定
+   ├── 設定較高的最小值
+   ├── 減少精確探測能力
+   └── 但限制小額支付
+
+5. 定期再平衡
+   ├── 主動改變餘額分佈
+   ├── 探測結果快速過時
+   └── 有成本
+
+現實：
+┌─────────────────────────────────────────────────────────┐
+│ 目前沒有完美的探測防禦方案                              │
+│ 最佳策略是接受一定程度的餘額洩露                        │
+│ 並使用私有通道減少可探測的通道數量                      │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發送方 vs 接收方隱私</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`隱私不對稱性：
+
+發送方隱私（較好）：
+├── 選擇路徑，控制更多信息
+├── 可以選擇經過哪些節點
+├── 接收方不知道發送方身份（除非發票中包含）
+└── 可以使用 Trampoline 減少暴露
+
+接收方隱私（較差）：
+├── 必須提供聯繫方式（發票/BOLT12）
+├── Route hints 洩露私有通道信息
+├── 節點 ID 是接收支付的前提
+└── 發送方至少知道最後一跳
+
+Route Blinding 改善接收方隱私：
+├── 隱藏真實節點 ID
+├── 隱藏最後幾跳路徑
+└── 發送方只知道入口點
+
+最佳實踐：
+├── 發送方：使用多跳路徑，避免直接連接目標
+├── 接收方：使用 Route Blinding + 私有通道
+└── 雙方：使用 Tor，定期更換節點/通道`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私威脅模型</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">全局被動對手</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以觀察整個網路流量的對手（如 ISP 或國家級行為者）。
+        可以進行時序關聯和流量分析。Tor 可以部分緩解。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">路由節點對手</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        控制一個或多個路由節點的對手。可以看到經過的支付、進行探測、嘗試關聯。
+        多節點攻擊更強大。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">交易對手</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        你的直接通道對手方。完全知道你的支付活動（如果經過他們的通道）。
+        選擇可信任的對手方很重要。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://arxiv.org/abs/2003.12470"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">閃電網路隱私研究論文</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/private-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">私有通道</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/route-blinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Route Blinding</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/ptlcs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">PTLCs</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/channel-jamming"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Channel Jamming</a
+      >
+      這一拒絕服務攻擊及其緩解措施。
+    </p>
+  </div>
+</ArticleLayout>

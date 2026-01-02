@@ -1,0 +1,282 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Cooperative Close 協商關閉"
+  description="了解閃電網路通道的協商關閉機制，如何與對方合作以最低成本和最快速度關閉通道。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Cooperative Close' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Force Close', href: '/tech/lightning/force-close' }}
+  nextPage={{ title: 'Channel Management', href: '/tech/lightning/channel-management' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是協商關閉？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    協商關閉（Cooperative Close），也稱為相互關閉（Mutual Close），是通道雙方
+    合作創建一筆最終結算交易來關閉通道的過程。這是關閉通道的首選方式，因為它比強制關閉
+    更便宜、更快速，且雙方可以立即使用結算後的資金。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>推薦方式：</strong>
+      協商關閉沒有時間鎖限制，交易更小費用更低，結算後雙方立即獲得資金。
+      始終應該優先嘗試協商關閉。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協商 vs 強制關閉</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`對比：
+
+┌─────────────────────────────────────────────────────────┐
+│ 特性              │ 協商關閉        │ 強制關閉        │
+├─────────────────────────────────────────────────────────┤
+│ 需要對方配合      │ 是              │ 否              │
+│ 交易大小          │ ~350 vB         │ ~700+ vB        │
+│ 費用              │ 低              │ 高              │
+│ 時間鎖            │ 無              │ 有（1天-2週）   │
+│ HTLC 處理         │ 鏈下結算        │ 需要鏈上交易    │
+│ 資金可用性        │ 立即            │ 延遲            │
+│ 二級交易          │ 無              │ 可能需要        │
+└─────────────────────────────────────────────────────────┘
+
+示例費用對比（50 sat/vB）：
+├── 協商關閉：~17,500 sats
+├── 強制關閉（無 HTLC）：~45,000 sats
+└── 強制關閉（有 HTLC）：~80,000+ sats`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協商關閉流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`協商關閉訊息流：
+
+Alice                              Bob
+  │                                 │
+  │───── shutdown ─────────────────>│  Alice 發起關閉
+  │      (scriptpubkey_a)           │
+  │                                 │
+  │<──── shutdown ──────────────────│  Bob 同意關閉
+  │      (scriptpubkey_b)           │
+  │                                 │
+  │ (雙方停止接受新的 HTLC)         │
+  │ (等待現有 HTLC 結算)            │
+  │                                 │
+  │<──── closing_signed ────────────│  Bob 提議費用
+  │      (fee_satoshis, signature)  │
+  │                                 │
+  │───── closing_signed ───────────>│  Alice 接受或反提議
+  │      (fee_satoshis, signature)  │
+  │                                 │
+  │ (重複直到費用達成一致)          │
+  │                                 │
+  │ [廣播 closing transaction]      │
+  │                                 │
+
+結算交易結構：
+┌─────────────────────────────────────────────────────────┐
+│ Closing Transaction                                     │
+├─────────────────────────────────────────────────────────┤
+│ Input:                                                  │
+│   └── Funding TX output (2-of-2 multisig)              │
+│       簽名：Alice + Bob                                 │
+├─────────────────────────────────────────────────────────┤
+│ Outputs:                                                │
+│   ├── Alice's output: scriptpubkey_a (無時間鎖)        │
+│   └── Bob's output: scriptpubkey_b (無時間鎖)          │
+└─────────────────────────────────────────────────────────┘
+
+注意：沒有 to_local 的時間鎖限制！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用協商</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`費用協商機制：
+
+規則：
+├── 費用由發起關閉方支付（從其餘額扣除）
+├── 雙方需要就費率達成一致
+└── 使用二分法收斂
+
+協商示例：
+
+Bob 提議：fee = 10,000 sats
+Alice 覺得太高，反提議：fee = 5,000 sats
+Bob 反提議：fee = 7,500 sats
+Alice 接受：fee = 7,500 sats
+→ 達成一致，廣播交易
+
+BOLT 規範的建議：
+┌─────────────────────────────────────────────────────────┐
+│ 如果雙方的費用提議差異小於對方提議的 10%              │
+│ 接收方應該接受對方的提議                               │
+│                                                         │
+│ 示例：                                                  │
+│ Bob 提議：10,000 sats                                  │
+│ Alice 提議：9,500 sats                                 │
+│ 差異：5% < 10%                                         │
+│ → Alice 應該接受 Bob 的 10,000                         │
+└─────────────────────────────────────────────────────────┘
+
+費用範圍限制：
+├── 最低費用：dust_limit（避免粉塵輸出）
+├── 最高費用：不能讓任一方餘額變成粉塵
+└── 必須在合理範圍內`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 處理</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">關閉前結算</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        shutdown 訊息發送後，雙方停止接受新 HTLC，但現有 HTLC 仍正常處理。
+        必須等所有 HTLC 結算後才能完成關閉。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">不需要鏈上處理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        與強制關閉不同，協商關閉時 HTLC 在鏈下結算。不需要 HTLC-Success
+        或 HTLC-Timeout 交易，節省大量費用。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">輸出地址</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`shutdown 訊息中的 scriptpubkey：
+
+允許的腳本類型：
+├── P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
+├── P2SH: OP_HASH160 <20 bytes> OP_EQUAL
+├── P2WPKH: OP_0 <20 bytes>
+├── P2WSH: OP_0 <32 bytes>
+└── P2TR: OP_1 <32 bytes>（如果支持 option_shutdown_anysegwit）
+
+upfront_shutdown_script：
+┌─────────────────────────────────────────────────────────┐
+│ 開通道時可以預先設定關閉地址                            │
+│                                                         │
+│ open_channel/accept_channel 中：                        │
+│   upfront_shutdown_script: <預設地址>                   │
+│                                                         │
+│ 好處：                                                  │
+│ ├── 防止資金被發送到錯誤地址                           │
+│ ├── 即使節點被入侵也能保護資金                         │
+│ └── 強制資金只能發到預設地址                           │
+│                                                         │
+│ 如果設定了 upfront_shutdown_script：                    │
+│ shutdown 中的 scriptpubkey 必須匹配                     │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對方不回應怎麼辦？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果發送 shutdown 後對方長時間不回應，可能需要強制關閉。
+        但建議先多等待一段時間，對方可能只是暫時離線。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">費用談不攏怎麼辦？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果雙方對費用分歧太大無法達成一致，任一方可以選擇強制關閉。
+        但這通常意味著更高的總成本。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">還有未結算的 HTLC？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        必須等待所有 HTLC 結算。如果有卡住的 HTLC，可能需要等待超時或獲得 preimage。
+        極端情況可能需要強制關閉。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現命令</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發起協商關閉：
+
+LND:
+lncli closechannel --chan_point <funding_txid:output_index>
+
+# 指定目標確認區塊數（影響費用）
+lncli closechannel --chan_point <txid:index> --conf_target 6
+
+# 指定關閉地址
+lncli closechannel --chan_point <txid:index> \\
+  --delivery_address bc1q...
+
+CLN:
+lightning-cli close <channel_id>
+
+# 指定超時（秒），超時後強制關閉
+lightning-cli close <channel_id> 300
+
+# 指定目標費率
+lightning-cli close <channel_id> null 10000perkb
+
+Eclair:
+eclair-cli close --channelId <channel_id>`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/02-peer-protocol.md#closing-initiation-shutdown"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 2 - Shutdown</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/force-close"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">強制關閉</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/channel-management"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道管理</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/channel-management"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道管理</a
+      >
+      的完整生命週期。
+    </p>
+  </div>
+</ArticleLayout>

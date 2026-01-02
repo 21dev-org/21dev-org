@@ -1,0 +1,316 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Force Close 強制關閉"
+  description="了解閃電網路通道的強制關閉（單方面關閉）機制，何時發生、如何處理及相關風險。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Force Close' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Channel States', href: '/tech/lightning/channel-states' }}
+  nextPage={{ title: 'Cooperative Close', href: '/tech/lightning/cooperative-close' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是強制關閉？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    強制關閉（Force Close），也稱為單方面關閉（Unilateral Close），是指通道一方
+    在沒有對方配合的情況下，通過廣播承諾交易來關閉通道。這是閃電網路的安全逃生機制，
+    確保即使對方離線或不配合，你也能取回自己的資金。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
+    <p class="text-sm text-orange-700 dark:text-orange-400">
+      <strong>成本較高：</strong>
+      強制關閉比協商關閉需要更多的鏈上交易和時間。應該優先嘗試協商關閉，
+      只有在必要時才使用強制關閉。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">何時發生強制關閉</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對方離線</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對方節點長時間不可達，無法進行協商關閉。你需要資金但無法等待。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對方不配合</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對方拒絕簽署協商關閉交易，或者對關閉條款有爭議無法達成一致。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">HTLC 超時風險</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        有未結算的 HTLC 即將超時，必須上鏈解決以避免資金損失。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">檢測到欺詐</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對方廣播了舊的承諾交易（作弊），你需要廣播懲罰交易。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">協議違規</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對方發送無效訊息或違反協議規則，節點自動觸發強制關閉。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">強制關閉流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`強制關閉的交易結構：
+
+步驟 1：廣播承諾交易
+┌─────────────────────────────────────────────────────────┐
+│ Commitment Transaction                                  │
+├─────────────────────────────────────────────────────────┤
+│ Input:                                                  │
+│   └── Funding TX output (2-of-2 multisig)              │
+├─────────────────────────────────────────────────────────┤
+│ Outputs:                                                │
+│   ├── to_local (發起方餘額，有時間鎖)                   │
+│   ├── to_remote (對方餘額，可立即花費)                  │
+│   ├── Offered HTLCs (發起方提供的)                      │
+│   ├── Received HTLCs (發起方接收的)                     │
+│   └── Anchor outputs (如果啟用)                         │
+└─────────────────────────────────────────────────────────┘
+
+步驟 2：等待確認
+├── 承諾交易需要被礦工確認
+├── 確認後開始計時時間鎖
+└── 通常需要 1-6 個確認
+
+步驟 3：處理 to_local 輸出
+┌─────────────────────────────────────────────────────────┐
+│ to_local 有 to_self_delay 時間鎖                        │
+│ 例如：144 區塊 ≈ 1 天                                   │
+│                                                         │
+│ 必須等待時間鎖過期才能花費                              │
+│ 這給對方時間檢測和懲罰欺詐                              │
+└─────────────────────────────────────────────────────────┘
+
+步驟 4：處理 HTLC 輸出
+├── HTLC-Success TX：用 preimage 領取收到的 HTLC
+├── HTLC-Timeout TX：超時後取回發出的 HTLC
+└── 這些都是二級交易，需要額外的鏈上費用`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖機制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`to_self_delay 時間鎖：
+
+目的：
+├── 給對方時間發現欺詐
+├── 如果你廣播的是舊狀態
+└── 對方可以在這段時間內廣播懲罰交易
+
+典型設置：
+├── 小額通道：144 區塊（~1 天）
+├── 中額通道：288 區塊（~2 天）
+└── 大額通道：1008-2016 區塊（1-2 週）
+
+時間線示例：
+T0: 你廣播承諾交易
+T1: 交易被確認（T0 + ~10 分鐘）
+T2: 時間鎖開始（T1）
+T3: 時間鎖結束（T1 + 144 區塊 ≈ T1 + 1 天）
+T4: 你可以花費 to_local 輸出
+
+如果對方發現你作弊（廣播舊狀態）：
+├── 對方在 T1-T3 期間廣播懲罰交易
+├── 懲罰交易沒有時間鎖限制
+└── 你的所有資金被對方沒收
+
+誠實關閉沒有問題：
+├── 你廣播的是最新狀態
+├── 等待時間鎖只是不便
+└── 最終資金正確結算`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 處理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`強制關閉時的 HTLC 處理：
+
+場景：通道有未結算的 HTLC
+
+Offered HTLC（你發出的）：
+┌─────────────────────────────────────────────────────────┐
+│ 你 ──HTLC──> 對方                                       │
+│                                                         │
+│ 可能的結果：                                            │
+│ 1. 對方知道 preimage → 對方用 HTLC-Success TX 領取     │
+│ 2. HTLC 超時 → 你用 HTLC-Timeout TX 取回               │
+│                                                         │
+│ HTLC-Timeout TX 也有時間鎖！                            │
+└─────────────────────────────────────────────────────────┘
+
+Received HTLC（你接收的）：
+┌─────────────────────────────────────────────────────────┐
+│ 對方 ──HTLC──> 你                                       │
+│                                                         │
+│ 可能的結果：                                            │
+│ 1. 你知道 preimage → 你用 HTLC-Success TX 領取         │
+│ 2. HTLC 超時 → 對方用 HTLC-Timeout TX 取回             │
+│                                                         │
+│ 必須在超時前用 preimage 領取！                          │
+└─────────────────────────────────────────────────────────┘
+
+費用考量：
+├── 每個 HTLC 輸出需要單獨的交易來解決
+├── 小額 HTLC 可能因費用太高而不值得領取
+└── 這就是為什麼有 HTLC 粉塵限制`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor Outputs 的影響</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">沒有 Anchor 的問題</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        承諾交易費率在簽署時固定。如果網路擁堵，費率可能太低導致交易卡住，
+        HTLC 可能超時，資金面臨風險。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">有 Anchor 的優勢</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 <a href="/tech/lightning/anchor-outputs" class="underline">Anchor Outputs</a>
+        可以通過 CPFP 動態調整費率，確保交易即時確認。需要維護額外的鏈上 UTXO。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">強制關閉的成本</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`強制關閉成本分析：
+
+1. 承諾交易費用
+   ├── 由發起關閉方支付（從通道餘額扣除）
+   ├── 費率在簽署時固定（或用 Anchor 調整）
+   └── 典型大小：500-1000 vB
+
+2. to_local 花費交易費用
+   ├── 等時間鎖後花費需要另一筆交易
+   └── 由你支付
+
+3. HTLC 解決費用
+   ├── 每個 HTLC 需要單獨的二級交易
+   ├── HTLC-Success: ~150 vB
+   ├── HTLC-Timeout: ~150 vB
+   └── 如果有多個 HTLC，費用累加
+
+4. 時間成本
+   ├── 等待承諾交易確認
+   ├── 等待 to_self_delay 時間鎖
+   └── 資金被鎖定無法使用
+
+成本對比示例（假設 50 sat/vB）：
+
+協商關閉：
+├── 1 筆交易 ~350 vB = 17,500 sats
+└── 即時結算
+
+強制關閉（無 HTLC）：
+├── 承諾交易 ~700 vB = 35,000 sats
+├── to_local 花費 ~200 vB = 10,000 sats
+├── 等待 1 天
+└── 總計：45,000 sats + 時間
+
+強制關閉（有 3 個 HTLC）：
+├── 承諾交易 ~1000 vB = 50,000 sats
+├── 3 個 HTLC 交易 ~450 vB = 22,500 sats
+├── to_local 花費 ~200 vB = 10,000 sats
+└── 總計：82,500 sats + 時間`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優先協商關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        始終先嘗試協商關閉。等待對方上線，多次重試後再考慮強制關閉。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">維護 Anchor UTXO</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 Anchor Outputs 的通道需要維護用於 CPFP 的 UTXO。確保錢包有足夠的鏈上資金。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">監控待處理 HTLC</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        在強制關閉前確認所有待處理 HTLC 的狀態和超時時間。確保有足夠時間處理。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">使用 Watchtower</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        <a href="/tech/lightning/watchtowers" class="underline">Watchtower</a>
+        可以在你離線時監控並響應對方的強制關閉。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="/tech/lightning/cooperative-close"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">協商關閉</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/penalty-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">懲罰交易</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/anchor-outputs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Anchor Outputs</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/cooperative-close"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">協商關閉</a
+      >
+      如何更高效、更便宜地關閉通道。
+    </p>
+  </div>
+</ArticleLayout>
