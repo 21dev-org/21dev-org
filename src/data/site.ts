@@ -15,6 +15,9 @@ export const siteConfig = {
       'https://signal.group/#CjQKIKEW5NtKmgLKX9JOei4GOaTCl1enEIOpFC1R6vjm5_RCEhD3TXZew1_1HSLkD9sh8r5K',
   },
 
+  // Facebook App ID (for Open Graph)
+  fbAppId: '680aborwei21',
+
   // Default Open Graph image (PNG for social media compatibility)
   ogImage: '/og-image.png',
 
