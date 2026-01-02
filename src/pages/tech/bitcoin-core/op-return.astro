@@ -1,0 +1,556 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="OP_RETURN"
+  description="OP_RETURN：在比特幣區塊鏈上嵌入任意數據"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'OP_RETURN' },
+  ]}
+  difficulty="beginner"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'Merkle Tree', href: '/tech/bitcoin-core/merkle-tree' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    OP_RETURN 是比特幣腳本中的一個操作碼，允許在交易輸出中嵌入少量任意數據。
+    這些輸出被標記為「可證明不可花費」(provably unspendable)，
+    不會進入 UTXO 集合，避免了區塊鏈膨脹問題。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>數據限制：</strong>
+      Bitcoin Core 標準規則允許每個 OP_RETURN 輸出最多 80 bytes 數據。
+      共識規則本身沒有嚴格限制，但非標準交易難以傳播。
+    </p>
+  </div>
+
+  <h2 id="script-format">腳本格式</h2>
+
+  <h3>基本結構</h3>
+  <pre><code class="language-text" is:raw>OP_RETURN 輸出結構:
+
+scriptPubKey:
+┌─────────────────────────────────────┐
+│ OP_RETURN (0x6a)                    │
+├─────────────────────────────────────┤
+│ [OP_PUSHBYTES_n] [data...]          │
+└─────────────────────────────────────┘
+
+執行行為:
+1. OP_RETURN 立即終止腳本執行
+2. 將結果標記為失敗
+3. 但整個交易仍然有效（輸出不可花費）
+
+範例:
+6a                      # OP_RETURN
+13                      # PUSH 19 bytes
+48656c6c6f2c20426974636f696e21  # "Hello, Bitcoin!"
+
+結果: 不可花費的輸出，包含 "Hello, Bitcoin!"</code></pre>
+
+  <h3>標準規則</h3>
+  <pre><code class="language-text" is:raw>Bitcoin Core 標準規則:
+
+1. 數據大小限制
+   - 最大 80 bytes (自 v0.12.0)
+   - 之前是 40 bytes (v0.10.0)
+   - 更早是 0 bytes (完全禁止)
+
+2. 輸出數量限制
+   - 每筆交易最多一個 OP_RETURN 輸出
+   - 多個會被視為非標準
+
+3. 輸出金額
+   - 通常設為 0 satoshi
+   - 大於 0 的金額會被「燒毀」
+
+4. scriptPubKey 格式
+   - 必須以 OP_RETURN 開頭
+   - 後面跟隨 push 操作碼和數據
+
+標準 vs 共識:
+- 標準規則: 節點是否轉發/接受到 mempool
+- 共識規則: 區塊是否有效
+- 礦工可以包含非標準交易</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>創建 OP_RETURN 輸出</h3>
+  <pre><code class="language-typescript" is:raw>// 創建 OP_RETURN scriptPubKey
+function createOpReturnScript(data: Uint8Array): Uint8Array {
+  if (data.length > 80) {
+    throw new Error('OP_RETURN 數據超過 80 bytes 限制');
+  }
+
+  const parts: number[] = [];
+
+  // OP_RETURN
+  parts.push(0x6a);
+
+  // 數據 push
+  if (data.length === 0) {
+    // 空數據，不需要 push
+  } else if (data.length <= 75) {
+    // OP_PUSHBYTES_n (直接 push)
+    parts.push(data.length);
+    parts.push(...data);
+  } else {
+    // OP_PUSHDATA1
+    parts.push(0x4c); // OP_PUSHDATA1
+    parts.push(data.length);
+    parts.push(...data);
+  }
+
+  return new Uint8Array(parts);
+}
+
+// 使用文本創建
+function createOpReturnText(text: string): Uint8Array {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  return createOpReturnScript(data);
+}
+
+// 使用十六進制創建
+function createOpReturnHex(hex: string): Uint8Array {
+  const data = hexToBytes(hex);
+  return createOpReturnScript(data);
+}
+
+// 範例
+const script1 = createOpReturnText('Hello, Bitcoin!');
+console.log(bytesToHex(script1));
+// 6a0f48656c6c6f2c20426974636f696e21
+
+const script2 = createOpReturnHex('deadbeef');
+console.log(bytesToHex(script2));
+// 6a04deadbeef</code></pre>
+
+  <h3>解析 OP_RETURN 數據</h3>
+  <pre><code class="language-typescript" is:raw>interface OpReturnData {
+  isOpReturn: boolean;
+  data: Uint8Array | null;
+  text: string | null;
+}
+
+function parseOpReturn(scriptPubKey: Uint8Array): OpReturnData {
+  // 檢查是否以 OP_RETURN 開頭
+  if (scriptPubKey.length === 0 || scriptPubKey[0] !== 0x6a) {
+    return { isOpReturn: false, data: null, text: null };
+  }
+
+  if (scriptPubKey.length === 1) {
+    // 只有 OP_RETURN，無數據
+    return { isOpReturn: true, data: new Uint8Array(0), text: '' };
+  }
+
+  // 解析 push 操作
+  let offset = 1;
+  const pushOp = scriptPubKey[offset];
+  let dataLength: number;
+  let dataStart: number;
+
+  if (pushOp <= 75) {
+    // OP_PUSHBYTES_n
+    dataLength = pushOp;
+    dataStart = offset + 1;
+  } else if (pushOp === 0x4c) {
+    // OP_PUSHDATA1
+    dataLength = scriptPubKey[offset + 1];
+    dataStart = offset + 2;
+  } else if (pushOp === 0x4d) {
+    // OP_PUSHDATA2
+    dataLength = scriptPubKey[offset + 1] |
+                 (scriptPubKey[offset + 2] << 8);
+    dataStart = offset + 3;
+  } else {
+    return { isOpReturn: true, data: null, text: null };
+  }
+
+  const data = scriptPubKey.slice(dataStart, dataStart + dataLength);
+
+  // 嘗試解碼為文本
+  let text: string | null = null;
+  try {
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    text = decoder.decode(data);
+  } catch {
+    // 不是有效的 UTF-8
+  }
+
+  return { isOpReturn: true, data, text };
+}
+
+// 從交易中提取所有 OP_RETURN 數據
+function extractOpReturnData(tx: Transaction): OpReturnData[] {
+  const results: OpReturnData[] = [];
+
+  for (const output of tx.outputs) {
+    const parsed = parseOpReturn(output.scriptPubKey);
+    if (parsed.isOpReturn) {
+      results.push(parsed);
+    }
+  }
+
+  return results;
+}</code></pre>
+
+  <h3>完整交易構建</h3>
+  <pre><code class="language-typescript" is:raw>interface OpReturnTxParams {
+  inputs: Array&lt;{
+    txid: string;
+    vout: number;
+    value: bigint;
+    scriptPubKey: Uint8Array;
+  }&gt;;
+  opReturnData: Uint8Array;
+  changeAddress: string;
+  feeRate: number; // sat/vB
+}
+
+function buildOpReturnTx(params: OpReturnTxParams): Uint8Array {
+  const { inputs, opReturnData, changeAddress, feeRate } = params;
+
+  // 計算輸入總額
+  const totalInput = inputs.reduce((sum, i) => sum + i.value, 0n);
+
+  // OP_RETURN 輸出
+  const opReturnScript = createOpReturnScript(opReturnData);
+  const opReturnOutput = {
+    value: 0n,
+    scriptPubKey: opReturnScript
+  };
+
+  // 估算交易大小
+  const estimatedSize = estimateTxSize(inputs.length, 2); // 2 outputs
+  const fee = BigInt(Math.ceil(estimatedSize * feeRate));
+
+  // 找零輸出
+  const changeValue = totalInput - fee;
+  if (changeValue < 546n) {
+    throw new Error('餘額不足以支付手續費');
+  }
+
+  const changeScript = addressToScriptPubKey(changeAddress);
+  const changeOutput = {
+    value: changeValue,
+    scriptPubKey: changeScript
+  };
+
+  // 構建交易
+  return buildTransaction({
+    version: 2,
+    inputs: inputs.map(i => ({
+      txid: i.txid,
+      vout: i.vout,
+      sequence: 0xffffffff
+    })),
+    outputs: [opReturnOutput, changeOutput],
+    locktime: 0
+  });
+}
+
+// 使用範例
+const tx = buildOpReturnTx({
+  inputs: [{
+    txid: 'abc123...',
+    vout: 0,
+    value: 100000n,
+    scriptPubKey: hexToBytes('76a914...88ac')
+  }],
+  opReturnData: new TextEncoder().encode('Timestamp: 2024-01-01'),
+  changeAddress: 'bc1q...',
+  feeRate: 10
+});</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+
+  <h3>時間戳證明</h3>
+  <pre><code class="language-text" is:raw>OpenTimestamps 協議:
+
+目的: 證明某數據在特定時間之前存在
+
+流程:
+1. 計算文件雜湊: SHA256(document)
+2. 創建 OP_RETURN: hash
+3. 交易被確認後，區塊時間戳即為證明
+
+格式範例:
+OP_RETURN &lt;SHA256 hash&gt; (32 bytes)
+
+優點:
+- 不可篡改的時間證明
+- 不暴露原始內容
+- 低成本 (只需一筆交易)
+
+應用:
+- 智慧財產權登記
+- 合約簽署時間
+- 研究成果優先權</code></pre>
+
+  <h3>資產代幣 (Colored Coins)</h3>
+  <pre><code class="language-text" is:raw>Colored Coins / 資產協議:
+
+概念: 在比特幣上發行和追蹤資產
+
+OP_RETURN 格式:
+┌─────────────────────────────────────┐
+│ Protocol ID (魔術字節)              │
+├─────────────────────────────────────┤
+│ Asset ID                            │
+├─────────────────────────────────────┤
+│ Amount / Metadata                   │
+└─────────────────────────────────────┘
+
+範例協議:
+- OMNI Layer (Tether USDT 原址)
+- RGB Protocol
+- Counterparty
+
+限制:
+- 80 bytes 限制複雜操作
+- 需要專門軟體解析
+- 不是原生支援</code></pre>
+
+  <h3>承諾方案</h3>
+  <pre><code class="language-typescript" is:raw>// 承諾-揭示方案 (Commit-Reveal)
+interface Commitment {
+  commitment: Uint8Array;
+  secret: Uint8Array;
+  data: Uint8Array;
+}
+
+function createCommitment(data: Uint8Array): Commitment {
+  // 生成隨機秘密
+  const secret = crypto.getRandomValues(new Uint8Array(32));
+
+  // 計算承諾 = SHA256(secret || data)
+  const combined = concatBytes([secret, data]);
+  const commitment = sha256(combined);
+
+  return { commitment, secret, data };
+}
+
+function verifyCommitment(
+  commitment: Uint8Array,
+  secret: Uint8Array,
+  data: Uint8Array
+): boolean {
+  const combined = concatBytes([secret, data]);
+  const expected = sha256(combined);
+  return bytesEqual(commitment, expected);
+}
+
+// 使用場景: 預測市場
+// 1. 用戶提交預測的承諾 (OP_RETURN)
+// 2. 等待結果公布
+// 3. 揭示預測 (證明提前知道)</code></pre>
+
+  <h3>跨鏈錨定</h3>
+  <pre><code class="language-text" is:raw>側鏈/跨鏈橋錨定:
+
+Liquid Network 範例:
+- Peg-in: 將 BTC 發送到聯邦地址
+- OP_RETURN 包含 Liquid 接收地址
+- 聯邦驗證後在 Liquid 上發行 L-BTC
+
+格式:
+OP_RETURN &lt;magic&gt; &lt;liquid_address&gt;
+
+其他應用:
+- RSK (比特幣側鏈)
+- Stacks
+- 各種跨鏈橋</code></pre>
+
+  <h2 id="protocols">知名協議</h2>
+
+  <h3>Ordinals & Inscriptions</h3>
+  <pre><code class="language-text" is:raw>Ordinals 協議 (2023):
+
+注意: Inscriptions 主要使用 witness 而非 OP_RETURN
+
+但仍使用 OP_RETURN 的場景:
+- 元協議標識
+- 小型數據嵌入
+
+Inscription 結構 (在 witness 中):
+OP_FALSE
+OP_IF
+  OP_PUSH "ord"
+  OP_PUSH content-type
+  OP_PUSH 0
+  OP_PUSH &lt;content&gt;
+OP_ENDIF
+
+這繞過了 80 bytes 限制，可嵌入任意大小數據</code></pre>
+
+  <h3>OMNI Layer</h3>
+  <pre><code class="language-text" is:raw>OMNI Layer (前身 Mastercoin):
+
+格式:
+OP_RETURN "omni" &lt;tx_type&gt; &lt;payload&gt;
+
+交易類型:
+- Simple Send (0)
+- Create Property (50)
+- Grant Tokens (55)
+- Revoke Tokens (56)
+
+歷史意義:
+- 2014年推出
+- Tether USDT 最初在此發行
+- 後遷移至以太坊和 Tron</code></pre>
+
+  <h3>Counterparty</h3>
+  <pre><code class="language-text" is:raw>Counterparty 協議:
+
+特點:
+- 完整的智能合約平台
+- 使用 OP_RETURN 嵌入交易數據
+
+格式:
+OP_RETURN "CNTRPRTY" &lt;encrypted_data&gt;
+
+功能:
+- 資產發行
+- 去中心化交易所
+- 差價合約 (CFD)
+- 投注市場
+
+XCP 代幣:
+- 2014年通過「證明燒毀」創建
+- 用於協議手續費</code></pre>
+
+  <h2 id="history">歷史演變</h2>
+  <pre><code class="language-text" is:raw>OP_RETURN 政策演變:
+
+2010 之前:
+- OP_RETURN 存在但無特殊處理
+- 數據常被嵌入在假地址中
+
+2013 (v0.9.0):
+- 正式支援 OP_RETURN
+- 40 bytes 限制
+- 被視為「正確」的數據嵌入方式
+
+2014:
+- 社區辯論數據嵌入的利弊
+- 開發者擔心區塊鏈膨脹
+
+2015 (v0.11.0):
+- 允許多個 push 操作
+- 仍限制 40 bytes 總量
+
+2016 (v0.12.0):
+- 限制提升至 80 bytes
+- 更多協議可以使用
+
+現在:
+- 80 bytes 標準限制
+- Taproot 提供了替代的大數據嵌入方式</code></pre>
+
+  <h2 id="pruning">UTXO 與修剪</h2>
+  <pre><code class="language-text" is:raw>為什麼 OP_RETURN 重要:
+
+問題: 在 OP_RETURN 之前
+- 數據嵌入使用假地址 (如 1CounterpartyXXXXXXXX...)
+- 這些「地址」永遠不可花費
+- 但節點必須在 UTXO 集合中保存它們
+- 造成永久的資源消耗
+
+OP_RETURN 解決方案:
+- 明確標記為不可花費
+- 節點可以安全地修剪這些輸出
+- 不增加 UTXO 集合大小
+
+UTXO 集合對比:
+┌─────────────────────────────────────┐
+│ 假地址方式                          │
+│ - 需要保存在 UTXO 集合              │
+│ - 永久佔用記憶體                    │
+│ - 每個節點都受影響                  │
+├─────────────────────────────────────┤
+│ OP_RETURN 方式                      │
+│ - 不進入 UTXO 集合                  │
+│ - 只佔用區塊空間                    │
+│ - 可被修剪節點丟棄                  │
+└─────────────────────────────────────┘</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <pre><code class="language-text" is:raw>使用 OP_RETURN 的建議:
+
+1. 遵守大小限制
+   - 保持在 80 bytes 以內
+   - 考慮使用雜湊而非原始數據
+
+2. 使用協議前綴
+   - 前幾個 bytes 用於協議識別
+   - 避免與其他協議衝突
+   - 例如: "DOCPROOF", "OMNI", "RGB"
+
+3. 最小化使用
+   - 只嵌入必要的數據
+   - 大數據使用鏈下存儲 + 雜湊錨定
+
+4. 考慮替代方案
+   - Taproot witness (更大空間)
+   - 鏈下存儲 (IPFS, Arweave)
+   - 側鏈 (更豐富的功能)
+
+5. 手續費考量
+   - OP_RETURN 輸出增加交易大小
+   - 高費率時期成本增加</code></pre>
+
+  <h2 id="comparison">數據嵌入方式比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>方式</th>
+        <th>大小限制</th>
+        <th>UTXO 影響</th>
+        <th>成本</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>OP_RETURN</td>
+        <td>80 bytes</td>
+        <td>無</td>
+        <td>低</td>
+      </tr>
+      <tr>
+        <td>假地址</td>
+        <td>~20 bytes</td>
+        <td>永久膨脹</td>
+        <td>低</td>
+      </tr>
+      <tr>
+        <td>Taproot Witness</td>
+        <td>~400 KB</td>
+        <td>無</td>
+        <td>中-高</td>
+      </tr>
+      <tr>
+        <td>多重簽名腳本</td>
+        <td>~1.5 KB</td>
+        <td>花費前存在</td>
+        <td>中</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/OP_RETURN" target="_blank" rel="noopener noreferrer">OP_RETURN Wiki</a></li>
+    <li><a href="https://opentimestamps.org/" target="_blank" rel="noopener noreferrer">OpenTimestamps</a></li>
+    <li><a href="https://github.com/OmniLayer/spec" target="_blank" rel="noopener noreferrer">OMNI Layer Spec</a></li>
+    <li><a href="/tech/bitcoin-core/script">Script</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+  </ul>
+</ArticleLayout>

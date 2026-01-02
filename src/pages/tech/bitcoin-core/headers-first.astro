@@ -1,0 +1,503 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Headers-First Sync"
+  description="Headers-First 同步：比特幣節點的現代初始區塊下載策略"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Headers-First Sync' },
+  ]}
+  difficulty="intermediate"
+  readingTime="14 分鐘"
+  prevPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+  nextPage={{ title: 'AssumeUTXO', href: '/tech/bitcoin-core/assumeutxo' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Headers-First 同步是 Bitcoin Core 0.10.0（2015年）引入的初始區塊下載（IBD）策略。
+    它先下載所有區塊頭，驗證工作量證明鏈，然後再並行下載區塊數據。
+    這大幅提升了同步速度和安全性。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心優勢：</strong>
+      區塊頭只有 80 字節，整條鏈約 60 MB。先下載頭部可以快速確定最長鏈，
+      避免下載無效或孤立的區塊數據。
+    </p>
+  </div>
+
+  <h2 id="old-method">舊同步方法</h2>
+
+  <h3>Blocks-First 問題</h3>
+  <pre><code class="language-text" is:raw>舊方法: Blocks-First (v0.9.x 及更早)
+
+流程:
+1. 連接節點
+2. 發送 getblocks 請求
+3. 收到 inv 訊息 (區塊清單)
+4. 逐個請求並下載區塊
+5. 驗證並存儲
+6. 重複直到同步完成
+
+問題:
+
+1. 順序下載
+   ┌────┐   ┌────┐   ┌────┐   ┌────┐
+   │ B1 │──▶│ B2 │──▶│ B3 │──▶│ B4 │
+   └────┘   └────┘   └────┘   └────┘
+   必須等待前一個區塊才能驗證下一個
+
+2. 容易受到攻擊
+   - 攻擊者可以發送舊的無效鏈
+   - 浪費頻寬下載無用區塊
+   - 無法提前知道哪條是最長鏈
+
+3. 單一節點瓶頸
+   - 一次只能從一個節點下載
+   - 網路利用率低</code></pre>
+
+  <h2 id="headers-first">Headers-First 方法</h2>
+
+  <h3>同步流程</h3>
+  <pre><code class="language-text" is:raw>Headers-First 同步流程:
+
+階段 1: 下載區塊頭
+┌─────────────────────────────────────────────┐
+│ getheaders → headers → getheaders → ...     │
+│                                             │
+│ 只下載 80 bytes × 區塊數量                  │
+│ 約 60 MB (850,000 區塊)                     │
+│ 耗時: 幾秒到幾分鐘                          │
+└─────────────────────────────────────────────┘
+              ↓
+階段 2: 驗證區塊頭鏈
+┌─────────────────────────────────────────────┐
+│ 對每個區塊頭:                               │
+│ - 驗證 PoW                                  │
+│ - 驗證 prev_hash 連接                       │
+│ - 驗證時間戳                                │
+│ - 計算累積工作量                            │
+│                                             │
+│ 確定最長鏈 (最多工作量)                     │
+└─────────────────────────────────────────────┘
+              ↓
+階段 3: 並行下載區塊
+┌─────────────────────────────────────────────┐
+│     Peer A        Peer B        Peer C      │
+│       ↓             ↓             ↓         │
+│ [B1-B100]     [B101-B200]   [B201-B300]     │
+│                                             │
+│ 多個節點並行下載不同區塊                    │
+│ 顯著提升下載速度                            │
+└─────────────────────────────────────────────┘
+              ↓
+階段 4: 驗證區塊
+┌─────────────────────────────────────────────┐
+│ 按順序驗證每個區塊:                         │
+│ - 驗證所有交易                              │
+│ - 更新 UTXO 集合                            │
+│ - 保存到磁碟                                │
+└─────────────────────────────────────────────┘</code></pre>
+
+  <h3>訊息流程</h3>
+  <pre><code class="language-text" is:raw>P2P 訊息序列:
+
+1. 請求區塊頭
+───────────────────────────────────────
+→ getheaders
+  ├─ version: 70015
+  ├─ hash_count: n
+  ├─ block_locator: [hash1, hash2, ...]
+  └─ hash_stop: 0x00...00
+
+← headers
+  ├─ count: 2000 (最多)
+  └─ headers: [header1, header2, ...]
+
+(重複直到收到空 headers)
+
+2. 請求區塊數據
+───────────────────────────────────────
+→ getdata
+  ├─ count: n
+  └─ inventory: [
+       {type: MSG_BLOCK, hash: ...},
+       {type: MSG_BLOCK, hash: ...},
+       ...
+     ]
+
+← block (多個)
+  └─ 完整區塊數據</code></pre>
+
+  <h2 id="implementation">實作細節</h2>
+
+  <h3>區塊定位器</h3>
+  <pre><code class="language-typescript" is:raw>// 區塊定位器 (Block Locator)
+// 用於找到與其他節點的共同區塊
+
+function buildBlockLocator(
+  chainTip: number,
+  getBlockHash: (height: number) => string
+): string[] {
+  const locator: string[] = [];
+  let height = chainTip;
+  let step = 1;
+
+  while (height >= 0) {
+    locator.push(getBlockHash(height));
+
+    if (height === 0) break;
+
+    // 前 10 個每步退 1，之後指數退
+    height -= step;
+    if (locator.length >= 10) {
+      step *= 2;
+    }
+
+    if (height < 0) height = 0;
+  }
+
+  return locator;
+}
+
+// 範例: 鏈高度 1000
+// 返回: [1000, 999, 998, ..., 991, 989, 985, 977, ...]
+// 這樣可以快速找到分叉點
+
+// 接收方處理
+function findForkPoint(
+  locator: string[],
+  isKnownBlock: (hash: string) => boolean
+): string | null {
+  for (const hash of locator) {
+    if (isKnownBlock(hash)) {
+      return hash;
+    }
+  }
+  return null; // 從創世區塊開始
+}</code></pre>
+
+  <h3>區塊頭驗證</h3>
+  <pre><code class="language-typescript" is:raw>interface BlockHeader {
+  version: number;
+  prevHash: Uint8Array;
+  merkleRoot: Uint8Array;
+  timestamp: number;
+  bits: number;
+  nonce: number;
+}
+
+interface HeaderValidation {
+  valid: boolean;
+  error?: string;
+}
+
+function validateHeader(
+  header: BlockHeader,
+  prevHeader: BlockHeader | null,
+  currentTime: number
+): HeaderValidation {
+  // 1. 驗證工作量證明
+  const headerHash = computeBlockHash(header);
+  const target = bitsToTarget(header.bits);
+
+  if (hashToBigInt(headerHash) > target) {
+    return { valid: false, error: 'Insufficient proof of work' };
+  }
+
+  // 2. 驗證 prevHash 連接
+  if (prevHeader) {
+    const prevHash = computeBlockHash(prevHeader);
+    if (!bytesEqual(header.prevHash, prevHash)) {
+      return { valid: false, error: 'Invalid prev_hash' };
+    }
+  }
+
+  // 3. 驗證時間戳
+  if (header.timestamp > currentTime + 2 * 60 * 60) {
+    return { valid: false, error: 'Timestamp too far in future' };
+  }
+
+  // 4. 驗證難度 (如果是調整點)
+  // ... 難度調整驗證
+
+  return { valid: true };
+}
+
+// 批量驗證區塊頭鏈
+async function validateHeaderChain(
+  headers: BlockHeader[]
+): Promise&lt;{ valid: boolean; totalWork: bigint }&gt; {
+  let prevHeader: BlockHeader | null = null;
+  let totalWork = 0n;
+  const currentTime = Math.floor(Date.now() / 1000);
+
+  for (const header of headers) {
+    const result = validateHeader(header, prevHeader, currentTime);
+    if (!result.valid) {
+      return { valid: false, totalWork: 0n };
+    }
+
+    // 累積工作量
+    totalWork += calculateWork(header.bits);
+    prevHeader = header;
+  }
+
+  return { valid: true, totalWork };
+}
+
+// 計算區塊工作量
+function calculateWork(bits: number): bigint {
+  const target = bitsToTarget(bits);
+  // work = 2^256 / (target + 1)
+  return (1n << 256n) / (target + 1n);
+}</code></pre>
+
+  <h3>並行區塊下載</h3>
+  <pre><code class="language-typescript" is:raw>interface DownloadManager {
+  peers: Peer[];
+  pendingBlocks: Map&lt;string, number&gt;; // hash → assigned peer
+  downloadedBlocks: Map&lt;string, Block&gt;;
+  nextToValidate: number; // 下一個待驗證的高度
+}
+
+class BlockDownloader {
+  private windowSize = 1024; // 最多同時請求的區塊數
+  private blocksPerPeer = 16; // 每個節點一次請求的區塊數
+
+  async downloadBlocks(
+    headers: BlockHeader[],
+    peers: Peer[]
+  ): Promise&lt;void&gt; {
+    const queue = headers.map((h, i) => ({
+      hash: computeBlockHash(h),
+      height: i
+    }));
+
+    let nextIndex = 0;
+    const inFlight = new Map&lt;string, { peer: Peer; timeout: number }&gt;();
+    const downloaded = new Map&lt;number, Block&gt;();
+    let nextToProcess = 0;
+
+    while (nextToProcess &lt; headers.length) {
+      // 分配下載任務
+      for (const peer of peers) {
+        const peerTasks = [...inFlight.values()]
+          .filter(t => t.peer === peer).length;
+
+        while (peerTasks &lt; this.blocksPerPeer &&
+               nextIndex &lt; queue.length &&
+               inFlight.size &lt; this.windowSize) {
+          const task = queue[nextIndex++];
+          this.requestBlock(peer, task.hash);
+          inFlight.set(task.hash, {
+            peer,
+            timeout: Date.now() + 30000
+          });
+        }
+      }
+
+      // 處理已下載的區塊
+      while (downloaded.has(nextToProcess)) {
+        const block = downloaded.get(nextToProcess)!;
+        await this.processBlock(block);
+        downloaded.delete(nextToProcess);
+        nextToProcess++;
+      }
+
+      // 處理超時
+      for (const [hash, task] of inFlight) {
+        if (Date.now() > task.timeout) {
+          inFlight.delete(hash);
+          // 重新加入隊列
+        }
+      }
+
+      await sleep(100);
+    }
+  }
+
+  private async requestBlock(peer: Peer, hash: string): Promise&lt;void&gt; {
+    await peer.send('getdata', [{
+      type: MSG_BLOCK,
+      hash
+    }]);
+  }
+
+  private async processBlock(block: Block): Promise&lt;void&gt; {
+    // 驗證並存儲區塊
+    await this.validateBlock(block);
+    await this.saveBlock(block);
+  }
+}</code></pre>
+
+  <h2 id="checkpoints">檢查點</h2>
+  <pre><code class="language-text" is:raw>內建檢查點 (Checkpoints):
+
+Bitcoin Core 內建了特定高度的區塊雜湊:
+
+static const CCheckpointData data = {
+    {
+        { 11111, "0x0000000069e244f73d78e8fd29ba2fd2..."},
+        { 33333, "0x000000002dd5588a74784eaa7ab0507a..."},
+        {295000, "0x00000000000000004d9b4ef50f0f9d68..."},
+        ...
+    }
+};
+
+作用:
+1. 加速初始同步
+   - 跳過檢查點之前的難度驗證
+   - 假設這些區塊已被充分驗證
+
+2. 防止長程攻擊
+   - 攻擊者無法創建替代歷史
+   - 必須包含這些區塊
+
+3. 爭議
+   - 有人認為這增加了中心化
+   - 檢查點需要開發者手動更新
+
+AssumeValid:
+- 更現代的替代方案
+- 假設特定區塊之前的簽名有效
+- 不影響區塊連接驗證</code></pre>
+
+  <h2 id="ibd-states">IBD 狀態</h2>
+  <pre><code class="language-text" is:raw>初始區塊下載 (IBD) 狀態:
+
+判斷是否在 IBD:
+1. 鏈尖時間超過 24 小時前
+2. 鏈尖工作量低於已知最大值
+
+IBD 期間的特殊行為:
+
+1. 區塊請求
+   - 只從一個節點請求區塊頭
+   - 區塊數據可以並行下載
+
+2. 交易處理
+   - 不接受 mempool 交易
+   - 不轉發交易
+
+3. 區塊驗證
+   - 可以跳過簽名驗證 (如果使用 assumevalid)
+   - 仍然驗證區塊結構
+
+4. 網路行為
+   - 不響應 getdata 請求
+   - 不廣播 addr 訊息
+
+IBD 完成後:
+- 進入正常模式
+- 開始處理 mempool
+- 參與區塊中繼</code></pre>
+
+  <h2 id="performance">效能比較</h2>
+  <pre><code class="language-text" is:raw>同步時間對比:
+
+測試條件: 2024年，850,000 區塊
+
+Blocks-First (估計):
+- 順序下載
+- ~500 GB 數據
+- 預計: 數天到數週
+
+Headers-First:
+- 階段 1 (headers): ~5 分鐘
+- 階段 2 (blocks): 取決於頻寬
+- 階段 3 (verify): 取決於 CPU
+- 總計: 數小時到數天
+
+Headers-First + AssumeValid:
+- 跳過歷史簽名驗證
+- 進一步減少 CPU 時間
+- 總計: 數小時
+
+Headers-First + AssumeUTXO:
+- 從快照開始
+- 幾分鐘內可用
+- 背景完成完整同步
+
+頻寬利用:
+┌─────────────────────────────────────┐
+│ Blocks-First:                       │
+│ ████░░░░░░░░░░░░░░ (單節點)         │
+│                                     │
+│ Headers-First:                      │
+│ ████████████████████ (多節點並行)   │
+└─────────────────────────────────────┘</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <pre><code class="language-text" is:raw>Headers-First 安全優勢:
+
+1. 防止浪費頻寬
+   - 先驗證 PoW 再下載區塊
+   - 攻擊者無法讓你下載無效數據
+
+2. 快速識別最長鏈
+   - 幾分鐘內知道全局最佳鏈
+   - 不會被引導到舊分叉
+
+3. 並行下載的安全性
+   - 每個區塊獨立驗證
+   - 惡意節點無法影響其他下載
+
+潛在風險:
+
+1. Header 洪水攻擊
+   - 攻擊者發送大量無效 headers
+   - 緩解: 驗證 PoW 再存儲
+
+2. 日蝕攻擊
+   - 所有連接都被攻擊者控制
+   - 緩解: 連接多樣化，使用 DNS seeds
+
+3. 時間扭曲
+   - 操縱時間戳影響難度
+   - 緩解: 網路時間調整，中位數檢查</code></pre>
+
+  <h2 id="configuration">配置選項</h2>
+  <pre><code class="language-text" is:raw>Bitcoin Core 相關配置:
+
+# 假設特定區塊之前的簽名有效
+-assumevalid=&lt;blockhash&gt;
+
+# 禁用 assumevalid
+-assumevalid=0
+
+# 檢查點 (已棄用)
+-checkpoints (默認啟用)
+
+# IBD 完成前不接受連接
+-listen=0 (IBD 期間建議)
+
+# 同時連接的節點數
+-maxconnections=&lt;n&gt;
+
+# 並行區塊下載的窗口大小
+# (硬編碼，無法配置)
+
+查看同步進度:
+$ bitcoin-cli getblockchaininfo
+{
+  "blocks": 850000,
+  "headers": 850000,
+  "verificationprogress": 0.9999,
+  "initialblockdownload": false,
+  ...
+}</code></pre>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://bitcoin.org/en/developer-guide#initial-block-download" target="_blank" rel="noopener noreferrer">Initial Block Download</a></li>
+    <li><a href="https://github.com/bitcoin/bitcoin/pull/4468" target="_blank" rel="noopener noreferrer">Headers-First PR #4468</a></li>
+    <li><a href="/tech/bitcoin-core/assumeutxo">AssumeUTXO</a></li>
+    <li><a href="/tech/bitcoin-core/p2p-protocol">P2P Protocol</a></li>
+    <li><a href="/tech/bitcoin-core/compact-blocks">Compact Blocks</a></li>
+  </ul>
+</ArticleLayout>

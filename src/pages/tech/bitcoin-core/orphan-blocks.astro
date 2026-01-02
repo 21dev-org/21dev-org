@@ -1,0 +1,512 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Orphan Blocks"
+  description="孤立區塊與過時區塊：比特幣網路中的區塊衝突處理"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Orphan Blocks' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Consensus', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    在分布式網路中，有時會同時產生多個有效區塊，導致臨時的鏈分叉。
+    這些未成為主鏈一部分的區塊被稱為「過時區塊」(stale blocks)，
+    而其中的交易需要重新處理。理解這個機制對於交易安全性至關重要。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+    <p class="text-sm text-amber-700 dark:text-amber-400">
+      <strong>術語說明：</strong>
+      「Orphan block」現在更常指缺少父區塊的區塊。
+      被淘汰的區塊應稱為「stale block」。本文涵蓋兩種情況。
+    </p>
+  </div>
+
+  <h2 id="types">區塊類型</h2>
+
+  <h3>術語定義</h3>
+  <pre><code class="language-text" is:raw>區塊類型:
+
+1. 有效區塊 (Valid Block)
+   - 滿足所有共識規則
+   - 在當前最長鏈上
+
+2. 過時區塊 (Stale Block)
+   - 曾經有效，但不在最長鏈
+   - 被另一個區塊「取代」
+   - 也稱為「extinct block」
+
+3. 孤立區塊 (Orphan Block) - 嚴格定義
+   - 收到了區塊，但缺少其父區塊
+   - 無法驗證和連接到鏈
+   - 暫時存放在 orphan pool
+
+4. 叔塊 (Uncle Block) - 以太坊術語
+   - 比特幣沒有這個概念
+   - 以太坊獎勵這些區塊
+
+視覺化:
+                    Main Chain
+                   ┌─────────────────────────
+         ┌────┐   │ ┌────┐   ┌────┐   ┌────┐
+─────────│ B  │───┼─│ C  │───│ D  │───│ E  │
+         └────┘   │ └────┘   └────┘   └────┘
+              \   │
+               \  │
+                \ │
+                 \│ ┌────┐
+                  ──│ C' │  ← Stale Block
+                    └────┘</code></pre>
+
+  <h3>產生原因</h3>
+  <pre><code class="language-text" is:raw>過時區塊產生原因:
+
+1. 網路延遲
+   ┌─────────────────────────────────────┐
+   │ 礦工 A (美國)      礦工 B (中國)    │
+   │     │                   │           │
+   │   找到 C              找到 C'        │
+   │     │                   │           │
+   │     └───── 傳播 ────────┘           │
+   │                                     │
+   │ 部分網路收到 C，部分收到 C'          │
+   └─────────────────────────────────────┘
+
+2. 同時挖到
+   - 在同一秒內發現區塊
+   - 競爭傳播
+
+3. 惡意行為
+   - 自私挖礦
+   - 雙花攻擊嘗試
+
+網路統計:
+- 約每 100-200 個區塊發生一次
+- 取決於網路狀況和算力分布</code></pre>
+
+  <h2 id="resolution">衝突解決</h2>
+
+  <h3>最長鏈規則</h3>
+  <pre><code class="language-text" is:raw>比特幣選擇規則:
+
+實際上是「最多工作量」規則:
+- 累積難度最高的鏈獲勝
+- 不是區塊數量最多的鏈
+
+衝突解決過程:
+
+時間 T1: 兩個區塊同時出現
+    ┌────┐
+    │ C  │
+    └────┘
+    ┌────┐
+    │ C' │
+    └────┘
+
+時間 T2: 節點各自選擇先收到的
+    Node 1: A → B → C
+    Node 2: A → B → C'
+
+時間 T3: 下一個區塊決定勝負
+    如果在 C 之上找到 D:
+    A → B → C → D    ← 勝出
+    A → B → C'       ← 被放棄
+
+    所有節點重組到最長鏈</code></pre>
+
+  <h3>區塊重組 (Reorg)</h3>
+  <pre><code class="language-text" is:raw>重組過程:
+
+起始狀態:
+Node: A → B → C' (當前鏈尖)
+收到: A → B → C → D
+
+重組步驟:
+1. 回滾 C'
+   - 從 UTXO 集合移除 C' 的效果
+   - 將 C' 的交易放回 mempool
+
+2. 應用新鏈
+   - 連接 C
+   - 連接 D
+   - 更新 UTXO 集合
+
+3. 處理交易
+   - C' 中的交易可能:
+     a) 也在 C 或 D 中 (已確認)
+     b) 不在新鏈中 (回到 mempool)
+     c) 與新鏈衝突 (被丟棄)
+
+重組深度:
+- 1 區塊重組: 常見
+- 2+ 區塊重組: 少見
+- 6+ 區塊重組: 極罕見 (可能是攻擊)</code></pre>
+
+  <h2 id="orphan-pool">Orphan Pool</h2>
+
+  <h3>孤立區塊處理</h3>
+  <pre><code class="language-text" is:raw>Orphan Pool (孤立區塊池):
+
+場景:
+收到區塊 D，但還沒有 C
+
+         ?
+    ┌────┐
+    │ D  │ ← prevHash 指向未知區塊
+    └────┘
+
+處理:
+1. 無法驗證 (缺少父區塊)
+2. 存入 orphan pool
+3. 請求父區塊 (getdata)
+4. 收到 C 後，驗證並連接 D
+
+Bitcoin Core 限制:
+- 最多 100 個孤立區塊
+- 20 分鐘後過期
+- 防止記憶體耗盡攻擊</code></pre>
+
+  <h3>孤立交易</h3>
+  <pre><code class="language-text" is:raw>Orphan Transactions (孤立交易):
+
+定義:
+- 引用了不存在的 UTXO
+- 輸入的 prev_tx 未知
+
+可能原因:
+1. 父交易還沒收到
+2. 父交易還沒確認
+3. 父交易無效
+
+處理:
+1. 存入 orphan pool
+2. 等待父交易
+3. 父交易確認後重新處理
+
+限制:
+- 最多 100 個孤立交易
+- 每個最大 100 KB
+- 定期清理過期的
+
+安全考量:
+- 可被用於 DoS 攻擊
+- 攻擊者發送大量無效孤立交易
+- 因此有嚴格限制</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>區塊鏈管理</h3>
+  <pre><code class="language-typescript" is:raw>interface BlockNode {
+  hash: string;
+  prevHash: string;
+  height: number;
+  totalWork: bigint;
+  header: BlockHeader;
+}
+
+class BlockIndex {
+  private blocks: Map&lt;string, BlockNode&gt; = new Map();
+  private orphans: Map&lt;string, Block&gt; = new Map();
+  private chainTip: BlockNode | null = null;
+
+  // 接收新區塊
+  async processBlock(block: Block): Promise&lt;ProcessResult&gt; {
+    const hash = computeBlockHash(block.header);
+    const prevHash = bytesToHex(block.header.prevHash);
+
+    // 檢查是否已存在
+    if (this.blocks.has(hash)) {
+      return { status: 'duplicate' };
+    }
+
+    // 檢查父區塊
+    const parent = this.blocks.get(prevHash);
+    if (!parent) {
+      // 存入 orphan pool
+      this.orphans.set(hash, block);
+      return { status: 'orphan', missingParent: prevHash };
+    }
+
+    // 驗證區塊
+    const validation = await this.validateBlock(block, parent);
+    if (!validation.valid) {
+      return { status: 'invalid', error: validation.error };
+    }
+
+    // 創建區塊節點
+    const node: BlockNode = {
+      hash,
+      prevHash,
+      height: parent.height + 1,
+      totalWork: parent.totalWork + calculateWork(block.header.bits),
+      header: block.header
+    };
+
+    this.blocks.set(hash, node);
+
+    // 檢查是否需要重組
+    if (node.totalWork > (this.chainTip?.totalWork ?? 0n)) {
+      await this.reorganize(node);
+    }
+
+    // 處理可能的孤立區塊
+    await this.processOrphans(hash);
+
+    return { status: 'accepted', height: node.height };
+  }
+
+  // 處理等待此區塊的孤立區塊
+  private async processOrphans(parentHash: string): Promise&lt;void&gt; {
+    const children: Block[] = [];
+
+    for (const [hash, block] of this.orphans) {
+      if (bytesToHex(block.header.prevHash) === parentHash) {
+        children.push(block);
+        this.orphans.delete(hash);
+      }
+    }
+
+    for (const child of children) {
+      await this.processBlock(child);
+    }
+  }
+}</code></pre>
+
+  <h3>區塊重組</h3>
+  <pre><code class="language-typescript" is:raw>class BlockIndex {
+  // 區塊重組
+  private async reorganize(newTip: BlockNode): Promise&lt;void&gt; {
+    if (!this.chainTip) {
+      this.chainTip = newTip;
+      return;
+    }
+
+    // 找到共同祖先
+    const { ancestor, disconnectPath, connectPath } =
+      this.findForkPoint(this.chainTip, newTip);
+
+    console.log(`Reorganizing: disconnect ${disconnectPath.length}, ` +
+                `connect ${connectPath.length}`);
+
+    // 回滾舊鏈
+    const returnToMempool: Transaction[] = [];
+    for (const node of disconnectPath.reverse()) {
+      const block = await this.getBlockData(node.hash);
+      for (const tx of block.transactions.slice(1)) { // 跳過 coinbase
+        returnToMempool.push(tx);
+      }
+      await this.disconnectBlock(node);
+    }
+
+    // 連接新鏈
+    for (const node of connectPath) {
+      const block = await this.getBlockData(node.hash);
+      await this.connectBlock(node, block);
+
+      // 從 mempool 移除已確認的交易
+      for (const tx of block.transactions) {
+        this.mempool.remove(computeTxid(tx));
+      }
+    }
+
+    // 將有效交易放回 mempool
+    for (const tx of returnToMempool) {
+      try {
+        await this.mempool.add(tx);
+      } catch {
+        // 交易可能與新鏈衝突
+      }
+    }
+
+    this.chainTip = newTip;
+  }
+
+  // 找到分叉點
+  private findForkPoint(
+    tip1: BlockNode,
+    tip2: BlockNode
+  ): {
+    ancestor: BlockNode;
+    disconnectPath: BlockNode[];
+    connectPath: BlockNode[];
+  } {
+    const disconnectPath: BlockNode[] = [];
+    const connectPath: BlockNode[] = [];
+
+    let node1 = tip1;
+    let node2 = tip2;
+
+    // 調整到相同高度
+    while (node1.height > node2.height) {
+      disconnectPath.push(node1);
+      node1 = this.blocks.get(node1.prevHash)!;
+    }
+    while (node2.height > node1.height) {
+      connectPath.push(node2);
+      node2 = this.blocks.get(node2.prevHash)!;
+    }
+
+    // 找到共同祖先
+    while (node1.hash !== node2.hash) {
+      disconnectPath.push(node1);
+      connectPath.push(node2);
+      node1 = this.blocks.get(node1.prevHash)!;
+      node2 = this.blocks.get(node2.prevHash)!;
+    }
+
+    return {
+      ancestor: node1,
+      disconnectPath,
+      connectPath: connectPath.reverse()
+    };
+  }
+}</code></pre>
+
+  <h2 id="confirmation">交易確認</h2>
+  <pre><code class="language-text" is:raw>確認數與安全性:
+
+確認數 = 最長鏈高度 - 包含交易的區塊高度 + 1
+
+0 確認:
+- 交易在 mempool
+- 可能被雙花
+- 不要信任大額
+
+1 確認:
+- 包含在最新區塊
+- 仍可能被重組
+- 小額可接受
+
+6 確認:
+- 傳統「安全」標準
+- 重組機率極低
+- 大多數交易所要求
+
+計算重組機率:
+
+假設攻擊者有 q% 算力:
+P(n 區塊重組) ≈ (q / (1-q))^n
+
+範例 (攻擊者 10% 算力):
+- 1 區塊: 11%
+- 3 區塊: 0.13%
+- 6 區塊: 0.00013%
+
+大額交易建議等待更多確認</code></pre>
+
+  <h2 id="monitoring">監控與偵測</h2>
+  <pre><code class="language-typescript" is:raw>interface ReorgEvent {
+  height: number;
+  depth: number;
+  oldTip: string;
+  newTip: string;
+  timestamp: number;
+}
+
+class ReorgMonitor {
+  private reorgHistory: ReorgEvent[] = [];
+
+  // 記錄重組事件
+  recordReorg(
+    height: number,
+    depth: number,
+    oldTip: string,
+    newTip: string
+  ): void {
+    const event: ReorgEvent = {
+      height,
+      depth,
+      oldTip,
+      newTip,
+      timestamp: Date.now()
+    };
+
+    this.reorgHistory.push(event);
+
+    // 深度重組警告
+    if (depth >= 2) {
+      console.warn(`Deep reorg detected: ${depth} blocks at height ${height}`);
+    }
+
+    // 可能的攻擊警告
+    if (depth >= 6) {
+      console.error(`CRITICAL: Very deep reorg (${depth} blocks)!`);
+      this.notifyAdmin(event);
+    }
+  }
+
+  // 統計重組
+  getStats(): {
+    totalReorgs: number;
+    avgDepth: number;
+    maxDepth: number;
+    recentReorgs: ReorgEvent[];
+  } {
+    const recent = this.reorgHistory.filter(
+      e => e.timestamp > Date.now() - 24 * 60 * 60 * 1000
+    );
+
+    const depths = this.reorgHistory.map(e => e.depth);
+
+    return {
+      totalReorgs: this.reorgHistory.length,
+      avgDepth: depths.reduce((a, b) => a + b, 0) / depths.length,
+      maxDepth: Math.max(...depths),
+      recentReorgs: recent
+    };
+  }
+
+  private notifyAdmin(event: ReorgEvent): void {
+    // 發送警報
+  }
+}</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <pre><code class="language-text" is:raw>相關攻擊:
+
+1. 雙花攻擊
+   - 發送交易給商家
+   - 同時挖掘不包含該交易的區塊
+   - 如果攻擊者的鏈獲勝，交易被撤銷
+
+2. 自私挖礦
+   - 挖到區塊不立即發布
+   - 等待適當時機釋放
+   - 浪費誠實礦工的工作
+
+3. 51% 攻擊
+   - 控制多數算力
+   - 可以隨意重組
+   - 雙花任意交易
+
+防禦措施:
+
+1. 等待足夠確認
+   - 根據金額決定確認數
+   - 大額等待 6+ 確認
+
+2. 監控算力分布
+   - 注意算力集中
+   - 警惕突然的算力變化
+
+3. 使用檢查點
+   - 防止極深重組
+   - 保護歷史交易</code></pre>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/Orphan_block" target="_blank" rel="noopener noreferrer">Orphan Block Wiki</a></li>
+    <li><a href="https://www.blockchain.com/explorer/charts/n-orphaned-blocks" target="_blank" rel="noopener noreferrer">Stale Blocks Statistics</a></li>
+    <li><a href="/tech/bitcoin-core/consensus">Consensus</a></li>
+    <li><a href="/tech/bitcoin-core/mempool">Mempool</a></li>
+    <li><a href="/tech/bitcoin-core/mining">Mining</a></li>
+  </ul>
+</ArticleLayout>

@@ -1,0 +1,331 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Inbound Liquidity 入站容量"
+  description="了解閃電網路入站容量的概念，以及獲取入站容量的各種方法，使節點能夠接收支付。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Inbound Liquidity' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Node Operation', href: '/tech/lightning/node-operation' }}
+  nextPage={{ title: 'Wumbo Channels', href: '/tech/lightning/wumbo-channels' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是入站容量？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    入站容量（Inbound Liquidity）是指其他節點可以向你發送支付的最大金額。
+    這是閃電網路新用戶面臨的主要挑戰之一：當你開通道時，所有資金都在你這一側（出站容量），
+    而你需要對方有資金在通道中才能接收支付。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心概念：</strong>
+      入站容量 = 對方在通道中的餘額。
+      你的出站容量 = 你的入站容量對調。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量基礎</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道容量示意：
+
+┌─────────────────────────────────────────────────────────┐
+│ 你的節點              通道容量 1 BTC           對方節點 │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  你的餘額 ◄────────────────────────────► 對方餘額      │
+│                                                         │
+│  ███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  0.8 BTC                                    0.2 BTC    │
+│                                                         │
+│  出站容量: 0.8 BTC         入站容量: 0.2 BTC           │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+新開通道時（你出資 1 BTC）：
+┌─────────────────────────────────────────────────────────┐
+│  ██████████████████████████████████████████████████░░  │
+│  1.0 BTC                                    0 BTC      │
+│                                                         │
+│  出站容量: ~1 BTC           入站容量: 0               │
+│  → 可以發送支付              → 無法接收支付            │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">獲取入站容量的方法</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 讓其他人向你開通道</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`被動獲取入站容量：
+
+當其他節點向你開通道時：
+┌─────────────────────────────────────────────────────────┐
+│ 對方出資 0.5 BTC 開通道                                 │
+│                                                         │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████████████    │
+│  0 BTC                                    0.5 BTC      │
+│                                                         │
+│  你的入站容量: 0.5 BTC（可以接收）                      │
+│  你的出站容量: 0 BTC（需要先接收）                      │
+└─────────────────────────────────────────────────────────┘
+
+如何吸引入站通道：
+├── 運行可靠的節點（高 uptime）
+├── 設置合理的路由費率
+├── 連接到網路中心節點
+├── 在論壇/社群公布節點
+└── 提供有價值的服務（路由、流動性）`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 花費出站容量</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通過支付轉換容量：
+
+初始狀態：
+┌─────────────────────────────────────────────────────────┐
+│  ██████████████████████████████████████████████████░░  │
+│  1.0 BTC                                    0 BTC      │
+└─────────────────────────────────────────────────────────┘
+
+你發送 0.3 BTC 支付後：
+┌─────────────────────────────────────────────────────────┐
+│  █████████████████████████████████░░░░░░░░░░░░░░░░░░  │
+│  0.7 BTC                                    0.3 BTC    │
+│                                                         │
+│  出站容量: 0.7 BTC          入站容量: 0.3 BTC          │
+└─────────────────────────────────────────────────────────┘
+
+方法：
+├── 購買商品/服務
+├── Bitrefill 購買禮品卡
+├── Loop Out 到鏈上
+├── 支付到自己的其他通道（環形支付）
+└── 購買入站容量服務`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 購買入站容量</h3>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Lightning Pool</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Labs 的流動性市場。通過拍賣機制購買入站容量，
+        價格由市場決定。支援租賃期限選擇。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Magma by Amboss</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        P2P 流動性市場，可以直接購買特定節點的入站容量。
+        支援多種定價模式。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">LNBIG</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        大型流動性提供商，可以購買入站通道。
+        提供不同容量等級選擇。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Voltage Flow</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Voltage 的流動性服務，適合企業用戶。
+        提供管理式流動性解決方案。
+      </p>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">4. 雙向注資通道</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Dual-Funded Channels：
+
+開通道時雙方都出資：
+┌─────────────────────────────────────────────────────────┐
+│ 你出資 0.5 BTC + 對方出資 0.5 BTC = 1 BTC 通道         │
+│                                                         │
+│  █████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  0.5 BTC                                    0.5 BTC    │
+│                                                         │
+│  出站容量: 0.5 BTC          入站容量: 0.5 BTC          │
+│                                                         │
+│ 優點：一開始就有雙向流動性                               │
+│ 需要：雙方都支援 option_dual_fund                       │
+└─────────────────────────────────────────────────────────┘
+
+流動性廣告（Liquidity Ads）：
+┌─────────────────────────────────────────────────────────┐
+│ 節點可以公告願意提供的流動性和價格                       │
+│                                                         │
+│ 廣告內容：                                               │
+│ ├── 最小/最大金額                                       │
+│ ├── 租賃期限（區塊數）                                  │
+│ ├── 費率（每 sat 每區塊）                               │
+│ └── 基礎費用                                            │
+│                                                         │
+│ CLN 支援：                                               │
+│ lightning-cli funderupdate ...                          │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">5. Submarine Swaps</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Loop Out（鏈下→鏈上）：
+
+將閃電網路餘額轉換為鏈上比特幣，同時獲得入站容量：
+
+初始狀態：
+┌─────────────────────────────────────────────────────────┐
+│  你 ──(1 BTC)──► Loop 節點                              │
+│  出站容量: 1 BTC                                        │
+└─────────────────────────────────────────────────────────┘
+
+Loop Out 0.5 BTC 後：
+┌─────────────────────────────────────────────────────────┐
+│  你 ◄──(0.5 BTC)── Loop 節點                            │
+│  + 0.5 BTC 在鏈上（減去手續費）                         │
+│                                                         │
+│  入站容量: 0.5 BTC                                      │
+└─────────────────────────────────────────────────────────┘
+
+服務提供商：
+├── Loop by Lightning Labs
+├── Boltz Exchange
+├── Deezy
+└── Breez（集成在錢包中）`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">6. LSP 服務</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Lightning Service Provider 提供即時入站容量：
+
+JIT（Just-In-Time）通道：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 你收到一筆支付請求                                   │
+│ 2. LSP 攔截支付                                         │
+│ 3. LSP 即時開通道給你                                   │
+│ 4. 支付通過新通道完成                                   │
+│ 5. LSP 從支付中扣除開通道費用                           │
+│                                                         │
+│ 用戶體驗：無需預先設置，自動獲得入站容量                │
+└─────────────────────────────────────────────────────────┘
+
+常見 LSP：
+├── Phoenix (ACINQ)
+├── Breez
+├── Blixt
+├── Zeus (Olympus)
+└── Mutiny (Mutiny LSP)
+
+成本考量：
+├── JIT 通道費用通常從支付中扣除
+├── 零確認通道減少等待時間
+└── 適合小額用戶，大額用戶自己管理更經濟`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">入站容量策略</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`不同場景的建議策略：
+
+個人用戶（主要接收）：
+├── 使用 LSP 錢包（Phoenix、Breez）
+├── 讓 LSP 自動管理入站容量
+└── 成本從收款中扣除
+
+小型商家：
+├── 向大型節點購買入站容量
+├── 使用 Loop Out 定期轉換
+├── 考慮 Lightning Pool 租賃
+└── 維持多個入站通道分散風險
+
+路由節點：
+├── 雙向注資通道優先
+├── 使用流動性廣告
+├── 主動平衡通道
+├── 與其他路由節點互開通道
+└── 監控並優化入站/出站比例
+
+大型商家/交易所：
+├── 專業流動性管理
+├── 自建流動性基礎設施
+├── 與多個大型節點建立關係
+└── 考慮運行多個節點`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>成本提示：</strong>
+      入站容量不是免費的。無論是購買、租賃還是通過支出獲得，都有相應成本。
+      選擇最適合你使用模式的方法。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lightning.engineering/pool/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Pool</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lsp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Service Provider</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/submarine-swaps"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Submarine Swaps</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/dual-funded"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Dual-Funded Channels</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/wumbo-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Wumbo 大額通道</a
+      >
+      如何突破通道容量限制。
+    </p>
+  </div>
+</ArticleLayout>

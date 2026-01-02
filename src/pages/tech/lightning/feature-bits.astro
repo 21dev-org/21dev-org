@@ -1,0 +1,364 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Feature Bits 功能位"
+  description="了解閃電網路節點如何通過功能位協商支援的功能，實現協議的向前兼容和功能演進。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Feature Bits' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Failure Codes', href: '/tech/lightning/failure-codes' }}
+  nextPage={{ title: 'Node Operation', href: '/tech/lightning/node-operation' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是功能位？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    功能位（Feature Bits）是閃電網路節點用來宣告和協商所支援功能的機制。
+    每個功能用一對位元表示：偶數位表示強制（compulsory），奇數位表示可選（optional）。
+    這種設計允許網路平滑升級，同時保持向後兼容。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>功能協商：</strong>
+      節點在建立連接、開通道、發送發票時交換功能位。
+      雙方只使用共同支援的功能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能位結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`功能位編碼規則：
+
+┌─────────────────────────────────────────────────────────┐
+│ 每個功能使用連續的一對位元：                            │
+│                                                         │
+│ 位元 2N（偶數）：強制支援                               │
+│   └── 如果對方不支援，必須斷開連接                      │
+│                                                         │
+│ 位元 2N+1（奇數）：可選支援                             │
+│   └── 如果對方不支援，仍可連接                          │
+└─────────────────────────────────────────────────────────┘
+
+示例：data_loss_protect（功能 0/1）
+
+位元 0（偶數）設為 1：
+├── 表示：我強制要求此功能
+└── 結果：對方必須支援，否則斷開
+
+位元 1（奇數）設為 1：
+├── 表示：我可選支援此功能
+└── 結果：如果對方也支援則使用
+
+功能位向量（從低位到高位）：
+┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
+│0 │1 │2 │3 │4 │5 │6 │7 │8 │9 │10│11│...
+├──┴──┼──┴──┼──┴──┼──┴──┼──┴──┼──┴──┤
+│功能0 │功能1 │功能2 │功能3 │功能4 │功能5 │...
+└─────┴─────┴─────┴─────┴─────┴─────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能位使用場景</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`功能位出現在不同上下文：
+
+┌─────────────────────────────────────────────────────────┐
+│ 上下文          │ 訊息/位置              │ 用途        │
+├─────────────────────────────────────────────────────────┤
+│ init (I)        │ init 訊息              │ 節點連接時  │
+│ node (N)        │ node_announcement      │ 網路公告    │
+│ channel (C)     │ channel_announcement   │ 通道公告    │
+│ invoice (9)     │ BOLT 11 發票           │ 支付要求    │
+│ bolt12 (B)      │ BOLT 12 offer/invoice  │ Offer 系統  │
+└─────────────────────────────────────────────────────────┘
+
+不同場景有不同的功能子集：
+├── init：所有節點功能
+├── node：要公告的節點功能
+├── channel：通道特定功能
+├── invoice：支付相關功能
+└── bolt12：Offer 相關功能`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">已定義的功能</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 9 定義的功能列表：
+
+位元   名稱                          上下文    狀態
+─────────────────────────────────────────────────────────
+0/1    option_data_loss_protect      IN        已棄用(v0.1)
+4/5    option_upfront_shutdown_script IN
+6/7    gossip_queries                IN
+8/9    var_onion_optin               IN9       必須(v0.1)
+10/11  gossip_queries_ex             IN
+12/13  option_static_remotekey       IN        已棄用(v0.1)
+14/15  payment_secret                IN9       必須(v0.1)
+16/17  basic_mpp                     IN9
+18/19  option_support_large_channel  IN
+20/21  option_anchor_outputs         IN        已棄用
+22/23  option_anchors_zero_fee_htlc_tx IN
+24/25  option_route_blinding         IN9
+26/27  option_shutdown_anysegwit     IN
+28/29  option_dual_fund              IN
+30/31  option_amp                    IN9
+38/39  option_onion_messages         IN
+44/45  option_channel_type           IN
+46/47  option_scid_alias             IN
+48/49  option_payment_metadata       9
+50/51  option_zeroconf               IN
+52/53  option_trampoline_routing     IN9
+54/55  option_simple_close           IN        `}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">重要功能詳解</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">var_onion_optin (8/9)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        TLV 格式的洋蔥 payload，替代固定格式。
+        現在是必須功能，所有現代節點都支援。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">payment_secret (14/15)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        防止支付探測攻擊，接收者驗證 payment_secret。
+        現在是必須功能。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">basic_mpp (16/17)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        支援基本多路徑支付。允許將一筆支付拆分成多個 HTLC，
+        通過不同路徑發送。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">option_anchor_outputs (20/21)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        錨點輸出，允許使用 CPFP 提升承諾交易費用。
+        已被 zero_fee_htlc_tx 版本取代。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">option_route_blinding (24/25)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        盲化路由，接收者可以隱藏自己的位置。
+        發送者只看到入口節點，不知道最終目的地。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">option_dual_fund (28/29)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        雙向注資通道，雙方都可以在開通道時投入資金。
+        支援互動式交易構建協議。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">option_scid_alias (46/47)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        短通道 ID 別名，增強隱私。
+        允許使用任意 SCID 而非真實的區塊位置。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">option_zeroconf (50/51)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        零確認通道，注資交易未確認就可使用。
+        需要信任對方不會雙花。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">功能協商流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`連接時的功能協商：
+
+Alice                                 Bob
+  │                                    │
+  │──────── init ─────────────────────>│
+  │         features: 0x02aaa2         │
+  │                                    │
+  │<─────── init ──────────────────────│
+  │         features: 0x028a2a         │
+  │                                    │
+  │ [計算共同支援的功能]               │
+  │                                    │
+
+功能位比較：
+Alice: 0x02aaa2 = 0000 0010 1010 1010 1010 0010
+Bob:   0x028a2a = 0000 0010 1000 1010 0010 1010
+
+分析：
+├── 功能 0/1（data_loss_protect）：雙方都支援
+├── 功能 4/5（upfront_shutdown）：Alice 有，Bob 沒有
+├── 功能 8/9（var_onion）：雙方都支援
+└── ...
+
+結果：使用雙方共同支援的功能
+
+強制功能檢查：
+┌─────────────────────────────────────────────────────────┐
+│ 如果對方缺少我們要求的強制功能（偶數位）：              │
+│   → 斷開連接                                            │
+│                                                         │
+│ 如果對方有我們不認識的強制功能（偶數位）：              │
+│   → 斷開連接                                            │
+│                                                         │
+│ 可選功能（奇數位）不匹配：                              │
+│   → 繼續連接，但不使用該功能                            │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看節點功能</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`查看節點支援的功能：
+
+LND:
+# 查看本地節點功能
+lncli getinfo | jq '.features'
+
+# 查看遠端節點功能
+lncli getnodeinfo <pubkey> | jq '.node.features'
+
+CLN:
+# 查看本地節點
+lightning-cli getinfo | jq '.our_features'
+
+# 查看遠端節點
+lightning-cli listnodes <node_id> | jq '.[0].features'
+
+輸出示例：
+{
+  "0": { "name": "data-loss-protect", "is_required": false, "is_known": true },
+  "5": { "name": "upfront-shutdown-script", "is_required": false, "is_known": true },
+  "9": { "name": "var-onion-optin", "is_required": false, "is_known": true },
+  "15": { "name": "payment-addr", "is_required": false, "is_known": true },
+  "17": { "name": "multi-path-payments", "is_required": false, "is_known": true },
+  "23": { "name": "anchors-zero-fee-htlc-tx", "is_required": false, "is_known": true },
+  "45": { "name": "explicit-channel-type", "is_required": false, "is_known": true }
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道類型功能</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`option_channel_type (44/45)：
+
+問題：隱式通道類型協商可能導致不一致
+解決：在開通道時顯式指定通道類型
+
+open_channel 訊息中的 channel_type：
+┌─────────────────────────────────────────────────────────┐
+│ channel_type TLV：                                      │
+│   └── 包含通道要使用的功能位向量                        │
+│                                                         │
+│ 示例通道類型：                                          │
+│ ├── 基本通道：無特殊功能                                │
+│ ├── static_remotekey：option_static_remotekey           │
+│ ├── anchor：option_anchors_zero_fee_htlc_tx             │
+│ ├── anchors+scid_alias：上面 + option_scid_alias        │
+│ └── 零確認錨點：+ option_zeroconf                       │
+└─────────────────────────────────────────────────────────┘
+
+協商流程：
+1. 發起方在 open_channel 中提議 channel_type
+2. 接收方在 accept_channel 中確認或提議替代
+3. 雙方同意後使用該類型
+4. 通道生命週期內類型不變`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票中的功能</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 11 發票功能位：
+
+發票可以包含 "9" 標籤指定功能要求：
+┌─────────────────────────────────────────────────────────┐
+│ lnbc...                                                 │
+│   9 = feature bits                                      │
+│                                                         │
+│ 常見發票功能：                                          │
+│ ├── var_onion_optin (8/9)：必須使用 TLV 洋蔥           │
+│ ├── payment_secret (14/15)：必須包含 payment_secret    │
+│ ├── basic_mpp (16/17)：接受 MPP                         │
+│ └── amp (30/31)：接受 AMP                               │
+└─────────────────────────────────────────────────────────┘
+
+發送者處理：
+├── 檢查發票功能位
+├── 如果有不認識的強制功能 → 無法支付
+├── 如果支援可選功能 → 使用該功能
+└── 構建符合功能要求的支付`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>兼容性提示：</strong>
+      新增功能時總是使用奇數（可選）位。只有在功能已被廣泛採用後才升級為偶數（強制）位。
+      這樣可以避免破壞與舊節點的兼容性。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/09-features.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 9 - Assigned Feature Flags</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/gossip"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/anchor-outputs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Anchor Outputs</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/node-operation"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">節點運營</a
+      >
+      的最佳實踐。
+    </p>
+  </div>
+</ArticleLayout>

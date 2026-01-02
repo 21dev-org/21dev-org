@@ -1,0 +1,548 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Merkle Tree"
+  description="Merkle 樹：高效驗證交易包含性的密碼學資料結構"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Merkle Tree' },
+  ]}
+  difficulty="intermediate"
+  readingTime="14 分鐘"
+  prevPage={{ title: 'Block Structure', href: '/tech/bitcoin-core/block-structure' }}
+  nextPage={{ title: 'OP_RETURN', href: '/tech/bitcoin-core/op-return' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Merkle 樹（也稱為雜湊樹）是一種二元樹結構，其中每個葉節點是數據的雜湊，
+    每個非葉節點是其子節點雜湊的雜湊。在比特幣中，Merkle 樹用於高效地
+    摘要區塊中的所有交易，並允許 SPV 客戶端驗證交易是否包含在區塊中。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心價值：</strong>
+      Merkle 樹將任意數量交易壓縮為 32 字節的根雜湊，
+      同時允許 O(log n) 複雜度的包含性證明。
+    </p>
+  </div>
+
+  <h2 id="structure">樹結構</h2>
+
+  <h3>基本構造</h3>
+  <pre><code class="language-text" is:raw>Merkle 樹結構:
+
+假設有 4 筆交易: TxA, TxB, TxC, TxD
+
+步驟 1: 計算葉節點雜湊
+HA = SHA256(SHA256(TxA))
+HB = SHA256(SHA256(TxB))
+HC = SHA256(SHA256(TxC))
+HD = SHA256(SHA256(TxD))
+
+步驟 2: 計算父節點
+HAB = SHA256(SHA256(HA || HB))
+HCD = SHA256(SHA256(HC || HD))
+
+步驟 3: 計算根節點
+Root = SHA256(SHA256(HAB || HCD))
+
+視覺化:
+                    Root
+                   /    \
+                HAB      HCD
+               /   \    /   \
+             HA    HB  HC    HD
+              |     |   |     |
+            TxA   TxB TxC   TxD
+
+最終: 區塊頭只需包含 32 byte 的 Merkle Root</code></pre>
+
+  <h3>奇數交易處理</h3>
+  <pre><code class="language-text" is:raw>當交易數量為奇數時:
+
+5 筆交易的情況:
+             ___Root___
+            /          \
+        HABCD          HE'E'
+        /    \         /    \
+      HAB    HCD      HE     HE  ← 複製最後一個
+     /  \   /  \       |      |
+    HA  HB HC  HD     HE     HE
+     |   |  |   |      |
+   TxA TxB TxC TxD   TxE
+
+規則:
+- 如果某一層的節點數為奇數
+- 複製最後一個節點
+- 然後繼續向上計算
+
+這確保了樹始終是完整的二元樹</code></pre>
+
+  <h2 id="merkle-proof">Merkle 證明</h2>
+
+  <h3>SPV 證明概念</h3>
+  <pre><code class="language-text" is:raw>Merkle 證明 (Merkle Proof):
+
+目標: 證明 TxB 在區塊中
+
+需要的數據:
+1. TxB 本身
+2. HA (TxB 的兄弟節點)
+3. HCD (HAB 的兄弟節點)
+4. Merkle Root (來自區塊頭)
+
+驗證過程:
+1. 計算 HB = SHA256(SHA256(TxB))
+2. 計算 HAB = SHA256(SHA256(HA || HB))
+3. 計算 Root' = SHA256(SHA256(HAB || HCD))
+4. 驗證 Root' == 區塊頭中的 Merkle Root
+
+                    Root ← 驗證這個
+                   /    \
+           計算→ HAB      HCD ← 提供
+               /   \
+      提供→  HA    HB ← 計算
+                    |
+                  TxB ← 我的交易
+
+空間複雜度: O(log n) 個雜湊
+vs 下載整個區塊: O(n)</code></pre>
+
+  <h3>證明路徑</h3>
+  <pre><code class="language-text" is:raw>證明路徑 (Merkle Path):
+
+包含:
+1. 兄弟雜湊列表
+2. 每個節點的位置標記 (左/右)
+
+結構:
+┌─────────────────────────────────────┐
+│ Merkle Path for TxB                 │
+├─────────────────────────────────────┤
+│ Level 0: HA (left sibling)          │
+│ Level 1: HCD (right sibling)        │
+└─────────────────────────────────────┘
+
+位置標記:
+- 如果我們的節點在右邊，兄弟在左邊
+- 這決定了連接順序
+
+驗證時:
+- Level 0: H = SHA256(SHA256(HA || HB))
+- Level 1: H = SHA256(SHA256(H || HCD))
+  (因為 HCD 在右邊)
+
+證明大小計算:
+- 樹深度 = ⌈log₂(n)⌉
+- 每層一個 32 byte 雜湊
+- 總大小 = 32 × ⌈log₂(n)⌉ bytes</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>構建 Merkle 樹</h3>
+  <pre><code class="language-typescript" is:raw>import * as crypto from 'crypto';
+
+function sha256d(data: Uint8Array): Uint8Array {
+  const hash1 = crypto.createHash('sha256').update(data).digest();
+  return new Uint8Array(crypto.createHash('sha256').update(hash1).digest());
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const result = new Uint8Array(a.length + b.length);
+  result.set(a);
+  result.set(b, a.length);
+  return result;
+}
+
+// 計算 Merkle Root
+function computeMerkleRoot(txids: Uint8Array[]): Uint8Array {
+  if (txids.length === 0) {
+    return new Uint8Array(32); // 空區塊
+  }
+
+  if (txids.length === 1) {
+    return txids[0];
+  }
+
+  // 複製列表以避免修改原始數據
+  let level = [...txids];
+
+  while (level.length > 1) {
+    const nextLevel: Uint8Array[] = [];
+
+    // 如果是奇數，複製最後一個
+    if (level.length % 2 === 1) {
+      level.push(level[level.length - 1]);
+    }
+
+    // 配對並雜湊
+    for (let i = 0; i < level.length; i += 2) {
+      const combined = concatBytes(level[i], level[i + 1]);
+      nextLevel.push(sha256d(combined));
+    }
+
+    level = nextLevel;
+  }
+
+  return level[0];
+}
+
+// 使用範例
+const txids = [
+  hexToBytes('tx1_hash...'),
+  hexToBytes('tx2_hash...'),
+  hexToBytes('tx3_hash...'),
+  hexToBytes('tx4_hash...')
+];
+
+const merkleRoot = computeMerkleRoot(txids);
+console.log('Merkle Root:', bytesToHex(merkleRoot));</code></pre>
+
+  <h3>生成 Merkle 證明</h3>
+  <pre><code class="language-typescript" is:raw>interface MerkleProof {
+  txid: Uint8Array;
+  index: number;
+  siblings: Array&lt;{
+    hash: Uint8Array;
+    position: 'left' | 'right';
+  }&gt;;
+  root: Uint8Array;
+}
+
+function generateMerkleProof(
+  txids: Uint8Array[],
+  targetIndex: number
+): MerkleProof {
+  if (targetIndex >= txids.length) {
+    throw new Error('Index out of bounds');
+  }
+
+  const siblings: MerkleProof['siblings'] = [];
+  let level = [...txids];
+  let index = targetIndex;
+
+  while (level.length > 1) {
+    // 處理奇數情況
+    if (level.length % 2 === 1) {
+      level.push(level[level.length - 1]);
+    }
+
+    // 找到兄弟節點
+    const siblingIndex = index % 2 === 0 ? index + 1 : index - 1;
+    const position = index % 2 === 0 ? 'right' : 'left';
+
+    siblings.push({
+      hash: level[siblingIndex],
+      position
+    });
+
+    // 計算下一層
+    const nextLevel: Uint8Array[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const combined = concatBytes(level[i], level[i + 1]);
+      nextLevel.push(sha256d(combined));
+    }
+
+    level = nextLevel;
+    index = Math.floor(index / 2);
+  }
+
+  return {
+    txid: txids[targetIndex],
+    index: targetIndex,
+    siblings,
+    root: level[0]
+  };
+}
+
+// 驗證 Merkle 證明
+function verifyMerkleProof(proof: MerkleProof): boolean {
+  let current = proof.txid;
+
+  for (const sibling of proof.siblings) {
+    const combined = sibling.position === 'left'
+      ? concatBytes(sibling.hash, current)
+      : concatBytes(current, sibling.hash);
+
+    current = sha256d(combined);
+  }
+
+  return bytesEqual(current, proof.root);
+}
+
+// 使用範例
+const proof = generateMerkleProof(txids, 1); // 為第二筆交易生成證明
+console.log('Proof valid:', verifyMerkleProof(proof));</code></pre>
+
+  <h3>序列化與反序列化</h3>
+  <pre><code class="language-typescript" is:raw>// 序列化 Merkle 證明
+function serializeMerkleProof(proof: MerkleProof): Uint8Array {
+  const parts: Uint8Array[] = [];
+
+  // 交易 ID
+  parts.push(proof.txid);
+
+  // 索引 (4 bytes)
+  const indexBuf = new Uint8Array(4);
+  new DataView(indexBuf.buffer).setUint32(0, proof.index, true);
+  parts.push(indexBuf);
+
+  // 兄弟節點數量 (varint)
+  parts.push(encodeVarInt(proof.siblings.length));
+
+  // 位置位圖
+  let positionBits = 0;
+  for (let i = 0; i < proof.siblings.length; i++) {
+    if (proof.siblings[i].position === 'right') {
+      positionBits |= (1 << i);
+    }
+  }
+  parts.push(encodeVarInt(positionBits));
+
+  // 兄弟雜湊
+  for (const sibling of proof.siblings) {
+    parts.push(sibling.hash);
+  }
+
+  // Merkle Root
+  parts.push(proof.root);
+
+  return concatAllBytes(parts);
+}
+
+// 反序列化
+function deserializeMerkleProof(data: Uint8Array): MerkleProof {
+  let offset = 0;
+
+  // 交易 ID
+  const txid = data.slice(offset, offset + 32);
+  offset += 32;
+
+  // 索引
+  const index = new DataView(data.buffer, offset).getUint32(0, true);
+  offset += 4;
+
+  // 兄弟節點數量
+  const { value: siblingCount, bytesRead: countBytes } = decodeVarInt(data, offset);
+  offset += countBytes;
+
+  // 位置位圖
+  const { value: positionBits, bytesRead: posBytes } = decodeVarInt(data, offset);
+  offset += posBytes;
+
+  // 兄弟雜湊
+  const siblings: MerkleProof['siblings'] = [];
+  for (let i = 0; i < siblingCount; i++) {
+    const hash = data.slice(offset, offset + 32);
+    offset += 32;
+    const position = (positionBits & (1 << i)) ? 'right' : 'left';
+    siblings.push({ hash: new Uint8Array(hash), position });
+  }
+
+  // Merkle Root
+  const root = data.slice(offset, offset + 32);
+
+  return {
+    txid: new Uint8Array(txid),
+    index,
+    siblings,
+    root: new Uint8Array(root)
+  };
+}</code></pre>
+
+  <h2 id="spv">SPV 應用</h2>
+
+  <h3>輕客戶端驗證</h3>
+  <pre><code class="language-text" is:raw>SPV (Simple Payment Verification):
+
+輕客戶端只需:
+1. 區塊頭 (80 bytes each)
+2. 相關交易的 Merkle 證明
+
+驗證流程:
+┌─────────────────────────────────────────────┐
+│ 1. 下載所有區塊頭                            │
+│    - 驗證 PoW                               │
+│    - 驗證鏈連接                             │
+│    - 大小: ~60 MB (到 2024年)               │
+├─────────────────────────────────────────────┤
+│ 2. 請求相關交易的 Merkle 證明               │
+│    - 使用 Bloom Filter 或 Compact Filter    │
+│    - 只下載匹配的交易                        │
+├─────────────────────────────────────────────┤
+│ 3. 驗證 Merkle 證明                         │
+│    - 計算證明路徑                           │
+│    - 比對區塊頭中的 Merkle Root             │
+├─────────────────────────────────────────────┤
+│ 4. 確認深度                                 │
+│    - 等待足夠的確認數                        │
+│    - 降低雙花風險                           │
+└─────────────────────────────────────────────┘</code></pre>
+
+  <h3>merkleblock 訊息</h3>
+  <pre><code class="language-text" is:raw>P2P 訊息: merkleblock
+
+結構:
+┌─────────────────────────────────────┐
+│ block_header (80 bytes)             │
+├─────────────────────────────────────┤
+│ total_transactions (uint32)         │
+├─────────────────────────────────────┤
+│ hash_count (varint)                 │
+├─────────────────────────────────────┤
+│ hashes (32 bytes × hash_count)      │
+├─────────────────────────────────────┤
+│ flag_bytes (varint)                 │
+├─────────────────────────────────────┤
+│ flags (flag_bytes bytes)            │
+└─────────────────────────────────────┘
+
+flags 用於重建部分 Merkle 樹:
+- 使用深度優先遍歷
+- 1 = 下降到子節點或包含交易
+- 0 = 跳過子樹
+
+這允許高效傳輸多個交易的證明</code></pre>
+
+  <h2 id="witness">Witness Merkle Tree</h2>
+  <pre><code class="language-text" is:raw>SegWit Witness Commitment (BIP-141):
+
+區塊包含兩個 Merkle 樹:
+1. 傳統 Merkle 樹 (在區塊頭)
+   - 使用 TXID
+   - 不包含 witness 數據
+
+2. Witness Merkle 樹 (在 coinbase)
+   - 使用 WTXID
+   - 包含 witness 數據
+
+Witness Commitment 結構:
+┌─────────────────────────────────────┐
+│ Coinbase 交易的 OP_RETURN 輸出       │
+├─────────────────────────────────────┤
+│ 6a (OP_RETURN)                      │
+│ 24 (push 36 bytes)                  │
+│ aa21a9ed (commitment header)        │
+│ &lt;32-byte witness_root_hash&gt;         │
+└─────────────────────────────────────┘
+
+Witness Root 計算:
+1. 計算所有 WTXID
+2. Coinbase WTXID = 0x00...00
+3. 構建 Merkle 樹
+4. commitment = SHA256(witness_root || witness_nonce)</code></pre>
+
+  <h2 id="attacks">安全考量</h2>
+
+  <h3>CVE-2012-2459</h3>
+  <pre><code class="language-text" is:raw>Merkle 樹重複攻擊:
+
+問題:
+當交易數量為奇數時，最後一個交易被複製
+這可能導致兩個不同的區塊有相同的 Merkle Root
+
+攻擊場景:
+原始區塊: [TxA, TxB, TxC]
+Merkle 計算: [TxA, TxB, TxC, TxC]
+
+偽造區塊: [TxA, TxB, TxC, TxC]
+Merkle 計算: [TxA, TxB, TxC, TxC]
+(相同的 Merkle Root！)
+
+後果:
+- 可能導致節點接受無效區塊
+- 或拒絕有效區塊
+
+修復:
+- 節點現在檢查交易列表是否有重複
+- 如果最後兩筆交易相同，拒絕區塊</code></pre>
+
+  <h3>64 字節交易攻擊</h3>
+  <pre><code class="language-text" is:raw>內部節點偽造攻擊:
+
+觀察:
+- Merkle 內部節點 = 64 bytes (兩個 32-byte 雜湊)
+- 如果交易剛好 64 bytes，可能被誤認為內部節點
+
+攻擊:
+創建 64 byte 的交易，其內容是兩個精心選擇的雜湊
+
+防護:
+- Bitcoin Core 要求交易至少 65 bytes
+- 這通過最小交易大小規則強制執行
+- 標準規則要求更大的最小值</code></pre>
+
+  <h2 id="optimization">效能優化</h2>
+  <pre><code class="language-text" is:raw>Merkle 樹優化技術:
+
+1. 緩存中間節點
+   - 計算時保存所有層級
+   - 生成證明時直接查找
+
+2. 並行計算
+   - 每層的雜湊計算可以並行
+   - 適合 GPU 加速
+
+3. 增量更新
+   - 添加交易時只更新受影響的路徑
+   - 不需要重建整個樹
+
+4. 批量證明
+   - 多個交易共享部分路徑
+   - 減少傳輸數據
+
+證明大小比較 (1000 筆交易):
+- 單個交易: ~10 × 32 = 320 bytes
+- 10 個相鄰交易: ~350 bytes (共享路徑)
+- 下載整個區塊: ~250 KB</code></pre>
+
+  <h2 id="comparison">與其他結構比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>Merkle Tree</th>
+        <th>Merkle Patricia Trie</th>
+        <th>Verkle Tree</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>使用</td>
+        <td>Bitcoin</td>
+        <td>Ethereum</td>
+        <td>Ethereum 2.0</td>
+      </tr>
+      <tr>
+        <td>證明大小</td>
+        <td>O(log n)</td>
+        <td>O(log n) 但更大</td>
+        <td>O(1) 常數</td>
+      </tr>
+      <tr>
+        <td>更新效率</td>
+        <td>O(log n)</td>
+        <td>O(log n)</td>
+        <td>O(log n)</td>
+      </tr>
+      <tr>
+        <td>複雜度</td>
+        <td>低</td>
+        <td>中</td>
+        <td>高</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/Protocol_documentation#Merkle_Trees" target="_blank" rel="noopener noreferrer">Merkle Trees Wiki</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0037.mediawiki" target="_blank" rel="noopener noreferrer">BIP-37: Merkleblock</a></li>
+    <li><a href="/tech/bitcoin-core/block-structure">Block Structure</a></li>
+    <li><a href="/tech/bitcoin-core/compact-block-filters">Compact Block Filters</a></li>
+  </ul>
+</ArticleLayout>

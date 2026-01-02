@@ -1,0 +1,298 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Timelocks 時間鎖"
+  description="了解閃電網路中的時間鎖機制，包括 CLTV 和 CSV，以及它們如何保護支付和通道安全。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Timelocks' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Payment Hash', href: '/tech/lightning/payment-hash' }}
+  nextPage={{ title: 'Revocation', href: '/tech/lightning/revocation' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是時間鎖？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    時間鎖（Timelocks）是比特幣腳本中的一種機制，可以限制資金在特定時間之前不能被花費。
+    閃電網路廣泛使用時間鎖來保護支付路由、防止欺詐、以及實現通道的安全關閉。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>兩種時間鎖：</strong>
+      CLTV（CheckLockTimeVerify）使用絕對時間/區塊高度；
+      CSV（CheckSequenceVerify）使用相對時間/區塊數。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">CLTV vs CSV</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`時間鎖類型比較：
+
+┌─────────────────────────────────────────────────────────┐
+│ CLTV (OP_CHECKLOCKTIMEVERIFY)                          │
+├─────────────────────────────────────────────────────────┤
+│ 類型：絕對時間鎖                                        │
+│ 含義：在區塊 N 之前不能花費                             │
+│ 用途：HTLC 超時、支付路由                               │
+│                                                         │
+│ 示例：                                                   │
+│ ├── cltv_expiry = 700000                                │
+│ └── 在區塊高度 700000 之前，HTLC 不能超時               │
+│                                                         │
+│ 腳本：                                                   │
+│ <expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP                 │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ CSV (OP_CHECKSEQUENCEVERIFY)                           │
+├─────────────────────────────────────────────────────────┤
+│ 類型：相對時間鎖                                        │
+│ 含義：在父交易確認後 N 個區塊才能花費                   │
+│ 用途：to_local 延遲、懲罰機制                           │
+│                                                         │
+│ 示例：                                                   │
+│ ├── to_self_delay = 144（約 1 天）                      │
+│ └── 關閉通道後，本地資金需等待 144 區塊                 │
+│                                                         │
+│ 腳本：                                                   │
+│ <delay> OP_CHECKSEQUENCEVERIFY OP_DROP                  │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 中的時間鎖</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 使用 CLTV 保護支付：
+
+多跳支付的 CLTV 遞減：
+
+Alice ──(CLTV: 700100)──► Carol ──(CLTV: 700050)──► Bob
+
+┌─────────────────────────────────────────────────────────┐
+│ Alice → Carol:                                          │
+│   cltv_expiry = 700100                                  │
+│   "如果 Carol 在區塊 700100 前不領取，Alice 可取回"     │
+│                                                         │
+│ Carol → Bob:                                            │
+│   cltv_expiry = 700050                                  │
+│   "如果 Bob 在區塊 700050 前不領取，Carol 可取回"       │
+│                                                         │
+│ 差值 = 50 區塊（cltv_expiry_delta）                     │
+│   └── Carol 有 50 區塊時間來處理                        │
+└─────────────────────────────────────────────────────────┘
+
+為什麼需要遞減？
+┌─────────────────────────────────────────────────────────┐
+│ 假設 Bob 在區塊 700049 揭露原像：                       │
+│                                                         │
+│ 1. Bob 領取 Carol 的 HTLC（在 700050 之前）✓           │
+│ 2. Carol 獲得原像                                       │
+│ 3. Carol 需要時間領取 Alice 的 HTLC                     │
+│ 4. Carol 有 50 區塊（700100 - 700050）的緩衝時間        │
+│                                                         │
+│ 如果沒有遞減：                                          │
+│ Carol 可能因區塊確認延遲而損失資金                      │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道中的時間鎖</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`承諾交易中的 CSV 時間鎖：
+
+to_local 輸出（本地餘額）：
+┌─────────────────────────────────────────────────────────┐
+│ OP_IF                                                   │
+│     <revocation_pubkey>                                 │
+│ OP_ELSE                                                 │
+│     <to_self_delay>                                     │
+│     OP_CSV                                              │
+│     OP_DROP                                             │
+│     <local_delayed_pubkey>                              │
+│ OP_ENDIF                                                │
+│ OP_CHECKSIG                                             │
+│                                                         │
+│ 含義：                                                   │
+│ ├── 對方可以用 revocation_key 立即花費（如果我作弊）    │
+│ └── 我需要等待 to_self_delay 區塊後才能花費             │
+└─────────────────────────────────────────────────────────┘
+
+to_self_delay 的作用：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 給對方時間檢測和懲罰作弊                             │
+│ 2. 防止發布舊承諾交易後快速轉移資金                     │
+│ 3. 瞭望塔有足夠時間響應                                 │
+│                                                         │
+│ 典型值：                                                 │
+│ ├── 144 區塊（~1 天）：平衡安全和便利                   │
+│ ├── 1008 區塊（~1 週）：高安全需求                      │
+│ └── 2016 區塊（~2 週）：最大延遲                        │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">cltv_expiry_delta</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`cltv_expiry_delta 參數：
+
+定義：每一跳的 CLTV 遞減量
+來源：channel_update 訊息中公告
+
+影響因素：
+┌─────────────────────────────────────────────────────────┐
+│ 太小的 delta：                                          │
+│ ├── 路由費用可能較低（更有競爭力）                      │
+│ ├── 但可能沒有足夠時間響應                              │
+│ └── 風險：資金可能損失                                  │
+│                                                         │
+│ 太大的 delta：                                          │
+│ ├── 更安全，有充足時間響應                              │
+│ ├── 但支付需要更長的總超時時間                          │
+│ └── 發送者可能選擇其他路徑                              │
+└─────────────────────────────────────────────────────────┘
+
+典型值：
+├── 40 區塊（~7 小時）：激進設置
+├── 80 區塊（~13 小時）：常見設置
+├── 144 區塊（~1 天）：保守設置
+└── 最小值：18 區塊（BOLT 規範建議）
+
+總超時時間計算：
+┌─────────────────────────────────────────────────────────┐
+│ total_cltv = min_final_cltv_expiry                      │
+│            + Σ(每跳的 cltv_expiry_delta)                │
+│                                                         │
+│ 示例（3 跳支付）：                                      │
+│ ├── min_final_cltv_expiry: 18 區塊                      │
+│ ├── hop1 delta: 80 區塊                                 │
+│ ├── hop2 delta: 80 區塊                                 │
+│ ├── hop3 delta: 80 區塊                                 │
+│ └── 總超時：18 + 80 + 80 + 80 = 258 區塊（~43 小時）    │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間鎖攻擊與防護</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">時間膨脹攻擊</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        攻擊者延遲區塊傳播，使受害者錯過時間鎖。
+        防護：連接多個比特幣節點，使用瞭望塔。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">預計費用不足</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        時間鎖到期時鏈上費用飆升，無法及時確認交易。
+        防護：使用 Anchor Outputs 允許 CPFP 加速。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">HTLC 堵塞</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        攻擊者發送支付但不結算，鎖定 HTLC 直到超時。
+        防護：設置合理的 HTLC 數量限制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">CLTV 過期競爭</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        接近超時時發送原像，製造時間壓力。
+        防護：保持足夠的 delta 緩衝。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置時間鎖</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`配置時間鎖參數：
+
+LND（lnd.conf）：
+[Bitcoin]
+# CLTV delta for forwarding
+bitcoin.timelockdelta=80
+
+# 通道開設時的 to_self_delay
+[Application Options]
+# 發送的 to_self_delay（對方的延遲）
+default-remote-max-htlcs=483
+
+CLN（config）：
+# CLTV delta
+cltv-delta=80
+
+# 最小 final CLTV
+cltv-final=18
+
+查看通道的時間鎖設置：
+# LND
+lncli getchaninfo <channel_id>
+# 輸出包含 time_lock_delta
+
+# CLN
+lightning-cli listchannels <short_channel_id>
+# 輸出包含 delay`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>最佳實踐：</strong>
+      不要將 cltv_expiry_delta 設置得太低。如果節點離線或網路擁堵，
+      可能沒有足夠時間響應。建議至少 40-80 區塊。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/02-peer-protocol.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 2 - Channel Protocol</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/htlc"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 詳解</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/force-close"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">強制關閉</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/revocation"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">撤銷機制</a
+      >
+      如何防止通道欺詐。
+    </p>
+  </div>
+</ArticleLayout>

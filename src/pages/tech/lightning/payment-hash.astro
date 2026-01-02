@@ -1,0 +1,300 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Payment Hash 支付哈希"
+  description="了解閃電網路支付的核心機制：支付哈希與原像，以及它們如何實現安全的跨通道支付。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Payment Hash' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'HTLC', href: '/tech/lightning/htlc' }}
+  nextPage={{ title: 'Timelocks', href: '/tech/lightning/timelocks' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是支付哈希？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    支付哈希（Payment Hash）是閃電網路支付的核心識別符。
+    它是一個 256 位的哈希值，由接收者生成，用於鎖定支付。
+    只有知道對應原像（Preimage）的人才能領取這筆支付。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心原理：</strong>
+      Payment Hash = SHA256(Preimage)。
+      接收者保密原像，公開哈希值。支付成功時揭露原像。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">哈希與原像</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`支付哈希的生成：
+
+接收者（Bob）：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 生成隨機的 32 字節原像（Preimage）                   │
+│    preimage = random_bytes(32)                          │
+│    例：0x1234567890abcdef...（32 bytes）                │
+│                                                         │
+│ 2. 計算 SHA256 哈希                                     │
+│    payment_hash = SHA256(preimage)                      │
+│    例：0xabcdef1234567890...（32 bytes）                │
+│                                                         │
+│ 3. 保密原像，公開哈希                                    │
+│    ├── 原像：只有 Bob 知道                              │
+│    └── 哈希：包含在發票中，發給 Alice                   │
+└─────────────────────────────────────────────────────────┘
+
+發送者（Alice）：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 收到包含 payment_hash 的發票                         │
+│ 2. 無法從哈希反推原像（單向函數）                       │
+│ 3. 使用 payment_hash 構建 HTLC                          │
+│ 4. 發送支付                                             │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`使用支付哈希的支付流程：
+
+Alice ──────────────────────────────────────────────► Bob
+        Carol（中間節點）
+
+步驟 1：Bob 創建發票
+┌─────────────────────────────────────────────────────────┐
+│ Bob 生成：                                               │
+│ preimage = 0x11223344...（秘密）                        │
+│ payment_hash = SHA256(preimage) = 0xaabbccdd...         │
+│                                                         │
+│ 發票內容：                                               │
+│ lnbc10u1p...（包含 payment_hash）                       │
+└─────────────────────────────────────────────────────────┘
+                    │
+                    ▼ 發票發送給 Alice
+步驟 2：Alice 發送支付
+┌─────────────────────────────────────────────────────────┐
+│ Alice → Carol：                                         │
+│   HTLC: 如果你能提供 H 的原像，就給你 10,000 sats      │
+│   H = 0xaabbccdd...                                     │
+│                                                         │
+│ Carol → Bob：                                           │
+│   HTLC: 如果你能提供 H 的原像，就給你 9,990 sats       │
+│   H = 0xaabbccdd...（相同的哈希）                       │
+└─────────────────────────────────────────────────────────┘
+                    │
+                    ▼ Bob 知道原像
+步驟 3：Bob 領取支付
+┌─────────────────────────────────────────────────────────┐
+│ Bob → Carol：                                           │
+│   揭露 preimage = 0x11223344...                         │
+│   Carol 驗證：SHA256(0x11223344...) = 0xaabbccdd... ✓   │
+│   Carol 支付給 Bob                                      │
+│                                                         │
+│ Carol → Alice：                                         │
+│   揭露 preimage = 0x11223344...（同一個原像）          │
+│   Alice 驗證：SHA256(0x11223344...) = 0xaabbccdd... ✓   │
+│   Alice 支付給 Carol                                    │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全特性</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">原子性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        所有 HTLC 使用相同的 payment_hash，原像揭露後所有通道同時結算，
+        確保支付要麼全部成功，要麼全部失敗。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">不可偽造</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        SHA256 的抗碰撞性確保無法偽造有效的原像。
+        只有接收者（生成原像的人）才能領取支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">支付證明</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        原像作為支付證明。發送者收到原像就證明接收者已收到款項，
+        這在商業場景中非常重要。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中間節點只看到哈希值，無法得知支付的具體內容或目的。
+        原像只在最後揭露。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票中的支付哈希</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 11 發票結構：
+
+lnbc10u1pj9...
+
+解碼後：
+┌─────────────────────────────────────────────────────────┐
+│ 金額：10 微比特幣（1,000 satoshis）                     │
+│ 時間戳：1234567890                                      │
+│ payment_hash：                                          │
+│   0xabcdef1234567890abcdef1234567890                    │
+│   abcdef1234567890abcdef1234567890                      │
+│ 描述：Coffee payment                                    │
+│ 到期時間：3600 秒                                       │
+│ 簽名：...                                               │
+└─────────────────────────────────────────────────────────┘
+
+payment_secret（BOLT 11 擴展）：
+┌─────────────────────────────────────────────────────────┐
+│ 問題：                                                  │
+│   中間節點可以探測支付是否到達目的地                    │
+│                                                         │
+│ 解決方案：payment_secret                                │
+│   ├── 另一個 32 字節隨機值                              │
+│   ├── 通過洋蔥路由傳遞給最終接收者                      │
+│   ├── 接收者驗證 payment_secret                         │
+│   └── 中間節點無法獲取此值                              │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">原像的用途</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`原像的多種用途：
+
+1. 支付證明
+├── 發送者保存原像作為收據
+├── 可以證明支付已被接收
+└── 用於爭議解決
+
+2. 條件支付（Hold Invoices）
+├── 接收者延遲揭露原像
+├── 等待某些條件滿足
+└── 實現託管式支付
+
+3. 原子交換
+├── 跨鏈原子交換使用相同機制
+├── 確保兩邊交易同時完成
+└── Submarine Swaps 基於此原理
+
+4. 密碼學承諾
+├── 原像可以編碼任意資料
+├── 揭露原像 = 揭露承諾
+└── 實現各種智能合約功能
+
+示例：使用原像作為密鑰
+┌─────────────────────────────────────────────────────────┐
+│ 場景：付款解鎖數位內容                                   │
+│                                                         │
+│ 1. 商家用 preimage 加密內容                             │
+│    encrypted = AES(content, preimage)                   │
+│                                                         │
+│ 2. 發送加密內容給買家                                    │
+│                                                         │
+│ 3. 買家支付發票                                          │
+│                                                         │
+│ 4. 支付成功後買家獲得 preimage                           │
+│    content = AES_decrypt(encrypted, preimage)           │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Keysend 與自生成原像</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Keysend（自發支付）：
+
+傳統支付：接收者生成原像
+Keysend：發送者生成原像
+
+流程：
+┌─────────────────────────────────────────────────────────┐
+│ 1. Alice 生成 preimage                                  │
+│ 2. Alice 計算 payment_hash = SHA256(preimage)           │
+│ 3. Alice 構建 HTLC 鏈                                   │
+│ 4. Alice 在洋蔥中加密傳遞 preimage 給 Bob               │
+│ 5. Bob 從洋蔥中獲取 preimage                            │
+│ 6. Bob 用 preimage 領取支付                              │
+└─────────────────────────────────────────────────────────┘
+
+TLV 傳遞原像：
+洋蔥 payload 中包含：
+  keysend_preimage (TLV type 5482373484)
+  └── 32 bytes preimage
+
+優點：
+├── 無需發票
+├── 適合打賞、捐款
+└── 支持流式支付
+
+缺點：
+├── 沒有金額驗證
+├── 接收者可能不期望收到
+└── 沒有支付描述`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>重要提示：</strong>
+      原像應該只使用一次。重複使用同一個原像可能導致支付被重複領取或產生隱私問題。
+      每筆支付都應該生成新的原像。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/04-onion-routing.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 4 - Onion Routing</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/htlc"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 詳解</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/keysend"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Keysend</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/timelocks"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">時間鎖</a
+      >
+      如何保護支付安全。
+    </p>
+  </div>
+</ArticleLayout>

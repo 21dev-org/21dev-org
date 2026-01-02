@@ -1,0 +1,503 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Difficulty Adjustment"
+  description="難度調整：比特幣自動調節挖礦難度的共識機制"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Difficulty Adjustment' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Consensus', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: 'Mining', href: '/tech/bitcoin-core/mining' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    難度調整是比特幣最重要的自我調節機制之一。它確保無論全網算力如何變化，
+    平均每 10 分鐘產生一個區塊。這個機制每 2016 個區塊（約兩週）自動調整一次，
+    維持了比特幣的可預測發行計劃。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>設計目標：</strong>
+      2016 個區塊 × 10 分鐘 = 20,160 分鐘 = 14 天。
+      如果實際時間偏離這個目標，難度會相應調整。
+    </p>
+  </div>
+
+  <h2 id="target">目標值與難度</h2>
+
+  <h3>區塊雜湊目標</h3>
+  <pre><code class="language-text" is:raw>工作量證明要求:
+
+區塊雜湊必須小於目標值 (target):
+SHA256(SHA256(block_header)) &lt; target
+
+目標值是一個 256-bit 數字:
+┌─────────────────────────────────────────────────────────┐
+│ 目標值 (target)                                         │
+│ 0x00000000000000000004b0c4...                           │
+│                                                         │
+│ 有效區塊雜湊必須有足夠多的前導零                         │
+└─────────────────────────────────────────────────────────┘
+
+難度 (difficulty) 定義:
+difficulty = max_target / current_target
+
+max_target (難度 1):
+0x00000000FFFF0000000000000000000000000000000000000000000000000000
+
+難度越高 → 目標值越小 → 需要更多前導零</code></pre>
+
+  <h3>nBits 編碼</h3>
+  <pre><code class="language-text" is:raw>區塊頭中的 nBits 欄位 (4 bytes):
+
+格式: 0xEEMMMMMMM
+- EE: 指數 (exponent)
+- MMMMMM: 尾數 (mantissa)
+
+目標值計算:
+target = mantissa × 2^(8 × (exponent - 3))
+
+範例: nBits = 0x1903a30c
+- exponent = 0x19 = 25
+- mantissa = 0x03a30c
+
+target = 0x03a30c × 2^(8 × (25 - 3))
+       = 0x03a30c × 2^176
+       = 0x0000000000000000000003a30c0000000000000000000000...
+
+驗證:
+區塊雜湊必須 &lt; 這個目標值</code></pre>
+
+  <h2 id="algorithm">調整算法</h2>
+
+  <h3>基本公式</h3>
+  <pre><code class="language-text" is:raw>難度調整公式:
+
+new_target = old_target × (actual_time / expected_time)
+
+其中:
+- old_target: 當前難度週期的目標值
+- actual_time: 過去 2016 個區塊的實際耗時
+- expected_time: 2016 × 10 分鐘 = 1,209,600 秒
+
+調整限制:
+- 最大增加: 4 倍 (×4)
+- 最大減少: 1/4 (×0.25)
+- 防止極端波動
+
+範例:
+如果 2016 個區塊花了 10 天 (而非 14 天):
+new_target = old_target × (10 / 14)
+           = old_target × 0.714
+→ 難度增加約 40%</code></pre>
+
+  <h3>調整時機</h3>
+  <pre><code class="language-text" is:raw>調整週期:
+
+區塊高度     難度週期
+0-2015       週期 0
+2016-4031    週期 1
+4032-6047    週期 2
+...
+n×2016 - (n+1)×2016-1  週期 n
+
+調整發生在每個週期的第一個區塊:
+- 區塊 2016, 4032, 6048, ...
+- 計算基於前一週期的時間
+
+時間計算:
+actual_time = block[2015].timestamp - block[0].timestamp
+            (或相對於前一週期)
+
+注意: 使用 2015 個區塊間隔，而非 2016 個
+這是因為計算的是區塊之間的時間差</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>目標值計算</h3>
+  <pre><code class="language-typescript" is:raw>// 從 nBits 解碼目標值
+function nbitsToTarget(nbits: number): bigint {
+  const exponent = nbits >> 24;
+  const mantissa = nbits & 0x007fffff;
+
+  // 處理負數標記 (最高位)
+  const isNegative = (mantissa & 0x00800000) !== 0;
+  const cleanMantissa = isNegative ? mantissa & 0x007fffff : mantissa;
+
+  let target: bigint;
+  if (exponent <= 3) {
+    target = BigInt(cleanMantissa) >> BigInt(8 * (3 - exponent));
+  } else {
+    target = BigInt(cleanMantissa) << BigInt(8 * (exponent - 3));
+  }
+
+  return isNegative ? -target : target;
+}
+
+// 將目標值編碼為 nBits
+function targetToNbits(target: bigint): number {
+  if (target === 0n) return 0;
+
+  const isNegative = target < 0n;
+  let absTarget = isNegative ? -target : target;
+
+  // 計算需要的字節數
+  let size = 0;
+  let temp = absTarget;
+  while (temp > 0n) {
+    size++;
+    temp >>= 8n;
+  }
+
+  // 提取尾數 (最高 3 字節)
+  let mantissa: number;
+  if (size <= 3) {
+    mantissa = Number(absTarget << BigInt(8 * (3 - size)));
+  } else {
+    mantissa = Number(absTarget >> BigInt(8 * (size - 3)));
+  }
+
+  // 處理溢出
+  if (mantissa & 0x00800000) {
+    mantissa >>= 8;
+    size++;
+  }
+
+  // 組合 nBits
+  let nbits = (size << 24) | (mantissa & 0x007fffff);
+  if (isNegative) {
+    nbits |= 0x00800000;
+  }
+
+  return nbits;
+}
+
+// 計算難度
+function calculateDifficulty(nbits: number): number {
+  const target = nbitsToTarget(nbits);
+  const maxTarget = nbitsToTarget(0x1d00ffff); // 難度 1
+  return Number(maxTarget) / Number(target);
+}</code></pre>
+
+  <h3>難度調整計算</h3>
+  <pre><code class="language-typescript" is:raw>const DIFFICULTY_ADJUSTMENT_INTERVAL = 2016;
+const TARGET_TIMESPAN = 14 * 24 * 60 * 60; // 14 天 (秒)
+const TARGET_SPACING = 10 * 60; // 10 分鐘 (秒)
+
+interface BlockHeader {
+  height: number;
+  timestamp: number;
+  nbits: number;
+  // ... 其他欄位
+}
+
+function calculateNextTarget(
+  lastBlock: BlockHeader,
+  firstBlockOfPeriod: BlockHeader
+): bigint {
+  // 計算實際耗時
+  const actualTimespan = lastBlock.timestamp - firstBlockOfPeriod.timestamp;
+
+  // 應用限制 (1/4 到 4 倍)
+  let adjustedTimespan = actualTimespan;
+  if (adjustedTimespan < TARGET_TIMESPAN / 4) {
+    adjustedTimespan = TARGET_TIMESPAN / 4;
+  }
+  if (adjustedTimespan > TARGET_TIMESPAN * 4) {
+    adjustedTimespan = TARGET_TIMESPAN * 4;
+  }
+
+  // 計算新目標值
+  const currentTarget = nbitsToTarget(lastBlock.nbits);
+  let newTarget = currentTarget * BigInt(adjustedTimespan);
+  newTarget = newTarget / BigInt(TARGET_TIMESPAN);
+
+  // 確保不超過最大目標值
+  const maxTarget = nbitsToTarget(0x1d00ffff);
+  if (newTarget > maxTarget) {
+    newTarget = maxTarget;
+  }
+
+  return newTarget;
+}
+
+// 完整的難度計算
+function getNextWorkRequired(
+  lastBlock: BlockHeader,
+  getBlockByHeight: (height: number) => BlockHeader
+): number {
+  // 檢查是否需要調整
+  if ((lastBlock.height + 1) % DIFFICULTY_ADJUSTMENT_INTERVAL !== 0) {
+    // 非調整區塊，保持當前難度
+    return lastBlock.nbits;
+  }
+
+  // 獲取週期第一個區塊
+  const firstHeight = lastBlock.height - (DIFFICULTY_ADJUSTMENT_INTERVAL - 1);
+  const firstBlock = getBlockByHeight(firstHeight);
+
+  // 計算新目標值
+  const newTarget = calculateNextTarget(lastBlock, firstBlock);
+
+  return targetToNbits(newTarget);
+}</code></pre>
+
+  <h3>難度驗證</h3>
+  <pre><code class="language-typescript" is:raw>// 驗證區塊是否滿足難度要求
+function verifyProofOfWork(
+  blockHash: Uint8Array,
+  nbits: number
+): boolean {
+  const target = nbitsToTarget(nbits);
+
+  // 將區塊雜湊轉換為大整數 (小端序)
+  let hashValue = 0n;
+  for (let i = blockHash.length - 1; i >= 0; i--) {
+    hashValue = (hashValue << 8n) | BigInt(blockHash[i]);
+  }
+
+  // 雜湊必須小於目標值
+  return hashValue <= target;
+}
+
+// 驗證區塊的 nbits 是否正確
+function verifyDifficulty(
+  block: BlockHeader,
+  prevBlock: BlockHeader,
+  getBlockByHeight: (height: number) => BlockHeader
+): boolean {
+  const expectedNbits = getNextWorkRequired(prevBlock, getBlockByHeight);
+  return block.nbits === expectedNbits;
+}
+
+// 計算預期下次調整
+function predictNextAdjustment(
+  currentHeight: number,
+  currentDifficulty: number,
+  recentBlockTimes: number[] // 最近區塊的時間戳
+): {
+  blocksUntilAdjustment: number;
+  estimatedNewDifficulty: number;
+  percentChange: number;
+} {
+  const nextAdjustmentHeight =
+    Math.ceil((currentHeight + 1) / DIFFICULTY_ADJUSTMENT_INTERVAL) *
+    DIFFICULTY_ADJUSTMENT_INTERVAL;
+
+  const blocksUntilAdjustment = nextAdjustmentHeight - currentHeight;
+
+  // 根據最近區塊時間估算
+  if (recentBlockTimes.length < 2) {
+    return {
+      blocksUntilAdjustment,
+      estimatedNewDifficulty: currentDifficulty,
+      percentChange: 0
+    };
+  }
+
+  const avgBlockTime =
+    (recentBlockTimes[recentBlockTimes.length - 1] - recentBlockTimes[0]) /
+    (recentBlockTimes.length - 1);
+
+  const expectedBlockTime = TARGET_SPACING;
+  const ratio = expectedBlockTime / avgBlockTime;
+
+  // 應用限制
+  const clampedRatio = Math.max(0.25, Math.min(4, ratio));
+
+  const estimatedNewDifficulty = currentDifficulty * clampedRatio;
+  const percentChange = (clampedRatio - 1) * 100;
+
+  return {
+    blocksUntilAdjustment,
+    estimatedNewDifficulty,
+    percentChange
+  };
+}</code></pre>
+
+  <h2 id="history">歷史難度變化</h2>
+  <pre><code class="language-text" is:raw>比特幣難度歷史里程碑:
+
+2009年1月:
+- 創世區塊
+- 難度 = 1
+
+2010年12月:
+- 首次突破 10,000
+- GPU 挖礦開始
+
+2013年:
+- ASIC 礦機出現
+- 難度快速攀升
+
+2017年:
+- 難度達到 1 萬億
+
+2021年:
+- 中國礦業禁令
+- 難度下降 28% (歷史最大單次下降)
+
+2024年:
+- 難度超過 80 萬億
+
+增長模式:
+┌──────────────────────────────────────┐
+│ 年份    │ 大約難度                    │
+├──────────────────────────────────────┤
+│ 2009    │ 1                           │
+│ 2012    │ 3,000,000                   │
+│ 2015    │ 50,000,000,000              │
+│ 2018    │ 5,000,000,000,000           │
+│ 2021    │ 20,000,000,000,000          │
+│ 2024    │ 80,000,000,000,000          │
+└──────────────────────────────────────┘</code></pre>
+
+  <h2 id="attacks">安全考量</h2>
+
+  <h3>時間戳攻擊</h3>
+  <pre><code class="language-text" is:raw>時間戳操縱風險:
+
+礦工可能嘗試:
+1. 操縱時間戳使難度降低
+2. 在調整前加速產塊
+
+防禦機制:
+
+1. 未來時間限制
+   - 區塊時間戳不能超過網路時間 + 2 小時
+   - 節點會拒絕未來區塊
+
+2. 過去時間限制
+   - 時間戳必須大於前 11 個區塊的中位數
+   - 防止時間倒退
+
+3. 難度調整限制
+   - 單次調整最多 4 倍
+   - 限制極端操縱的影響
+
+4. 長期安全
+   - 2016 個區塊的平均稀釋操縱影響
+   - 需要持續控制才能有意義地影響</code></pre>
+
+  <h3>算力波動</h3>
+  <pre><code class="language-text" is:raw>算力突然變化的影響:
+
+情況 1: 算力大幅增加
+- 區塊產生加快
+- 等待下次調整 (最多 2016 區塊)
+- 調整後恢復 10 分鐘間隔
+
+情況 2: 算力大幅下降
+- 區塊產生變慢
+- 可能需要數週才到調整點
+- 這期間網路效能下降
+
+2021 中國禁令案例:
+- 約 50% 算力離線
+- 區塊時間增加到 ~20 分鐘
+- 難度下降 28% 後恢復正常
+
+這是 4× 限制的原因之一:
+防止算力驟降後難度調整過度</code></pre>
+
+  <h2 id="alternatives">替代機制</h2>
+
+  <h3>其他幣種的方法</h3>
+  <pre><code class="language-text" is:raw>其他難度調整算法:
+
+1. Bitcoin Cash (BCH)
+   - ASERT (絕對時間目標計算)
+   - 每個區塊調整
+   - 更平滑的難度曲線
+
+2. Ethereum (PoW 時期)
+   - 每個區塊調整
+   - 目標 15 秒區塊時間
+   - 包含難度炸彈
+
+3. Litecoin
+   - 類似比特幣
+   - 2.5 分鐘區塊時間
+   - 相同的 2016 區塊週期
+
+4. Monero
+   - 每個區塊調整
+   - 使用最近 720 個區塊
+   - 更快響應算力變化
+
+比特幣的保守選擇:
+- 穩定性優先
+- 防止遊戲機制
+- 14 年驗證有效</code></pre>
+
+  <h2 id="monitoring">監控與工具</h2>
+  <pre><code class="language-typescript" is:raw>// 難度監控工具
+interface DifficultyStats {
+  currentDifficulty: number;
+  nextEstimatedDifficulty: number;
+  percentChange: number;
+  blocksUntilAdjustment: number;
+  estimatedTimeUntilAdjustment: number;
+  averageBlockTime: number;
+  hashrate: number;
+}
+
+async function getDifficultyStats(
+  rpc: BitcoinRPC
+): Promise&lt;DifficultyStats&gt; {
+  const info = await rpc.call('getblockchaininfo');
+  const difficulty = info.difficulty;
+  const height = info.blocks;
+
+  // 獲取最近區塊
+  const recentBlocks = [];
+  for (let i = 0; i &lt; 144; i++) { // 最近約 1 天
+    const hash = await rpc.call('getblockhash', [height - i]);
+    const block = await rpc.call('getblockheader', [hash]);
+    recentBlocks.push(block);
+  }
+
+  // 計算平均區塊時間
+  const avgBlockTime =
+    (recentBlocks[0].time - recentBlocks[recentBlocks.length - 1].time) /
+    (recentBlocks.length - 1);
+
+  // 估算算力 (H/s)
+  // hashrate = difficulty × 2^32 / block_time
+  const hashrate = (difficulty * Math.pow(2, 32)) / avgBlockTime;
+
+  // 預測下次調整
+  const prediction = predictNextAdjustment(
+    height,
+    difficulty,
+    recentBlocks.map(b => b.time)
+  );
+
+  return {
+    currentDifficulty: difficulty,
+    nextEstimatedDifficulty: prediction.estimatedNewDifficulty,
+    percentChange: prediction.percentChange,
+    blocksUntilAdjustment: prediction.blocksUntilAdjustment,
+    estimatedTimeUntilAdjustment:
+      prediction.blocksUntilAdjustment * avgBlockTime,
+    averageBlockTime: avgBlockTime,
+    hashrate
+  };
+}</code></pre>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/Difficulty" target="_blank" rel="noopener noreferrer">Difficulty Wiki</a></li>
+    <li><a href="https://www.blockchain.com/charts/difficulty" target="_blank" rel="noopener noreferrer">Difficulty Chart</a></li>
+    <li><a href="/tech/bitcoin-core/consensus">Consensus</a></li>
+    <li><a href="/tech/bitcoin-core/mining">Mining</a></li>
+    <li><a href="/tech/bitcoin-core/block-structure">Block Structure</a></li>
+  </ul>
+</ArticleLayout>
