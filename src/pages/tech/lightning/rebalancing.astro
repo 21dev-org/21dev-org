@@ -1,0 +1,401 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Rebalancing 通道再平衡"
+  description="了解閃電網路通道再平衡技術，如何通過循環支付、Submarine Swaps 等方法優化流動性分佈。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Rebalancing' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Penalty Transactions', href: '/tech/lightning/penalty-tx' }}
+  nextPage={{ title: 'Lightning Address', href: '/tech/lightning/lightning-address' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是通道再平衡？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    通道再平衡是將閃電網路通道中的流動性從一側移動到另一側的過程。
+    當通道變得「不平衡」（一側餘額過高或過低）時，會影響支付路由能力。
+    再平衡可以恢復通道的雙向支付能力，提高整體網路效率。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心問題：</strong>
+      閃電網路通道是單向的容量池。如果你有 1 BTC 的出站容量但沒有入站容量，
+      你可以發送但無法接收。再平衡讓你調整這個比例。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">流動性問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道容量示例：
+
+初始狀態（剛開通道，單方資助）：
+┌─────────────────────────────────────────────────────────┐
+│ 你 ←────────────────[1 BTC]────────────────→ 對方      │
+│                                                         │
+│ 你的餘額：1 BTC (100% 出站)                             │
+│ 對方餘額：0 BTC (0% 入站)                               │
+└─────────────────────────────────────────────────────────┘
+
+問題：你可以發送 1 BTC，但無法接收任何支付！
+
+發送 0.5 BTC 後：
+┌─────────────────────────────────────────────────────────┐
+│ 你 ←──────[0.5 BTC]──┼──[0.5 BTC]──────→ 對方          │
+│                                                         │
+│ 你的餘額：0.5 BTC (50% 出站)                            │
+│ 對方餘額：0.5 BTC (50% 入站)                            │
+└─────────────────────────────────────────────────────────┘
+
+平衡！雙向都可以發送/接收 0.5 BTC
+
+持續接收後：
+┌─────────────────────────────────────────────────────────┐
+│ 你 ←──[0.9 BTC]──┼──────[0.1 BTC]──────→ 對方          │
+│                                                         │
+│ 你的餘額：0.9 BTC (90% 出站)                            │
+│ 對方餘額：0.1 BTC (10% 入站)                            │
+└─────────────────────────────────────────────────────────┘
+
+問題：入站容量不足，難以接收大額支付！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">再平衡方法</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 循環支付 (Circular Rebalancing)</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`循環支付原理：
+
+通過其他通道繞回自己，移動流動性
+
+你的節點有多個通道：
+┌─────────────────────────────────────────────────────────┐
+│                      [路由節點 B]                       │
+│                     /            \\                      │
+│                    /              \\                     │
+│        需要出站   /                \\  有出站           │
+│                  /                  \\                   │
+│              [你]                    [路由節點 C]        │
+│                  \\                  /                   │
+│        有入站    \\                /   需要入站         │
+│                    \\              /                     │
+│                     [路由節點 D]                        │
+└─────────────────────────────────────────────────────────┘
+
+循環支付路徑：
+你 → B → C → D → 你
+
+效果：
+├── 你→B 通道：出站減少，入站增加
+├── B→C 通道：不變（只是路由）
+├── C→D 通道：不變（只是路由）
+└── D→你 通道：入站減少，出站增加
+
+成本：路徑上每個節點的路由費用`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. Submarine Swaps</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Submarine Swap 再平衡：
+
+獲取入站容量（Loop In）：
+┌─────────────────────────────────────────────────────────┐
+│ 鏈上 BTC ──────────────────> Swap 服務                  │
+│                                                         │
+│              LN 支付                                    │
+│ Swap 服務 ──────────────────> 你的節點                  │
+└─────────────────────────────────────────────────────────┘
+
+結果：
+├── 你消耗鏈上 BTC
+├── 獲得閃電網路入站容量
+└── 需要支付 Swap 服務費
+
+獲取出站容量（Loop Out）：
+┌─────────────────────────────────────────────────────────┐
+│ 你的節點 ──────LN 支付──────> Swap 服務                 │
+│                                                         │
+│                  鏈上 BTC                               │
+│ Swap 服務 ──────────────────> 你的鏈上地址              │
+└─────────────────────────────────────────────────────────┘
+
+結果：
+├── 你消耗閃電網路餘額
+├── 獲得鏈上 BTC + 出站容量恢復
+└── 需要支付 Swap 服務費 + 鏈上手續費
+
+服務：Lightning Loop (LND)、Boltz Exchange 等`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">3. 購買入站容量</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`入站容量市場：
+
+服務類型：
+
+1. LSP (Lightning Service Provider)
+   ├── 向你開通道
+   ├── 他們出資，你獲得入站
+   └── 例：Voltage、Breez LSP
+
+2. 流動性市場
+   ├── Magma (Amboss)
+   ├── Lightning Pool (LND)
+   └── 節點運營者競標提供入站
+
+3. 通道租賃
+   ├── 支付租金獲得特定時間的入站
+   └── 租期結束後對方可能關閉通道
+
+Lightning Pool 示例：
+┌────────────────────────────────────────────────────────┐
+│ 拍賣市場：                                             │
+│                                                        │
+│ 買方（需要入站）      賣方（提供入站）                 │
+│   ├── 出價金額           ├── 要價金額                  │
+│   ├── 需要容量           ├── 可提供容量                │
+│   └── 租期               └── 最低租期                  │
+│                                                        │
+│ 匹配後：                                               │
+│   賣方向買方開通道，買方支付租金                       │
+└────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">再平衡策略</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">被動再平衡</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過路由費用激勵來自然平衡。提高「過剩方向」的費率，降低「稀缺方向」的費率。
+        讓市場自然將流動性引導到需要的地方。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">主動再平衡</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        定期檢查通道平衡度，當偏離目標比例時執行循環支付或 Swap。
+        可以自動化，但需要支付費用。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">混合策略</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        結合被動和主動方式。用費率調整作為主要手段，只在極端不平衡時主動再平衡。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自動化工具</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND 再平衡工具：
+
+1. bos (Balance of Satoshis)
+   bos rebalance --amount 100000 \\
+     --out <depleted_channel_id> \\
+     --in <full_channel_id>
+
+2. rebalance-lnd
+   rebalance.py -t <target_channel> \\
+     -s <source_channel> \\
+     -a 100000
+
+3. Lightning Terminal (自動化)
+   ├── 設定目標平衡比例
+   ├── 最大費用預算
+   └── 自動執行再平衡
+
+CLN 再平衡：
+
+1. c-lightning-rebalance 插件
+   lightning-cli rebalance -o <out_scid> \\
+     -i <in_scid> \\
+     -a 100000sat
+
+2. circular 插件
+   lightning-cli circular <amount> \\
+     <outgoing_channel> <incoming_channel>
+
+費用計算：
+成本 = Σ(每跳路由費) + 基礎費
+預期收益 > 成本 才值得再平衡`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">再平衡經濟學</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`再平衡成本效益分析：
+
+情境：
+├── 通道容量：1 BTC
+├── 當前狀態：90% 本地 / 10% 遠端
+├── 目標狀態：50% / 50%
+├── 需移動：0.4 BTC
+
+循環支付成本：
+├── 平均路由費：0.1%（1000 ppm）
+├── 路徑長度：3-5 跳
+├── 成本：0.4 BTC × 0.1% × 4 跳 = 0.0016 BTC
+└── 約 1600 sats / 萬 sats 移動
+
+Submarine Swap 成本：
+├── Swap 服務費：~0.5%
+├── 鏈上手續費：~2000 sats
+├── 成本：0.4 BTC × 0.5% + 2000 = ~22000 sats
+└── 更貴但更可靠
+
+什麼時候值得：
+
+                 路由收入預期
+再平衡價值 = ────────────────── > 再平衡成本
+               平衡維持時間
+
+如果每天能因為平衡的通道多賺 500 sats，
+那麼 1600 sats 的再平衡成本約 3 天回本。`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">找不到路徑</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        循環支付需要足夠的流動性路徑。如果網路流動性不足，可能找不到可行路徑。
+        嘗試分割成多次小額再平衡。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">費用過高</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        有時候循環路徑費用很高。設定最大費用限制，或等待更好的路徑。
+        非緊急時可以使用被動再平衡。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">1. 選擇好的對等節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        與活躍的路由節點建立通道，自然的支付流量會幫助維持平衡。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">2. 動態調整費率</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用費率作為信號，引導流量自然平衡通道，減少主動再平衡需求。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">3. 監控並設定閾值</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        設定平衡閾值（如 20%-80%），只在超出範圍時觸發再平衡。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">4. 計算成本效益</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        追蹤再平衡成本和由此帶來的額外路由收入，確保長期盈利。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Loop（Submarine Swaps）、Lightning Pool（流動性市場）、
+        bos 等第三方工具。Lightning Terminal 提供 UI。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">插件支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過 rebalance、circular 等插件支持。
+        也可使用 Boltz Exchange 等第三方 Swap 服務。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lightning.engineering/loop/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Loop</a>
+    </li>
+    <li>
+      • <a
+        href="https://lightning.engineering/pool/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Pool</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/submarine-swaps"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Submarine Swaps</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/alexbosworth/balanceofsatoshis"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Balance of Satoshis (bos)</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/lightning-address"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Address</a
+      >
+      如何讓閃電支付像發郵件一樣簡單。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,378 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Reserve 通道儲備金"
+  description="了解通道儲備金如何防止通道參與方作弊，確保雙方在欺詐時都有經濟損失。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Reserve' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Anchor Outputs', href: '/tech/lightning/anchor-outputs' }}
+  nextPage={{ title: 'Penalty Transactions', href: '/tech/lightning/penalty-tx' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Channel Reserve？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Channel Reserve（通道儲備金）是閃電網路的安全機制，強制每一方在通道中保留最低餘額。
+    這確保即使一方試圖廣播舊的承諾交易（欺詐行為），他們仍有資金會因懲罰而損失，
+    形成經濟威懾防止作弊。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心原則：</strong>
+      儲備金確保「作弊有代價」。如果你沒有任何資金在通道裡，廣播舊狀態對你沒有風險。
+      有了儲備金，你總是有東西會失去。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要儲備金</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`沒有儲備金的風險：
+
+情境：Alice 和 Bob 開通道，Alice 投入 1 BTC
+
+初始狀態：
+┌─────────────────────────────────────┐
+│ Alice: 1.0 BTC    Bob: 0 BTC        │  State #0
+└─────────────────────────────────────┘
+
+Alice 支付給 Bob 0.5 BTC：
+┌─────────────────────────────────────┐
+│ Alice: 0.5 BTC    Bob: 0.5 BTC      │  State #1
+└─────────────────────────────────────┘
+
+Alice 又支付 0.5 BTC：
+┌─────────────────────────────────────┐
+│ Alice: 0 BTC      Bob: 1.0 BTC      │  State #2
+└─────────────────────────────────────┘
+
+問題：Alice 現在餘額為 0
+├── Alice 廣播 State #1（作弊）
+├── 即使被懲罰，Alice 本來就是 0
+├── Alice 沒有損失！
+└── 可能還能搶到 0.5 BTC
+
+有儲備金的情況：
+┌─────────────────────────────────────┐
+│ Alice: 0.01 BTC   Bob: 0.99 BTC     │  State #2
+│ (儲備金)                             │
+└─────────────────────────────────────┘
+
+├── Alice 不能花費到 0
+├── 如果 Alice 作弊，會失去 0.01 BTC
+└── 經濟威懾有效！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金計算</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`儲備金計算規則（BOLT 2）：
+
+channel_reserve = max(dust_limit, 1% of channel_capacity)
+
+示例：1 BTC 通道
+├── 通道容量：100,000,000 sats
+├── 1% 儲備金：1,000,000 sats (0.01 BTC)
+└── 每方最少保留：1,000,000 sats
+
+實際可用容量：
+┌─────────────────────────────────────────────────────────┐
+│ 1 BTC 通道                                              │
+├─────────────────────────────────────────────────────────┤
+│ [Alice 儲備] [    可用容量    ] [Bob 儲備]              │
+│   1%              98%              1%                    │
+│ 0.01 BTC       0.98 BTC        0.01 BTC                 │
+└─────────────────────────────────────────────────────────┘
+
+參數協商：
+┌────────────────────────────────────────────────────────┐
+│ open_channel 訊息                                      │
+├────────────────────────────────────────────────────────┤
+│ channel_reserve_satoshis: 對方必須保留的最低餘額       │
+│ dust_limit_satoshis: 最小有效輸出（約 546 sats）       │
+└────────────────────────────────────────────────────────┘
+
+約束條件：
+channel_reserve >= dust_limit
+channel_reserve >= 1% of funding_satoshis（建議）
+to_local + to_remote >= 2 * channel_reserve`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金與支付</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`支付限制示例：
+
+通道狀態：
+├── 通道容量：1 BTC
+├── Alice 餘額：0.6 BTC
+├── Bob 餘額：0.4 BTC
+├── 儲備金要求：0.01 BTC（每方）
+└── Alice 可發送最大：0.6 - 0.01 = 0.59 BTC
+
+支付流程檢查：
+
+Alice 想發送 0.55 BTC 給 Bob：
+┌─────────────────────────────────────┐
+│ 支付前    Alice: 0.6   Bob: 0.4    │
+│ 支付後    Alice: 0.05  Bob: 0.95   │
+│ 儲備檢查  0.05 >= 0.01  ✓ 通過     │
+└─────────────────────────────────────┘
+
+Alice 想發送 0.595 BTC 給 Bob：
+┌─────────────────────────────────────┐
+│ 支付前    Alice: 0.6   Bob: 0.4    │
+│ 支付後    Alice: 0.005 Bob: 0.995  │
+│ 儲備檢查  0.005 < 0.01  ✗ 拒絕     │
+└─────────────────────────────────────┘
+
+錯誤訊息：
+  insufficient_balance 或
+  amount_below_minimum`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">單方開通道的特殊情況</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`單方資助通道的儲備金：
+
+Alice 單方資助 1 BTC 通道：
+┌─────────────────────────────────────┐
+│ Alice: 1.0 BTC    Bob: 0 BTC        │
+│ 儲備要求：        ↑                 │
+│ Alice: 0.01 BTC   Bob: 0.01 BTC     │
+└─────────────────────────────────────┘
+
+問題：Bob 餘額為 0，低於儲備金！
+
+解決方案：
+1. 儲備金要求是「一旦有資金就必須保留」
+2. Bob 初始餘額為 0 是允許的
+3. 一旦 Bob 收到任何資金，必須維持儲備
+
+流程：
+State 0: Alice 1.0, Bob 0      ← Bob 免儲備（無資金）
+State 1: Alice 0.9, Bob 0.1    ← Bob 現在必須保留 0.01
+State 2: Alice 0.89, Bob 0.11  ← Bob 不能花到 0.01 以下
+
+Bob 最大可花費：0.11 - 0.01 = 0.1 BTC
+
+BOLT 2 規定：
+「如果 to_local_msat < channel_reserve_satoshis*1000
+ 且 to_local_msat != 0」
+則違反儲備金要求。`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金與 HTLC</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 和儲備金的交互：
+
+情境：
+├── Alice 餘額：0.05 BTC
+├── 儲備金：0.01 BTC
+├── 可用餘額：0.04 BTC
+└── Alice 想路由一個 0.03 BTC 的 HTLC
+
+步驟 1：添加 HTLC
+┌─────────────────────────────────────────────┐
+│ Alice 餘額: 0.05 → 0.02 + 0.03 (HTLC)      │
+│ 剩餘餘額 0.02 >= 儲備 0.01  ✓               │
+└─────────────────────────────────────────────┘
+
+步驟 2a：HTLC 成功（Bob 獲得資金）
+┌─────────────────────────────────────────────┐
+│ Alice: 0.02    Bob: +0.03                   │
+│ Alice 0.02 >= 0.01  ✓                       │
+└─────────────────────────────────────────────┘
+
+步驟 2b：HTLC 失敗（資金返回 Alice）
+┌─────────────────────────────────────────────┐
+│ Alice: 0.02 + 0.03 = 0.05                   │
+│ Alice 0.05 >= 0.01  ✓                       │
+└─────────────────────────────────────────────┘
+
+注意：
+- HTLC 進行中時，儲備金仍必須滿足
+- 不能用儲備金來「墊付」HTLC
+- 大額 HTLC 可能因儲備金限制而失敗`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金與通道關閉</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">協商關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        雙方同意關閉時，儲備金限制不再適用。最終餘額可以自由分配，
+        包括讓一方餘額降到儲備金以下。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">強制關閉</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        廣播承諾交易時，儲備金作為輸出存在。如果是欺詐，這些資金會被對方懲罰交易取走。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">儲備金調整</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`動態儲備金（部分實現支持）：
+
+問題：固定 1% 儲備金可能過高或過低
+
+小通道：10,000 sats
+├── 1% = 100 sats（可能低於 dust limit）
+└── 實際用 dust limit（546 sats）
+
+大通道：10 BTC
+├── 1% = 0.1 BTC（可能過高）
+└── 鎖定太多流動性
+
+解決方案：
+1. 協商時設定合理值
+2. 使用 option_channel_reserve（如果支持）
+3. 接受對方的儲備要求或拒絕開通道
+
+channel_update 訊息（BOLT 1.1 提案）：
+┌────────────────────────────────────────────────────────┐
+│ 允許在通道生命週期內調整儲備金                         │
+│ - 增加：提高安全性                                     │
+│ - 減少：釋放流動性                                     │
+│ - 需要雙方同意                                         │
+└────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">為什麼我不能花完通道餘額？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        儲備金要求你保留最低餘額。如果你的餘額是 0.1 BTC，儲備金是 0.01 BTC，
+        你最多只能花費 0.09 BTC。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對方要求很高的儲備金怎麼辦？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        你可以拒絕開通道。儲備金要求在 open_channel/accept_channel 訊息中協商，
+        如果不同意可以不接受。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">儲備金會退還嗎？</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道關閉時，儲備金會包含在最終結算中。協商關閉時你會拿回儲備金。
+        只有在你作弊時才會被懲罰交易沒收。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與其他機制的關係</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`儲備金與懲罰機制：
+
+┌─────────────────────────────────────────────────────────┐
+│                    安全機制層次                          │
+├─────────────────────────────────────────────────────────┤
+│ 1. Channel Reserve（儲備金）                            │
+│    └── 確保作弊者有資金可被沒收                         │
+│                                                         │
+│ 2. Revocation Keys（撤銷密鑰）                          │
+│    └── 讓受害者能識別和懲罰舊狀態                       │
+│                                                         │
+│ 3. Penalty Transaction（懲罰交易）                      │
+│    └── 實際沒收作弊者的全部通道資金                     │
+│                                                         │
+│ 4. Watchtower（瞭望塔）                                 │
+│    └── 即使離線也能監控和執行懲罰                       │
+└─────────────────────────────────────────────────────────┘
+
+Eltoo 模式下：
+├── 不使用懲罰機制
+├── 儲備金的重要性降低
+└── 但仍可能用於其他目的（如手續費保證）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >所有實現</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">必須支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Channel Reserve 是 BOLT 2 規範的強制要求，所有閃電網路實現都必須支持。
+        LND、CLN、Eclair、LDK 都實現了儲備金機制。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/02-peer-protocol.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 2 - Peer Protocol</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/penalty-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">懲罰交易</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/penalty-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">懲罰交易</a
+      >
+      如何實際執行對作弊者的經濟制裁。
+    </p>
+  </div>
+</ArticleLayout>

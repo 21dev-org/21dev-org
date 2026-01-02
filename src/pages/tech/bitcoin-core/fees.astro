@@ -1,0 +1,541 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Transaction Fees"
+  description="交易手續費：費率估算、RBF 和 CPFP 機制詳解"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Transaction Fees' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+  nextPage={{ title: 'Coin Selection', href: '/tech/bitcoin-core/coin-selection' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    比特幣交易手續費是用戶支付給礦工的費用，以激勵他們將交易打包進區塊。
+    手續費由交易大小（虛擬字節）和當前網路擁堵程度決定。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>手續費計算：</strong>
+      手續費 = 費率 (sat/vB) × 交易虛擬大小 (vBytes)。
+      礦工優先選擇費率高的交易打包。
+    </p>
+  </div>
+
+  <h2 id="calculation">手續費計算</h2>
+
+  <h3>交易大小</h3>
+  <pre><code class="language-text" is:raw>交易大小單位:
+
+1. Bytes (實際大小)
+   - 交易的原始字節數
+   - SegWit 前的計算方式
+
+2. Weight Units (WU)
+   - 非 witness 數據: 1 byte = 4 WU
+   - Witness 數據: 1 byte = 1 WU
+   - 最大區塊: 4,000,000 WU
+
+3. Virtual Bytes (vB)
+   - vBytes = Weight / 4
+   - 手續費計算的標準單位
+
+範例 (P2WPKH 交易):
+┌─────────────────────────────────────────────┐
+│ 組件              │ Bytes │ WU    │ vBytes │
+├─────────────────────────────────────────────┤
+│ 非 witness        │   87  │  348  │   87   │
+│ Witness           │  107  │  107  │ 26.75  │
+├─────────────────────────────────────────────┤
+│ 總計              │  194  │  455  │ 113.75 │
+└─────────────────────────────────────────────┘</code></pre>
+
+  <h3>常見交易大小</h3>
+  <pre><code class="language-text" is:raw>典型交易大小 (vBytes):
+
+P2PKH (Legacy):
+- 1 輸入 1 輸出: ~192 vB
+- 1 輸入 2 輸出: ~226 vB
+- 2 輸入 2 輸出: ~374 vB
+
+P2WPKH (Native SegWit):
+- 1 輸入 1 輸出: ~109 vB
+- 1 輸入 2 輸出: ~141 vB
+- 2 輸入 2 輸出: ~208 vB
+
+P2TR (Taproot):
+- 1 輸入 1 輸出: ~111 vB
+- 1 輸入 2 輸出: ~154 vB
+- 2 輸入 2 輸出: ~211 vB
+
+估算公式:
+vBytes ≈ 10.5 + (inputs × 68) + (outputs × 31)  # P2WPKH
+vBytes ≈ 10.5 + (inputs × 57.5) + (outputs × 43) # P2TR</code></pre>
+
+  <h2 id="estimation">費率估算</h2>
+
+  <h3>Bitcoin Core 估算</h3>
+  <pre><code class="language-bash" is:raw># 估算確認所需費率
+bitcoin-cli estimatesmartfee 6      # 6 區塊內確認
+bitcoin-cli estimatesmartfee 144    # 1 天內確認 (144 區塊)
+
+# 結果
+{
+  "feerate": 0.00012345,  # BTC/kvB
+  "blocks": 6
+}
+
+# 轉換為 sat/vB
+# 0.00012345 BTC/kvB = 12.345 sat/vB</code></pre>
+
+  <h3>估算算法</h3>
+  <pre><code class="language-text" is:raw>Bitcoin Core 費率估算:
+
+1. 追蹤歷史交易
+   - 記錄交易進入 mempool 的費率
+   - 記錄交易被確認時的區塊數
+
+2. 分桶統計
+   - 按費率範圍分桶
+   - 統計各桶的確認時間分佈
+
+3. 預測
+   - 給定目標確認區塊數
+   - 找到成功率 &gt; 95% 的最低費率
+
+限制:
+- 需要運行一段時間收集數據
+- 極端情況下可能不準確
+- 不考慮未來 mempool 變化</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>interface FeeEstimate {
+  fastestFee: number;    // 下一區塊
+  halfHourFee: number;   // ~30 分鐘
+  hourFee: number;       // ~1 小時
+  economyFee: number;    // 經濟模式
+  minimumFee: number;    // 最低中繼費率
+}
+
+// 從多個來源獲取費率估算
+async function getFeeEstimates(): Promise&lt;FeeEstimate&gt; {
+  const sources = [
+    fetchMempoolSpace(),
+    fetchBitcoinCore(),
+    fetchBlockstream(),
+  ];
+
+  const estimates = await Promise.all(sources);
+
+  // 取中位數作為估算
+  return {
+    fastestFee: median(estimates.map(e =&gt; e.fastestFee)),
+    halfHourFee: median(estimates.map(e =&gt; e.halfHourFee)),
+    hourFee: median(estimates.map(e =&gt; e.hourFee)),
+    economyFee: median(estimates.map(e =&gt; e.economyFee)),
+    minimumFee: 1,  // 最低 1 sat/vB
+  };
+}
+
+// 計算交易手續費
+function calculateFee(
+  txVsize: number,
+  feeRate: number  // sat/vB
+): bigint {
+  return BigInt(Math.ceil(txVsize * feeRate));
+}
+
+// 估算交易大小
+function estimateTxVsize(
+  inputCount: number,
+  outputCount: number,
+  inputType: 'p2pkh' | 'p2wpkh' | 'p2tr' = 'p2wpkh'
+): number {
+  const overhead = 10.5;  // version + locktime + counts
+
+  const inputSize = {
+    p2pkh: 148,
+    p2wpkh: 68,
+    p2tr: 57.5,
+  }[inputType];
+
+  const outputSize = {
+    p2pkh: 34,
+    p2wpkh: 31,
+    p2tr: 43,
+  }[inputType];
+
+  return Math.ceil(
+    overhead +
+    inputCount * inputSize +
+    outputCount * outputSize
+  );
+}</code></pre>
+
+  <h2 id="rbf">RBF (Replace-By-Fee)</h2>
+
+  <h3>BIP-125 規則</h3>
+  <pre><code class="language-text" is:raw>RBF (Replace-By-Fee):
+允許用更高費率的交易替換未確認交易
+
+啟用條件:
+- 原交易至少一個輸入的 nSequence &lt; 0xFFFFFFFE
+
+替換規則 (BIP-125):
+1. 新交易必須花費原交易的所有輸入
+2. 新交易費率必須高於原交易
+3. 新交易總費用 &gt;= 原交易 + 增量中繼費
+4. 不能替換超過 100 筆後代交易
+5. 新交易必須支付足夠費用覆蓋頻寬成本
+
+nSequence 值:
+- 0xFFFFFFFF: 禁用 RBF 和時間鎖
+- 0xFFFFFFFE: 禁用 RBF，啟用時間鎖
+- &lt; 0xFFFFFFFE: 啟用 RBF</code></pre>
+
+  <h3>Full RBF</h3>
+  <pre><code class="language-text" is:raw>Full RBF (Bitcoin Core 24.0+):
+
+傳統 Opt-in RBF:
+- 只有明確標記的交易可替換
+- nSequence &lt; 0xFFFFFFFE
+
+Full RBF:
+- 所有未確認交易都可替換
+- 無論 nSequence 值
+- 配置: -mempoolfullrbf=1
+
+爭議:
+- 支持者: 更真實反映礦工行為
+- 反對者: 影響 0 確認交易場景
+
+實際情況:
+- 大多數礦工啟用 full RBF
+- 0 確認交易不應被信任</code></pre>
+
+  <h3>RBF 實作</h3>
+  <pre><code class="language-typescript" is:raw>// 創建 RBF 可替換交易
+function createRBFTransaction(
+  inputs: UTXO[],
+  outputs: Output[],
+  feeRate: number
+): Transaction {
+  return {
+    version: 2,
+    inputs: inputs.map(utxo =&gt; ({
+      txid: utxo.txid,
+      vout: utxo.vout,
+      scriptSig: Buffer.alloc(0),
+      sequence: 0xFFFFFFFD,  // 啟用 RBF
+    })),
+    outputs,
+    locktime: 0,
+  };
+}
+
+// 創建 RBF 替換交易
+function createRBFReplacement(
+  originalTx: Transaction,
+  newFeeRate: number,
+  newOutputs?: Output[]
+): Transaction {
+  // 計算原交易費用
+  const originalFee = calculateTxFee(originalTx);
+  const originalVsize = calculateVsize(originalTx);
+  const originalFeeRate = Number(originalFee) / originalVsize;
+
+  // 確保新費率更高
+  if (newFeeRate &lt;= originalFeeRate) {
+    throw new Error('New fee rate must be higher');
+  }
+
+  // 創建替換交易
+  const outputs = newOutputs || originalTx.outputs;
+  const newTx = {
+    version: 2,
+    inputs: originalTx.inputs.map(input =&gt; ({
+      ...input,
+      sequence: 0xFFFFFFFD,
+    })),
+    outputs,
+    locktime: 0,
+  };
+
+  // 調整找零輸出以匹配新費率
+  adjustChangeOutput(newTx, newFeeRate);
+
+  return newTx;
+}
+
+// Bitcoin Core RPC
+async function bumpFee(
+  rpc: RPCClient,
+  txid: string,
+  options?: { fee_rate?: number; replaceable?: boolean }
+): Promise&lt;{ txid: string; origfee: number; fee: number }&gt; {
+  return rpc.call('bumpfee', [txid, options]);
+}</code></pre>
+
+  <h2 id="cpfp">CPFP (Child-Pays-For-Parent)</h2>
+
+  <h3>基本概念</h3>
+  <pre><code class="language-text" is:raw>CPFP (Child-Pays-For-Parent):
+通過高費率子交易提升低費率父交易的確認優先級
+
+原理:
+┌─────────────────────────────────────┐
+│ 父交易 (低費率)                     │
+│ Fee: 1000 sat, Size: 200 vB         │
+│ Fee Rate: 5 sat/vB                  │
+└─────────────────┬───────────────────┘
+                  │ 花費父交易輸出
+                  ▼
+┌─────────────────────────────────────┐
+│ 子交易 (高費率)                     │
+│ Fee: 4000 sat, Size: 100 vB         │
+│ Fee Rate: 40 sat/vB                 │
+└─────────────────────────────────────┘
+
+Package Fee Rate:
+(1000 + 4000) / (200 + 100) = 16.67 sat/vB
+
+礦工會一起打包父子交易以獲得更高收益</code></pre>
+
+  <h3>CPFP 實作</h3>
+  <pre><code class="language-typescript" is:raw>interface CPFPContext {
+  parentTx: Transaction;
+  parentFee: bigint;
+  parentVsize: number;
+  targetFeeRate: number;
+}
+
+// 計算 CPFP 子交易所需費用
+function calculateCPFPFee(
+  ctx: CPFPContext,
+  childVsize: number
+): bigint {
+  const { parentFee, parentVsize, targetFeeRate } = ctx;
+
+  // 總費用 = 目標費率 × 總大小
+  const totalVsize = parentVsize + childVsize;
+  const totalFeeNeeded = BigInt(Math.ceil(totalVsize * targetFeeRate));
+
+  // 子交易需要補足差額
+  const childFee = totalFeeNeeded - parentFee;
+
+  // 確保子交易費用為正
+  if (childFee &lt;= 0n) {
+    return BigInt(Math.ceil(childVsize * targetFeeRate));
+  }
+
+  return childFee;
+}
+
+// 創建 CPFP 子交易
+function createCPFPChild(
+  parentTx: Transaction,
+  outputIndex: number,  // 要花費的父交易輸出
+  destination: Uint8Array,
+  targetFeeRate: number
+): Transaction {
+  const parentTxid = calculateTxid(parentTx);
+  const parentOutput = parentTx.outputs[outputIndex];
+  const parentVsize = calculateVsize(parentTx);
+  const parentFee = calculateTxFee(parentTx);
+
+  // 估算子交易大小 (1 輸入 1 輸出)
+  const childVsize = estimateTxVsize(1, 1, 'p2wpkh');
+
+  // 計算所需費用
+  const childFee = calculateCPFPFee(
+    { parentTx, parentFee, parentVsize, targetFeeRate },
+    childVsize
+  );
+
+  // 子交易輸出金額 = 父交易輸出 - 子交易費用
+  const outputValue = parentOutput.value - childFee;
+
+  if (outputValue &lt;= 546n) {  // dust threshold
+    throw new Error('Output would be dust after CPFP fee');
+  }
+
+  return {
+    version: 2,
+    inputs: [{
+      txid: parentTxid,
+      vout: outputIndex,
+      scriptSig: Buffer.alloc(0),
+      sequence: 0xFFFFFFFD,
+    }],
+    outputs: [{
+      value: outputValue,
+      scriptPubKey: destination,
+    }],
+    locktime: 0,
+  };
+}</code></pre>
+
+  <h2 id="package-relay">Package Relay</h2>
+  <pre><code class="language-text" is:raw>Package Relay (進行中):
+
+問題:
+- 當前 mempool 單獨評估每筆交易
+- 低於最低費率的父交易無法進入 mempool
+- CPFP 無法工作
+
+解決方案:
+- 允許提交交易包
+- 整體評估包的費率
+- 父交易可低於最低費率
+
+狀態:
+- Bitcoin Core 25.0+ 部分支持
+- 完整 package relay 仍在開發
+
+用途:
+- 閃電網路 anchor outputs
+- 更靈活的 CPFP</code></pre>
+
+  <h2 id="strategies">費率策略</h2>
+
+  <h3>選擇策略</h3>
+  <pre><code class="language-typescript" is:raw>type Priority = 'high' | 'medium' | 'low' | 'economy';
+
+interface FeeStrategy {
+  targetBlocks: number;
+  maxFeeRate: number;
+  allowRBF: boolean;
+}
+
+const strategies: Record&lt;Priority, FeeStrategy&gt; = {
+  high: {
+    targetBlocks: 1,
+    maxFeeRate: 500,  // sat/vB
+    allowRBF: true,
+  },
+  medium: {
+    targetBlocks: 6,
+    maxFeeRate: 100,
+    allowRBF: true,
+  },
+  low: {
+    targetBlocks: 144,  // ~1 day
+    maxFeeRate: 20,
+    allowRBF: true,
+  },
+  economy: {
+    targetBlocks: 1008,  // ~1 week
+    maxFeeRate: 5,
+    allowRBF: true,
+  },
+};
+
+async function selectFeeRate(
+  priority: Priority,
+  estimates: FeeEstimate
+): Promise&lt;number&gt; {
+  const strategy = strategies[priority];
+
+  let feeRate: number;
+  switch (priority) {
+    case 'high':
+      feeRate = estimates.fastestFee;
+      break;
+    case 'medium':
+      feeRate = estimates.halfHourFee;
+      break;
+    case 'low':
+      feeRate = estimates.hourFee;
+      break;
+    case 'economy':
+      feeRate = estimates.economyFee;
+      break;
+  }
+
+  // 不超過最大限制
+  return Math.min(feeRate, strategy.maxFeeRate);
+}</code></pre>
+
+  <h3>動態調整</h3>
+  <pre><code class="language-typescript" is:raw>// 監控交易確認狀態並自動調整
+class FeeMonitor {
+  private pendingTxs: Map&lt;string, PendingTx&gt; = new Map();
+
+  async monitorAndBump(
+    rpc: RPCClient,
+    txid: string,
+    options: {
+      maxFeeRate: number;
+      targetBlocks: number;
+      checkInterval: number;  // ms
+    }
+  ): Promise&lt;string&gt; {
+    const startBlock = await rpc.call('getblockcount');
+    let currentTxid = txid;
+
+    return new Promise((resolve, reject) =&gt; {
+      const interval = setInterval(async () =&gt; {
+        try {
+          // 檢查是否已確認
+          const tx = await rpc.call('gettransaction', [currentTxid]);
+          if (tx.confirmations &gt; 0) {
+            clearInterval(interval);
+            resolve(currentTxid);
+            return;
+          }
+
+          // 檢查是否需要加速
+          const currentBlock = await rpc.call('getblockcount');
+          const elapsed = currentBlock - startBlock;
+
+          if (elapsed &gt;= options.targetBlocks / 2) {
+            // 超過一半時間還沒確認，嘗試 RBF
+            const newEstimate = await rpc.call('estimatesmartfee', [
+              options.targetBlocks - elapsed,
+            ]);
+
+            const result = await rpc.call('bumpfee', [currentTxid, {
+              fee_rate: Math.min(
+                newEstimate.feerate * 100000,
+                options.maxFeeRate
+              ),
+            }]);
+
+            currentTxid = result.txid;
+            console.log(`Bumped fee: ${txid} -&gt; ${currentTxid}`);
+          }
+        } catch (e) {
+          clearInterval(interval);
+          reject(e);
+        }
+      }, options.checkInterval);
+    });
+  }
+}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用 SegWit</strong>：P2WPKH/P2TR 比 Legacy 節省 30-50% 費用</li>
+    <li><strong>啟用 RBF</strong>：允許後續調整費率</li>
+    <li><strong>批量交易</strong>：合併多筆支付減少總大小</li>
+    <li><strong>UTXO 整合</strong>：低費率時整合小額 UTXO</li>
+    <li><strong>適時選擇</strong>：非緊急交易選擇低擁堵時段</li>
+    <li><strong>多源估算</strong>：參考多個費率估算來源</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki" target="_blank" rel="noopener noreferrer">BIP-125: Opt-in RBF</a></li>
+    <li><a href="https://mempool.space/" target="_blank" rel="noopener noreferrer">Mempool.space</a></li>
+    <li><a href="/tech/bitcoin-core/mempool">Mempool</a></li>
+    <li><a href="/tech/bitcoin-core/coin-selection">Coin Selection</a></li>
+    <li><a href="/tech/bitcoin-core/segwit">SegWit</a></li>
+  </ul>
+</ArticleLayout>

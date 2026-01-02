@@ -1,0 +1,502 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Sighash Types"
+  description="簽名雜湊類型：控制簽名覆蓋的交易部分"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Sighash Types' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Timelock', href: '/tech/bitcoin-core/timelock' }}
+  nextPage={{ title: 'Transaction', href: '/tech/bitcoin-core/transaction' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    簽名雜湊類型（Sighash Types）決定了簽名覆蓋交易的哪些部分。
+    不同的 sighash 類型允許創建部分可修改的交易，
+    這是許多高級協議（如 CoinJoin、原子交換）的基礎。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>重要性：</strong>
+      選擇正確的 sighash 類型對於交易安全至關重要。
+      錯誤的選擇可能允許他人修改交易並竊取資金。
+    </p>
+  </div>
+
+  <h2 id="types">Sighash 類型</h2>
+
+  <h3>基本類型</h3>
+  <pre><code class="language-text" is:raw>SIGHASH 類型:
+
+┌─────────────────┬───────┬────────────────────────────────┐
+│ 類型            │ 值    │ 描述                           │
+├─────────────────┼───────┼────────────────────────────────┤
+│ SIGHASH_ALL     │ 0x01  │ 簽名所有輸入和輸出             │
+│ SIGHASH_NONE    │ 0x02  │ 簽名所有輸入，不簽名任何輸出   │
+│ SIGHASH_SINGLE  │ 0x03  │ 簽名所有輸入，只簽名對應輸出   │
+└─────────────────┴───────┴────────────────────────────────┘
+
+修飾符:
+┌─────────────────────┬───────┬──────────────────────────────┐
+│ 修飾符              │ 值    │ 描述                         │
+├─────────────────────┼───────┼──────────────────────────────┤
+│ SIGHASH_ANYONECANPAY│ 0x80  │ 只簽名當前輸入，其他可修改   │
+└─────────────────────┴───────┴──────────────────────────────┘
+
+組合:
+SIGHASH_ALL | SIGHASH_ANYONECANPAY = 0x81
+SIGHASH_NONE | SIGHASH_ANYONECANPAY = 0x82
+SIGHASH_SINGLE | SIGHASH_ANYONECANPAY = 0x83</code></pre>
+
+  <h3>覆蓋範圍圖解</h3>
+  <pre><code class="language-text" is:raw>SIGHASH_ALL (0x01):
+簽名: 所有輸入 + 所有輸出
+┌─────────────┐     ┌─────────────┐
+│ Input 0 ████│     │ Output 0 ███│
+│ Input 1 ████│ ──▶ │ Output 1 ███│
+│ Input 2 ████│     │ Output 2 ███│
+└─────────────┘     └─────────────┘
+（最常用，最安全）
+
+SIGHASH_NONE (0x02):
+簽名: 所有輸入，無輸出
+┌─────────────┐     ┌─────────────┐
+│ Input 0 ████│     │ Output 0    │
+│ Input 1 ████│ ──▶ │ Output 1    │
+│ Input 2 ████│     │ Output 2    │
+└─────────────┘     └─────────────┘
+（危險！任何人可修改輸出）
+
+SIGHASH_SINGLE (0x03):
+簽名: 所有輸入 + 對應索引的輸出
+┌─────────────┐     ┌─────────────┐
+│ Input 0 ████│     │ Output 0 ███│ ← 只有這個
+│ Input 1 ████│ ──▶ │ Output 1    │
+│ Input 2 ████│     │ Output 2    │
+└─────────────┘     └─────────────┘
+
+SIGHASH_ALL | ANYONECANPAY (0x81):
+簽名: 當前輸入 + 所有輸出
+┌─────────────┐     ┌─────────────┐
+│ Input 0 ████│ ←   │ Output 0 ███│
+│ Input 1    │ ──▶ │ Output 1 ███│
+│ Input 2    │     │ Output 2 ███│
+└─────────────┘     └─────────────┘
+（眾籌場景）</code></pre>
+
+  <h2 id="details">詳細說明</h2>
+
+  <h3>SIGHASH_ALL (0x01)</h3>
+  <pre><code class="language-text" is:raw>SIGHASH_ALL:
+- 簽名所有輸入的 outpoint (txid + vout)
+- 簽名所有輸入的 sequence
+- 簽名所有輸出的 value 和 scriptPubKey
+- 簽名 version 和 locktime
+
+使用場景:
+- 標準交易
+- 需要完整保護的場景
+
+安全性: ★★★★★
+- 交易完全不可修改
+- 最安全的選擇</code></pre>
+
+  <h3>SIGHASH_NONE (0x02)</h3>
+  <pre><code class="language-text" is:raw>SIGHASH_NONE:
+- 簽名所有輸入
+- 不簽名任何輸出
+- 簽名者放棄對輸出的控制
+
+使用場景:
+- 授權他人決定資金去向
+- 委託交易（謹慎使用）
+
+安全性: ★☆☆☆☆
+- 任何人可以添加任意輸出
+- 極度危險，幾乎不使用</code></pre>
+
+  <h3>SIGHASH_SINGLE (0x03)</h3>
+  <pre><code class="language-text" is:raw>SIGHASH_SINGLE:
+- 簽名所有輸入
+- 只簽名與輸入索引相同的輸出
+- 其他輸出可被修改
+
+使用場景:
+- 原子交換
+- 部分簽名交易
+
+安全性: ★★★☆☆
+- 保護特定輸出
+- 需要理解用途
+
+Bug 歷史:
+如果輸入索引 &gt;= 輸出數量，會簽名固定值 0x01
+這是已知的協議 bug，不應依賴此行為</code></pre>
+
+  <h3>ANYONECANPAY 修飾符 (0x80)</h3>
+  <pre><code class="language-text" is:raw>SIGHASH_ANYONECANPAY:
+- 只簽名當前輸入
+- 其他輸入可被添加或修改
+
+組合效果:
+
+ALL | ANYONECANPAY (0x81):
+- 只簽名當前輸入
+- 簽名所有輸出
+- 用途: 眾籌（任何人可以添加輸入）
+
+NONE | ANYONECANPAY (0x82):
+- 只簽名當前輸入
+- 不簽名任何輸出
+- 用途: 捐贈（完全放棄控制）
+
+SINGLE | ANYONECANPAY (0x83):
+- 只簽名當前輸入
+- 只簽名對應輸出
+- 用途: 原子交換、彩色幣</code></pre>
+
+  <h2 id="legacy-vs-segwit">Legacy vs SegWit</h2>
+
+  <h3>Legacy (BIP-143 之前)</h3>
+  <pre><code class="language-typescript" is:raw>// Legacy sighash 計算
+function legacySigHash(
+  tx: Transaction,
+  inputIndex: number,
+  scriptCode: Uint8Array,
+  sigHashType: number
+): Uint8Array {
+  // 複製交易
+  const txCopy = cloneTransaction(tx);
+
+  // 清空所有輸入的 scriptSig
+  for (const input of txCopy.inputs) {
+    input.scriptSig = Buffer.alloc(0);
+  }
+
+  // 設置當前輸入的 scriptSig 為 scriptCode
+  txCopy.inputs[inputIndex].scriptSig = scriptCode;
+
+  const baseType = sigHashType & 0x1f;
+
+  if (baseType === SIGHASH_NONE) {
+    // 清空所有輸出
+    txCopy.outputs = [];
+    // 其他輸入的 sequence 設為 0
+    for (let i = 0; i &lt; txCopy.inputs.length; i++) {
+      if (i !== inputIndex) {
+        txCopy.inputs[i].sequence = 0;
+      }
+    }
+  }
+
+  if (baseType === SIGHASH_SINGLE) {
+    if (inputIndex &gt;= txCopy.outputs.length) {
+      // Bug: 返回固定值
+      return Buffer.from(
+        '0100000000000000000000000000000000000000000000000000000000000000',
+        'hex'
+      );
+    }
+    // 只保留對應輸出，其他設為空
+    const output = txCopy.outputs[inputIndex];
+    txCopy.outputs = [];
+    for (let i = 0; i &lt; inputIndex; i++) {
+      txCopy.outputs.push({
+        value: -1n,
+        scriptPubKey: Buffer.alloc(0),
+      });
+    }
+    txCopy.outputs.push(output);
+
+    // 其他輸入的 sequence 設為 0
+    for (let i = 0; i &lt; txCopy.inputs.length; i++) {
+      if (i !== inputIndex) {
+        txCopy.inputs[i].sequence = 0;
+      }
+    }
+  }
+
+  if (sigHashType & SIGHASH_ANYONECANPAY) {
+    // 只保留當前輸入
+    txCopy.inputs = [txCopy.inputs[inputIndex]];
+  }
+
+  // 序列化並添加 sighash type
+  const serialized = serializeTransaction(txCopy);
+  const withType = Buffer.concat([
+    serialized,
+    Buffer.from([sigHashType, 0, 0, 0]),
+  ]);
+
+  return doubleSha256(withType);
+}</code></pre>
+
+  <h3>SegWit (BIP-143)</h3>
+  <pre><code class="language-typescript" is:raw>// BIP-143 sighash (SegWit)
+function segwitSigHash(
+  tx: Transaction,
+  inputIndex: number,
+  scriptCode: Uint8Array,
+  value: bigint,
+  sigHashType: number
+): Uint8Array {
+  const parts: Uint8Array[] = [];
+
+  // 1. Version
+  parts.push(uint32LE(tx.version));
+
+  // 2. hashPrevouts
+  if (!(sigHashType & SIGHASH_ANYONECANPAY)) {
+    const prevouts: Uint8Array[] = [];
+    for (const input of tx.inputs) {
+      prevouts.push(hexToBytes(input.txid).reverse());
+      prevouts.push(uint32LE(input.vout));
+    }
+    parts.push(doubleSha256(concat(prevouts)));
+  } else {
+    parts.push(Buffer.alloc(32));
+  }
+
+  // 3. hashSequence
+  const baseType = sigHashType & 0x1f;
+  if (!(sigHashType & SIGHASH_ANYONECANPAY) &&
+      baseType !== SIGHASH_SINGLE &&
+      baseType !== SIGHASH_NONE) {
+    const sequences: Uint8Array[] = [];
+    for (const input of tx.inputs) {
+      sequences.push(uint32LE(input.sequence));
+    }
+    parts.push(doubleSha256(concat(sequences)));
+  } else {
+    parts.push(Buffer.alloc(32));
+  }
+
+  // 4. Outpoint
+  parts.push(hexToBytes(tx.inputs[inputIndex].txid).reverse());
+  parts.push(uint32LE(tx.inputs[inputIndex].vout));
+
+  // 5. scriptCode
+  parts.push(varInt(scriptCode.length));
+  parts.push(scriptCode);
+
+  // 6. Value
+  parts.push(uint64LE(value));
+
+  // 7. Sequence
+  parts.push(uint32LE(tx.inputs[inputIndex].sequence));
+
+  // 8. hashOutputs
+  if (baseType !== SIGHASH_SINGLE && baseType !== SIGHASH_NONE) {
+    const outputs: Uint8Array[] = [];
+    for (const output of tx.outputs) {
+      outputs.push(uint64LE(output.value));
+      outputs.push(varInt(output.scriptPubKey.length));
+      outputs.push(output.scriptPubKey);
+    }
+    parts.push(doubleSha256(concat(outputs)));
+  } else if (baseType === SIGHASH_SINGLE && inputIndex &lt; tx.outputs.length) {
+    const output = tx.outputs[inputIndex];
+    const outputData = concat([
+      uint64LE(output.value),
+      varInt(output.scriptPubKey.length),
+      output.scriptPubKey,
+    ]);
+    parts.push(doubleSha256(outputData));
+  } else {
+    parts.push(Buffer.alloc(32));
+  }
+
+  // 9. Locktime
+  parts.push(uint32LE(tx.locktime));
+
+  // 10. Sighash type
+  parts.push(uint32LE(sigHashType));
+
+  return doubleSha256(concat(parts));
+}</code></pre>
+
+  <h2 id="taproot">Taproot Sighash (BIP-341)</h2>
+  <pre><code class="language-text" is:raw>Taproot 新增的 sighash 類型:
+
+SIGHASH_DEFAULT (0x00):
+- 等同於 SIGHASH_ALL
+- 但簽名不包含 sighash byte
+- 節省 1 byte (64 vs 65 bytes)
+
+Taproot sighash 改進:
+- 簽名包含所有輸入的 value (防止 fee 攻擊)
+- 簽名包含所有輸入的 scriptPubKey
+- 更強的安全保證</code></pre>
+
+  <pre><code class="language-typescript" is:raw>// Taproot sighash (BIP-341)
+function taprootSigHash(
+  tx: Transaction,
+  inputIndex: number,
+  prevouts: Prevout[],  // 所有輸入的前序輸出
+  sigHashType: number,
+  leafHash?: Uint8Array,  // Script path only
+  keyVersion?: number
+): Uint8Array {
+  const parts: Uint8Array[] = [];
+
+  // Epoch (0x00)
+  parts.push(new Uint8Array([0x00]));
+
+  // Sighash type
+  const effectiveType = sigHashType === 0x00 ? 0x00 : sigHashType;
+  parts.push(new Uint8Array([effectiveType]));
+
+  // Version
+  parts.push(uint32LE(tx.version));
+
+  // Locktime
+  parts.push(uint32LE(tx.locktime));
+
+  const baseType = sigHashType & 0x1f;
+
+  if (!(sigHashType & SIGHASH_ANYONECANPAY)) {
+    // sha_prevouts
+    parts.push(sha256(concat(
+      tx.inputs.map(i => concat([
+        hexToBytes(i.txid).reverse(),
+        uint32LE(i.vout),
+      ]))
+    )));
+
+    // sha_amounts (新增！所有輸入金額)
+    parts.push(sha256(concat(
+      prevouts.map(p => uint64LE(p.value))
+    )));
+
+    // sha_scriptpubkeys (新增！所有輸入腳本)
+    parts.push(sha256(concat(
+      prevouts.map(p => concat([
+        varInt(p.scriptPubKey.length),
+        p.scriptPubKey,
+      ]))
+    )));
+
+    // sha_sequences
+    parts.push(sha256(concat(
+      tx.inputs.map(i => uint32LE(i.sequence))
+    )));
+  }
+
+  if (baseType !== SIGHASH_NONE && baseType !== SIGHASH_SINGLE) {
+    // sha_outputs
+    parts.push(sha256(concat(
+      tx.outputs.map(o => concat([
+        uint64LE(o.value),
+        varInt(o.scriptPubKey.length),
+        o.scriptPubKey,
+      ]))
+    )));
+  }
+
+  // spend_type
+  const extFlag = leafHash ? 1 : 0;
+  const spendType = (extFlag << 1) | (sigHashType & SIGHASH_ANYONECANPAY ? 1 : 0);
+  parts.push(new Uint8Array([spendType]));
+
+  // Input-specific data
+  if (sigHashType & SIGHASH_ANYONECANPAY) {
+    parts.push(hexToBytes(tx.inputs[inputIndex].txid).reverse());
+    parts.push(uint32LE(tx.inputs[inputIndex].vout));
+    parts.push(uint64LE(prevouts[inputIndex].value));
+    parts.push(varInt(prevouts[inputIndex].scriptPubKey.length));
+    parts.push(prevouts[inputIndex].scriptPubKey);
+    parts.push(uint32LE(tx.inputs[inputIndex].sequence));
+  } else {
+    parts.push(uint32LE(inputIndex));
+  }
+
+  // ... 更多 script path 相關欄位
+
+  return taggedHash('TapSighash', concat(parts));
+}</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+
+  <h3>眾籌 (Crowdfunding)</h3>
+  <pre><code class="language-text" is:raw>使用 SIGHASH_ALL | ANYONECANPAY (0x81):
+
+1. 發起者創建交易:
+   - 輸出: 目標金額到項目地址
+   - 簽名自己的輸入 (可能是 0)
+
+2. 支持者添加輸入:
+   - 每個支持者添加自己的輸入
+   - 使用 0x81 簽名
+   - 不能修改輸出
+
+3. 達到目標後廣播:
+   - 所有輸入加總 &gt;= 輸出金額
+   - 交易有效</code></pre>
+
+  <h3>原子交換 (Atomic Swap)</h3>
+  <pre><code class="language-text" is:raw>使用 SIGHASH_SINGLE | ANYONECANPAY (0x83):
+
+Alice 有 1 BTC，想換 Bob 的 100 LTC
+
+1. Alice 創建:
+   Input: Alice 的 1 BTC
+   Output[0]: 1 BTC 到 Bob
+   簽名: SIGHASH_SINGLE | ANYONECANPAY
+
+2. Bob 添加:
+   Input: Bob 的 100 LTC
+   Output[1]: 100 LTC 到 Alice
+   簽名: SIGHASH_ALL
+
+3. 交易完成:
+   - 兩個鏈上同時執行
+   - 或都不執行</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <pre><code class="language-text" is:raw>安全建議:
+
+1. 預設使用 SIGHASH_ALL
+   - 除非有特殊需求
+   - 最大程度保護資金
+
+2. 避免 SIGHASH_NONE
+   - 幾乎沒有合法用途
+   - 任何人可重定向資金
+
+3. SIGHASH_SINGLE 注意事項
+   - 確保輸出索引存在
+   - 小心 SIGHASH_SINGLE bug
+
+4. ANYONECANPAY 場景
+   - 只用於眾籌等明確場景
+   - 理解其他人可添加輸入
+
+5. 硬體錢包
+   - 可能不支持所有類型
+   - 通常只支持 SIGHASH_ALL</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>預設 SIGHASH_ALL</strong>：除非有明確理由使用其他類型</li>
+    <li><strong>Taproot 用 0x00</strong>：節省 1 byte，等同於 ALL</li>
+    <li><strong>驗證 sighash</strong>：解析交易時檢查使用的 sighash 類型</li>
+    <li><strong>測試所有路徑</strong>：確保簽名邏輯正確處理所有類型</li>
+    <li><strong>文檔記錄</strong>：清楚記錄為什麼選擇特定 sighash</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki" target="_blank" rel="noopener noreferrer">BIP-143: SegWit Sighash</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki" target="_blank" rel="noopener noreferrer">BIP-341: Taproot Sighash</a></li>
+    <li><a href="/tech/bitcoin-core/transaction">Transaction Structure</a></li>
+    <li><a href="/tech/bitcoin-core/segwit">SegWit</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+  </ul>
+</ArticleLayout>

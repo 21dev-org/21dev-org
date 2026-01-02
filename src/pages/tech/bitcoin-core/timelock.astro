@@ -1,0 +1,527 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Timelock"
+  description="時間鎖機制：CLTV 和 CSV 實現基於時間的花費條件"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Timelock' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'Sighash Types', href: '/tech/bitcoin-core/sighash' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    時間鎖（Timelock）是比特幣的重要功能，允許創建只能在特定時間後才能花費的交易。
+    這是閃電網路、原子交換和許多智能合約的基礎構建塊。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>兩種類型：</strong>
+      絕對時間鎖（CLTV）使用區塊高度或 Unix 時間戳，
+      相對時間鎖（CSV）使用相對於輸入確認後的區塊數。
+    </p>
+  </div>
+
+  <h2 id="types">時間鎖類型</h2>
+
+  <h3>概覽比較</h3>
+  <pre><code class="language-text" is:raw>時間鎖分類:
+
+┌─────────────────────────────────────────────────────────┐
+│                      時間鎖類型                          │
+├─────────────────────────┬───────────────────────────────┤
+│       交易級別          │         腳本級別              │
+├─────────────────────────┼───────────────────────────────┤
+│  nLockTime              │  OP_CHECKLOCKTIMEVERIFY       │
+│  (絕對時間)             │  (CLTV, 絕對時間)             │
+├─────────────────────────┼───────────────────────────────┤
+│  nSequence              │  OP_CHECKSEQUENCEVERIFY       │
+│  (相對時間)             │  (CSV, 相對時間)              │
+└─────────────────────────┴───────────────────────────────┘
+
+時間單位:
+- 區塊高度: 值 &lt; 500,000,000
+- Unix 時間戳: 值 &gt;= 500,000,000</code></pre>
+
+  <h2 id="nlocktime">nLockTime (交易級別)</h2>
+
+  <h3>基本概念</h3>
+  <pre><code class="language-text" is:raw>nLockTime 欄位:
+- 位置: 交易結構的最後 4 字節
+- 作用: 指定交易最早可被打包的時間
+
+規則:
+- nLockTime = 0: 立即有效
+- nLockTime &lt; 500,000,000: 區塊高度
+- nLockTime &gt;= 500,000,000: Unix 時間戳
+
+限制:
+- 只有當所有輸入的 nSequence &lt; 0xFFFFFFFF 時才生效
+- 如果所有 nSequence = 0xFFFFFFFF，nLockTime 被忽略</code></pre>
+
+  <h3>使用範例</h3>
+  <pre><code class="language-typescript" is:raw>interface Transaction {
+  version: number;
+  inputs: TxInput[];
+  outputs: TxOutput[];
+  locktime: number;  // nLockTime
+}
+
+// 區塊高度鎖定
+function createHeightLockedTx(targetHeight: number): Transaction {
+  return {
+    version: 2,
+    inputs: [{
+      txid: '...',
+      vout: 0,
+      scriptSig: Buffer.alloc(0),
+      sequence: 0xFFFFFFFE,  // 必須小於 0xFFFFFFFF
+    }],
+    outputs: [{
+      value: 100000n,
+      scriptPubKey: Buffer.from('...'),
+    }],
+    locktime: targetHeight,  // 例如 800000
+  };
+}
+
+// Unix 時間戳鎖定
+function createTimeLockedTx(timestamp: number): Transaction {
+  // timestamp 必須 >= 500000000
+  return {
+    version: 2,
+    inputs: [{
+      txid: '...',
+      vout: 0,
+      scriptSig: Buffer.alloc(0),
+      sequence: 0xFFFFFFFE,
+    }],
+    outputs: [{
+      value: 100000n,
+      scriptPubKey: Buffer.from('...'),
+    }],
+    locktime: timestamp,  // 例如 1704067200 (2024-01-01)
+  };
+}</code></pre>
+
+  <h2 id="cltv">OP_CHECKLOCKTIMEVERIFY (CLTV)</h2>
+
+  <h3>BIP-65 介紹</h3>
+  <pre><code class="language-text" is:raw>CLTV (BIP-65):
+- 操作碼: 0xB1
+- 啟用區塊: 388,381 (2015年12月)
+- 作用: 腳本級別的絕對時間鎖
+
+執行邏輯:
+1. 從堆疊頂部讀取鎖定時間
+2. 與交易的 nLockTime 比較
+3. 如果 nLockTime &lt; 腳本中的值，交易無效
+
+條件:
+- 堆疊頂部值 &lt; 0: 失敗
+- 堆疊頂部值類型與 nLockTime 不同: 失敗
+- nLockTime &lt; 堆疊頂部值: 失敗
+- nSequence = 0xFFFFFFFF: 失敗</code></pre>
+
+  <h3>腳本範例</h3>
+  <pre><code class="language-text" is:raw>基本 CLTV 腳本:
+&lt;locktime&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP &lt;pubkey&gt; OP_CHECKSIG
+
+執行流程:
+1. &lt;locktime&gt;: 推入鎖定時間
+2. OP_CLTV: 驗證 nLockTime &gt;= locktime
+3. OP_DROP: 移除堆疊上的 locktime
+4. &lt;pubkey&gt;: 推入公鑰
+5. OP_CHECKSIG: 驗證簽名
+
+花費條件:
+- 必須提供有效簽名
+- 交易的 nLockTime 必須 &gt;= 腳本中的 locktime
+- 交易的 nSequence 必須 &lt; 0xFFFFFFFF</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>// 創建 CLTV 鎖定腳本
+function createCLTVScript(
+  locktime: number,
+  pubkey: Uint8Array
+): Uint8Array {
+  const script: number[] = [];
+
+  // 編碼 locktime
+  script.push(...encodeLocktime(locktime));
+
+  // OP_CHECKLOCKTIMEVERIFY
+  script.push(0xb1);
+
+  // OP_DROP
+  script.push(0x75);
+
+  // 公鑰
+  script.push(0x21); // push 33 bytes
+  script.push(...pubkey);
+
+  // OP_CHECKSIG
+  script.push(0xac);
+
+  return new Uint8Array(script);
+}
+
+function encodeLocktime(value: number): number[] {
+  if (value === 0) return [0x00];
+  if (value &gt;= 1 && value &lt;= 16) return [0x50 + value];
+
+  // 編碼為最小字節數
+  const bytes: number[] = [];
+  let n = value;
+  while (n &gt; 0) {
+    bytes.push(n & 0xff);
+    n &gt;&gt;= 8;
+  }
+
+  // 處理負數標誌位
+  if (bytes[bytes.length - 1] & 0x80) {
+    bytes.push(0x00);
+  }
+
+  return [bytes.length, ...bytes];
+}
+
+// 創建花費 CLTV 輸出的交易
+function spendCLTVOutput(
+  utxo: UTXO,
+  locktime: number,
+  destination: Uint8Array,
+  signature: Uint8Array
+): Transaction {
+  return {
+    version: 2,
+    inputs: [{
+      txid: utxo.txid,
+      vout: utxo.vout,
+      scriptSig: Buffer.from([
+        signature.length, ...signature,
+      ]),
+      sequence: 0xFFFFFFFE,  // 啟用 nLockTime
+    }],
+    outputs: [{
+      value: utxo.value - 1000n,  // 扣除手續費
+      scriptPubKey: destination,
+    }],
+    locktime: locktime,  // 必須 &gt;= 腳本中的 locktime
+  };
+}</code></pre>
+
+  <h2 id="csv">OP_CHECKSEQUENCEVERIFY (CSV)</h2>
+
+  <h3>BIP-112 介紹</h3>
+  <pre><code class="language-text" is:raw>CSV (BIP-112):
+- 操作碼: 0xB2
+- 啟用區塊: 419,328 (2016年7月)
+- 作用: 腳本級別的相對時間鎖
+
+nSequence 欄位解析 (BIP-68):
+┌────────────────────────────────────────────────────────┐
+│ bit 31 │ bit 22 │ bits 21-16 │ bits 15-0              │
+├────────┼────────┼────────────┼────────────────────────┤
+│ 禁用位 │ 類型位 │   保留     │ 時間值                 │
+│ 1=禁用 │ 0=區塊 │            │ 區塊數或512秒單位      │
+│        │ 1=時間 │            │                        │
+└────────────────────────────────────────────────────────┘
+
+時間計算:
+- 區塊模式: 值 = 區塊數 (最大 65535)
+- 時間模式: 值 × 512 秒 (最大約 1 年)</code></pre>
+
+  <h3>nSequence 編碼</h3>
+  <pre><code class="language-typescript" is:raw>// CSV 常量
+const SEQUENCE_LOCKTIME_DISABLE_FLAG = 1 &lt;&lt; 31;  // 0x80000000
+const SEQUENCE_LOCKTIME_TYPE_FLAG = 1 &lt;&lt; 22;     // 0x00400000
+const SEQUENCE_LOCKTIME_MASK = 0x0000FFFF;
+
+// 創建區塊相對時間鎖
+function blocksToSequence(blocks: number): number {
+  if (blocks &lt; 0 || blocks &gt; 0xFFFF) {
+    throw new Error('Blocks must be 0-65535');
+  }
+  return blocks;
+}
+
+// 創建時間相對時間鎖 (512秒為單位)
+function secondsToSequence(seconds: number): number {
+  const units = Math.ceil(seconds / 512);
+  if (units &lt; 0 || units &gt; 0xFFFF) {
+    throw new Error('Time must be 0-33553920 seconds');
+  }
+  return SEQUENCE_LOCKTIME_TYPE_FLAG | units;
+}
+
+// 解析 nSequence
+function parseSequence(sequence: number): {
+  disabled: boolean;
+  isTime: boolean;
+  value: number;
+} {
+  const disabled = (sequence & SEQUENCE_LOCKTIME_DISABLE_FLAG) !== 0;
+  const isTime = (sequence & SEQUENCE_LOCKTIME_TYPE_FLAG) !== 0;
+  const value = sequence & SEQUENCE_LOCKTIME_MASK;
+
+  return { disabled, isTime, value };
+}</code></pre>
+
+  <h3>CSV 腳本範例</h3>
+  <pre><code class="language-text" is:raw>基本 CSV 腳本:
+&lt;sequence&gt; OP_CHECKSEQUENCEVERIFY OP_DROP &lt;pubkey&gt; OP_CHECKSIG
+
+HTLC 風格腳本 (閃電網路):
+OP_IF
+  # 成功路徑: hashlock + 接收方簽名
+  OP_HASH160 &lt;payment_hash&gt; OP_EQUALVERIFY
+  &lt;receiver_pubkey&gt; OP_CHECKSIG
+OP_ELSE
+  # 超時路徑: timelock + 發送方簽名
+  &lt;timeout_sequence&gt; OP_CHECKSEQUENCEVERIFY OP_DROP
+  &lt;sender_pubkey&gt; OP_CHECKSIG
+OP_ENDIF</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>// 創建 CSV 鎖定腳本
+function createCSVScript(
+  sequence: number,
+  pubkey: Uint8Array
+): Uint8Array {
+  const script: number[] = [];
+
+  // 編碼 sequence
+  script.push(...encodeSequence(sequence));
+
+  // OP_CHECKSEQUENCEVERIFY
+  script.push(0xb2);
+
+  // OP_DROP
+  script.push(0x75);
+
+  // 公鑰
+  script.push(0x21);
+  script.push(...pubkey);
+
+  // OP_CHECKSIG
+  script.push(0xac);
+
+  return new Uint8Array(script);
+}
+
+function encodeSequence(value: number): number[] {
+  // 與 locktime 編碼相同
+  return encodeLocktime(value & 0x00FFFFFF);
+}
+
+// 創建 HTLC 腳本
+function createHTLCScript(
+  paymentHash: Uint8Array,
+  receiverPubkey: Uint8Array,
+  senderPubkey: Uint8Array,
+  timeoutBlocks: number
+): Uint8Array {
+  const script: number[] = [];
+
+  // OP_IF
+  script.push(0x63);
+
+  // 成功路徑: hashlock
+  script.push(0xa9); // OP_HASH160
+  script.push(0x14); // push 20 bytes
+  script.push(...paymentHash);
+  script.push(0x88); // OP_EQUALVERIFY
+  script.push(0x21);
+  script.push(...receiverPubkey);
+  script.push(0xac); // OP_CHECKSIG
+
+  // OP_ELSE
+  script.push(0x67);
+
+  // 超時路徑: timelock
+  script.push(...encodeSequence(timeoutBlocks));
+  script.push(0xb2); // OP_CSV
+  script.push(0x75); // OP_DROP
+  script.push(0x21);
+  script.push(...senderPubkey);
+  script.push(0xac); // OP_CHECKSIG
+
+  // OP_ENDIF
+  script.push(0x68);
+
+  return new Uint8Array(script);
+}</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+
+  <h3>閃電網路承諾交易</h3>
+  <pre><code class="language-text" is:raw>承諾交易結構:
+
+本地輸出 (to_local):
+OP_IF
+  # 撤銷路徑 (對方持有撤銷密鑰)
+  &lt;revocation_pubkey&gt;
+OP_ELSE
+  # 延遲路徑 (自己的資金)
+  &lt;to_self_delay&gt; OP_CSV OP_DROP
+  &lt;local_delayed_pubkey&gt;
+OP_ENDIF
+OP_CHECKSIG
+
+遠端輸出 (to_remote):
+# 立即可用 (無延遲)
+&lt;remote_pubkey&gt; OP_CHECKSIG
+
+HTLC 輸出:
+# 更複雜的 CSV + hashlock 組合</code></pre>
+
+  <h3>保險庫 (Vault)</h3>
+  <pre><code class="language-typescript" is:raw>// 簡單保險庫: 熱錢包可發起，但需等待或冷錢包撤銷
+function createVaultScript(
+  hotKey: Uint8Array,
+  coldKey: Uint8Array,
+  delayBlocks: number
+): Uint8Array {
+  const script: number[] = [];
+
+  // OP_IF - 冷錢包立即撤銷
+  script.push(0x63);
+  script.push(0x21);
+  script.push(...coldKey);
+  script.push(0xac);
+
+  // OP_ELSE - 熱錢包延遲提取
+  script.push(0x67);
+  script.push(...encodeSequence(delayBlocks));
+  script.push(0xb2); // OP_CSV
+  script.push(0x75); // OP_DROP
+  script.push(0x21);
+  script.push(...hotKey);
+  script.push(0xac);
+
+  // OP_ENDIF
+  script.push(0x68);
+
+  return new Uint8Array(script);
+}
+
+// 使用範例: 144 區塊 (~1天) 延遲
+const vault = createVaultScript(hotPubkey, coldPubkey, 144);</code></pre>
+
+  <h3>遺產規劃</h3>
+  <pre><code class="language-typescript" is:raw>// 遺產合約: 本人隨時可用，繼承人需等待
+function createInheritanceScript(
+  ownerKey: Uint8Array,
+  heirKey: Uint8Array,
+  waitBlocks: number  // 例如 52560 (~1年)
+): Uint8Array {
+  const script: number[] = [];
+
+  // OP_IF - 所有者路徑
+  script.push(0x63);
+  script.push(0x21);
+  script.push(...ownerKey);
+  script.push(0xac);
+
+  // OP_ELSE - 繼承人路徑 (需等待)
+  script.push(0x67);
+  script.push(...encodeSequence(waitBlocks));
+  script.push(0xb2); // OP_CSV
+  script.push(0x75); // OP_DROP
+  script.push(0x21);
+  script.push(...heirKey);
+  script.push(0xac);
+
+  // OP_ENDIF
+  script.push(0x68);
+
+  return new Uint8Array(script);
+}</code></pre>
+
+  <h2 id="comparison">CLTV vs CSV 比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>CLTV</th>
+        <th>CSV</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>時間類型</td>
+        <td>絕對時間</td>
+        <td>相對時間</td>
+      </tr>
+      <tr>
+        <td>參考點</td>
+        <td>區塊高度/Unix 時間</td>
+        <td>輸入確認後</td>
+      </tr>
+      <tr>
+        <td>最大延遲</td>
+        <td>無限制</td>
+        <td>~1年 (65535 區塊)</td>
+      </tr>
+      <tr>
+        <td>BIP</td>
+        <td>BIP-65</td>
+        <td>BIP-68, BIP-112</td>
+      </tr>
+      <tr>
+        <td>操作碼</td>
+        <td>0xB1</td>
+        <td>0xB2</td>
+      </tr>
+      <tr>
+        <td>用途</td>
+        <td>固定到期日</td>
+        <td>通道協議</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="mediantime">Median Time Past (MTP)</h2>
+  <pre><code class="language-text" is:raw>時間戳驗證:
+
+比特幣使用 Median Time Past 而非當前時間:
+- 取最近 11 個區塊的時間戳
+- 使用中位數 (第 6 個)
+- 防止礦工操縱時間
+
+MTP 特性:
+- 永不倒退
+- 比真實時間慢約 1 小時
+- 提供穩定的時間參考
+
+範例:
+區塊時間戳: [100, 102, 101, 103, 105, 104, 106, 108, 107, 109, 110]
+排序後: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110]
+MTP = 105 (第 6 個)</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>區塊高度優於時間戳</strong>：區塊高度更可預測，時間戳可能有約 2 小時的不確定性</li>
+    <li><strong>考慮 MTP 延遲</strong>：使用時間戳時，考慮 MTP 比真實時間慢</li>
+    <li><strong>CSV 用於通道</strong>：閃電網路等協議應使用 CSV 而非 CLTV</li>
+    <li><strong>合理的延遲值</strong>：太短無法提供安全性，太長影響用戶體驗</li>
+    <li><strong>測試在 regtest</strong>：可以快速生成區塊測試時間鎖邏輯</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki" target="_blank" rel="noopener noreferrer">BIP-65: OP_CHECKLOCKTIMEVERIFY</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0068.mediawiki" target="_blank" rel="noopener noreferrer">BIP-68: Relative Lock-time</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki" target="_blank" rel="noopener noreferrer">BIP-112: OP_CHECKSEQUENCEVERIFY</a></li>
+    <li><a href="/tech/bitcoin-core/script">Bitcoin Script</a></li>
+    <li><a href="/tech/lightning/htlc">HTLC</a></li>
+  </ul>
+</ArticleLayout>

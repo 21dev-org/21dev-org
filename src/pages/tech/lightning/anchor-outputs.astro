@@ -1,0 +1,320 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Anchor Outputs 錨定輸出"
+  description="了解 Anchor Outputs 如何讓閃電網路通道在強制關閉時動態調整手續費，解決費率預估難題。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Anchor Outputs' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Onion Messages', href: '/tech/lightning/onion-messages' }}
+  nextPage={{ title: 'Channel Reserve', href: '/tech/lightning/channel-reserve' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Anchor Outputs？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Anchor Outputs（錨定輸出）是閃電網路承諾交易的一項重要改進。它在承諾交易中
+    添加兩個小額「錨定」輸出，讓任一方都可以通過 CPFP（Child-Pays-For-Parent）
+    在廣播時動態增加交易手續費，解決了預估未來費率的難題。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心問題：</strong>
+      傳統承諾交易的手續費在簽名時就固定了。如果之後網路擁堵導致費率飆升，
+      你的通道關閉交易可能卡住無法確認，HTLC 可能超時，資金面臨風險。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費率問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統承諾交易的費率困境：
+
+時間 T0：開通道
+├── 當前費率：10 sat/vB
+├── 承諾交易簽名，費率固定為 20 sat/vB（留餘量）
+└── 看起來沒問題
+
+時間 T0 + 6 個月：需要關閉通道
+├── 當前費率：200 sat/vB（網路擁堵）
+├── 你的承諾交易只有 20 sat/vB
+├── 交易卡在 mempool 中！
+└── HTLC 可能超時，資金危險！
+
+或者相反：
+
+時間 T0：開通道
+├── 預估未來可能擁堵
+├── 設定很高的費率：100 sat/vB
+└── 犧牲通道容量來支付手續費
+
+時間 T0 + 6 個月：關閉通道
+├── 當前費率：5 sat/vB
+├── 多付了 95 sat/vB 的費用！
+└── 錢白白浪費了
+
+無論如何都不對！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor Outputs 解決方案</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Anchor Outputs 承諾交易結構：
+
+┌─────────────────────────────────────────────────────────┐
+│                  Commitment Transaction                  │
+├─────────────────────────────────────────────────────────┤
+│ Inputs:                                                 │
+│   └── Funding TX output                                 │
+├─────────────────────────────────────────────────────────┤
+│ Outputs:                                                │
+│   ├── to_local (Alice 的餘額)                           │
+│   ├── to_remote (Bob 的餘額)                            │
+│   ├── HTLC outputs (如果有)                             │
+│   ├── anchor_alice (330 sats)  ← 錨定輸出              │
+│   └── anchor_bob (330 sats)    ← 錨定輸出              │
+├─────────────────────────────────────────────────────────┤
+│ Fee: 最低費率（如 1 sat/vB）                            │
+└─────────────────────────────────────────────────────────┘
+
+使用 CPFP 加速：
+┌────────────────────┐
+│ Commitment TX      │──────> 低費率
+│ (parent)           │
+└─────────┬──────────┘
+          │
+          │ 花費 anchor_alice
+          ▼
+┌────────────────────┐
+│ CPFP TX            │──────> 高費率
+│ (child)            │        補足總費用
+└────────────────────┘
+
+礦工會同時打包 parent 和 child！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor 腳本</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Anchor Output 腳本：
+
+<anchor_pubkey> CHECKSIG
+IFDUP
+NOTIF
+  16 CHECKSEQUENCEVERIFY
+ENDIF
+
+解釋：
+1. 擁有者可以立即使用 anchor_pubkey 花費
+2. 如果簽名失敗（別人嘗試花費）
+   → 需要等待 16 個區塊
+3. 這允許任何人在 16 區塊後清理未使用的 anchors
+
+為什麼 330 sats？
+- 這是 dust limit（粉塵限制）
+- 更小的輸出會被節點拒絕轉發
+- 足夠小不浪費通道容量
+- 足夠大能被識別為有效輸出
+
+功能位：
+- option_anchor_outputs (bit 20/21) - 原版
+- option_anchors_zero_fee_htlc_tx (bit 22/23) - 改進版`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Zero-Fee HTLC Anchors</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    改進版的 Anchor Outputs 還解決了 HTLC 交易的費率問題：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Zero-Fee HTLC Transactions：
+
+問題：HTLC-Success 和 HTLC-Timeout 交易也需要手續費
+
+傳統方案：
+  Commitment TX ──> HTLC Output
+                         │
+                         ▼
+                    HTLC-Success TX（費率固定）
+                    或 HTLC-Timeout TX（費率固定）
+
+  這些二級交易的費率也是預簽的！
+
+Zero-Fee HTLC 方案：
+  Commitment TX ──> HTLC Output
+                         │
+                         ▼
+                    HTLC TX（0 費率）
+                         │
+                         │ 添加額外輸入支付費用
+                         ▼
+                    包含 CPFP 的完整交易
+
+好處：
+- HTLC 交易也可以動態調整費率
+- 在 HTLC 超時競爭時更有彈性
+- 可以使用錢包中的 UTXO 來支付費用`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">UTXO 需求</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">新的運營需求</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 Anchor Outputs 的節點需要維護額外的鏈上 UTXO 用於 CPFP。
+        如果沒有可用 UTXO，可能無法及時加速交易。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">UTXO 管理</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• LND 有專用的「anchor 錢包」</li>
+        <li>• 自動維護最低餘額</li>
+        <li>• 監控 UTXO 可用性</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Watchtower 的關係</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Watchtower + Anchor Outputs：
+
+傳統 Watchtower：
+  - 存儲預簽的懲罰交易
+  - 費率在簽名時固定
+  - 如果費率過低，懲罰可能失敗！
+
+Anchor-aware Watchtower：
+  - 存儲懲罰交易 + 有 CPFP 能力
+  - 需要自己的 UTXO 池
+  - 可以動態調整費率
+  - 增加了 Watchtower 的成本
+
+挑戰：
+┌─────────────────────────────────────────────────────────┐
+│ Watchtower 需要：                                       │
+│ 1. 維護 UTXO 池                                        │
+│ 2. 監控費率市場                                         │
+│ 3. 準備支付 CPFP 費用                                   │
+│ 4. 可能需要向用戶收費覆蓋成本                           │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">版本演進</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">原版 (option_anchor_outputs)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        第一版 Anchor Outputs，承諾交易有 anchors，但 HTLC 交易仍使用預簽費率。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">改進版 (option_anchors_zero_fee_htlc_tx)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        當前推薦版本。HTLC 交易使用零費率，也可以通過 CPFP 加速。
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">static_remotekey</code> 是必需的。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">Simple Taproot Channels（未來）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Taproot 通道會使用不同的 anchor 設計，可能只需要單個共享 anchor。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">默認啟用</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 0.12+ 默認使用 anchor channels，自動管理 anchor 錢包。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        CLN 支持 anchor channels，可通過配置啟用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Eclair</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Eclair 和 Phoenix 支持 anchor channels。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/688"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Anchor Outputs BOLT 提案</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/watchtowers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Watchtowers</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/channel-reserve"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道儲備金</a
+      >
+      如何保護雙方免受欺詐。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,380 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="JIT Channels 即時通道"
+  description="了解 Just-In-Time Channels 如何在收到支付時即時開設通道，提供無縫的用戶體驗。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'JIT Channels' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'LSP', href: '/tech/lightning/lsp' }}
+  nextPage={{ title: 'Zero-Conf Channels', href: '/tech/lightning/zero-conf' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 JIT Channels？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    JIT Channels（Just-In-Time Channels，即時通道）是一種在用戶收到支付時才開設通道的技術。
+    而不是預先開設通道等待使用，LSP 在檢測到發往用戶的支付時實時創建通道，
+    通道開設費用直接從首筆支付中扣除。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>用戶體驗：</strong>
+      用戶不需要任何初始資金。只需分享收款地址，收到第一筆支付時通道自動開設。
+      這大大降低了新用戶的入門門檻。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">傳統 vs JIT 對比</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統通道開設流程：
+
+1. 用戶決定要使用閃電網路
+2. 用戶購買/轉入鏈上 BTC
+3. 等待鏈上確認
+4. 開設通道（另一筆鏈上交易）
+5. 等待通道確認
+6. 終於可以使用！
+
+總時間：幾小時到幾天
+入門門檻：需要先有 BTC 和技術知識
+
+JIT 通道流程：
+
+1. 用戶下載錢包，獲得收款地址
+2. 有人向用戶發送支付
+3. LSP 攔截支付，即時開通道
+4. 支付通過新通道完成
+5. 用戶收到資金，通道已建立！
+
+總時間：幾秒鐘
+入門門檻：無
+
+時序比較：
+┌─────────────────────────────────────────────────────────┐
+│ 傳統：                                                  │
+│ [購買 BTC]→[等待確認]→[開通道]→[等待確認]→[使用]       │
+│     └────────── 1-24 小時 ──────────┘                   │
+│                                                         │
+│ JIT：                                                   │
+│ [收到支付請求]→[開通道+轉發支付]→[使用]                 │
+│     └────────── 幾秒鐘 ──────────┘                      │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`JIT 通道開設流程：
+
+發送方 → 路由網路 → LSP → 新用戶
+
+步驟 1：支付到達 LSP
+┌─────────────────────────────────────────────────────────┐
+│ 發送方發起支付到用戶的發票                              │
+│                                                         │
+│ LSP 收到 HTLC：                                         │
+│ - payment_hash: abc123...                               │
+│ - amount: 100,000 sats                                  │
+│ - 目標：用戶節點                                        │
+│                                                         │
+│ LSP 發現：用戶沒有通道！                                │
+└─────────────────────────────────────────────────────────┘
+
+步驟 2：LSP 即時開通道
+┌─────────────────────────────────────────────────────────┐
+│ LSP 計算費用：                                          │
+│ - 通道開設費：2,000 sats                                │
+│ - 用戶可收金額：98,000 sats                             │
+│                                                         │
+│ LSP 開設 Zero-Conf 通道：                               │
+│ - 容量：100,000 sats                                    │
+│ - 用戶側：98,000 sats                                   │
+│ - LSP 側：2,000 sats（費用）                            │
+│                                                         │
+│ 使用 SCID Alias 讓通道立即可用                          │
+└─────────────────────────────────────────────────────────┘
+
+步驟 3：轉發支付
+┌─────────────────────────────────────────────────────────┐
+│ LSP 通過新通道轉發 HTLC：                               │
+│                                                         │
+│ 入站 HTLC: 100,000 sats                                 │
+│     ↓                                                   │
+│ 出站 HTLC: 98,000 sats（扣除費用）                      │
+│     ↓                                                   │
+│ 用戶揭示 preimage                                       │
+│     ↓                                                   │
+│ 支付完成！                                              │
+└─────────────────────────────────────────────────────────┘
+
+結果：
+├── 用戶收到 98,000 sats
+├── 用戶有了可用的通道
+├── LSP 收取 2,000 sats 費用
+└── 整個過程對發送方透明`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSPS2 規範</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LSPS2: JIT Channels 規範
+
+流程：
+
+1. 客戶端請求 JIT 通道信息
+{
+  "method": "lsps2.get_info",
+  "params": {}
+}
+
+響應：
+{
+  "opening_fee_params_menu": [
+    {
+      "min_fee_msat": 2000000,
+      "proportional": 1000,  // 0.1%
+      "valid_until": "2024-01-01T00:00:00Z",
+      "min_lifetime": 1008,  // 區塊
+      "max_client_to_self_delay": 2016,
+      "promise": "signature..."
+    }
+  ],
+  "min_payment_size_msat": 1000000,
+  "max_payment_size_msat": 100000000000
+}
+
+2. 客戶端購買 JIT 通道
+{
+  "method": "lsps2.buy",
+  "params": {
+    "opening_fee_params": { ... },
+    "payment_size_msat": 100000000
+  }
+}
+
+響應：
+{
+  "jit_channel_scid": "1234567x123x1",
+  "lsp_cltv_expiry_delta": 144,
+  "client_trusts_lsp": false
+}
+
+3. 客戶端創建發票
+使用 jit_channel_scid 作為路由提示
+發送方支付時，LSP 攔截並開通道`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Zero-Conf 結合</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">為什麼需要 Zero-Conf</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        傳統通道需要等待鏈上確認才能使用。JIT 通道使用
+        <a href="/tech/lightning/zero-conf" class="text-yellow-600 dark:text-yellow-400 hover:underline">零確認通道</a>
+        技術，讓通道在資金交易未確認時就能使用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">SCID Alias</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用別名短通道 ID（SCID Alias）而不是基於區塊位置的真實 SCID。
+        允許在通道確認前就能路由支付。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用模式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`JIT 通道費用結構：
+
+費用組成：
+1. 固定費用：覆蓋鏈上交易成本
+2. 比例費用：覆蓋流動性成本
+
+計算示例：
+最低費用：2,000 sats
+比例費用：0.1%（1000 ppm）
+
+支付 100,000 sats：
+費用 = max(2000, 100000 × 0.001) = 2,000 sats
+
+支付 1,000,000 sats：
+費用 = max(2000, 1000000 × 0.001) = 2,000 sats
+
+支付 5,000,000 sats：
+費用 = max(2000, 5000000 × 0.001) = 5,000 sats
+
+費用對用戶透明：
+┌─────────────────────────────────────────────────────────┐
+│ 發送方支付：100,000 sats                                │
+│ JIT 費用：  -2,000 sats                                 │
+│ ────────────────────                                    │
+│ 用戶收到：  98,000 sats                                 │
+│                                                         │
+│ 用戶在收款前就知道會收到多少                            │
+└─────────────────────────────────────────────────────────┘
+
+動態費用（根據鏈上費率）：
+├── 低費率時期：較低的 JIT 費用
+├── 高費率時期：較高的 JIT 費用
+└── LSP 可以實時調整報價`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">LSP 信任</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        JIT 通道依賴 LSP 的配合。如果 LSP 惡意或離線，支付會失敗。
+        用戶資金仍然安全（閃電通道的標準保護），但服務可用性依賴 LSP。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">Zero-Conf 風險</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Zero-Conf 通道在資金交易確認前有雙花風險。但由於 LSP 控制資金交易，
+        實際風險由 LSP 承擔。如果 LSP 雙花自己的交易，用戶不會損失。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">支付大小限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        首筆支付必須大於最低費用才有意義。太小的支付可能全部被費用吞掉。
+        LSP 會設定最低支付金額限制。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Splicing 的關係</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`JIT + Splicing 的未來：
+
+現狀（JIT 通道）：
+每次新用戶需要新通道 → 新的鏈上交易
+
+問題：
+├── 如果有 1000 個新用戶
+├── 需要 1000 個鏈上交易
+└── 鏈上費用累積
+
+Splicing 解決方案：
+┌─────────────────────────────────────────────────────────┐
+│ LSP 有一個大通道池                                      │
+│                                                         │
+│ 新用戶加入 → Splice-in 到現有通道                       │
+│ 用戶離開 → Splice-out 從通道移除                        │
+│                                                         │
+│ 可以批量處理多個用戶的 splice 操作                      │
+│ 減少總體鏈上交易數量                                    │
+└─────────────────────────────────────────────────────────┘
+
+Phoenix 錢包已經在使用這種模式：
+├── 單一通道模型
+├── 所有操作通過 splice 完成
+├── 更高效的資金管理
+└── 更好的用戶體驗`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Breez</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">生產可用</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Breez SDK 完整支持 JIT 通道。新用戶首次收款時自動開通道。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Phoenix</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">生產可用</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Phoenix 使用類似概念配合 Splicing，提供無縫的通道管理體驗。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LSPS2</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">規範化</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LSPS2 規範標準化了 JIT 通道協議，促進不同 LSP 之間的互操作性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/BitcoinAndLightningLayerSpecs/lsp/blob/main/LSPS2/README.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LSPS2 規範</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lsp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LSP 閃電服務提供商</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/zero-conf"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Zero-Conf Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/splicing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Splicing</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/zero-conf"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Zero-Conf Channels</a
+      >
+      如何讓通道在鏈上確認前就能使用。
+    </p>
+  </div>
+</ArticleLayout>

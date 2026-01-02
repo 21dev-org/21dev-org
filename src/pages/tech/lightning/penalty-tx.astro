@@ -1,0 +1,448 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Penalty Transactions 懲罰交易"
+  description="了解懲罰交易如何保護閃電網路通道免受欺詐，當一方廣播舊狀態時沒收其全部資金。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Penalty Transactions' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Channel Reserve', href: '/tech/lightning/channel-reserve' }}
+  nextPage={{ title: 'Channel Rebalancing', href: '/tech/lightning/rebalancing' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是懲罰交易？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    懲罰交易（Penalty Transaction，也稱為 Justice Transaction 或 Breach Remedy Transaction）
+    是閃電網路的核心安全機制。當通道一方試圖通過廣播舊的承諾交易來欺詐時，
+    受害方可以使用懲罰交易沒收作弊者在通道中的全部資金。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>威懾機制：</strong>
+      懲罰交易的存在使得作弊成為「全輸」的行為。理性的參與者不會冒著失去所有資金的風險
+      去嘗試廣播舊狀態，這就是閃電網路無需信任的安全基礎。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">欺詐場景</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`欺詐嘗試示例：
+
+通道歷史：
+State #0: Alice 1.0 BTC, Bob 0 BTC      (開通道)
+State #1: Alice 0.8 BTC, Bob 0.2 BTC    (Alice 付給 Bob)
+State #2: Alice 0.5 BTC, Bob 0.5 BTC    (Alice 再付 0.3)
+State #3: Alice 0.3 BTC, Bob 0.7 BTC    (當前狀態)
+
+Alice 試圖作弊：
+┌─────────────────────────────────────────────────────────┐
+│ Alice 廣播 State #1 的承諾交易                          │
+│ 試圖取得 0.8 BTC 而不是當前的 0.3 BTC                   │
+├─────────────────────────────────────────────────────────┤
+│ 結果：                                                  │
+│ ✗ Bob 發現這是舊狀態                                    │
+│ ✗ Bob 使用懲罰交易沒收 Alice 的全部資金                 │
+│ ✗ Alice 失去整個 1.0 BTC 通道容量！                     │
+└─────────────────────────────────────────────────────────┘
+
+教訓：
+├── Alice 試圖多拿 0.5 BTC (0.8 - 0.3)
+├── Alice 反而失去全部 1.0 BTC
+└── 作弊的預期收益為負！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">撤銷密鑰機制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`撤銷密鑰的工作原理：
+
+每個狀態更新時：
+1. 雙方創建新的承諾交易
+2. 雙方交換舊狀態的撤銷密鑰
+3. 舊狀態被「撤銷」，新狀態生效
+
+撤銷密鑰生成（簡化）：
+┌─────────────────────────────────────────────────────────┐
+│ 每一方有：                                              │
+│ - revocation_basepoint（基點）                          │
+│ - per_commitment_point（每狀態點）                      │
+│                                                         │
+│ revocation_pubkey = f(revocation_basepoint,             │
+│                       per_commitment_point)              │
+│                                                         │
+│ 只有知道對應私鑰才能花費撤銷輸出                        │
+└─────────────────────────────────────────────────────────┘
+
+密鑰交換流程：
+State N → State N+1 時：
+
+Alice                           Bob
+  │                              │
+  │──── commit_sig (N+1) ───────>│
+  │                              │
+  │<─── revoke_and_ack (N) ──────│  Bob 撤銷 State N
+  │                              │
+  │<─── commit_sig (N+1) ────────│
+  │                              │
+  │──── revoke_and_ack (N) ─────>│  Alice 撤銷 State N
+  │                              │
+
+此後，任一方廣播 State N 都可被懲罰`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰交易結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`承諾交易的 to_local 輸出腳本：
+
+OP_IF
+    <revocationpubkey>
+OP_ELSE
+    <to_self_delay>
+    OP_CHECKSEQUENCEVERIFY
+    OP_DROP
+    <local_delayedpubkey>
+OP_ENDIF
+OP_CHECKSIG
+
+解釋：
+路徑 1 (IF): 持有撤銷密鑰可立即花費
+路徑 2 (ELSE): 所有者需等待 to_self_delay 區塊
+
+懲罰交易構建：
+┌─────────────────────────────────────────────────────────┐
+│ Alice 廣播舊承諾交易後...                               │
+├─────────────────────────────────────────────────────────┤
+│ 舊承諾交易輸出：                                        │
+│ ├── to_local_alice (有延遲)                             │
+│ ├── to_remote_bob (Bob 可直接花費)                      │
+│ └── HTLCs (如果有)                                      │
+├─────────────────────────────────────────────────────────┤
+│ Bob 的懲罰交易：                                        │
+│                                                         │
+│ Inputs:                                                 │
+│   └── to_local_alice (使用撤銷密鑰，無需等待)           │
+│                                                         │
+│ Outputs:                                                │
+│   └── Bob 的地址 (扣除手續費)                           │
+│                                                         │
+│ Witness:                                                │
+│   └── <signature> <revocation_privkey> 1                │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">時間窗口競賽</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`懲罰時間窗口：
+
+to_self_delay 參數（例如 144 區塊 ≈ 1 天）
+
+時間線：
+T0: Alice 廣播舊承諾交易
+    │
+    │ 區塊確認
+    ▼
+T1: 承諾交易被確認
+    │
+    │ to_self_delay 延遲開始
+    │ (Bob 有 144 區塊來執行懲罰)
+    │
+    ├── Bob 在線：發現欺詐，廣播懲罰交易 ✓
+    │   └── Bob 獲得 Alice 的全部資金
+    │
+    │   或
+    │
+    ├── Bob 離線：但有 Watchtower 監控 ✓
+    │   └── Watchtower 代為廣播懲罰交易
+    │
+    │   或
+    │
+    └── T1 + 144 區塊：延遲結束
+        └── Alice 可以花費 to_local 輸出
+            (如果 Bob 沒反應，Alice 成功作弊)
+
+關鍵：
+- 受害者必須在延遲期內響應
+- 延遲越長越安全，但關閉通道也越慢
+- 常見設置：144-2016 區塊（1天到2週）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰 HTLC</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 輸出也可被懲罰：
+
+舊承諾交易中的 HTLC 輸出腳本（簡化）：
+
+Offered HTLC (Alice 提供):
+OP_IF
+    # 撤銷路徑
+    <revocationpubkey>
+OP_ELSE
+    OP_IF
+        # 成功路徑 (Bob 提供 preimage)
+        <remote_htlcpubkey>
+        OP_CHECKSIGVERIFY
+        OP_HASH160 <payment_hash> OP_EQUALVERIFY
+    OP_ELSE
+        # 超時路徑 (Alice 取回)
+        <to_self_delay> OP_CSV OP_DROP
+        <local_htlcpubkey>
+    OP_ENDIF
+OP_ENDIF
+OP_CHECKSIG
+
+懲罰所有輸出：
+┌─────────────────────────────────────────────────────────┐
+│ 舊承諾交易的所有輸出都有撤銷路徑：                      │
+│                                                         │
+│ to_local        → 可懲罰 ✓                              │
+│ Offered HTLCs   → 可懲罰 ✓                              │
+│ Received HTLCs  → 可懲罰 ✓                              │
+│                                                         │
+│ to_remote       → Bob 直接所有，無需懲罰                │
+└─────────────────────────────────────────────────────────┘
+
+Bob 需要創建多個懲罰交易：
+├── 懲罰 to_local
+├── 懲罰每個 Offered HTLC
+└── 懲罰每個 Received HTLC（二級交易）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Watchtower 角色</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">為什麼需要 Watchtower</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        用戶不可能 24/7 在線監控。Watchtower 代為監控區塊鏈，
+        發現欺詐時自動廣播預簽的懲罰交易。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Watchtower 數據</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Watchtower 只存儲加密的懲罰交易和觸發器（txid 的哈希）。
+        只有當舊承諾交易出現在鏈上時才能解密並廣播。
+      </p>
+    </div>
+  </div>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Watchtower 工作流程：
+
+設置階段：
+1. 用戶為每個舊狀態創建懲罰交易
+2. 加密懲罰交易：
+   encrypted_blob = encrypt(penalty_tx, breach_txid[:16])
+3. 發送給 Watchtower：
+   (breach_hint, encrypted_blob)
+   breach_hint = sha256(breach_txid)[:16]
+
+監控階段：
+Watchtower 監控每個新區塊：
+for each tx in block:
+    hint = sha256(tx.txid)[:16]
+    if hint in stored_hints:
+        # 發現可能的欺詐！
+        key = tx.txid[:16]
+        penalty_tx = decrypt(stored_blob, key)
+        broadcast(penalty_tx)
+
+隱私保護：
+├── Watchtower 不知道用戶身份
+├── Watchtower 不知道通道詳情
+├── 只有在欺詐發生時才能解密
+└── 即使 Watchtower 被入侵也不洩露信息`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰交易費用</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`懲罰交易的費用考量：
+
+問題：預簽的懲罰交易費率可能過時
+
+情況 1：費率太低
+├── 懲罰交易可能無法及時確認
+├── 作弊者可能贏得時間競賽
+└── 資金可能損失！
+
+情況 2：費率太高
+├── 從懲罰金額中扣除過多
+├── 小額通道可能不值得懲罰
+└── 經濟效率低下
+
+解決方案：
+
+1. CPFP（Child-Pays-For-Parent）
+   └── 用額外 UTXO 提升費率
+
+2. Anchor Outputs（錨定輸出）
+   └── 專門設計用於 CPFP 加速
+
+3. 動態費用估算
+   └── Watchtower 在廣播時決定費率
+
+4. 預簽多個費率版本
+   └── 低/中/高費率的懲罰交易
+
+現代實現（使用 Anchor Outputs）：
+┌────────────────────────────────────────────────────────┐
+│ 懲罰交易費率 = 最低費率                                │
+│ 實際費用通過 CPFP 動態調整                             │
+│ 需要額外 UTXO 用於 CPFP                                │
+└────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">懲罰機制的局限</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">數據丟失風險</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果你丟失了撤銷密鑰，就無法懲罰作弊者。這就是為什麼通道備份和 Watchtower 很重要。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">離線風險</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果你在整個延遲期間都離線，作弊者可能成功。必須在 to_self_delay 內響應。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">意外廣播</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果因為軟件錯誤或數據恢復問題意外廣播了舊狀態，你自己會被懲罰！
+        這是 <a href="/tech/lightning/channel-backup" class="underline">通道備份</a> 需要小心的原因。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo 替代方案</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Eltoo (LN-Symmetry) 模式：
+
+不使用懲罰，使用狀態替換：
+
+傳統懲罰模式：
+State N (舊) → 被廣播 → 懲罰 → 作弊者損失全部
+
+Eltoo 模式：
+State N (舊) → 被廣播 → State N+1 覆蓋 → 正確結算
+                         ↑
+                      無需懲罰
+
+優點：
+├── 更簡單，無需存儲所有撤銷密鑰
+├── 意外廣播舊狀態不會被懲罰
+├── 更適合多方通道
+└── 狀態更新更高效
+
+缺點：
+├── 需要 SIGHASH_ANYPREVOUT（尚未激活）
+├── 作弊者無經濟損失（除了手續費）
+└── 可能鼓勵更多作弊嘗試？
+
+詳見：/tech/lightning/eltoo`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >所有實現</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">核心功能</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        懲罰機制是 LN-Penalty（當前閃電網路）的核心。所有實現（LND、CLN、Eclair、LDK）
+        都完整支持懲罰交易的創建和廣播。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Watchtower</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">可用</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 內建 Watchtower 客戶端和服務器。Eye of Satoshi 是開源的第三方 Watchtower。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/03-transactions.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 3 - Transactions</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/watchtowers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Watchtowers</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/eltoo"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Eltoo</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/rebalancing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道再平衡</a
+      >
+      如何優化流動性分佈。
+    </p>
+  </div>
+</ArticleLayout>

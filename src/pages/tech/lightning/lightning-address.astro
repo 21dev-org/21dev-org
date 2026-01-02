@@ -1,0 +1,371 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Lightning Address 閃電地址"
+  description="了解 Lightning Address 如何讓閃電網路支付像發送電子郵件一樣簡單，使用人類可讀的地址接收支付。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Lightning Address' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Channel Rebalancing', href: '/tech/lightning/rebalancing' }}
+  nextPage={{ title: 'LNURL', href: '/tech/lightning/lnurl' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Lightning Address？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Lightning Address 是一種讓閃電網路支付變得像發送電子郵件一樣簡單的協議。
+    它使用類似電子郵件的格式（如 satoshi@example.com）作為支付目的地，
+    不需要每次都生成新的發票。基於 LNURL-pay 協議實現。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>簡單易記：</strong>
+      不再需要分享長串的發票字符串。只要告訴別人你的 Lightning Address，
+      他們就可以隨時向你發送支付。就像你的電子郵件地址，但用於接收比特幣。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與傳統發票的對比</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統閃電發票：
+
+lnbc100n1pj9...（很長的字符串）
+
+問題：
+├── 難以記憶和分享
+├── 每次支付需要新發票
+├── 發票有過期時間
+└── 需要線上生成
+
+Lightning Address：
+
+satoshi@nakamoto.com
+
+優點：
+├── 人類可讀，像電子郵件
+├── 固定地址，可重複使用
+├── 可以印在名片上
+└── 接收方可以離線（服務器處理）
+
+類比：
+BOLT11 發票 ≈ 銀行轉賬號 + 附言（每次不同）
+Lightning Address ≈ PayPal 電子郵件地址（固定）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Lightning Address 協議流程：
+
+地址格式：user@domain.com
+
+步驟 1：解析地址
+├── 用戶名：user
+└── 域名：domain.com
+
+步驟 2：構造 LNURL-pay 端點
+https://domain.com/.well-known/lnurlp/user
+
+步驟 3：錢包請求端點
+GET https://domain.com/.well-known/lnurlp/user
+
+響應：
+{
+  "callback": "https://domain.com/api/lnurl/pay/user",
+  "maxSendable": 100000000,      // 最大 1 BTC (毫聰)
+  "minSendable": 1000,            // 最小 1 sat
+  "metadata": "[[\"text/plain\",\"Payment to user\"]]",
+  "tag": "payRequest"
+}
+
+步驟 4：發送支付請求
+GET https://domain.com/api/lnurl/pay/user?amount=10000
+
+響應：
+{
+  "pr": "lnbc100n1...",          // BOLT11 發票
+  "routes": []
+}
+
+步驟 5：錢包支付發票
+└── 正常的閃電網路支付流程`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">設置 Lightning Address</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">1. 使用錢包服務</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        許多錢包提供內建的 Lightning Address。例如：
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">你的用戶名@walletofsatoshi.com</code>、
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">你的用戶名@getalby.com</code>。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">2. 使用自己的域名</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        擁有域名的用戶可以設置自己的 Lightning Address。需要配置
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">/.well-known/lnurlp/</code>
+        端點，將請求轉發到你的錢包或服務。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">3. 使用 LNbits 或 BTCPay Server</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        自託管解決方案如 LNbits 和 BTCPay Server 都支持 Lightning Address，
+        讓你完全控制自己的支付基礎設施。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自定義域名設置</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`設置自己的 Lightning Address：
+
+方法 1：靜態重定向（Nginx）
+
+# 將請求轉發到錢包服務
+location /.well-known/lnurlp/satoshi {
+    return 301 https://getalby.com/.well-known/lnurlp/你的alby用戶名;
+}
+
+結果：satoshi@你的域名.com → 你的 Alby 錢包
+
+方法 2：使用 Satdress（自託管代理）
+
+# 配置 satdress.yml
+domain: 你的域名.com
+users:
+  satoshi:
+    kind: lnd
+    host: 你的lnd:10009
+    macaroon: ...
+
+結果：satoshi@你的域名.com → 你的 LND 節點
+
+方法 3：BTCPay Server
+
+1. 在 BTCPay 啟用 Lightning Address
+2. 配置用戶名
+3. 設置 DNS 或反向代理
+
+結果：用戶名@你的btcpay域名.com`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">高級功能</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Lightning Address 擴展功能：
+
+1. 評論/備註 (commentAllowed)
+{
+  "callback": "...",
+  "commentAllowed": 140,  // 允許 140 字符評論
+  ...
+}
+
+發送方可以附加訊息：
+?amount=10000&comment=感謝你的精彩內容！
+
+2. 支付者資料 (payerData)
+{
+  "payerData": {
+    "name": { "mandatory": false },
+    "email": { "mandatory": false }
+  }
+}
+
+用於需要知道支付者身份的場景（如購物）
+
+3. 成功動作 (successAction)
+支付成功後的響應：
+{
+  "successAction": {
+    "tag": "message",
+    "message": "感謝您的支付！"
+  }
+}
+
+或提供下載鏈接：
+{
+  "successAction": {
+    "tag": "url",
+    "description": "下載您購買的內容",
+    "url": "https://example.com/download/abc123"
+  }
+}
+
+4. Nostr 整合 (NIP-57)
+Lightning Address 可以與 Nostr 整合：
+├── 通過 nostr 欄位指定 Nostr 公鑰
+├── 啟用 allowsNostr 標誌
+└── 支持 Zaps（Nostr 上的打賞）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">隱私權衡</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Address 綁定到域名，可能洩露你的身份。不像 BOLT11 發票每次不同。
+        考慮使用專門的子域名或別名服務。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">服務依賴</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        依賴第三方服務意味著信任他們正確處理請求。
+        服務中斷會影響支付接收。考慮自託管或備用方案。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支持的錢包和服務</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">發送支持</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Zeus、BlueWallet、Breez、Phoenix、Wallet of Satoshi、Alby、Blixt、
+        Muun、Strike 等大多數現代錢包都支持向 Lightning Address 發送支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">接收支持</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Wallet of Satoshi、Alby、LNbits、BTCPay Server、LightningTipBot、
+        Coinos、Zebedee 等提供 Lightning Address 接收功能。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">代碼示例</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`// 解析 Lightning Address 並獲取發票
+
+async function payToLightningAddress(address, amountMsats) {
+  // 1. 解析地址
+  const [user, domain] = address.split('@');
+
+  // 2. 獲取 LNURL-pay 端點
+  const response = await fetch(
+    \`https://\${domain}/.well-known/lnurlp/\${user}\`
+  );
+  const data = await response.json();
+
+  // 3. 驗證金額範圍
+  if (amountMsats < data.minSendable ||
+      amountMsats > data.maxSendable) {
+    throw new Error('金額超出範圍');
+  }
+
+  // 4. 請求發票
+  const invoiceResponse = await fetch(
+    \`\${data.callback}?amount=\${amountMsats}\`
+  );
+  const invoiceData = await invoiceResponse.json();
+
+  // 5. 返回發票
+  return invoiceData.pr;
+}
+
+// 使用示例
+const invoice = await payToLightningAddress(
+  'satoshi@example.com',
+  10000  // 10 sats in msats
+);
+// 然後用錢包支付 invoice`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 BOLT 12 的關係</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Lightning Address vs BOLT 12 Offers：
+
+Lightning Address (LNURL-pay)：
+├── 基於 HTTP/HTTPS
+├── 需要域名和 Web 服務器
+├── 第三方服務可以代管
+├── 已廣泛採用
+└── 依賴 DNS 和 TLS
+
+BOLT 12 Offers：
+├── 純閃電網路協議
+├── 不需要 Web 服務器
+├── 使用 Onion Messages 通訊
+├── 更去中心化
+├── 原生支持重複支付
+└── 仍在推廣中
+
+未來可能共存：
+├── Lightning Address 用於簡單場景
+├── BOLT 12 用於更高級的隱私需求
+└── 錢包可能同時支持兩種`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lightningaddress.com"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Address 官網</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lnurl"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL 協議</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 12 Offers</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/lnurl/luds"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL 規範 (LUDs)</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      深入了解 <a
+        href="/tech/lightning/lnurl"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL 協議</a
+      >
+      的完整功能，包括 LNURL-auth、LNURL-withdraw 等。
+    </p>
+  </div>
+</ArticleLayout>

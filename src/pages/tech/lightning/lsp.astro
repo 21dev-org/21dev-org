@@ -1,0 +1,387 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="LSP 閃電服務提供商"
+  description="了解 Lightning Service Providers 如何為終端用戶提供入站容量、通道管理和流動性服務。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'LSP' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Lightning Address', href: '/tech/lightning/lightning-address' }}
+  nextPage={{ title: 'JIT Channels', href: '/tech/lightning/jit-channels' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 LSP？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    LSP（Lightning Service Provider，閃電服務提供商）是專門為閃電網路用戶提供基礎設施服務的節點。
+    它們解決了普通用戶面臨的入站容量不足、通道管理複雜等問題，讓非技術用戶也能輕鬆使用閃電網路。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>類比：</strong>
+      LSP 就像是閃電網路的「ISP」（網際網路服務提供商）。就像你不需要自己架設網路基礎設施
+      就能上網一樣，有了 LSP，你不需要深入了解通道管理就能使用閃電支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 解決的問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`新用戶的困境：
+
+1. 入站容量問題
+   ┌─────────────────────────────────────────────────────┐
+   │ 新用戶開通道時：                                    │
+   │                                                     │
+   │ 用戶 ────[1 BTC]────> 對方                          │
+   │                                                     │
+   │ 結果：                                              │
+   │ - 可以發送 1 BTC                                    │
+   │ - 無法接收任何支付！                                │
+   │                                                     │
+   │ 問題：商家無法接收付款，用戶無法收款                │
+   └─────────────────────────────────────────────────────┘
+
+2. 通道管理複雜
+   ├── 需要決定和誰開通道
+   ├── 需要監控通道健康度
+   ├── 需要處理強制關閉
+   └── 需要 24/7 在線（或使用 Watchtower）
+
+3. 流動性成本
+   ├── 開通道需要鏈上交易費
+   ├── 需要鎖定資金
+   └── 再平衡需要額外費用
+
+LSP 解決方案：
+┌─────────────────────────────────────────────────────────┐
+│ LSP 向用戶開通道                                        │
+│                                                         │
+│ LSP ────[1 BTC]────> 用戶                               │
+│                                                         │
+│ 結果：                                                  │
+│ - 用戶立即有 1 BTC 入站容量                             │
+│ - 用戶可以接收支付                                      │
+│ - LSP 提供專業通道管理                                  │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 服務類型</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">1. 入站容量提供</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LSP 主動向用戶開通道，提供入站流動性。用戶不需要有鏈上資金，
+        可以直接開始接收閃電支付。常用於移動錢包的首次設置。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">2. JIT 通道（即時通道）</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        當用戶收到支付時，LSP 實時開設新通道或擴展現有通道。
+        <a href="/tech/lightning/jit-channels" class="text-yellow-600 dark:text-yellow-400 hover:underline">JIT Channels</a>
+        減少了預先鎖定資金的需求。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">3. Trampoline 路由</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        輕量級客戶端不需要維護完整的網路圖。LSP 代為計算支付路徑，
+        用戶只需要知道如何到達 LSP。見
+        <a href="/tech/lightning/trampoline" class="text-yellow-600 dark:text-yellow-400 hover:underline">Trampoline 路由</a>。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">4. 通道備份與恢復</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LSP 可以存儲用戶的通道備份，在用戶設備丟失時協助恢復。
+        結合 <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">static_remotekey</code> 提供更好的恢復體驗。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">5. 非同步支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        當用戶離線時，LSP 可以持有支付直到用戶上線。這實現了
+        <a href="/tech/lightning/async-payments" class="text-yellow-600 dark:text-yellow-400 hover:underline">非同步支付</a>
+        功能。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LSP 規範</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LSP 規範（LSPS）：
+
+LSPS 是標準化 LSP 服務的規範集：
+
+LSPS0: Transport Layer
+├── 基於 BOLT 8 加密連接
+├── JSON-RPC 2.0 訊息格式
+└── 通過自定義訊息類型傳輸
+
+LSPS1: Channel Request
+├── 用戶請求 LSP 開通道
+├── 指定容量、費用偏好
+└── LSP 返回報價和接受
+
+LSPS2: JIT Channels
+├── 首次支付時開通道
+├── 從支付金額中扣除開通道費
+└── 無需預先鎖定資金
+
+LSPS3: Channel Lease
+├── 租賃入站容量
+├── 指定租期和容量
+└── 租期結束後 LSP 可關閉
+
+LSPS4: Continuous Fee Updates
+├── 動態調整通道費率
+├── 根據市場條件更新
+└── 自動化費用管理
+
+API 示例（LSPS1）：
+{
+  "jsonrpc": "2.0",
+  "method": "lsps1.create_order",
+  "params": {
+    "lsp_balance_sat": 1000000,
+    "client_balance_sat": 0,
+    "required_channel_confirmations": 0,
+    "funding_confirms_within_blocks": 6,
+    "channel_expiry_blocks": 144
+  }
+}`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">商業模式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LSP 收入來源：
+
+1. 通道開設費
+   ├── 一次性費用
+   ├── 覆蓋鏈上交易成本
+   └── 例：0.1% 的通道容量
+
+2. 流動性租賃費
+   ├── 按時間收費（如每月）
+   ├── 補償資金機會成本
+   └── 例：1% 年化
+
+3. 路由費用
+   ├── 從經過的支付中收取
+   ├── 基礎費 + 比例費
+   └── 例：1 sat + 0.01%
+
+4. 服務訂閱
+   ├── 月費或年費
+   ├── 包含多種服務
+   └── 例：$5/月
+
+成本結構：
+┌─────────────────────────────────────────────────────────┐
+│ 固定成本：                                              │
+│ ├── 節點運營（服務器、帶寬）                           │
+│ ├── 開發維護                                            │
+│ └── 客戶支持                                            │
+│                                                         │
+│ 變動成本：                                              │
+│ ├── 鏈上交易費（開/關通道）                            │
+│ ├── 資金成本（鎖定的 BTC）                             │
+│ └── 再平衡費用                                          │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全與信任模型</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">保持的安全性</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 用戶資金仍是非託管的</li>
+        <li>• 通道由雙方共同控制</li>
+        <li>• LSP 無法單方面花費資金</li>
+        <li>• 保留鏈上最終結算能力</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">需要注意的風險</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• LSP 可能離線或停止服務</li>
+        <li>• 可能存在隱私洩露（路由信息）</li>
+        <li>• 依賴 LSP 進行路由計算</li>
+        <li>• 可能被 LSP 審查支付</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">流行的 LSP</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Breez</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        移動優先的 LSP，為 Breez 錢包提供服務。支持 JIT 通道、非同步支付、
+        Podcasting 2.0 整合。開源 SDK 可供其他應用使用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >ACINQ (Phoenix)</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Phoenix 錢包的 LSP。使用 Splicing 和自動通道管理，
+        用戶體驗接近託管錢包但保持非託管特性。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Voltage</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        提供 Flow 2.0 LSP 服務，可為第三方應用提供 API。
+        專注於企業和開發者需求。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Olympus (Zeus)</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Zeus 錢包的 LSP。支持 LSPS 規範，提供入站容量和 JIT 通道。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自建 LSP</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`運行自己的 LSP：
+
+需要的組件：
+1. 閃電節點（LND、CLN、Eclair）
+2. 足夠的流動性資金
+3. LSP 軟件/插件
+4. API 服務器
+
+開源 LSP 實現：
+├── Breez SDK - 完整的 LSP 解決方案
+├── lspd (LND) - Breez 的 LSP daemon
+├── cln-lsps (CLN) - LSPS 規範實現
+└── VLS (Validating Lightning Signer) - 安全簽名
+
+運營考量：
+┌─────────────────────────────────────────────────────────┐
+│ 流動性管理：                                            │
+│ ├── 監控各通道餘額                                      │
+│ ├── 自動再平衡                                          │
+│ └── 預測用戶需求                                        │
+│                                                         │
+│ 風險管理：                                              │
+│ ├── 設定每用戶上限                                      │
+│ ├── 監控可疑活動                                        │
+│ └── 準備應對通道攻擊                                    │
+│                                                         │
+│ 合規考量：                                              │
+│ ├── 可能需要 MSB 許可證                                 │
+│ ├── KYC/AML 要求                                        │
+│ └── 資金傳輸法規                                        │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來發展</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">LSP 市場競爭</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        隨著標準化（LSPS），用戶可以更容易切換 LSP，促進競爭和更好的服務。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">去中心化 LSP</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        研究如何減少對單一 LSP 的依賴，可能通過 LSP 聯盟或 P2P 流動性市場。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">整合 BOLT 12</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        BOLT 12 Offers 可以簡化 LSP 服務的發現和使用，提供更好的用戶體驗。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/BitcoinAndLightningLayerSpecs/lsp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LSPS 規範</a>
+    </li>
+    <li>
+      • <a
+        href="https://breez.technology/sdk/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Breez SDK</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/jit-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">JIT Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/trampoline"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Trampoline 路由</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/jit-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">JIT Channels</a
+      >
+      如何讓 LSP 在收到支付時即時開設通道。
+    </p>
+  </div>
+</ArticleLayout>

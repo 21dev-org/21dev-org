@@ -1,0 +1,553 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Silent Payments"
+  description="BIP-352 靜默支付：可重用的隱私地址協議"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Silent Payments' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+  nextPage={{ title: 'Addresses', href: '/tech/bitcoin-core/addresses' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Silent Payments（靜默支付）是 BIP-352 提出的隱私增強協議，
+    允許接收者公開一個靜態地址，而每筆付款都會發送到唯一的鏈上地址。
+    這解決了地址重用和隱私洩露的問題。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>狀態：</strong>
+      BIP-352 是較新的提案（2024年），部分錢包已開始實現。
+      Bitcoin Core 正在審核相關 PR。
+    </p>
+  </div>
+
+  <h2 id="problem">解決的問題</h2>
+
+  <h3>傳統地址的隱私問題</h3>
+  <pre><code class="language-text" is:raw>問題 1: 地址重用
+- 公開地址（如捐款頁面）
+- 所有付款發送到同一地址
+- 任何人都能追蹤收入
+
+問題 2: 新地址生成
+- 每次交易需要新地址
+- 需要發送者和接收者互動
+- 不適合非互動場景
+
+現有解決方案的缺陷:
+
+BIP-47 (Reusable Payment Codes):
+- 需要鏈上通知交易
+- 額外成本和複雜性
+
+Stealth Addresses (舊方案):
+- 接收者需掃描所有交易
+- 效能問題</code></pre>
+
+  <h3>Silent Payments 解決方案</h3>
+  <pre><code class="language-text" is:raw>Silent Payments 優勢:
+
+1. 靜態地址
+   - 一個地址可永久公開
+   - 無需互動即可接收付款
+
+2. 唯一輸出
+   - 每筆付款都是不同的鏈上地址
+   - 無法通過地址關聯付款
+
+3. 無鏈上開銷
+   - 不需要通知交易
+   - 付款與普通交易無異
+
+4. 基於 Taproot
+   - 利用 Taproot 的隱私優勢
+   - 輸出看起來與普通 P2TR 相同</code></pre>
+
+  <h2 id="how-it-works">工作原理</h2>
+
+  <h3>密鑰結構</h3>
+  <pre><code class="language-text" is:raw>Silent Payment 地址組成:
+
+接收者生成兩個密鑰對:
+1. Scan Key (B_scan, b_scan)
+   - 用於掃描區塊鏈
+   - 可以委託給第三方（輕客戶端）
+
+2. Spend Key (B_spend, b_spend)
+   - 用於實際花費
+   - 必須保密
+
+地址格式:
+sp1q&lt;scan_pubkey&gt;&lt;spend_pubkey&gt;
+
+範例:
+sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgq
+jhtpp5czqr0sn8svhkwfk22rq0gqgy0rrpnh42cfcrvlqwwz4pxqvnstd</code></pre>
+
+  <h3>付款流程</h3>
+  <pre><code class="language-text" is:raw>發送者 (Alice) 付款給接收者 (Bob):
+
+1. Alice 獲取 Bob 的 SP 地址
+   sp1q&lt;B_scan&gt;&lt;B_spend&gt;
+
+2. Alice 使用她的 UTXO 輸入
+   輸入公鑰: A = a·G
+
+3. Alice 計算共享密鑰
+   shared_secret = hash(a · B_scan)
+
+4. Alice 計算輸出公鑰
+   P = B_spend + shared_secret · G
+
+5. Alice 發送到 P (Taproot 地址)
+
+Bob 接收:
+
+1. Bob 掃描每個交易的輸入
+   提取輸入公鑰 A
+
+2. Bob 計算共享密鑰
+   shared_secret = hash(b_scan · A)
+
+3. Bob 計算預期輸出公鑰
+   P = B_spend + shared_secret · G
+
+4. 如果交易輸出包含 P
+   → 這筆付款是給 Bob 的
+
+5. Bob 可以用私鑰花費
+   p = b_spend + shared_secret</code></pre>
+
+  <h3>數學原理</h3>
+  <pre><code class="language-text" is:raw>ECDH 共享密鑰:
+
+發送者計算: a · B_scan = a · b_scan · G
+接收者計算: b_scan · A = b_scan · a · G
+
+兩者相等: a · b_scan · G
+
+輸出公鑰推導:
+P = B_spend + hash(shared_secret || counter) · G
+
+對應私鑰:
+p = b_spend + hash(shared_secret || counter)
+
+驗證:
+p · G = (b_spend + hash(...)) · G
+     = b_spend · G + hash(...) · G
+     = B_spend + hash(...) · G
+     = P ✓</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>地址生成</h3>
+  <pre><code class="language-typescript" is:raw>import * as secp256k1 from '@noble/secp256k1';
+import { sha256 } from '@noble/hashes/sha256';
+import { bech32m } from 'bech32';
+
+interface SilentPaymentKeys {
+  scanPrivkey: Uint8Array;
+  scanPubkey: Uint8Array;
+  spendPrivkey: Uint8Array;
+  spendPubkey: Uint8Array;
+}
+
+// 生成 Silent Payment 密鑰對
+function generateSPKeys(): SilentPaymentKeys {
+  const scanPrivkey = secp256k1.utils.randomPrivateKey();
+  const spendPrivkey = secp256k1.utils.randomPrivateKey();
+
+  return {
+    scanPrivkey,
+    scanPubkey: secp256k1.getPublicKey(scanPrivkey, true),
+    spendPrivkey,
+    spendPubkey: secp256k1.getPublicKey(spendPrivkey, true),
+  };
+}
+
+// 編碼 SP 地址
+function encodeSPAddress(
+  scanPubkey: Uint8Array,
+  spendPubkey: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  const hrp = network === 'mainnet' ? 'sp' : 'tsp';
+  const version = 0;
+
+  // 使用 x-only 公鑰 (32 bytes each)
+  const scanX = scanPubkey.slice(1);
+  const spendX = spendPubkey.slice(1);
+
+  const data = new Uint8Array([...scanX, ...spendX]);
+  const words = bech32m.toWords(data);
+  words.unshift(version);
+
+  return bech32m.encode(hrp, words, 118);  // 較長的限制
+}
+
+// 解碼 SP 地址
+function decodeSPAddress(address: string): {
+  scanPubkey: Uint8Array;
+  spendPubkey: Uint8Array;
+} {
+  const { prefix, words } = bech32m.decode(address, 118);
+
+  if (prefix !== 'sp' && prefix !== 'tsp') {
+    throw new Error('Invalid SP address prefix');
+  }
+
+  const version = words[0];
+  if (version !== 0) {
+    throw new Error('Unsupported SP version');
+  }
+
+  const data = new Uint8Array(bech32m.fromWords(words.slice(1)));
+
+  // 添加 02 前綴（假設偶數 y 座標）
+  return {
+    scanPubkey: new Uint8Array([0x02, ...data.slice(0, 32)]),
+    spendPubkey: new Uint8Array([0x02, ...data.slice(32, 64)]),
+  };
+}</code></pre>
+
+  <h3>發送付款</h3>
+  <pre><code class="language-typescript" is:raw>interface SPInput {
+  txid: string;
+  vout: number;
+  privkey: Uint8Array;
+  pubkey: Uint8Array;
+}
+
+interface SPOutput {
+  outputPubkey: Uint8Array;
+  amount: bigint;
+}
+
+// 發送者: 計算輸出地址
+function createSPOutput(
+  inputs: SPInput[],
+  recipientScanPubkey: Uint8Array,
+  recipientSpendPubkey: Uint8Array,
+  amount: bigint
+): SPOutput {
+  // 聚合輸入私鑰 (簡化版，實際更複雜)
+  let aggregatePrivkey = 0n;
+  for (const input of inputs) {
+    const privkeyBigInt = BigInt('0x' + bytesToHex(input.privkey));
+    aggregatePrivkey = (aggregatePrivkey + privkeyBigInt) % secp256k1.CURVE.n;
+  }
+
+  // 計算共享密鑰
+  // shared_secret = a · B_scan
+  const sharedPoint = secp256k1.Point
+    .fromHex(bytesToHex(recipientScanPubkey))
+    .multiply(aggregatePrivkey);
+
+  // 雜湊共享密鑰
+  const sharedSecretHash = taggedHash(
+    'BIP0352/SharedSecret',
+    sharedPoint.toRawBytes(true)
+  );
+
+  // 計算輸出公鑰
+  // P = B_spend + hash · G
+  const tweakPoint = secp256k1.Point.fromPrivateKey(sharedSecretHash);
+  const spendPoint = secp256k1.Point.fromHex(bytesToHex(recipientSpendPubkey));
+  const outputPoint = spendPoint.add(tweakPoint);
+
+  // Taproot 輸出 (x-only)
+  const outputPubkey = outputPoint.toRawBytes(true).slice(1);
+
+  return {
+    outputPubkey,
+    amount,
+  };
+}
+
+function taggedHash(tag: string, data: Uint8Array): Uint8Array {
+  const tagHash = sha256(new TextEncoder().encode(tag));
+  return sha256(new Uint8Array([...tagHash, ...tagHash, ...data]));
+}</code></pre>
+
+  <h3>接收掃描</h3>
+  <pre><code class="language-typescript" is:raw>interface ScannedOutput {
+  txid: string;
+  vout: number;
+  outputPubkey: Uint8Array;
+  amount: bigint;
+  spendPrivkey: Uint8Array;
+}
+
+// 接收者: 掃描交易
+function scanTransaction(
+  tx: Transaction,
+  scanPrivkey: Uint8Array,
+  spendPubkey: Uint8Array,
+  spendPrivkey: Uint8Array
+): ScannedOutput[] {
+  const results: ScannedOutput[] = [];
+
+  // 提取所有輸入公鑰
+  const inputPubkeys = extractInputPubkeys(tx);
+  if (inputPubkeys.length === 0) return results;
+
+  // 聚合輸入公鑰
+  let aggregatePubkey = secp256k1.Point.ZERO;
+  for (const pubkey of inputPubkeys) {
+    aggregatePubkey = aggregatePubkey.add(
+      secp256k1.Point.fromHex(bytesToHex(pubkey))
+    );
+  }
+
+  // 計算共享密鑰
+  // shared_secret = b_scan · A
+  const scanPrivkeyBigInt = BigInt('0x' + bytesToHex(scanPrivkey));
+  const sharedPoint = aggregatePubkey.multiply(scanPrivkeyBigInt);
+
+  const sharedSecretHash = taggedHash(
+    'BIP0352/SharedSecret',
+    sharedPoint.toRawBytes(true)
+  );
+
+  // 計算預期輸出公鑰
+  const tweakPoint = secp256k1.Point.fromPrivateKey(sharedSecretHash);
+  const spendPoint = secp256k1.Point.fromHex(bytesToHex(spendPubkey));
+  const expectedOutput = spendPoint.add(tweakPoint);
+  const expectedX = expectedOutput.toRawBytes(true).slice(1);
+
+  // 檢查每個輸出
+  for (let i = 0; i &lt; tx.outputs.length; i++) {
+    const output = tx.outputs[i];
+
+    // 檢查是否是 P2TR 輸出
+    if (!isP2TR(output.scriptPubKey)) continue;
+
+    const outputX = output.scriptPubKey.slice(2);
+
+    // 比較 x 座標
+    if (bytesToHex(outputX) === bytesToHex(expectedX)) {
+      // 計算花費私鑰
+      // p = b_spend + hash
+      const spendPrivkeyBigInt = BigInt('0x' + bytesToHex(spendPrivkey));
+      const tweakBigInt = BigInt('0x' + bytesToHex(sharedSecretHash));
+      const outputPrivkey = (spendPrivkeyBigInt + tweakBigInt) % secp256k1.CURVE.n;
+
+      results.push({
+        txid: tx.txid,
+        vout: i,
+        outputPubkey: outputX,
+        amount: output.value,
+        spendPrivkey: hexToBytes(
+          outputPrivkey.toString(16).padStart(64, '0')
+        ),
+      });
+    }
+  }
+
+  return results;
+}
+
+// 輕客戶端掃描 (只用 scan key)
+function lightClientScan(
+  tx: Transaction,
+  scanPrivkey: Uint8Array,
+  spendPubkey: Uint8Array
+): Uint8Array[] {
+  // 只返回可能的輸出公鑰
+  // 不計算花費私鑰（需要 spend key）
+  const candidates: Uint8Array[] = [];
+
+  // ... 類似上面的掃描邏輯
+  // 但只返回匹配的輸出
+
+  return candidates;
+}</code></pre>
+
+  <h2 id="labels">標籤 (Labels)</h2>
+  <pre><code class="language-text" is:raw>Silent Payment Labels:
+
+用途:
+- 區分不同來源的付款
+- 類似於 HD 錢包的帳戶
+
+實現:
+- 對 spend_pubkey 進行調整
+- B_spend' = B_spend + hash(b_scan || label) · G
+
+標籤範例:
+- label = 0: 默認 (捐款)
+- label = 1: 商品銷售
+- label = 2: 服務收入
+
+地址格式:
+- 默認地址: sp1q&lt;B_scan&gt;&lt;B_spend&gt;
+- 帶標籤: sp1q&lt;B_scan&gt;&lt;B_spend'&gt;</code></pre>
+
+  <h2 id="scanning">掃描優化</h2>
+
+  <h3>掃描效率</h3>
+  <pre><code class="language-text" is:raw>掃描挑戰:
+- 需要檢查每個區塊的每筆交易
+- 每筆交易需要 ECDH 計算
+- 全節點掃描較慢
+
+優化策略:
+
+1. 輕客戶端模式
+   - 只委託 scan key
+   - 服務器執行掃描
+   - 返回匹配的 tweak 值
+   - 客戶端驗證並計算私鑰
+
+2. 區塊過濾器
+   - 使用 BIP-158 風格的過濾器
+   - 快速排除不相關區塊
+
+3. 批量掃描
+   - 一次處理多個區塊
+   - 利用批量 ECDH 優化
+
+4. 索引服務
+   - 公開服務索引所有 SP 輸出
+   - 用戶只需查詢自己的 tweak</code></pre>
+
+  <h3>輕客戶端架構</h3>
+  <pre><code class="language-typescript" is:raw>interface SPLightClient {
+  scanPubkey: Uint8Array;  // 公開給服務器
+  spendPrivkey: Uint8Array;  // 本地保管
+  spendPubkey: Uint8Array;
+}
+
+interface SPIndexService {
+  // 服務器執行掃描
+  scanBlocks(
+    scanPubkey: Uint8Array,
+    startHeight: number,
+    endHeight: number
+  ): Promise&lt;SPTweak[]&gt;;
+}
+
+interface SPTweak {
+  txid: string;
+  vout: number;
+  tweakData: Uint8Array;
+  amount: bigint;
+}
+
+// 輕客戶端恢復錢包
+async function recoverWallet(
+  client: SPLightClient,
+  indexService: SPIndexService,
+  startHeight: number
+): Promise&lt;ScannedOutput[]&gt; {
+  const outputs: ScannedOutput[] = [];
+  const currentHeight = await getCurrentHeight();
+
+  // 批量掃描
+  const batchSize = 10000;
+  for (let h = startHeight; h &lt; currentHeight; h += batchSize) {
+    const tweaks = await indexService.scanBlocks(
+      client.scanPubkey,
+      h,
+      Math.min(h + batchSize, currentHeight)
+    );
+
+    // 本地計算私鑰
+    for (const tweak of tweaks) {
+      const spendKey = computeSpendKey(
+        client.spendPrivkey,
+        tweak.tweakData
+      );
+
+      outputs.push({
+        txid: tweak.txid,
+        vout: tweak.vout,
+        amount: tweak.amount,
+        spendPrivkey: spendKey,
+        outputPubkey: secp256k1.getPublicKey(spendKey, true).slice(1),
+      });
+    }
+  }
+
+  return outputs;
+}</code></pre>
+
+  <h2 id="comparison">與其他方案比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>普通地址</th>
+        <th>BIP-47</th>
+        <th>Silent Payments</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>靜態地址</td>
+        <td>否</td>
+        <td>是</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td>鏈上開銷</td>
+        <td>無</td>
+        <td>通知交易</td>
+        <td>無</td>
+      </tr>
+      <tr>
+        <td>非互動</td>
+        <td>否</td>
+        <td>否*</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td>掃描需求</td>
+        <td>無</td>
+        <td>已知對手</td>
+        <td>所有交易</td>
+      </tr>
+      <tr>
+        <td>輕客戶端</td>
+        <td>是</td>
+        <td>部分</td>
+        <td>需索引服務</td>
+      </tr>
+      <tr>
+        <td>Taproot</td>
+        <td>任意</td>
+        <td>否</td>
+        <td>是</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="text-sm text-[var(--text-secondary)]">
+    *BIP-47 首次付款需要通知交易
+  </p>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>安全保管 spend key</strong>：scan key 可委託，spend key 必須保密</li>
+    <li><strong>使用標籤</strong>：區分不同來源的付款</li>
+    <li><strong>定期掃描</strong>：設置自動掃描新區塊</li>
+    <li><strong>備份兩個密鑰</strong>：恢復需要 scan 和 spend 私鑰</li>
+    <li><strong>考慮輕客戶端</strong>：委託掃描提升效率</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki" target="_blank" rel="noopener noreferrer">BIP-352: Silent Payments</a></li>
+    <li><a href="https://silentpayments.xyz/" target="_blank" rel="noopener noreferrer">Silent Payments 官網</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+    <li><a href="/tech/bitcoin-core/addresses">Address Types</a></li>
+  </ul>
+</ArticleLayout>

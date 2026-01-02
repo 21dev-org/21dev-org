@@ -1,0 +1,347 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Fees & Economics 費用與經濟"
+  description="深入了解閃電網路的費用結構、路由經濟學和節點盈利模式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Fees & Economics' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Routing', href: '/tech/lightning/routing' }}
+  nextPage={{ title: 'Pathfinding', href: '/tech/lightning/pathfinding' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">閃電網路費用結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路的費用遠低於鏈上交易，但理解其結構對於用戶優化成本和節點運營者盈利都很重要。
+    費用主要由兩部分組成：基礎費用和比例費用，每個路由節點都可以自由設定。
+  </p>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用組成</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`閃電網路路由費用公式：
+
+總費用 = base_fee + (amount × fee_rate)
+
+參數說明：
+┌─────────────────────────────────────────────────────────┐
+│ base_fee (基礎費用)                                     │
+│ ├── 每次轉發收取的固定費用                              │
+│ ├── 單位：millisatoshi (msat)                           │
+│ ├── 典型值：0 - 1000 msat (0 - 1 sat)                   │
+│ └── 無論金額大小都收取                                  │
+├─────────────────────────────────────────────────────────┤
+│ fee_rate (費率)                                         │
+│ ├── 按轉發金額比例收取                                  │
+│ ├── 單位：ppm (parts per million，百萬分之一)           │
+│ ├── 典型值：1 - 5000 ppm (0.0001% - 0.5%)               │
+│ └── 1 ppm = 每轉發 1,000,000 sats 收 1 sat              │
+└─────────────────────────────────────────────────────────┘
+
+計算示例：
+base_fee = 1000 msat (1 sat)
+fee_rate = 100 ppm
+支付金額 = 100,000 sats
+
+費用 = 1000 + (100,000 × 100 / 1,000,000) msat
+     = 1000 + 10,000 msat
+     = 11,000 msat = 11 sats
+
+多跳支付：
+A → B → C → D
+費用 = 費用(A→B) + 費用(B→C) + 費用(C→D)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">channel_update 訊息</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`channel_update 訊息中的費用相關欄位：
+
+{
+  "channel_flags": 0,           // 方向標誌
+  "message_flags": 1,
+  "cltv_expiry_delta": 40,      // 時間鎖增量
+  "htlc_minimum_msat": 1000,    // 最小 HTLC
+  "htlc_maximum_msat": 990000000, // 最大 HTLC
+  "fee_base_msat": 1000,        // 基礎費用
+  "fee_proportional_millionths": 100  // 費率 ppm
+}
+
+重要參數：
+┌────────────────────────────────────────────────────────┐
+│ cltv_expiry_delta                                      │
+│ ├── 每跳增加的時間鎖區塊數                             │
+│ ├── 影響支付的總時間鎖                                 │
+│ └── 較長值更安全但可能被拒絕                           │
+├────────────────────────────────────────────────────────┤
+│ htlc_minimum_msat / htlc_maximum_msat                  │
+│ ├── 限制可轉發的 HTLC 大小                             │
+│ ├── 保護通道免受粉塵攻擊                               │
+│ └── 控制流動性使用                                     │
+└────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用策略</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">低費用策略</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        吸引更多流量，薄利多銷。適合新節點建立路由歷史，
+        或流動性充足的大節點。風險是可能被濫用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">高費用策略</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        最大化每筆交易收益。適合稀缺流動性方向或獨特的連接位置。
+        可能減少總體交易量。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">動態費用</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        根據通道餘額動態調整。流動性稀缺方向收更高費用，
+        引導流量自然平衡通道。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">零費用</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        有些節點選擇零費用以促進網路發展或作為公共服務。
+        需要其他收入來源支撐運營成本。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">流動性方向與費用</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`基於流動性的費用策略：
+
+通道狀態：
+┌────────────────────────────────────────────────────────┐
+│  你         ←──[0.3 BTC]──┼──[0.7 BTC]──→      對方   │
+│                                                        │
+│  本地餘額：0.3 BTC (30%)                               │
+│  遠端餘額：0.7 BTC (70%)                               │
+└────────────────────────────────────────────────────────┘
+
+費用調整邏輯：
+
+出站方向（你 → 對方）：
+├── 本地餘額低 (30%)
+├── 出站容量稀缺
+├── 設定高費用以保護流動性
+└── 例：base=1000, rate=500ppm
+
+入站方向（對方 → 你）：
+├── 遠端餘額高 (70%)
+├── 入站容量充足
+├── 設定低費用吸引流量
+└── 例：base=0, rate=10ppm
+
+自動化費用管理工具：
+├── charge-lnd (LND)
+├── clboss (CLN)
+└── 各種自動化腳本
+
+動態費用公式示例：
+fee_rate = base_rate × (1 + sensitivity × (0.5 - local_ratio))
+
+local_ratio = 0.3 → 費率提高
+local_ratio = 0.7 → 費率降低
+local_ratio = 0.5 → 使用基礎費率`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路由經濟學</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`路由節點盈利分析：
+
+收入來源：
+┌─────────────────────────────────────────────────────────┐
+│ 路由費用收入                                            │
+│                                                         │
+│ 假設：                                                  │
+│ - 每日路由量：10 BTC                                    │
+│ - 平均費率：50 ppm                                      │
+│ - 平均基礎費：1 sat                                     │
+│ - 每日支付數：1000 筆                                   │
+│                                                         │
+│ 每日收入 = 10 × 1,000,000 × 50/1,000,000 + 1000         │
+│          = 500 + 1000 = 1500 sats/天                    │
+│          ≈ 45,000 sats/月                               │
+└─────────────────────────────────────────────────────────┘
+
+成本結構：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 開通道成本                                           │
+│    ├── 鏈上交易費（每通道約 2000-10000 sats）          │
+│    └── 需要多個通道才能有效路由                        │
+│                                                         │
+│ 2. 關通道成本                                           │
+│    └── 協商關閉或強制關閉的鏈上費用                    │
+│                                                         │
+│ 3. 再平衡成本                                           │
+│    ├── 循環支付的路由費                                │
+│    └── Submarine Swap 費用                             │
+│                                                         │
+│ 4. 資金機會成本                                         │
+│    ├── 鎖定的 BTC 無法做其他用途                       │
+│    └── 年化約 1-5%（視風險偏好）                       │
+│                                                         │
+│ 5. 運營成本                                             │
+│    ├── 服務器/硬件                                      │
+│    └── 時間和精力                                       │
+└─────────────────────────────────────────────────────────┘
+
+盈利條件：
+路由收入 > 再平衡成本 + 資金成本 + 運營成本
+
+大多數小型路由節點實際上是虧損的！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">用戶費用優化</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">選擇好的 LSP/節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        與大型、連接良好的節點建立通道。它們通常有更低的費率和更好的路由成功率。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">使用 MPP</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        <a href="/tech/lightning/mpp" class="underline">多路徑支付</a> 可以找到更便宜的路徑組合，
+        尤其是大額支付時。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">設定費用上限</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        大多數錢包允許設定最大可接受費用。避免支付過高的路由費。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">避開擁堵時段</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        網路繁忙時費用可能更高。非緊急支付可以等待更好的時機。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用與隱私</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`費用揭示的信息：
+
+路由節點可以通過費用了解：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 支付金額                                             │
+│    └── 從比例費用可以推算                              │
+│                                                         │
+│ 2. 支付方向                                             │
+│    └── 知道資金流向                                    │
+│                                                         │
+│ 3. 時間模式                                             │
+│    └── 何時發生支付                                    │
+└─────────────────────────────────────────────────────────┘
+
+隱私保護措施：
+
+1. 洋蔥路由
+   └── 節點不知道完整路徑
+
+2. PTLCs（未來）
+   └── 消除跨跳關聯
+
+3. 添加隨機費用
+   └── 模糊真實金額（用戶側）
+
+4. 路徑盲化
+   └── 隱藏接收方位置`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用管理工具</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">charge-lnd</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 的自動費用管理工具。支持基於餘額、時間、對手方等條件的規則引擎。
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">github.com/accumulator/charge-lnd</code>
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">clboss</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        CLN 的自動化節點管理器。自動調整費用、開關通道、再平衡。
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">github.com/ZmnSCPxj/clboss</code>
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Lightning Terminal</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Labs 的 GUI 工具。提供費用分析、調整建議和自動化選項。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://terminal.lightning.engineering/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Terminal</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/routing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路由與尋路</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/rebalancing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道再平衡</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/liquidity"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/pathfinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑搜索演算法</a
+      >
+      如何找到最佳支付路徑。
+    </p>
+  </div>
+</ArticleLayout>

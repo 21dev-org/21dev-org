@@ -1,0 +1,527 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="HD Wallets"
+  description="階層確定性錢包：BIP-32/39/44/84/86 密鑰推導標準"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'HD Wallets' },
+  ]}
+  difficulty="intermediate"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Descriptors', href: '/tech/bitcoin-core/descriptors' }}
+  nextPage={{ title: 'PSBT', href: '/tech/bitcoin-core/psbt' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    階層確定性錢包（Hierarchical Deterministic Wallet）允許從單一種子
+    派生無限數量的密鑰對，同時只需備份一個助記詞。
+    這是現代比特幣錢包的標準實現方式。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心優勢：</strong>
+      12/24 個助記詞可以恢復整個錢包的所有地址和交易歷史，
+      無需備份每個私鑰。
+    </p>
+  </div>
+
+  <h2 id="bip39">BIP-39: 助記詞</h2>
+
+  <h3>助記詞生成</h3>
+  <pre><code class="language-text" is:raw>助記詞生成流程:
+
+1. 生成熵 (Entropy)
+   - 128 bits: 12 詞
+   - 160 bits: 15 詞
+   - 192 bits: 18 詞
+   - 224 bits: 21 詞
+   - 256 bits: 24 詞
+
+2. 添加校驗和
+   checksum = SHA256(entropy)[0:entropy_bits/32]
+   total_bits = entropy_bits + checksum_bits
+
+3. 分割為 11 位組
+   每 11 位對應詞表中的一個單詞
+   2^11 = 2048 個單詞
+
+範例 (128 bits):
+熵:          128 bits
+校驗和:        4 bits (128/32)
+總計:        132 bits
+單詞數:       12 個 (132/11)</code></pre>
+
+  <h3>從助記詞到種子</h3>
+  <pre><code class="language-typescript" is:raw>import { pbkdf2 } from '@noble/hashes/pbkdf2';
+import { sha512 } from '@noble/hashes/sha512';
+
+// BIP-39 助記詞到種子
+function mnemonicToSeed(
+  mnemonic: string,
+  passphrase: string = ''
+): Uint8Array {
+  const mnemonicBytes = new TextEncoder().encode(
+    mnemonic.normalize('NFKD')
+  );
+  const salt = new TextEncoder().encode(
+    ('mnemonic' + passphrase).normalize('NFKD')
+  );
+
+  // PBKDF2-HMAC-SHA512, 2048 輪
+  return pbkdf2(sha512, mnemonicBytes, salt, {
+    c: 2048,
+    dkLen: 64,
+  });
+}
+
+// 驗證助記詞校驗和
+function validateMnemonic(mnemonic: string): boolean {
+  const words = mnemonic.trim().split(/\s+/);
+
+  if (![12, 15, 18, 21, 24].includes(words.length)) {
+    return false;
+  }
+
+  // 檢查每個詞是否在詞表中
+  for (const word of words) {
+    if (!WORDLIST.includes(word)) {
+      return false;
+    }
+  }
+
+  // 驗證校驗和
+  const bits = words.map(w =&gt; WORDLIST.indexOf(w))
+    .map(i =&gt; i.toString(2).padStart(11, '0'))
+    .join('');
+
+  const entropyBits = bits.slice(0, -bits.length / 33);
+  const checksumBits = bits.slice(-bits.length / 33);
+
+  const entropy = new Uint8Array(
+    entropyBits.match(/.{8}/g)!.map(b =&gt; parseInt(b, 2))
+  );
+
+  const hash = sha256(entropy);
+  const expectedChecksum = [...hash]
+    .map(b =&gt; b.toString(2).padStart(8, '0'))
+    .join('')
+    .slice(0, checksumBits.length);
+
+  return checksumBits === expectedChecksum;
+}</code></pre>
+
+  <h2 id="bip32">BIP-32: 密鑰推導</h2>
+
+  <h3>擴展密鑰</h3>
+  <pre><code class="language-text" is:raw>Extended Key 結構 (78 bytes):
+
+┌─────────────────────────────────────────────────────────┐
+│ Version    │ Depth │ Fingerprint │ Child # │ Chaincode │
+│  4 bytes   │ 1 byte│   4 bytes   │ 4 bytes │ 32 bytes  │
+├─────────────────────────────────────────────────────────┤
+│                        Key                              │
+│                      33 bytes                           │
+│         (私鑰加 0x00 前綴 或 壓縮公鑰)                   │
+└─────────────────────────────────────────────────────────┘
+
+Version bytes:
+- xprv: 0x0488ADE4 (mainnet private)
+- xpub: 0x0488B21E (mainnet public)
+- tprv: 0x04358394 (testnet private)
+- tpub: 0x043587CF (testnet public)
+
+SegWit 版本:
+- yprv/ypub: P2SH-P2WPKH (BIP-49)
+- zprv/zpub: P2WPKH (BIP-84)
+
+Taproot 版本:
+- xprv/xpub: P2TR (使用不同推導路徑)</code></pre>
+
+  <h3>子密鑰推導</h3>
+  <pre><code class="language-text" is:raw>推導類型:
+
+正常推導 (Normal/Non-hardened):
+- 索引: 0 到 2^31 - 1
+- 可從 xpub 推導子 xpub
+- 路徑表示: m/0/1/2
+
+硬化推導 (Hardened):
+- 索引: 2^31 到 2^32 - 1
+- 需要私鑰才能推導
+- 路徑表示: m/0'/1'/2' 或 m/0h/1h/2h
+
+安全性差異:
+┌─────────────────────────────────────────────────────────┐
+│ 如果子私鑰和 xpub 洩露:                                 │
+│                                                         │
+│ 正常推導: 可計算父私鑰和所有兄弟私鑰！                  │
+│ 硬化推導: 其他密鑰仍然安全                              │
+└─────────────────────────────────────────────────────────┘</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>import { hmac } from '@noble/hashes/hmac';
+import { sha512 } from '@noble/hashes/sha512';
+import * as secp256k1 from '@noble/secp256k1';
+
+interface ExtendedKey {
+  version: Uint8Array;
+  depth: number;
+  fingerprint: Uint8Array;
+  childNumber: number;
+  chaincode: Uint8Array;
+  key: Uint8Array;  // 33 bytes
+}
+
+// 從種子創建主密鑰
+function createMasterKey(seed: Uint8Array): ExtendedKey {
+  const I = hmac(sha512, 'Bitcoin seed', seed);
+  const IL = I.slice(0, 32);  // 私鑰
+  const IR = I.slice(32);     // 鏈碼
+
+  // 驗證私鑰有效性
+  if (!secp256k1.utils.isValidPrivateKey(IL)) {
+    throw new Error('Invalid master key');
+  }
+
+  return {
+    version: new Uint8Array([0x04, 0x88, 0xAD, 0xE4]),
+    depth: 0,
+    fingerprint: new Uint8Array(4),
+    childNumber: 0,
+    chaincode: IR,
+    key: new Uint8Array([0x00, ...IL]),
+  };
+}
+
+// 子密鑰推導
+function deriveChild(
+  parent: ExtendedKey,
+  index: number
+): ExtendedKey {
+  const isHardened = index &gt;= 0x80000000;
+
+  let data: Uint8Array;
+
+  if (isHardened) {
+    // 硬化: 0x00 || 私鑰 || 索引
+    if (parent.key[0] !== 0x00) {
+      throw new Error('Cannot derive hardened child from xpub');
+    }
+    data = new Uint8Array([
+      0x00,
+      ...parent.key.slice(1),
+      ...uint32BE(index),
+    ]);
+  } else {
+    // 正常: 公鑰 || 索引
+    const pubkey = parent.key[0] === 0x00
+      ? secp256k1.getPublicKey(parent.key.slice(1), true)
+      : parent.key;
+    data = new Uint8Array([
+      ...pubkey,
+      ...uint32BE(index),
+    ]);
+  }
+
+  const I = hmac(sha512, parent.chaincode, data);
+  const IL = I.slice(0, 32);
+  const IR = I.slice(32);
+
+  // 計算子密鑰
+  let childKey: Uint8Array;
+  if (parent.key[0] === 0x00) {
+    // 私鑰 + IL
+    const parentKey = BigInt('0x' + bytesToHex(parent.key.slice(1)));
+    const tweak = BigInt('0x' + bytesToHex(IL));
+    const childKeyBigInt = (parentKey + tweak) % secp256k1.CURVE.n;
+    childKey = new Uint8Array([
+      0x00,
+      ...hexToBytes(childKeyBigInt.toString(16).padStart(64, '0')),
+    ]);
+  } else {
+    // 公鑰點加法
+    const parentPoint = secp256k1.Point.fromHex(bytesToHex(parent.key));
+    const tweakPoint = secp256k1.Point.fromPrivateKey(IL);
+    const childPoint = parentPoint.add(tweakPoint);
+    childKey = childPoint.toRawBytes(true);
+  }
+
+  // 計算父指紋
+  const parentPubkey = parent.key[0] === 0x00
+    ? secp256k1.getPublicKey(parent.key.slice(1), true)
+    : parent.key;
+  const fingerprint = hash160(parentPubkey).slice(0, 4);
+
+  return {
+    version: parent.version,
+    depth: parent.depth + 1,
+    fingerprint,
+    childNumber: index,
+    chaincode: IR,
+    key: childKey,
+  };
+}
+
+// 從路徑推導
+function derivePath(
+  master: ExtendedKey,
+  path: string
+): ExtendedKey {
+  const segments = path.split('/');
+
+  if (segments[0] !== 'm') {
+    throw new Error('Path must start with m');
+  }
+
+  let key = master;
+
+  for (const segment of segments.slice(1)) {
+    const hardened = segment.endsWith("'") || segment.endsWith('h');
+    const index = parseInt(segment.replace(/['h]$/, ''), 10);
+    const childIndex = hardened ? index + 0x80000000 : index;
+    key = deriveChild(key, childIndex);
+  }
+
+  return key;
+}</code></pre>
+
+  <h2 id="bip44">BIP-44/49/84/86: 推導路徑</h2>
+
+  <h3>路徑標準</h3>
+  <pre><code class="language-text" is:raw>推導路徑格式:
+m / purpose' / coin_type' / account' / change / address_index
+
+層級說明:
+┌───────────────────────────────────────────────────────────┐
+│ m           │ 主密鑰                                      │
+├─────────────┼─────────────────────────────────────────────┤
+│ purpose'    │ BIP 編號 (硬化)                             │
+│             │ 44' = BIP-44 (Legacy)                       │
+│             │ 49' = BIP-49 (P2SH-SegWit)                  │
+│             │ 84' = BIP-84 (Native SegWit)                │
+│             │ 86' = BIP-86 (Taproot)                      │
+├─────────────┼─────────────────────────────────────────────┤
+│ coin_type'  │ 幣種 (硬化)                                 │
+│             │ 0' = Bitcoin mainnet                        │
+│             │ 1' = Bitcoin testnet                        │
+├─────────────┼─────────────────────────────────────────────┤
+│ account'    │ 帳戶索引 (硬化)                             │
+│             │ 0', 1', 2'...                               │
+├─────────────┼─────────────────────────────────────────────┤
+│ change      │ 0 = 接收地址, 1 = 找零地址                  │
+├─────────────┼─────────────────────────────────────────────┤
+│ address_idx │ 地址索引 0, 1, 2...                         │
+└─────────────┴─────────────────────────────────────────────┘</code></pre>
+
+  <h3>各 BIP 路徑範例</h3>
+  <pre><code class="language-text" is:raw>BIP-44 (P2PKH - Legacy):
+m/44'/0'/0'/0/0  →  1ABC...
+m/44'/0'/0'/0/1  →  1DEF...
+m/44'/0'/0'/1/0  →  1GHI... (找零)
+
+BIP-49 (P2SH-P2WPKH):
+m/49'/0'/0'/0/0  →  3ABC...
+m/49'/0'/0'/0/1  →  3DEF...
+
+BIP-84 (P2WPKH - Native SegWit):
+m/84'/0'/0'/0/0  →  bc1q...
+m/84'/0'/0'/0/1  →  bc1q...
+
+BIP-86 (P2TR - Taproot):
+m/86'/0'/0'/0/0  →  bc1p...
+m/86'/0'/0'/0/1  →  bc1p...</code></pre>
+
+  <h3>地址生成</h3>
+  <pre><code class="language-typescript" is:raw>import { bech32, bech32m } from 'bech32';
+import * as crypto from 'crypto';
+
+type AddressType = 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh' | 'p2tr';
+
+interface WalletAccount {
+  masterSeed: Uint8Array;
+  accountPath: string;
+  addressType: AddressType;
+}
+
+// 生成地址
+function generateAddress(
+  account: WalletAccount,
+  change: 0 | 1,
+  index: number
+): { address: string; path: string } {
+  const master = createMasterKey(account.masterSeed);
+  const path = `${account.accountPath}/${change}/${index}`;
+  const derived = derivePath(master, path);
+
+  const pubkey = derived.key[0] === 0x00
+    ? secp256k1.getPublicKey(derived.key.slice(1), true)
+    : derived.key;
+
+  let address: string;
+
+  switch (account.addressType) {
+    case 'p2pkh':
+      address = pubkeyToP2PKH(pubkey);
+      break;
+    case 'p2sh-p2wpkh':
+      address = pubkeyToP2SHP2WPKH(pubkey);
+      break;
+    case 'p2wpkh':
+      address = pubkeyToP2WPKH(pubkey);
+      break;
+    case 'p2tr':
+      address = pubkeyToP2TR(pubkey);
+      break;
+  }
+
+  return { address, path };
+}
+
+function hash160(data: Uint8Array): Uint8Array {
+  const sha = crypto.createHash('sha256').update(data).digest();
+  return new Uint8Array(
+    crypto.createHash('ripemd160').update(sha).digest()
+  );
+}
+
+function pubkeyToP2WPKH(pubkey: Uint8Array): string {
+  const hash = hash160(pubkey);
+  const words = bech32.toWords(hash);
+  words.unshift(0);  // witness version 0
+  return bech32.encode('bc', words);
+}
+
+function pubkeyToP2TR(pubkey: Uint8Array): string {
+  // 使用 x-only 公鑰 (去掉前綴)
+  const xonly = pubkey.slice(1);
+
+  // Taproot tweak (無腳本樹)
+  const tweakedPubkey = taprootTweak(xonly);
+
+  const words = bech32m.toWords(tweakedPubkey);
+  words.unshift(1);  // witness version 1
+  return bech32m.encode('bc', words);
+}
+
+// 批量生成地址
+function generateAddresses(
+  account: WalletAccount,
+  count: number,
+  change: 0 | 1 = 0
+): Array&lt;{ address: string; path: string; index: number }&gt; {
+  const addresses = [];
+
+  for (let i = 0; i &lt; count; i++) {
+    const { address, path } = generateAddress(account, change, i);
+    addresses.push({ address, path, index: i });
+  }
+
+  return addresses;
+}</code></pre>
+
+  <h2 id="gap-limit">Gap Limit</h2>
+  <pre><code class="language-text" is:raw>Gap Limit 概念:
+
+問題:
+- HD 錢包可以生成無限地址
+- 恢復時如何知道生成多少個？
+
+解決方案: Gap Limit
+- 預設: 連續 20 個未使用地址
+- 恢復時掃描直到連續 20 個空地址
+
+掃描流程:
+1. 從索引 0 開始生成地址
+2. 查詢每個地址的交易歷史
+3. 如果有交易，記錄最高使用索引
+4. 繼續掃描直到連續 20 個未使用
+
+錢包恢復:
+m/84'/0'/0'/0/0  ✓ 有交易
+m/84'/0'/0'/0/1  ✓ 有交易
+m/84'/0'/0'/0/2  ✗ 無交易
+...
+m/84'/0'/0'/0/21 ✗ 無交易 (連續 20 個)
+→ 停止掃描，恢復完成</code></pre>
+
+  <h2 id="xpub-sharing">xpub 共享</h2>
+  <pre><code class="language-text" is:raw>xpub 用途:
+
+Watch-only 錢包:
+- 只需 xpub 即可追蹤餘額
+- 無法簽名交易
+- 用於會計、監控
+
+商家收款:
+- 電商服務器只存 xpub
+- 為每筆訂單生成新地址
+- 私鑰離線保管
+
+安全考量:
+┌─────────────────────────────────────────────────────────┐
+│ xpub 洩露影響:                                          │
+│ - 所有地址隱私暴露                                      │
+│ - 可追蹤所有交易                                        │
+│ - 餘額完全暴露                                          │
+│                                                         │
+│ xpub + 任一子私鑰洩露 (非硬化推導):                     │
+│ - 可計算所有私鑰！                                      │
+│ - 資金完全被盜                                          │
+└─────────────────────────────────────────────────────────┘
+
+最佳實踐:
+- 使用帳戶級別 xpub (m/84'/0'/0')
+- 不要共享根 xpub (m)
+- 考慮使用 Output Descriptors</code></pre>
+
+  <h2 id="passphrase">Passphrase (25th Word)</h2>
+  <pre><code class="language-text" is:raw>BIP-39 Passphrase:
+
+功能:
+- 助記詞 + passphrase = 完全不同的種子
+- 類似「第 25 個詞」
+- 提供額外安全層
+
+用途:
+1. 合理否認 (Plausible Deniability)
+   - 空 passphrase → 小額錢包（誘餌）
+   - 真正 passphrase → 主要資金
+
+2. 多帳戶
+   - 同一助記詞 + 不同 passphrase
+   - 完全獨立的錢包
+
+3. 雙因素備份
+   - 助記詞 + passphrase 分開保管
+
+注意:
+- passphrase 錯誤會導向有效但空的錢包
+- 無法驗證 passphrase 正確性
+- 必須精確記住（區分大小寫、空格等）</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用 BIP-84/86</strong>：優先使用 SegWit/Taproot 路徑</li>
+    <li><strong>備份助記詞</strong>：離線、多份、安全保管</li>
+    <li><strong>驗證備份</strong>：定期測試恢復流程</li>
+    <li><strong>使用 passphrase</strong>：考慮使用 passphrase 增加安全性</li>
+    <li><strong>帳戶分離</strong>：不同用途使用不同帳戶索引</li>
+    <li><strong>考慮 Descriptors</strong>：現代錢包優先使用 Output Descriptors</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki" target="_blank" rel="noopener noreferrer">BIP-32: HD Wallets</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki" target="_blank" rel="noopener noreferrer">BIP-39: Mnemonic</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki" target="_blank" rel="noopener noreferrer">BIP-44: Multi-Account</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki" target="_blank" rel="noopener noreferrer">BIP-84: Native SegWit</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki" target="_blank" rel="noopener noreferrer">BIP-86: Taproot</a></li>
+    <li><a href="/tech/bitcoin-core/descriptors">Wallet Descriptors</a></li>
+    <li><a href="/tech/bitcoin-core/addresses">Address Types</a></li>
+  </ul>
+</ArticleLayout>
