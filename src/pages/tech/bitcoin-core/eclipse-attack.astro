@@ -1,0 +1,236 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Eclipse Attack"
+  description="了解日蝕攻擊如何隔離比特幣節點，以及 Bitcoin Core 的防護措施。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Eclipse Attack' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Double Spend', href: '/tech/bitcoin-core/double-spend' }}
+  nextPage={{ title: 'Node Security', href: '/tech/bitcoin-core/node-security' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        日蝕攻擊（Eclipse Attack）是一種網路層攻擊，攻擊者通過控制受害節點的所有
+        入站和出站連接，將其與真實的比特幣網路隔離，從而操縱受害者看到的區塊鏈視圖。
+      </p>
+
+      <h2>攻擊原理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
+                    ┌─────────────┐
+                    │ 比特幣網路  │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+          ┌───▼───┐    ┌───▼───┐    ┌───▼───┐
+          │Node A │    │Node B │    │Node C │
+          └───────┘    └───────┘    └───────┘
+                           │
+                     真實區塊鏈視圖
+
+日蝕攻擊:
+                    ┌─────────────┐
+                    │ 比特幣網路  │
+                    └─────────────┘
+                           ✕ 隔離
+          ┌────────────────────────────────┐
+          │         攻擊者節點群            │
+          │  ┌───┐ ┌───┐ ┌───┐ ┌───┐      │
+          │  │ M │ │ M │ │ M │ │ M │      │
+          │  └─┬─┘ └─┬─┘ └─┬─┘ └─┬─┘      │
+          └────┼─────┼─────┼─────┼────────┘
+               │     │     │     │
+               └─────┼─────┼─────┘
+                     │
+                ┌────▼────┐
+                │ 受害節點 │ ← 只看到攻擊者提供的數據
+                └─────────┘</code></pre>
+
+      <h2>攻擊目標</h2>
+
+      <h3>1. 雙重支付</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+1. 攻擊者日蝕商家節點
+2. 向商家發送支付 TX1（支付商品）
+3. 向真實網路發送 TX2（回到自己地址）
+4. TX2 被真實礦工確認
+5. 攻擊者向商家顯示偽造的確認
+6. 商家發貨
+7. 商家重連真實網路後發現 TX1 無效</code></pre>
+
+      <h3>2. 0-conf 攻擊</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+1. 日蝕商家節點
+2. 向商家廣播 TX1（支付）
+3. 隱藏 TX2（衝突的雙重支付）
+4. 商家接受 0-conf
+5. TX2 在真實網路被確認
+6. 商家損失商品和資金</code></pre>
+
+      <h3>3. 算力竊取（針對礦工）</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+1. 日蝕目標礦池或礦工
+2. 向目標提供陳舊的區塊鏈視圖
+3. 礦工在舊區塊上浪費算力
+4. 攻擊者在真實網路挖礦
+5. 受害者的有效區塊無法傳播
+
+結果:
+- 攻擊者獲得更多區塊獎勵
+- 受害礦工浪費電力和算力</code></pre>
+
+      <h2>攻擊實施方法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 階段 1: 地址污染
+攻擊者運行大量節點，向目標 ADDR 表注入惡意地址
+
+for each attacker_node:
+    connect_to_target()
+    send_addr_message(attacker_addresses)
+    disconnect()
+
+// 目標的 AddrMan 逐漸被惡意地址填滿
+
+// 階段 2: 等待重啟
+當目標節點重啟時:
+- 從 AddrMan 選擇地址連接
+- 大部分是攻擊者的地址
+- 所有 8 個出站連接都連到攻擊者
+
+// 階段 3: 入站連接控制
+攻擊者快速佔據目標的所有入站槽位
+- 默認 125 個連接（117 入站 + 8 出站）
+- 攻擊者需要約 4,600 個 IP 地址</code></pre>
+
+      <h2>Bitcoin Core 防護措施</h2>
+
+      <h3>AddrMan 改進</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 地址儲存桶設計
+AddrMan 使用兩個表:
+- tried: 成功連接過的地址
+- new: 新學習到的地址
+
+// 桶隨機化
+桶選擇 = hash(source_ip, addr) % num_buckets
+
+// 這使得:
+- 單一來源無法填滿所有桶
+- 攻擊者需要大量不同 IP
+- 地址分佈更均勻</code></pre>
+
+      <h3>連接多樣性</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core 的保護
+
+1. 出站連接保護
+   - 8 個全中繼出站連接
+   - 2 個僅區塊中繼連接（隱蔽）
+   - 從不同 /16 網段選擇
+
+2. 錨點連接 (Anchor Connections)
+   - 記住最後成功連接的節點
+   - 重啟時優先重連
+   - 防止冷啟動時被日蝕
+
+3. Feeler 連接
+   - 定期嘗試連接新地址
+   - 驗證地址有效性
+   - 更新 tried 表
+
+4. 網路群組限制
+   - 同一 /16 網段最多 2 個連接
+   - 增加地址多樣性</code></pre>
+
+      <h3>入站連接保護</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 入站連接驅逐策略
+當入站槽位滿時:
+1. 保護最後發送區塊的連接
+2. 保護最後發送交易的連接
+3. 保護低延遲連接
+4. 保護長時間連接
+5. 保護本地網路連接
+
+驅逐評分考慮:
+- 網路群組多樣性
+- 連接時長
+- 有用性（區塊/交易貢獻）</code></pre>
+
+      <h2>配置建議</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf
+
+# 添加可信節點
+addnode=trusted-node.example.com:8333
+
+# 手動指定節點（優先連接）
+connect=my-other-node.example.com:8333
+
+# 使用 Tor 增加多樣性
+proxy=127.0.0.1:9050
+listen=1
+
+# 增加出站連接（需要更多資源）
+maxconnections=150
+
+# 白名單可信 IP
+whitelist=192.168.1.0/24
+
+# 啟用僅區塊中繼連接
+blocksonly=0  # 不要啟用，會減少保護</code></pre>
+
+      <h2>檢測日蝕攻擊</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查連接多樣性
+bitcoin-cli getpeerinfo | jq '[.[].addr | split(":")[0] | split(".")[0:2] | join(".")] | unique | length'
+
+# 如果結果遠小於連接數，可能存在問題
+
+# 檢查區塊時間戳
+bitcoin-cli getblockchaininfo | jq '.time - .mediantime'
+
+# 如果差異異常大，可能收到陳舊區塊
+
+# 驗證區塊鏈高度
+# 與多個獨立來源比較
+bitcoin-cli getblockcount
+
+# 對比公開的區塊瀏覽器高度</code></pre>
+
+      <h2>節點運營者建議</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>多個連接源：</strong>使用 addnode 添加可信節點</li>
+          <li><strong>多網路連接：</strong>同時使用 IPv4、IPv6、Tor</li>
+          <li><strong>監控區塊鏈：</strong>定期與外部來源比較</li>
+          <li><strong>避免頻繁重啟：</strong>重啟是最脆弱的時刻</li>
+          <li><strong>使用錨點：</strong>確保 anchors.dat 未被篡改</li>
+          <li><strong>更新軟件：</strong>使用最新版 Bitcoin Core</li>
+        </ul>
+      </div>
+
+      <h2>相關研究</h2>
+
+      <ul>
+        <li><a href="https://eprint.iacr.org/2015/263.pdf">Eclipse Attacks on Bitcoin's Peer-to-Peer Network (2015)</a></li>
+        <li><a href="https://www.usenix.org/conference/usenixsecurity18/presentation/apostolaki">Hijacking Bitcoin (2018)</a></li>
+        <li>Bitcoin Core PR #8282: 錨點連接</li>
+        <li>Bitcoin Core PR #16702: 僅區塊中繼連接</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

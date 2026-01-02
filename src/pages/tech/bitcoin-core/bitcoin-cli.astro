@@ -1,0 +1,290 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Bitcoin CLI"
+  description="學習使用 bitcoin-cli 命令行工具與 Bitcoin Core 節點進行交互。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Bitcoin CLI' },
+  ]}
+  difficulty="beginner"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'RPC Guide', href: '/tech/bitcoin-core/rpc-guide' }}
+  nextPage={{ title: 'RPC Wallet', href: '/tech/bitcoin-core/rpc-wallet' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        bitcoin-cli 是 Bitcoin Core 提供的命令行界面工具，用於與 bitcoind 節點進行 RPC 通訊。
+        它是開發者和節點運營者最常用的交互方式。
+      </p>
+
+      <h2>基本用法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 基本語法
+bitcoin-cli [選項] &lt;命令&gt; [參數...]
+
+# 獲取幫助
+bitcoin-cli help
+bitcoin-cli help &lt;命令&gt;
+
+# 示例
+bitcoin-cli getblockchaininfo
+bitcoin-cli getblockcount
+bitcoin-cli getbestblockhash</code></pre>
+
+      <h2>連接配置</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用配置文件（默認）
+# 自動讀取 ~/.bitcoin/bitcoin.conf
+
+# 指定數據目錄
+bitcoin-cli -datadir=/path/to/data getblockcount
+
+# 指定網路
+bitcoin-cli -testnet getblockcount
+bitcoin-cli -signet getblockcount
+bitcoin-cli -regtest getblockcount
+
+# 指定 RPC 連接
+bitcoin-cli -rpcconnect=192.168.1.100 -rpcport=8332 \
+            -rpcuser=user -rpcpassword=pass getblockcount
+
+# 使用 cookie 認證（推薦）
+bitcoin-cli -rpccookiefile=/path/to/.cookie getblockcount</code></pre>
+
+      <h2>常用命令分類</h2>
+
+      <h3>區塊鏈信息</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 區塊鏈狀態
+bitcoin-cli getblockchaininfo
+
+# 當前區塊數
+bitcoin-cli getblockcount
+
+# 最佳區塊雜湊
+bitcoin-cli getbestblockhash
+
+# 獲取區塊
+bitcoin-cli getblock &lt;blockhash&gt;
+bitcoin-cli getblock &lt;blockhash&gt; 2  # 詳細信息
+
+# 獲取區塊頭
+bitcoin-cli getblockheader &lt;blockhash&gt;
+
+# 按高度獲取區塊雜湊
+bitcoin-cli getblockhash 840000</code></pre>
+
+      <h3>交易相關</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取原始交易
+bitcoin-cli getrawtransaction &lt;txid&gt;
+bitcoin-cli getrawtransaction &lt;txid&gt; true  # 解碼
+
+# 解碼原始交易
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+
+# 發送原始交易
+bitcoin-cli sendrawtransaction &lt;hex&gt;
+
+# 測試交易是否會被接受
+bitcoin-cli testmempoolaccept '["&lt;hex&gt;"]'</code></pre>
+
+      <h3>Mempool</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># Mempool 信息
+bitcoin-cli getmempoolinfo
+
+# 獲取 mempool 中所有交易
+bitcoin-cli getrawmempool
+bitcoin-cli getrawmempool true  # 詳細
+
+# 獲取特定交易在 mempool 中的信息
+bitcoin-cli getmempoolentry &lt;txid&gt;
+
+# 獲取交易的祖先/後代
+bitcoin-cli getmempoolancestors &lt;txid&gt;
+bitcoin-cli getmempooldescendants &lt;txid&gt;</code></pre>
+
+      <h3>網路</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 網路信息
+bitcoin-cli getnetworkinfo
+
+# 節點連接
+bitcoin-cli getpeerinfo
+bitcoin-cli getconnectioncount
+
+# 添加/移除節點
+bitcoin-cli addnode "192.168.1.100:8333" "add"
+bitcoin-cli disconnectnode "192.168.1.100:8333"
+
+# 封禁節點
+bitcoin-cli setban "192.168.1.100" "add" 86400
+bitcoin-cli listbanned</code></pre>
+
+      <h3>錢包</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 創建/載入錢包
+bitcoin-cli createwallet "mywallet"
+bitcoin-cli loadwallet "mywallet"
+bitcoin-cli unloadwallet "mywallet"
+
+# 指定錢包執行命令
+bitcoin-cli -rpcwallet=mywallet getbalance
+
+# 獲取新地址
+bitcoin-cli getnewaddress
+bitcoin-cli getnewaddress "" "bech32m"  # Taproot
+
+# 發送比特幣
+bitcoin-cli sendtoaddress &lt;address&gt; &lt;amount&gt;
+
+# 列出交易
+bitcoin-cli listtransactions
+bitcoin-cli listunspent</code></pre>
+
+      <h2>輸出格式化</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用 jq 處理 JSON 輸出
+bitcoin-cli getblockchaininfo | jq '.blocks'
+bitcoin-cli getpeerinfo | jq '.[].addr'
+
+# 只獲取特定欄位
+bitcoin-cli getblockchaininfo | jq '{height: .blocks, chain: .chain}'
+
+# 格式化輸出
+bitcoin-cli getblock $(bitcoin-cli getbestblockhash) | jq '.'
+
+# 獲取 mempool 中費率最高的交易
+bitcoin-cli getrawmempool true | jq 'to_entries | sort_by(-.value.fees.ancestor) | .[0:5]'</code></pre>
+
+      <h2>批量命令</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用 -stdin 讀取參數
+echo '["&lt;txhex&gt;"]' | bitcoin-cli -stdin testmempoolaccept
+
+# 批量 RPC 調用
+bitcoin-cli &lt;&lt;EOF
+[
+  {"method": "getblockcount", "params": []},
+  {"method": "getbestblockhash", "params": []}
+]
+EOF
+
+# 腳本中使用
+for height in {0..10}; do
+  hash=$(bitcoin-cli getblockhash $height)
+  echo "Block $height: $hash"
+done</code></pre>
+
+      <h2>調試和診斷</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 節點狀態
+bitcoin-cli getinfo  # 已棄用，使用下面的命令
+bitcoin-cli -getinfo  # 組合信息
+
+# 日誌控制
+bitcoin-cli logging '["net", "mempool"]'
+bitcoin-cli logging '[]' '["net"]'  # 禁用 net 日誌
+
+# 手續費估算
+bitcoin-cli estimatesmartfee 6
+bitcoin-cli estimatesmartfee 1 "ECONOMICAL"
+
+# 驗證區塊鏈
+bitcoin-cli verifychain 4 1000  # 驗證最近 1000 個區塊</code></pre>
+
+      <h2>常用選項</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">選項</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-conf=&lt;file&gt;</td>
+                <td class="py-2">指定配置文件</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-datadir=&lt;dir&gt;</td>
+                <td class="py-2">指定數據目錄</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-testnet/-signet/-regtest</td>
+                <td class="py-2">選擇網路</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-rpcwallet=&lt;name&gt;</td>
+                <td class="py-2">指定錢包</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-named</td>
+                <td class="py-2">使用命名參數</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-stdin</td>
+                <td class="py-2">從標準輸入讀取參數</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-stdinrpcpass</td>
+                <td class="py-2">從標準輸入讀取密碼</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>命名參數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用 -named 選項可以明確指定參數名
+bitcoin-cli -named sendtoaddress \
+  address="bc1q..." \
+  amount=0.1 \
+  fee_rate=10 \
+  replaceable=true
+
+# 對比位置參數
+bitcoin-cli sendtoaddress "bc1q..." 0.1 "" "" false true 10</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查退出碼
+bitcoin-cli getblockcount
+if [ $? -eq 0 ]; then
+  echo "Success"
+else
+  echo "Failed"
+fi
+
+# 常見錯誤碼
+# -1: 一般錯誤
+# -3: 錢包錯誤
+# -5: 無效地址或密鑰
+# -6: 資金不足
+# -8: 無效參數
+# -25: 交易已在鏈上
+# -26: 交易被拒絕</code></pre>
+
+      <h2>安全建議</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li><strong>使用 cookie 認證：</strong>避免在命令行中暴露密碼</li>
+          <li><strong>限制 RPC 訪問：</strong>只綁定到 localhost</li>
+          <li><strong>保護歷史記錄：</strong>敏感命令可能被記錄在 shell 歷史中</li>
+          <li><strong>驗證輸入：</strong>腳本中驗證用戶輸入避免注入</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>

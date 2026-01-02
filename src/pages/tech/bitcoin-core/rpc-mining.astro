@@ -1,0 +1,317 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Mining RPC"
+  description="了解 Bitcoin Core 提供的挖礦相關 RPC 命令，包括區塊模板和區塊提交。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Mining RPC' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Mining', href: '/tech/bitcoin-core/mining' }}
+  nextPage={{ title: 'GetBlockTemplate', href: '/tech/bitcoin-core/getblocktemplate' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Bitcoin Core 提供了多個 RPC 命令用於挖礦操作，從獲取區塊模板到提交新區塊。
+        這些接口主要供礦池和獨立礦工使用。
+      </p>
+
+      <h2>getblocktemplate</h2>
+      <p>
+        獲取區塊模板，包含待打包的交易和區塊頭信息。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取區塊模板
+bitcoin-cli getblocktemplate '{"rules": ["segwit"]}'
+
+{
+  "capabilities": ["proposal"],
+  "version": 536870912,
+  "rules": ["csv", "segwit", "taproot"],
+  "vbavailable": {},
+  "vbrequired": 0,
+  "previousblockhash": "000000000000000000...",
+  "transactions": [
+    {
+      "data": "02000000...",
+      "txid": "abc123...",
+      "hash": "def456...",      // wtxid
+      "depends": [],
+      "fee": 12500,             // satoshis
+      "sigops": 4,
+      "weight": 561
+    },
+    ...
+  ],
+  "coinbaseaux": {},
+  "coinbasevalue": 625012500,   // 獎勵 + 手續費
+  "longpollid": "000000000000000000...123",
+  "target": "0000000000000000000a1b2c3d...",
+  "mintime": 1700000000,
+  "mutable": ["time", "transactions", "prevblock"],
+  "noncerange": "00000000ffffffff",
+  "sigoplimit": 80000,
+  "sizelimit": 4000000,
+  "weightlimit": 4000000,
+  "curtime": 1700000100,
+  "bits": "1703c8f9",
+  "height": 840001,
+  "default_witness_commitment": "6a24aa21a9ed..."
+}</code></pre>
+
+      <h2>submitblock</h2>
+      <p>
+        提交新挖到的區塊到網路。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 提交區塊
+bitcoin-cli submitblock "0200000000000000000..."
+
+# 返回值:
+# null - 成功
+# "duplicate" - 區塊已存在
+# "duplicate-invalid" - 區塊已知無效
+# "inconclusive" - 驗證未完成
+# "rejected" - 區塊被拒絕
+
+# 提交區塊並獲取詳細結果
+bitcoin-cli submitblock "0200000..." '{"dummy": true}'</code></pre>
+
+      <h2>getmininginfo</h2>
+      <p>
+        獲取當前挖礦狀態信息。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>bitcoin-cli getmininginfo
+
+{
+  "blocks": 840000,
+  "currentblockweight": 3998456,
+  "currentblocktx": 2345,
+  "difficulty": 72006146478567.06,
+  "networkhashps": 5.234e+20,
+  "pooledtx": 45678,
+  "chain": "main",
+  "warnings": ""
+}</code></pre>
+
+      <h2>getnetworkhashps</h2>
+      <p>
+        估算網路的總算力。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用最近 120 個區塊估算
+bitcoin-cli getnetworkhashps
+
+# 指定區塊數量和結束高度
+bitcoin-cli getnetworkhashps 2016 840000
+
+# 返回: 5.234567890123456e+20 (哈希/秒)</code></pre>
+
+      <h2>prioritisetransaction</h2>
+      <p>
+        調整交易在區塊模板中的優先級。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 增加交易優先級（增加虛擬費用）
+bitcoin-cli prioritisetransaction &lt;txid&gt; 0 10000
+
+# 參數:
+# 1. txid - 交易 ID
+# 2. dummy - 已棄用，填 0
+# 3. fee_delta - 調整量（satoshis）
+
+# 降低優先級
+bitcoin-cli prioritisetransaction &lt;txid&gt; 0 -5000
+
+# 用途:
+# - 礦池優先打包自己的交易
+# - 加速重要交易
+# - 測試目的</code></pre>
+
+      <h2>generateblock (Regtest)</h2>
+      <p>
+        在 regtest 模式下立即生成區塊。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 生成包含指定交易的區塊
+bitcoin-cli -regtest generateblock &lt;address&gt; '["&lt;txid1&gt;", "&lt;txid2&gt;"]'
+
+# 返回
+{
+  "hash": "abc123..."
+}
+
+# 生成空區塊
+bitcoin-cli -regtest generateblock &lt;address&gt; '[]'</code></pre>
+
+      <h2>generatetoaddress (Regtest)</h2>
+      <p>
+        生成多個區塊並將獎勵發送到指定地址。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 生成 100 個區塊
+bitcoin-cli -regtest generatetoaddress 100 &lt;address&gt;
+
+# 返回區塊雜湊列表
+[
+  "block_hash_1",
+  "block_hash_2",
+  ...
+]
+
+# 指定最大嘗試次數
+bitcoin-cli -regtest generatetoaddress 1 &lt;address&gt; 1000000</code></pre>
+
+      <h2>generatetodescriptor (Regtest)</h2>
+      <p>
+        生成區塊並使用描述符指定輸出。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用描述符生成區塊
+bitcoin-cli -regtest generatetodescriptor 10 "wpkh([...]/0/*)"
+
+# 支持複雜描述符
+bitcoin-cli -regtest generatetodescriptor 1 \
+  "wsh(multi(2,[...]/0/*,[...]/0/*))"</code></pre>
+
+      <h2>挖礦工作流程</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+import struct
+import json
+import requests
+
+def mine_block():
+    # 1. 獲取區塊模板
+    template = rpc_call("getblocktemplate", [{"rules": ["segwit"]}])
+
+    # 2. 構建 coinbase 交易
+    coinbase = build_coinbase(
+        height=template["height"],
+        reward=template["coinbasevalue"],
+        witness_commitment=template["default_witness_commitment"]
+    )
+
+    # 3. 構建交易列表
+    txids = [coinbase.txid()] + [tx["txid"] for tx in template["transactions"]]
+
+    # 4. 計算 Merkle Root
+    merkle_root = compute_merkle_root(txids)
+
+    # 5. 構建區塊頭
+    header = struct.pack("&lt;I", template["version"])
+    header += bytes.fromhex(template["previousblockhash"])[::-1]
+    header += merkle_root[::-1]
+    header += struct.pack("&lt;I", template["curtime"])
+    header += bytes.fromhex(template["bits"])[::-1]
+
+    # 6. 挖礦（找 nonce）
+    target = int(template["target"], 16)
+    for nonce in range(0xffffffff):
+        candidate = header + struct.pack("&lt;I", nonce)
+        hash_result = hashlib.sha256(hashlib.sha256(candidate).digest()).digest()
+        if int.from_bytes(hash_result, 'little') &lt; target:
+            # 找到有效區塊!
+            block = serialize_block(header + struct.pack("&lt;I", nonce), txs)
+            return rpc_call("submitblock", [block.hex()])
+
+    return None  # 需要更新模板重試</code></pre>
+
+      <h2>Long Polling</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用 longpollid 等待新工作
+bitcoin-cli getblocktemplate '{
+  "rules": ["segwit"],
+  "longpollid": "000000000000000000...123"
+}'
+
+# 當以下情況發生時返回:
+# - 新區塊到達
+# - mempool 顯著變化
+# - 超時（約 5 分鐘）
+
+# 這允許礦工及時獲取新工作
+# 而不需要持續輪詢</code></pre>
+
+      <h2>區塊模板模式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 標準模式（獲取模板）
+bitcoin-cli getblocktemplate '{"rules": ["segwit"]}'
+
+# 提案模式（驗證區塊）
+bitcoin-cli getblocktemplate '{
+  "mode": "proposal",
+  "data": "02000000..."
+}'
+
+# 返回:
+# null - 區塊有效
+# "rejected" - 區塊無效
+# "inconclusive" - 需要更多檢查</code></pre>
+
+      <h2>安全注意事項</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li><strong>RPC 安全：</strong>挖礦 RPC 應該只在安全網路中暴露</li>
+          <li><strong>區塊模板緩存：</strong>不要過度緩存，區塊鏈狀態會變化</li>
+          <li><strong>時間戳：</strong>使用合理的時間戳，過大會被拒絕</li>
+          <li><strong>交易選擇：</strong>確保選擇的交易有效且無衝突</li>
+          <li><strong>Witness Commitment：</strong>SegWit 區塊必須包含正確的 commitment</li>
+        </ul>
+      </div>
+
+      <h2>相關 RPC 命令</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">命令</th>
+                <th class="text-left py-2">用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">getblocktemplate</td>
+                <td class="py-2">獲取區塊模板</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">submitblock</td>
+                <td class="py-2">提交新區塊</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">submitheader</td>
+                <td class="py-2">提交區塊頭</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">getmininginfo</td>
+                <td class="py-2">挖礦狀態</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">getnetworkhashps</td>
+                <td class="py-2">網路算力</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">prioritisetransaction</td>
+                <td class="py-2">調整交易優先級</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">getblockstats</td>
+                <td class="py-2">區塊統計</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>

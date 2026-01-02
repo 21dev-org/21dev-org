@@ -1,0 +1,238 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Double Spend"
+  description="了解雙重支付攻擊的原理、類型和比特幣如何防範這種攻擊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Double Spend' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Consensus', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: 'Eclipse Attack', href: '/tech/bitcoin-core/eclipse-attack' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        雙重支付（Double Spend）是指用同一筆比特幣進行兩次或多次支付的嘗試。
+        這是所有數字貨幣面臨的核心問題，比特幣通過工作量證明和區塊鏈共識來解決它。
+      </p>
+
+      <h2>雙重支付的類型</h2>
+
+      <h3>1. Race Attack（競爭攻擊）</h3>
+      <p>
+        攻擊者同時向網路廣播兩筆衝突的交易。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+1. Alice 有 1 BTC 在地址 A
+2. Alice 創建 TX1: A → Merchant (1 BTC)
+3. Alice 創建 TX2: A → Alice_new (1 BTC)
+4. Alice 向商家廣播 TX1
+5. 同時向礦工廣播 TX2（更高手續費）
+6. TX2 被礦工優先打包
+7. 商家的 TX1 變為無效
+
+防範:
+- 等待至少 1 個確認
+- 對大額交易等待 6 個確認
+- 觀察網路中是否有衝突交易</code></pre>
+
+      <h3>2. Finney Attack</h3>
+      <p>
+        攻擊者預先挖掘包含雙重支付的區塊。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+1. 攻擊者（礦工）挖到一個區塊
+2. 區塊包含 TX2: A → Attacker
+3. 不廣播這個區塊
+4. 用 TX1 向商家支付: A → Merchant
+5. 商家接受 0-conf 支付
+6. 攻擊者廣播預挖的區塊
+7. TX1 被 TX2 替代
+
+限制:
+- 攻擊者需要是礦工
+- 區塊可能變陳舊（被其他礦工超過）
+- 風險/收益比較低</code></pre>
+
+      <h3>3. 51% Attack（多數攻擊）</h3>
+      <p>
+        控制超過 50% 算力的攻擊者可以重寫區塊鏈。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+1. 攻擊者控制 &gt;50% 算力
+2. 用 TX1 向交易所存款
+3. 等待 6 個確認
+4. 交易所確認存款，允許提現
+5. 攻擊者提現（其他幣或法幣）
+6. 攻擊者從 TX1 之前的區塊開始挖礦
+7. 挖出更長的鏈（不含 TX1）
+8. 廣播新鏈，覆蓋原鏈
+9. TX1 被回滾，攻擊者保留原始資金
+
+成本:
+- 需要大量算力
+- 每小時成本約 $500K-1M（2024 年估計）
+- 攻擊期間可能被發現</code></pre>
+
+      <h2>確認數與安全性</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">確認數</th>
+                <th class="text-left py-2">時間</th>
+                <th class="text-left py-2">安全等級</th>
+                <th class="text-left py-2">適用場景</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">0</td>
+                <td class="py-2">即時</td>
+                <td class="py-2">低</td>
+                <td class="py-2">小額、信任場景</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">1</td>
+                <td class="py-2">~10 分鐘</td>
+                <td class="py-2">中</td>
+                <td class="py-2">一般支付</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">3</td>
+                <td class="py-2">~30 分鐘</td>
+                <td class="py-2">高</td>
+                <td class="py-2">較大金額</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">6</td>
+                <td class="py-2">~60 分鐘</td>
+                <td class="py-2">很高</td>
+                <td class="py-2">大額交易</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">60+</td>
+                <td class="py-2">~10 小時</td>
+                <td class="py-2">極高</td>
+                <td class="py-2">交易所存款</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>數學分析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 攻擊者成功概率（Nakamoto 論文）
+
+設:
+q = 攻擊者算力佔比
+z = 確認數
+
+成功概率 P(z) = 1 - Σ(k=0 to z) (λ^k * e^-λ / k!) * (1 - (q/p)^(z-k))
+其中 λ = z * (q/p), p = 1 - q
+
+示例 (攻擊者擁有 10% 算力):
+z=0:  P ≈ 1.000 (100%)
+z=1:  P ≈ 0.205 (20.5%)
+z=2:  P ≈ 0.053 (5.3%)
+z=3:  P ≈ 0.013 (1.3%)
+z=6:  P ≈ 0.0002 (0.02%)
+
+示例 (攻擊者擁有 30% 算力):
+z=1:  P ≈ 0.450 (45%)
+z=3:  P ≈ 0.131 (13%)
+z=6:  P ≈ 0.017 (1.7%)
+z=10: P ≈ 0.002 (0.2%)</code></pre>
+
+      <h2>0-conf 交易的風險</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>0-conf 交易（未確認交易）的風險:
+
+1. Replace-by-Fee (RBF)
+   - 如果交易標記為可替換
+   - 攻擊者可以廣播更高費率的替代交易
+   - 檢查: nSequence &lt; 0xfffffffe
+
+2. 全節點 Full RBF
+   - Bitcoin Core 26+ 默認啟用 mempoolfullrbf
+   - 即使交易未標記 RBF，也可能被替換
+   - 0-conf 變得更不可靠
+
+3. 網路傳播
+   - 不同節點可能先收到不同交易
+   - 無法保證商家看到的是最終版本
+
+安全措施:
+- 只接受小額 0-conf
+- 監控 mempool 中的衝突交易
+- 要求 RBF 禁用（但不完全可靠）
+- 使用閃電網路進行小額支付</code></pre>
+
+      <h2>檢測雙重支付嘗試</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 mempool 中的衝突交易
+
+# 啟用 mempool 通知
+bitcoin-cli logging '["mempool"]'
+
+# 使用 ZMQ 訂閱
+zmqpubhashtx=tcp://127.0.0.1:28332
+zmqpubrawmempool=tcp://127.0.0.1:28333
+
+# 檢查交易是否有衝突
+def check_double_spend(txid):
+    tx = bitcoin_rpc("getrawtransaction", [txid, True])
+    for vin in tx["vin"]:
+        # 檢查相同輸入是否被其他交易使用
+        outpoint = f"{vin['txid']}:{vin['vout']}"
+        if is_spent_by_another_tx(outpoint, txid):
+            return True
+    return False</code></pre>
+
+      <h2>歷史案例</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li><strong>2019 Ethereum Classic:</strong> 多次 51% 攻擊，交易所損失數百萬美元</li>
+          <li><strong>2018 Bitcoin Gold:</strong> 51% 攻擊導致 $18M 損失</li>
+          <li><strong>2016 Krypton/Shift:</strong> 小型鏈遭受 51% 攻擊</li>
+          <li><strong>比特幣主網:</strong> 至今未發生成功的雙重支付攻擊</li>
+        </ul>
+      </div>
+
+      <h2>商家防護建議</h2>
+
+      <ul>
+        <li><strong>等待確認：</strong>根據金額大小等待適當的確認數</li>
+        <li><strong>監控 RBF 標誌：</strong>拒絕標記為 RBF 的 0-conf 交易</li>
+        <li><strong>觀察 mempool：</strong>使用服務監控雙重支付嘗試</li>
+        <li><strong>使用閃電網路：</strong>即時確認的小額支付</li>
+        <li><strong>風險定價：</strong>將潛在損失計入商品定價</li>
+      </ul>
+
+      <h2>技術演進</h2>
+      <p>
+        比特幣社區持續改進雙重支付的防護：
+      </p>
+
+      <ul>
+        <li><strong>Full RBF：</strong>使 0-conf 風險更明確</li>
+        <li><strong>閃電網路：</strong>提供即時確認的支付層</li>
+        <li><strong>CPFP/Package Relay：</strong>改進交易傳播</li>
+        <li><strong>雙重支付警報：</strong>節點可以檢測並警告衝突交易</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

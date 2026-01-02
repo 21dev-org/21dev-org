@@ -1,0 +1,268 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Sign Message"
+  description="學習使用比特幣私鑰簽名消息，以及驗證簽名的方法。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Sign Message' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Wallet RPC', href: '/tech/bitcoin-core/rpc-wallet' }}
+  nextPage={{ title: 'Multisig', href: '/tech/bitcoin-core/multisig' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        比特幣消息簽名允許用戶證明自己控制某個地址的私鑰，而無需進行鏈上交易。
+        這在驗證身份和證明所有權時非常有用。
+      </p>
+
+      <h2>基本用法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 簽名消息
+bitcoin-cli signmessage "&lt;address&gt;" "Hello, I own this address!"
+
+# 返回 Base64 編碼的簽名
+"H8K3XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=="
+
+# 驗證簽名
+bitcoin-cli verifymessage "&lt;address&gt;" "&lt;signature&gt;" "Hello, I own this address!"
+
+# 返回
+true  # 簽名有效
+false # 簽名無效</code></pre>
+
+      <h2>支持的地址類型</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">地址類型</th>
+                <th class="text-left py-2">signmessage</th>
+                <th class="text-left py-2">verifymessage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2PKH (1...)</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">✓</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2SH-P2WPKH (3...)</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">✓</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2WPKH (bc1q...)</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">✓</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2TR (bc1p...)</td>
+                <td class="py-2">✗ (暫不支持)</td>
+                <td class="py-2">✗</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>消息簽名格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin 消息簽名格式
+
+簽名的實際數據:
+message_hash = SHA256(SHA256(
+  "\x18Bitcoin Signed Message:\n" +
+  varint(message.length) +
+  message
+))
+
+// 簽名結構 (65 bytes)
+signature = [
+  recovery_flag (1 byte),  // 27-30 或 31-34 (壓縮公鑰)
+  r (32 bytes),
+  s (32 bytes)
+]
+
+// Base64 編碼後約 88 字符</code></pre>
+
+      <h2>恢復標誌 (Recovery Flag)</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 恢復標誌決定如何從簽名恢復公鑰
+
+27-30: 未壓縮公鑰
+  27: 偶數 y, 低 r
+  28: 奇數 y, 低 r
+  29: 偶數 y, 高 r
+  30: 奇數 y, 高 r
+
+31-34: 壓縮公鑰 (更常見)
+  31: 偶數 y, 低 r
+  32: 奇數 y, 低 r
+  33: 偶數 y, 高 r
+  34: 奇數 y, 高 r
+
+// 驗證時，使用恢復標誌重建公鑰
+// 然後檢查公鑰雜湊是否與地址匹配</code></pre>
+
+      <h2>編程實現</h2>
+
+      <h3>Python 驗證</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+import base64
+from ecdsa import SECP256k1, VerifyingKey
+
+def verify_message(address, signature, message):
+    """驗證比特幣消息簽名"""
+
+    # 解碼簽名
+    sig_bytes = base64.b64decode(signature)
+    if len(sig_bytes) != 65:
+        return False
+
+    recovery_flag = sig_bytes[0]
+    r = int.from_bytes(sig_bytes[1:33], 'big')
+    s = int.from_bytes(sig_bytes[33:65], 'big')
+
+    # 計算消息雜湊
+    prefix = b"\x18Bitcoin Signed Message:\n"
+    msg_bytes = message.encode('utf-8')
+    full_msg = prefix + bytes([len(msg_bytes)]) + msg_bytes
+    msg_hash = hashlib.sha256(hashlib.sha256(full_msg).digest()).digest()
+
+    # 從簽名恢復公鑰
+    compressed = recovery_flag >= 31
+    rec_id = (recovery_flag - 27) % 4
+
+    try:
+        pubkey = recover_public_key(msg_hash, r, s, rec_id, compressed)
+
+        # 計算地址並比較
+        recovered_address = pubkey_to_address(pubkey, address_type(address))
+        return recovered_address == address
+    except:
+        return False</code></pre>
+
+      <h3>JavaScript 簽名</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>const bitcoin = require('bitcoinjs-lib');
+const bitcoinMessage = require('bitcoinjs-message');
+
+// 簽名
+function signMessage(privateKeyWIF, message) {
+  const keyPair = bitcoin.ECPair.fromWIF(privateKeyWIF);
+  const signature = bitcoinMessage.sign(
+    message,
+    keyPair.privateKey,
+    keyPair.compressed
+  );
+  return signature.toString('base64');
+}
+
+// 驗證
+function verifyMessage(address, signature, message) {
+  try {
+    return bitcoinMessage.verify(message, address, signature);
+  } catch (e) {
+    return false;
+  }
+}</code></pre>
+
+      <h2>應用場景</h2>
+
+      <h3>1. 證明地址所有權</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 交易所需要驗證提現地址
+
+1. 用戶請求將地址加入白名單
+2. 交易所生成隨機消息: "Verify-12345-1700000000"
+3. 用戶用該地址的私鑰簽名消息
+4. 交易所驗證簽名
+5. 確認用戶控制該地址</code></pre>
+
+      <h3>2. 證明身份</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 證明你是某筆交易的發送者
+
+消息格式:
+"I, the owner of bc1q..., confirm that I sent
+transaction abc123... on 2024-01-15.
+Timestamp: 1705300000"
+
+簽名後，任何人都可以驗證:
+1. 簽名者控制該地址
+2. 該地址與交易相關</code></pre>
+
+      <h3>3. 空投資格證明</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 某協議向 BTC 持有者空投代幣
+
+1. 協議拍照某個區塊高度的 UTXO 集
+2. 用戶用持有 BTC 的地址簽名
+3. 提交簽名和新鏈上的接收地址
+4. 協議驗證後發放空投
+
+消息示例:
+"Claim airdrop to 0x123... for snapshot block 840000"</code></pre>
+
+      <h2>BIP-137 和 BIP-322</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// BIP-137: 傳統消息簽名
+// 就是上面描述的格式
+// 只支持 P2PKH 風格的驗證
+
+// BIP-322: 通用消息簽名
+// 提議中，尚未廣泛實現
+// 支持所有地址類型，包括 P2TR
+
+BIP-322 格式:
+to_spend = create_virtual_tx(message_hash)
+to_sign = spend_tx(to_spend)
+signature = witness_of(to_sign)
+
+// 這使得可以用任何可花費的腳本來簽名
+// 包括多簽、時間鎖等複雜腳本</code></pre>
+
+      <h2>安全考慮</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li><strong>不要簽名未知消息：</strong>攻擊者可能構造惡意消息</li>
+          <li><strong>檢查消息內容：</strong>確保你理解你在簽名什麼</li>
+          <li><strong>時間戳：</strong>包含時間戳防止簽名被重複使用</li>
+          <li><strong>隨機數：</strong>驗證方應使用隨機挑戰</li>
+          <li><strong>離線簽名：</strong>敏感地址應使用離線設備簽名</li>
+        </ul>
+      </div>
+
+      <h2>常見錯誤</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 錯誤: 地址不在錢包中
+bitcoin-cli signmessage "bc1q..." "message"
+# error: Address does not refer to a key
+
+# 解決: 確保地址屬於當前錢包
+
+# 錯誤: 錢包已鎖定
+bitcoin-cli signmessage "bc1q..." "message"
+# error: Please enter the wallet passphrase with walletpassphrase first
+
+# 解決: 先解鎖錢包
+bitcoin-cli walletpassphrase "password" 60
+
+# 錯誤: 消息格式問題
+bitcoin-cli verifymessage "..." "..." "message\n"
+# 注意換行符等特殊字符可能導致驗證失敗</code></pre>
+    </div>
+  </section>
+</ArticleLayout>
