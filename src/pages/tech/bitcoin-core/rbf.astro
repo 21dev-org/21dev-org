@@ -1,0 +1,475 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Replace-by-Fee (RBF)"
+  description="深入了解 BIP-125 Replace-by-Fee 機制，如何透過提高手續費來替換未確認交易。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'RBF' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Transaction Fees', href: '/tech/bitcoin-core/fees' }}
+  nextPage={{ title: 'CPFP', href: '/tech/bitcoin-core/cpfp' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 RBF？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Replace-by-Fee（RBF）是 BIP-125 定義的交易替換機制，允許發送者在交易未確認前，
+      透過支付更高的手續費來替換原始交易。這解決了手續費估算錯誤導致交易長時間無法確認的問題。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">RBF 的用途</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">手續費提升</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 交易卡在 mempool 時加速確認</li>
+            <li>• 手續費估算錯誤後的補救</li>
+            <li>• 應對網路擁堵</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">交易修改</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 更改收款地址（發送前）</li>
+            <li>• 添加或移除輸出</li>
+            <li>• 合併多筆付款</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="bip125-rules" class="text-2xl font-bold text-[var(--text-primary)]">BIP-125 規則</h2>
+
+    <h3 id="signaling" class="text-xl font-semibold text-[var(--text-primary)]">RBF 信號</h3>
+    <p class="text-[var(--text-secondary)]">
+      交易必須明確表示可被替換。這透過設定輸入的 sequence number 來實現：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF 信號條件：
+任一輸入的 nSequence < 0xFFFFFFFE (4294967294)
+
+常見設定：
+- 0xFFFFFFFD (4294967293) - 啟用 RBF，無時間鎖
+- 0xFFFFFFFE (4294967294) - 禁用 RBF，無時間鎖
+- 0xFFFFFFFF (4294967295) - 禁用 RBF，禁用 nLockTime
+
+繼承性：
+如果交易 A 是 RBF，那麼花費 A 輸出的交易 B 也被視為可替換
+（即使 B 本身沒有 RBF 信號）</code></pre>
+    </div>
+
+    <h3 id="replacement-rules" class="text-xl font-semibold text-[var(--text-primary)]">替換規則</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-4 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">原始交易必須有 RBF 信號</strong>
+            <p class="text-sm">至少一個輸入的 nSequence &lt; 0xFFFFFFFE</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">替換交易必須花費相同的輸入</strong>
+            <p class="text-sm">至少花費一個與原始交易相同的輸入</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">更高的絕對手續費</strong>
+            <p class="text-sm">替換交易的手續費必須高於被替換的所有交易總和</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">支付中繼費用</strong>
+            <p class="text-sm">額外手續費至少要覆蓋替換交易的最小中繼費用</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">5</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">替換數量限制</strong>
+            <p class="text-sm">最多替換 100 個交易（包括子交易）</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="creating-rbf" class="text-xl font-semibold text-[var(--text-primary)]">創建 RBF 交易</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface TxInput {
+  txid: string;
+  vout: number;
+  sequence: number;
+}
+
+interface Transaction {
+  inputs: TxInput[];
+  outputs: TxOutput[];
+  locktime: number;
+}
+
+// RBF 序號常數
+const RBF_SEQUENCE = 0xFFFFFFFD;  // 啟用 RBF
+const NO_RBF_SEQUENCE = 0xFFFFFFFE;  // 禁用 RBF
+const FINAL_SEQUENCE = 0xFFFFFFFF;  // 完全最終
+
+function createRbfTransaction(
+  inputs: Array<{ txid: string; vout: number }>,
+  outputs: TxOutput[]
+): Transaction {
+  return {
+    inputs: inputs.map(input => ({
+      ...input,
+      sequence: RBF_SEQUENCE,  // 啟用 RBF
+    })),
+    outputs,
+    locktime: 0,
+  };
+}
+
+function isRbfEnabled(tx: Transaction): boolean {
+  // 任一輸入的 sequence < 0xFFFFFFFE 即為 RBF
+  return tx.inputs.some(input => input.sequence < NO_RBF_SEQUENCE);
+}
+
+// 檢查是否可以替換
+function canReplace(
+  original: Transaction,
+  replacement: Transaction,
+  originalFee: number,
+  replacementFee: number,
+  minRelayFee: number
+): { valid: boolean; reason?: string } {
+  // 規則 1: 原始交易必須有 RBF 信號
+  if (!isRbfEnabled(original)) {
+    return { valid: false, reason: 'Original tx not RBF-enabled' };
+  }
+
+  // 規則 2: 必須花費至少一個相同的輸入
+  const originalInputs = new Set(
+    original.inputs.map(i => `${i.txid}:${i.vout}`)
+  );
+  const hasConflict = replacement.inputs.some(
+    i => originalInputs.has(`${i.txid}:${i.vout}`)
+  );
+  if (!hasConflict) {
+    return { valid: false, reason: 'No conflicting inputs' };
+  }
+
+  // 規則 3: 更高的絕對手續費
+  if (replacementFee <= originalFee) {
+    return { valid: false, reason: 'Replacement fee not higher' };
+  }
+
+  // 規則 4: 額外費用必須覆蓋中繼成本
+  const replacementSize = estimateTxSize(replacement);
+  const minIncrease = replacementSize * minRelayFee;
+  if (replacementFee - originalFee < minIncrease) {
+    return { valid: false, reason: 'Fee increase too small' };
+  }
+
+  return { valid: true };
+}</code></pre>
+    </div>
+
+    <h3 id="bitcoin-cli" class="text-xl font-semibold text-[var(--text-primary)]">使用 Bitcoin CLI</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建啟用 RBF 的交易
+bitcoin-cli createrawtransaction \
+  '[{"txid":"abc...","vout":0,"sequence":4294967293}]' \
+  '{"bc1q...":0.01}'
+
+# 使用錢包創建 RBF 交易
+bitcoin-cli -named send \
+  outputs='{"bc1q...":0.01}' \
+  options='{"replaceable":true}'
+
+# 替換（提升手續費）已存在的交易
+bitcoin-cli bumpfee <txid>
+
+# 指定新的手續費率
+bitcoin-cli bumpfee <txid> '{"fee_rate":50}'
+
+# 查看交易是否可替換
+bitcoin-cli gettransaction <txid> | jq '.bip125-replaceable'
+
+# 查看 mempool 中的交易
+bitcoin-cli getmempoolentry <txid> | jq '.bip125-replaceable'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="full-rbf" class="text-2xl font-bold text-[var(--text-primary)]">Full RBF</h2>
+
+    <h3 id="what-is-full-rbf" class="text-xl font-semibold text-[var(--text-primary)]">什麼是 Full RBF？</h3>
+    <p class="text-[var(--text-secondary)]">
+      Full RBF 允許替換任何未確認交易，即使它沒有明確的 RBF 信號。
+      這在 Bitcoin Core 24.0 中引入，預設為禁用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">Opt-in RBF vs Full RBF</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Opt-in RBF</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Full RBF</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">需要信號</td>
+              <td class="py-2 text-green-400">是</td>
+              <td class="py-2 text-yellow-400">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">預設啟用</td>
+              <td class="py-2 text-green-400">是</td>
+              <td class="py-2 text-red-400">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">BIP</td>
+              <td class="py-2">BIP-125</td>
+              <td class="py-2">無正式 BIP</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">0-conf 安全性</td>
+              <td class="py-2">取決於信號</td>
+              <td class="py-2 text-red-400">無保證</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="enable-full-rbf" class="text-xl font-semibold text-[var(--text-primary)]">啟用 Full RBF</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
+bitcoind -mempoolfullrbf=1
+
+# 配置文件
+echo "mempoolfullrbf=1" >> ~/.bitcoin/bitcoin.conf
+
+# 查看當前設定
+bitcoin-cli getmempoolinfo | jq '.fullrbf'</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        Full RBF 仍有爭議。它提高了礦工收益和用戶手續費提升的靈活性，
+        但破壞了某些依賴 0-conf 的商業模式。大多數礦工已啟用 Full RBF。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="fee-bumping" class="text-2xl font-bold text-[var(--text-primary)]">手續費提升策略</h2>
+
+    <h3 id="when-to-bump" class="text-xl font-semibold text-[var(--text-primary)]">何時提升手續費</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface MempoolStatus {
+  txid: string;
+  fee: number;
+  vsize: number;
+  ancestorFees: number;
+  ancestorSize: number;
+  position: number;  // 在 mempool 中的位置
+}
+
+async function shouldBumpFee(
+  tx: MempoolStatus,
+  targetBlocks: number = 6
+): Promise<{ shouldBump: boolean; suggestedRate: number }> {
+  // 獲取當前費率估算
+  const estimatedRate = await getFeeEstimate(targetBlocks);
+
+  // 計算當前交易的有效費率
+  const effectiveRate = tx.ancestorFees / tx.ancestorSize;
+
+  // 如果當前費率已足夠
+  if (effectiveRate >= estimatedRate) {
+    return { shouldBump: false, suggestedRate: 0 };
+  }
+
+  // 建議的新費率（加上一些緩衝）
+  const suggestedRate = Math.ceil(estimatedRate * 1.1);
+
+  return { shouldBump: true, suggestedRate };
+}
+
+// 計算提升所需的額外費用
+function calculateBumpCost(
+  currentFee: number,
+  currentSize: number,
+  newSize: number,  // 替換交易可能大小不同
+  targetRate: number,
+  minRelayFee: number
+): number {
+  // 新的總費用
+  const newTotalFee = newSize * targetRate;
+
+  // 額外費用必須至少覆蓋新交易的中繼費用
+  const minIncrease = newSize * minRelayFee;
+
+  // 實際增加的費用
+  const actualIncrease = newTotalFee - currentFee;
+
+  // 取較大值
+  return Math.max(actualIncrease, minIncrease);
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全性考量</h2>
+
+    <h3 id="double-spend" class="text-xl font-semibold text-[var(--text-primary)]">雙花風險</h3>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">RBF 與 0-conf</h4>
+      <p class="text-[var(--text-secondary)] mb-4">
+        RBF 交易不應被視為「已收到」——它們可以隨時被替換為支付給不同地址的交易。
+      </p>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>不要接受 RBF 交易的 0-conf 付款</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>不要基於 RBF 交易發貨</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>等待至少 1 個確認</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>對大額支付等待更多確認</span>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="detecting-rbf" class="text-xl font-semibold text-[var(--text-primary)]">檢測 RBF 交易</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>function checkRbfStatus(tx: Transaction): 'rbf' | 'no-rbf' | 'inherited' {
+  // 直接 RBF 信號
+  const hasDirectSignal = tx.inputs.some(
+    input => input.sequence < 0xFFFFFFFE
+  );
+
+  if (hasDirectSignal) {
+    return 'rbf';
+  }
+
+  // 檢查父交易是否有 RBF（繼承）
+  // 需要查詢 mempool 中的父交易
+  for (const input of tx.inputs) {
+    const parentTx = getMempoolTx(input.txid);
+    if (parentTx && isRbfEnabled(parentTx)) {
+      return 'inherited';  // 繼承的 RBF
+    }
+  }
+
+  return 'no-rbf';
+}
+
+// 商家應該這樣檢查
+async function isPaymentSafe(txid: string): Promise<boolean> {
+  const tx = await getTransaction(txid);
+
+  // 檢查確認數
+  if (tx.confirmations >= 1) {
+    return true;  // 已確認，安全
+  }
+
+  // 檢查 RBF 狀態
+  const rbfStatus = checkRbfStatus(tx);
+  if (rbfStatus !== 'no-rbf') {
+    return false;  // RBF 交易，不安全
+  }
+
+  // 即使沒有 RBF，0-conf 仍有風險（Full RBF）
+  // 商家需要自行評估風險
+  return false;
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 發送者</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 總是啟用 RBF（除非有特殊理由）</li>
+          <li>• 使用合理的初始手續費估算</li>
+          <li>• 監控交易確認狀態</li>
+          <li>• 必要時使用 bumpfee</li>
+        </ul>
+      </div>
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 接收者</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 檢查交易的 RBF 狀態</li>
+          <li>• 不信任 RBF 交易的 0-conf</li>
+          <li>• 等待適當數量的確認</li>
+          <li>• 考慮 Full RBF 的影響</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">手續費提升：</strong>RBF 允許在交易未確認前提高手續費</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">信號機制：</strong>nSequence &lt; 0xFFFFFFFE 表示交易可被替換</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">繼承性：</strong>花費 RBF 輸出的交易也被視為可替換</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">0-conf 風險：</strong>RBF 交易可以被替換，不應信任未確認狀態</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

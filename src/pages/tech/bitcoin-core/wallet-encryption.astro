@@ -1,0 +1,490 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Wallet Encryption"
+  description="深入了解 Bitcoin Core 錢包加密機制，如何保護私鑰安全。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Wallet Encryption' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'SigOps', href: '/tech/bitcoin-core/sigops' }}
+  nextPage={{ title: 'HD Wallets', href: '/tech/bitcoin-core/hd-wallets' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">為什麼需要錢包加密？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 錢包存儲私鑰，這些私鑰控制你的比特幣。如果攻擊者獲得了 wallet.dat 文件的副本，
+      他們可以竊取所有資金。錢包加密使用密碼保護私鑰，即使文件被盜也無法直接使用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">加密保護的內容</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+          <h4 class="font-semibold text-green-400 mb-2">✓ 加密保護</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 私鑰（Private Keys）</li>
+            <li>• HD 種子（Master Seed）</li>
+            <li>• 導入的密鑰</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+          <h4 class="font-semibold text-yellow-400 mb-2">⚠ 未加密</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 公鑰和地址</li>
+            <li>• 交易歷史</li>
+            <li>• 標籤和元數據</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="encryption-scheme" class="text-2xl font-bold text-[var(--text-primary)]">加密方案</h2>
+
+    <h3 id="aes-256-cbc" class="text-xl font-semibold text-[var(--text-primary)]">AES-256-CBC</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 使用 AES-256-CBC 加密私鑰。加密密鑰通過 PBKDF2 從用戶密碼派生：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>加密流程：
+
+用戶密碼
+    ↓
+PBKDF2-HMAC-SHA512 (25000 迭代)
+    ↓
+主密鑰 (Master Key, 32 bytes)
+    ↓
+AES-256-CBC 加密
+    ↓
+加密的私鑰
+
+存儲結構：
+┌─────────────────────────────────┐
+│ Salt (8 bytes)                  │
+├─────────────────────────────────┤
+│ Encrypted Master Key            │
+├─────────────────────────────────┤
+│ IV (16 bytes per key)           │
+├─────────────────────────────────┤
+│ Encrypted Private Key           │
+└─────────────────────────────────┘</code></pre>
+    </div>
+
+    <h3 id="key-derivation" class="text-xl font-semibold text-[var(--text-primary)]">密鑰派生</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>import { pbkdf2Sync, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+
+interface EncryptedWallet {
+  salt: Buffer;
+  encryptedMasterKey: Buffer;
+  masterKeyIV: Buffer;
+  encryptedKeys: Map<string, EncryptedKey>;
+}
+
+interface EncryptedKey {
+  iv: Buffer;
+  ciphertext: Buffer;
+}
+
+// 從密碼派生加密密鑰
+function deriveKey(password: string, salt: Buffer): Buffer {
+  return pbkdf2Sync(
+    password,
+    salt,
+    25000,        // 迭代次數
+    32,           // 密鑰長度 (256 bits)
+    'sha512'
+  );
+}
+
+// 加密私鑰
+function encryptPrivateKey(
+  privateKey: Buffer,
+  masterKey: Buffer
+): EncryptedKey {
+  const iv = randomBytes(16);
+  const cipher = createCipheriv('aes-256-cbc', masterKey, iv);
+
+  const ciphertext = Buffer.concat([
+    cipher.update(privateKey),
+    cipher.final()
+  ]);
+
+  return { iv, ciphertext };
+}
+
+// 解密私鑰
+function decryptPrivateKey(
+  encrypted: EncryptedKey,
+  masterKey: Buffer
+): Buffer {
+  const decipher = createDecipheriv(
+    'aes-256-cbc',
+    masterKey,
+    encrypted.iv
+  );
+
+  return Buffer.concat([
+    decipher.update(encrypted.ciphertext),
+    decipher.final()
+  ]);
+}
+
+// 完整的錢包加密流程
+function encryptWallet(
+  privateKeys: Map<string, Buffer>,
+  password: string
+): EncryptedWallet {
+  // 1. 生成隨機 salt
+  const salt = randomBytes(8);
+
+  // 2. 派生密鑰加密密鑰 (KEK)
+  const kek = deriveKey(password, salt);
+
+  // 3. 生成隨機主密鑰
+  const masterKey = randomBytes(32);
+
+  // 4. 用 KEK 加密主密鑰
+  const masterKeyIV = randomBytes(16);
+  const cipher = createCipheriv('aes-256-cbc', kek, masterKeyIV);
+  const encryptedMasterKey = Buffer.concat([
+    cipher.update(masterKey),
+    cipher.final()
+  ]);
+
+  // 5. 用主密鑰加密所有私鑰
+  const encryptedKeys = new Map<string, EncryptedKey>();
+  for (const [address, privateKey] of privateKeys) {
+    encryptedKeys.set(address, encryptPrivateKey(privateKey, masterKey));
+  }
+
+  return {
+    salt,
+    encryptedMasterKey,
+    masterKeyIV,
+    encryptedKeys
+  };
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="usage" class="text-2xl font-bold text-[var(--text-primary)]">使用方式</h2>
+
+    <h3 id="encrypt-wallet" class="text-xl font-semibold text-[var(--text-primary)]">加密錢包</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 加密現有錢包（只能執行一次）
+bitcoin-cli encryptwallet "your-strong-passphrase"
+
+# 注意：這會關閉 Bitcoin Core
+# 重新啟動後錢包將被加密
+
+# 加密後，錢包會自動鎖定
+# 需要解鎖才能進行需要私鑰的操作</code></pre>
+    </div>
+
+    <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-red-400">警告：</strong>
+        加密錢包後無法取消加密。如果忘記密碼，將永久失去對資金的訪問權。
+        在加密前，請確保備份 wallet.dat 和記住密碼。
+      </p>
+    </div>
+
+    <h3 id="unlock-wallet" class="text-xl font-semibold text-[var(--text-primary)]">解鎖錢包</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 解鎖錢包 60 秒
+bitcoin-cli walletpassphrase "your-passphrase" 60
+
+# 解鎖錢包用於 staking（不允許發送）
+bitcoin-cli walletpassphrase "your-passphrase" 60 true
+
+# 手動鎖定錢包
+bitcoin-cli walletlock
+
+# 查看錢包狀態
+bitcoin-cli getwalletinfo | jq '.unlocked_until'
+# 0 = 已鎖定
+# > 0 = 解鎖到的 Unix 時間戳</code></pre>
+    </div>
+
+    <h3 id="change-passphrase" class="text-xl font-semibold text-[var(--text-primary)]">更改密碼</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 更改錢包密碼
+bitcoin-cli walletpassphrasechange "old-passphrase" "new-passphrase"
+
+# 這會重新加密主密鑰
+# 不需要重新加密所有私鑰</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全性考量</h2>
+
+    <h3 id="password-strength" class="text-xl font-semibold text-[var(--text-primary)]">密碼強度</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">暴力破解估算</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">密碼類型</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">熵</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">破解時間*</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">6 個小寫字母</td>
+              <td class="py-2">~28 bits</td>
+              <td class="py-2 text-red-400">秒</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">8 個混合字符</td>
+              <td class="py-2">~47 bits</td>
+              <td class="py-2 text-yellow-400">天</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">12 個混合字符</td>
+              <td class="py-2">~71 bits</td>
+              <td class="py-2 text-green-400">數十年</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">4 個隨機單詞</td>
+              <td class="py-2">~44 bits</td>
+              <td class="py-2 text-yellow-400">月</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">6 個隨機單詞</td>
+              <td class="py-2">~66 bits</td>
+              <td class="py-2 text-green-400">數千年</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-[var(--text-tertiary)] mt-2">
+        * 假設攻擊者使用高端 GPU，考慮 PBKDF2 的 25000 次迭代
+      </p>
+    </div>
+
+    <h3 id="attack-vectors" class="text-xl font-semibold text-[var(--text-primary)]">攻擊向量</h3>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">潛在威脅</h4>
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">1.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">內存攻擊：</strong>
+            解鎖時，私鑰會暫時存在於內存中。惡意軟體可能讀取內存。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">2.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">鍵盤記錄：</strong>
+            惡意軟體可能記錄密碼輸入。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">3.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">文件備份：</strong>
+            加密前的備份可能未加密。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">4.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">弱密碼：</strong>
+            簡單密碼可被暴力破解。
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="memory-security" class="text-2xl font-bold text-[var(--text-primary)]">內存安全</h2>
+
+    <h3 id="secure-memory" class="text-xl font-semibold text-[var(--text-primary)]">安全內存處理</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 採取措施保護內存中的敏感數據：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">mlock()：</strong>
+            防止敏感數據被交換到磁碟（swap）
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">清零內存：</strong>
+            使用完私鑰後，將內存清零
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">自動鎖定：</strong>
+            超時後自動鎖定錢包
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// Bitcoin Core 的安全內存分配 (簡化)
+class secure_allocator {
+public:
+    void* allocate(size_t n) {
+        void* ptr = std::malloc(n);
+        if (ptr) {
+            // 防止交換到磁碟
+            mlock(ptr, n);
+        }
+        return ptr;
+    }
+
+    void deallocate(void* ptr, size_t n) {
+        if (ptr) {
+            // 使用前清零
+            memory_cleanse(ptr, n);
+            munlock(ptr, n);
+            std::free(ptr);
+        }
+    }
+};
+
+// 安全清零（防止編譯器優化掉）
+void memory_cleanse(void* ptr, size_t len) {
+    volatile unsigned char* p = (volatile unsigned char*)ptr;
+    while (len--) {
+        *p++ = 0;
+    }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="descriptor-wallets" class="text-2xl font-bold text-[var(--text-primary)]">Descriptor 錢包</h2>
+
+    <h3 id="new-wallet-format" class="text-xl font-semibold text-[var(--text-primary)]">新錢包格式</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 23.0+ 預設使用 Descriptor 錢包，它使用 SQLite 存儲並有不同的加密方式：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建加密的 descriptor 錢包
+bitcoin-cli createwallet "mywallet" false false "passphrase"
+
+# 參數說明：
+# - 錢包名稱
+# - disable_private_keys (false = 包含私鑰)
+# - blank (false = 創建預設密鑰)
+# - passphrase (加密密碼)
+
+# 查看錢包類型
+bitcoin-cli getwalletinfo | jq '.format'
+# "sqlite" = descriptor 錢包
+# "bdb" = 傳統錢包</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 使用強密碼（12+ 字符或 6+ 隨機單詞）</li>
+          <li>• 設定短的解鎖超時時間</li>
+          <li>• 定期備份加密的錢包</li>
+          <li>• 使用密碼管理器存儲密碼</li>
+          <li>• 保持系統更新和安全</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 使用弱密碼或常見密碼</li>
+          <li>• 長時間保持錢包解鎖</li>
+          <li>• 在不安全的系統上解鎖</li>
+          <li>• 忘記密碼（無法恢復！）</li>
+          <li>• 將密碼與錢包備份放在一起</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="backup" class="text-2xl font-bold text-[var(--text-primary)]">備份策略</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 備份加密的錢包
+bitcoin-cli backupwallet "/path/to/backup/wallet.dat"
+
+# 對於 descriptor 錢包
+bitcoin-cli -rpcwallet=mywallet backupwallet "/path/to/backup/mywallet.sqlite"
+
+# 導出私鑰（需要解鎖）
+bitcoin-cli walletpassphrase "passphrase" 60
+bitcoin-cli dumpprivkey "bc1q..."
+
+# 導出所有描述符（descriptor 錢包）
+bitcoin-cli listdescriptors true  # true = 包含私鑰</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">備份建議：</strong>
+        備份應該包含加密的錢包文件和（分開存儲的）密碼。
+        考慮使用多個備份位置，包括離線存儲。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">AES-256-CBC：</strong>使用強加密保護私鑰</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">PBKDF2：</strong>25,000 次迭代減慢暴力破解</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">密碼強度：</strong>使用強密碼是安全的關鍵</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">不可逆：</strong>忘記密碼意味著永久失去資金</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
