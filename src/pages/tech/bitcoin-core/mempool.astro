@@ -1,0 +1,480 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Mempool"
+  description="比特幣交易池：未確認交易的管理、手續費估算和 RBF 機制"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Mempool' },
+  ]}
+  difficulty="intermediate"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'PSBT', href: '/tech/bitcoin-core/psbt' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Mempool（Memory Pool）是每個比特幣節點維護的未確認交易池。
+    當交易被廣播到網路但尚未被打包進區塊時，它們會暫存在 mempool 中。
+    礦工從 mempool 選擇交易來構建下一個區塊。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>關鍵概念：</strong>
+      每個節點的 mempool 可能不同。沒有「全局 mempool」的概念。
+      交易可能在某些節點的 mempool 中，而不在其他節點中。
+    </p>
+  </div>
+
+  <h2 id="structure">Mempool 結構</h2>
+
+  <h3>交易條目</h3>
+  <p>每個 mempool 條目包含：</p>
+  <ul>
+    <li><strong>交易數據</strong>：完整的序列化交易</li>
+    <li><strong>手續費</strong>：交易支付的總手續費</li>
+    <li><strong>虛擬大小</strong>：考慮 SegWit 折扣後的大小</li>
+    <li><strong>進入時間</strong>：交易進入 mempool 的時間</li>
+    <li><strong>祖先資訊</strong>：依賴的未確認交易</li>
+    <li><strong>後代資訊</strong>：依賴此交易的其他交易</li>
+  </ul>
+
+  <h3>索引結構</h3>
+  <pre><code class="language-text" is:raw>Mempool 維護多個索引:
+
+1. txid 索引
+   - 快速查找特定交易
+   - O(1) 查找時間
+
+2. 祖先費率索引
+   - 用於挖礦排序
+   - 考慮整個交易包的費率
+
+3. 時間索引
+   - 用於清理過期交易
+   - 追蹤交易在 mempool 中的時間
+
+4. 後代索引
+   - 追蹤交易依賴關係
+   - 用於 RBF 和 CPFP</code></pre>
+
+  <h2 id="fee-estimation">手續費估算</h2>
+
+  <h3>費率單位</h3>
+  <pre><code class="language-text" is:raw>sat/vB (satoshis per virtual byte)
+- vB = 虛擬字節，考慮 SegWit 折扣
+- 傳統交易: 1 byte = 1 vB
+- SegWit witness: 1 byte = 0.25 vB
+
+範例:
+- 傳統 P2PKH: ~226 bytes = 226 vB
+- SegWit P2WPKH: ~141 bytes, 110 vB
+- 費率 10 sat/vB, P2WPKH 手續費 ≈ 1,100 sat</code></pre>
+
+  <h3>估算策略</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>確認目標</th>
+        <th>典型費率</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1 區塊</td>
+        <td>高</td>
+        <td>下一區塊確認，需要高於 mempool 中大多數交易</td>
+      </tr>
+      <tr>
+        <td>6 區塊</td>
+        <td>中</td>
+        <td>約 1 小時內確認</td>
+      </tr>
+      <tr>
+        <td>144 區塊</td>
+        <td>低</td>
+        <td>約 1 天內確認，可以使用較低費率</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>RPC 命令</h3>
+  <pre><code class="language-bash" is:raw># 估算手續費（目標 6 區塊確認）
+bitcoin-cli estimatesmartfee 6
+
+# 結果
+{
+  "feerate": 0.00012500,  # BTC/kB
+  "blocks": 6
+}
+
+# 轉換為 sat/vB: 0.00012500 * 100000000 / 1000 = 12.5 sat/vB</code></pre>
+
+  <h2 id="rbf">RBF (Replace-By-Fee)</h2>
+  <p>
+    RBF 允許用更高手續費的新交易替換 mempool 中的舊交易。
+    這是加速交易確認的主要方法。
+  </p>
+
+  <h3>BIP-125 規則</h3>
+  <ol>
+    <li>原交易必須標記為可替換（nSequence &lt; 0xfffffffe）</li>
+    <li>替換交易必須支付更高的絕對手續費</li>
+    <li>替換交易的費率必須高於原交易</li>
+    <li>替換交易不能添加新的未確認輸入</li>
+    <li>替換交易必須支付額外費用覆蓋被替換交易的大小</li>
+  </ol>
+
+  <h3>信號 RBF</h3>
+  <pre><code class="language-typescript" is:raw>// 在交易輸入中設置 nSequence
+interface TxInput {
+  txid: string;
+  vout: number;
+  sequence: number;  // &lt; 0xfffffffe 表示可替換
+}
+
+// 標記為可替換
+const replaceableInput: TxInput = {
+  txid: '...',
+  vout: 0,
+  sequence: 0xfffffffd,  // 可替換
+};
+
+// 不可替換（預設）
+const finalInput: TxInput = {
+  txid: '...',
+  vout: 0,
+  sequence: 0xffffffff,  // 最終
+};</code></pre>
+
+  <h3>執行替換</h3>
+  <pre><code class="language-bash" is:raw># 使用 bitcoin-cli 進行 RBF
+# 1. 創建原交易（標記可替換）
+bitcoin-cli createrawtransaction \
+  '[{"txid":"...", "vout":0, "sequence":4294967293}]' \
+  '{"bc1q...": 0.001}'
+
+# 2. 簽名並發送
+bitcoin-cli signrawtransactionwithwallet &lt;hex&gt;
+bitcoin-cli sendrawtransaction &lt;signed_hex&gt;
+
+# 3. 創建替換交易（更高手續費）
+bitcoin-cli createrawtransaction \
+  '[{"txid":"...", "vout":0, "sequence":4294967293}]' \
+  '{"bc1q...": 0.0009}'  # 更少輸出 = 更高手續費
+
+# 4. 簽名並發送替換交易
+bitcoin-cli signrawtransactionwithwallet &lt;new_hex&gt;
+bitcoin-cli sendrawtransaction &lt;new_signed_hex&gt;</code></pre>
+
+  <h2 id="cpfp">CPFP (Child-Pays-For-Parent)</h2>
+  <p>
+    當無法使用 RBF 時（交易未標記可替換或不控制輸入），
+    可以創建一個高手續費的子交易來「拉動」父交易。
+  </p>
+
+  <pre><code class="language-text" is:raw>CPFP 原理:
+
+父交易 (低手續費)
+├── 輸出 0: 給接收者
+└── 輸出 1: 找零給自己
+
+子交易 (高手續費)
+└── 輸入: 父交易的找零輸出
+
+礦工會將父子交易視為一個包（package），
+如果組合費率夠高，就會一起打包。</code></pre>
+
+  <h3>計算組合費率</h3>
+  <pre><code class="language-typescript" is:raw>interface Transaction {
+  vsize: number;
+  fee: number;
+}
+
+function calculatePackageRate(
+  parent: Transaction,
+  child: Transaction
+): number {
+  const totalFee = parent.fee + child.fee;
+  const totalVsize = parent.vsize + child.vsize;
+  return totalFee / totalVsize;
+}
+
+// 範例
+const parent = { vsize: 200, fee: 200 };   // 1 sat/vB
+const child = { vsize: 150, fee: 3000 };   // 20 sat/vB
+
+const packageRate = calculatePackageRate(parent, child);
+// (200 + 3000) / (200 + 150) = 9.14 sat/vB</code></pre>
+
+  <h2 id="policy">Mempool 政策</h2>
+
+  <h3>接受規則</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>規則</th>
+        <th>預設值</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>最小費率</td>
+        <td>1 sat/vB</td>
+        <td>低於此費率的交易被拒絕</td>
+      </tr>
+      <tr>
+        <td>最大大小</td>
+        <td>100 kB</td>
+        <td>標準交易大小上限</td>
+      </tr>
+      <tr>
+        <td>祖先限制</td>
+        <td>25 交易</td>
+        <td>最大未確認祖先數量</td>
+      </tr>
+      <tr>
+        <td>後代限制</td>
+        <td>25 交易</td>
+        <td>最大未確認後代數量</td>
+      </tr>
+      <tr>
+        <td>塵埃限制</td>
+        <td>546 sat</td>
+        <td>輸出金額下限</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>配置選項</h3>
+  <pre><code class="language-text" is:raw># bitcoin.conf
+
+# Mempool 大小限制（MB）
+maxmempool=300
+
+# 最小交易費率（BTC/kB）
+minrelaytxfee=0.00001
+
+# 允許 RBF
+walletrbf=1
+
+# 驅逐期限（小時）
+mempoolexpiry=336</code></pre>
+
+  <h2 id="eviction">交易驅逐</h2>
+  <p>當 mempool 達到大小限制時，低費率的交易會被驅逐：</p>
+
+  <ol>
+    <li>按祖先費率排序所有交易</li>
+    <li>從最低費率開始驅逐</li>
+    <li>驅逐時也移除所有後代交易</li>
+    <li>直到 mempool 回到目標大小以下</li>
+  </ol>
+
+  <pre><code class="language-text" is:raw>驅逐優先級（從低到高）:
+1. 費率最低的交易
+2. 在 mempool 中時間最長的交易
+3. 有大量後代的交易（驅逐後節省更多空間）</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>查詢 Mempool 資訊</h3>
+  <pre><code class="language-typescript" is:raw>import { JSONRPCClient } from 'json-rpc-2.0';
+
+const client = new JSONRPCClient((request) =&gt;
+  fetch('http://localhost:8332', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic ' + btoa('user:password'),
+    },
+    body: JSON.stringify(request),
+  }).then((response) =&gt; response.json())
+);
+
+interface MempoolInfo {
+  loaded: boolean;
+  size: number;           // 交易數量
+  bytes: number;          // 總大小
+  usage: number;          // 記憶體使用
+  maxmempool: number;     // 最大大小
+  mempoolminfee: number;  // 最低費率
+  minrelaytxfee: number;  // 最低中繼費率
+}
+
+async function getMempoolInfo(): Promise&lt;MempoolInfo&gt; {
+  return client.request('getmempoolinfo', []);
+}
+
+// 獲取 mempool 中所有交易 ID
+async function getRawMempool(): Promise&lt;string[]&gt; {
+  return client.request('getrawmempool', [false]);
+}
+
+// 獲取詳細資訊
+interface MempoolEntry {
+  vsize: number;
+  weight: number;
+  fee: number;
+  modifiedfee: number;
+  time: number;
+  height: number;
+  descendantcount: number;
+  descendantsize: number;
+  descendantfees: number;
+  ancestorcount: number;
+  ancestorsize: number;
+  ancestorfees: number;
+  depends: string[];
+  spentby: string[];
+}
+
+async function getMempoolEntry(txid: string): Promise&lt;MempoolEntry&gt; {
+  return client.request('getmempoolentry', [txid]);
+}</code></pre>
+
+  <h3>手續費估算</h3>
+  <pre><code class="language-typescript" is:raw>interface FeeEstimate {
+  feerate?: number;  // BTC/kB
+  errors?: string[];
+  blocks: number;
+}
+
+async function estimateFee(
+  blocks: number,
+  mode: 'ECONOMICAL' | 'CONSERVATIVE' = 'ECONOMICAL'
+): Promise&lt;number&gt; {
+  const result: FeeEstimate = await client.request('estimatesmartfee', [
+    blocks,
+    mode,
+  ]);
+
+  if (!result.feerate) {
+    throw new Error(result.errors?.join(', ') || 'Cannot estimate fee');
+  }
+
+  // 轉換為 sat/vB
+  return Math.ceil(result.feerate * 100000);
+}
+
+// 根據優先級獲取推薦費率
+async function getRecommendedFees(): Promise&lt;{
+  fastest: number;
+  halfHour: number;
+  hour: number;
+  economy: number;
+}&gt; {
+  const [fastest, halfHour, hour, economy] = await Promise.all([
+    estimateFee(1),
+    estimateFee(3),
+    estimateFee(6),
+    estimateFee(144),
+  ]);
+
+  return { fastest, halfHour, hour, economy };
+}</code></pre>
+
+  <h3>RBF 交易替換</h3>
+  <pre><code class="language-typescript" is:raw>import * as bitcoin from 'bitcoinjs-lib';
+
+interface RBFOptions {
+  originalTxHex: string;
+  newFeeRate: number;  // sat/vB
+  privateKey: Buffer;
+}
+
+async function createRBFTransaction(options: RBFOptions): Promise&lt;string&gt; {
+  const tx = bitcoin.Transaction.fromHex(options.originalTxHex);
+
+  // 確保輸入標記為可替換
+  for (const input of tx.ins) {
+    if (input.sequence === 0xffffffff) {
+      throw new Error('Transaction is not marked as replaceable');
+    }
+  }
+
+  // 計算新的手續費
+  const currentFee = await calculateTxFee(tx);
+  const vsize = tx.virtualSize();
+  const newFee = vsize * options.newFeeRate;
+
+  if (newFee &lt;= currentFee) {
+    throw new Error('New fee must be higher than current fee');
+  }
+
+  // 調整輸出金額以增加手續費
+  const feeIncrease = newFee - currentFee;
+  const lastOutput = tx.outs[tx.outs.length - 1];
+
+  if (lastOutput.value &lt; feeIncrease) {
+    throw new Error('Insufficient funds to increase fee');
+  }
+
+  lastOutput.value -= feeIncrease;
+
+  // 重新簽名
+  const keyPair = bitcoin.ECPair.fromPrivateKey(options.privateKey);
+  // ... 簽名邏輯
+
+  return tx.toHex();
+}</code></pre>
+
+  <h2 id="monitoring">Mempool 監控</h2>
+
+  <h3>訂閱新交易</h3>
+  <pre><code class="language-typescript" is:raw>import { WebSocket } from 'ws';
+
+// 使用 ZMQ 訂閱（需要 Bitcoin Core 啟用 ZMQ）
+function subscribeToNewTransactions(
+  zmqEndpoint: string,
+  onTransaction: (txid: string, rawTx: Buffer) =&gt; void
+) {
+  const zmq = require('zeromq');
+  const socket = zmq.socket('sub');
+
+  socket.connect(zmqEndpoint);
+  socket.subscribe('rawtx');
+  socket.subscribe('hashtx');
+
+  socket.on('message', (topic: Buffer, message: Buffer) =&gt; {
+    const topicStr = topic.toString();
+
+    if (topicStr === 'hashtx') {
+      const txid = message.toString('hex');
+      console.log('New transaction:', txid);
+    } else if (topicStr === 'rawtx') {
+      const tx = bitcoin.Transaction.fromBuffer(message);
+      onTransaction(tx.getId(), message);
+    }
+  });
+
+  return () =&gt; socket.close();
+}
+
+// Bitcoin Core 配置
+// zmqpubrawtx=tcp://127.0.0.1:28332
+// zmqpubhashtx=tcp://127.0.0.1:28332</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>始終使用 RBF</strong>：標記交易為可替換，保留加速選項</li>
+    <li><strong>適當的費率估算</strong>：根據確認時間需求選擇費率</li>
+    <li><strong>監控 mempool 狀態</strong>：高峰期調整費率策略</li>
+    <li><strong>批次交易</strong>：多個支付合併為一個交易節省費用</li>
+    <li><strong>使用 SegWit</strong>：降低交易虛擬大小</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://mempool.space/" target="_blank" rel="noopener noreferrer">Mempool.space</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0125.md" target="_blank" rel="noopener noreferrer">BIP-125 RBF</a></li>
+    <li><a href="/tech/bitcoin-core/rpc-network">網路 RPC</a></li>
+    <li><a href="/tech/bitcoin-core/transaction">交易結構</a></li>
+  </ul>
+</ArticleLayout>

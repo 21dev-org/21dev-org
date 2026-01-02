@@ -1,0 +1,526 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Mining"
+  description="比特幣挖礦機制：區塊模板、難度調整和礦池協議"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Mining' },
+  ]}
+  difficulty="intermediate"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'PSBT', href: '/tech/bitcoin-core/psbt' }}
+  nextPage={{ title: 'Wallet Descriptors', href: '/tech/bitcoin-core/descriptors' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    比特幣挖礦是透過工作量證明（Proof of Work）來保護網路安全和發行新幣的過程。
+    礦工競爭解決計算難題，勝出者獲得打包區塊的權利和區塊獎勵。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-600 dark:text-bitcoin-400">
+      <strong>經濟激勵：</strong>
+      挖礦獎勵 = 區塊補貼 + 交易手續費。
+      區塊補貼每 210,000 區塊減半，目前為 3.125 BTC（2024 年減半後）。
+    </p>
+  </div>
+
+  <h2 id="pow">工作量證明</h2>
+
+  <h3>挖礦目標</h3>
+  <p>找到一個 nonce，使區塊頭的雜湊值小於目標值：</p>
+  <pre><code class="language-text" is:raw>SHA256(SHA256(block_header)) &lt; target
+
+區塊頭 (80 bytes):
+├── version (4 bytes)
+├── prev_block_hash (32 bytes)
+├── merkle_root (32 bytes)
+├── timestamp (4 bytes)
+├── bits (4 bytes) - 壓縮的目標值
+└── nonce (4 bytes) - 礦工調整的值</code></pre>
+
+  <h3>難度與目標</h3>
+  <pre><code class="language-text" is:raw>difficulty = max_target / current_target
+
+max_target = 0x00000000FFFF0000...0000 (難度 1)
+
+範例:
+- 目標: 0x00000000000000000004... (前導零越多越難)
+- 難度: 約 80 萬億 (2024 年)</code></pre>
+
+  <h3>雜湊率單位</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>單位</th>
+        <th>雜湊/秒</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>H/s</td>
+        <td>1</td>
+        <td>每秒雜湊</td>
+      </tr>
+      <tr>
+        <td>KH/s</td>
+        <td>10³</td>
+        <td>千</td>
+      </tr>
+      <tr>
+        <td>MH/s</td>
+        <td>10⁶</td>
+        <td>百萬</td>
+      </tr>
+      <tr>
+        <td>GH/s</td>
+        <td>10⁹</td>
+        <td>十億</td>
+      </tr>
+      <tr>
+        <td>TH/s</td>
+        <td>10¹²</td>
+        <td>兆（現代 ASIC）</td>
+      </tr>
+      <tr>
+        <td>PH/s</td>
+        <td>10¹⁵</td>
+        <td>拍（礦池）</td>
+      </tr>
+      <tr>
+        <td>EH/s</td>
+        <td>10¹⁸</td>
+        <td>艾（全網）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="difficulty-adjustment">難度調整</h2>
+  <p>每 2016 個區塊（約 2 週）調整一次難度，目標是維持 10 分鐘的出塊時間：</p>
+
+  <pre><code class="language-text" is:raw>new_difficulty = old_difficulty × (2 週 / 實際時間)
+
+限制:
+- 最多增加 4 倍
+- 最多減少到 1/4
+
+計算:
+expected_time = 2016 × 10 分鐘 = 20160 分鐘
+actual_time = last_block_time - first_block_time
+
+adjustment_factor = expected_time / actual_time
+new_target = old_target × adjustment_factor</code></pre>
+
+  <h2 id="block-template">區塊模板</h2>
+
+  <h3>getblocktemplate RPC</h3>
+  <pre><code class="language-bash" is:raw># 獲取區塊模板
+bitcoin-cli getblocktemplate '{"rules": ["segwit"]}'
+
+# 結果
+{
+  "version": 536870912,
+  "previousblockhash": "00000000000000000002...",
+  "transactions": [...],
+  "coinbaseaux": {},
+  "coinbasevalue": 312500000,  # 區塊獎勵 (satoshis)
+  "target": "00000000000000000004...",
+  "mintime": 1700000000,
+  "mutable": ["time", "transactions", "prevblock"],
+  "noncerange": "00000000ffffffff",
+  "sigoplimit": 80000,
+  "sizelimit": 4000000,
+  "weightlimit": 4000000,
+  "curtime": 1700000100,
+  "bits": "17034219",
+  "height": 800000
+}</code></pre>
+
+  <h3>交易選擇</h3>
+  <pre><code class="language-text" is:raw>礦工選擇交易的優先級:
+
+1. 祖先費率 (Ancestor Feerate)
+   - 計算整個交易包的平均費率
+   - 包括所有未確認的父交易
+
+2. 區塊權重限制
+   - 最大 4,000,000 weight units
+   - 約 1 MB 實際數據 + witness 折扣
+
+3. 排序算法
+   - 按祖先費率從高到低
+   - 確保父交易在子交易之前</code></pre>
+
+  <h2 id="coinbase">Coinbase 交易</h2>
+  <p>每個區塊的第一筆交易是 coinbase，創造新幣：</p>
+
+  <pre><code class="language-text" is:raw>Coinbase 交易結構:
+├── inputs: 1 個
+│   ├── txid: 00000...0000 (32 個零)
+│   ├── vout: 0xffffffff
+│   └── scriptSig: 區塊高度 + 額外 nonce + 任意數據
+└── outputs: 多個
+    ├── 區塊獎勵地址
+    └── witness commitment (SegWit)</code></pre>
+
+  <h3>Coinbase 腳本</h3>
+  <pre><code class="language-text" is:raw>scriptSig 要求 (BIP-34):
+- 必須以區塊高度開頭
+- 最多 100 bytes
+
+範例:
+03 (高度編碼長度)
+40 0d 0c (區塊高度: 789,824)
+... (額外 nonce 和礦池標識)</code></pre>
+
+  <h3>Witness Commitment</h3>
+  <pre><code class="language-text" is:raw>SegWit 區塊要求在 coinbase 包含 witness commitment:
+
+OP_RETURN
+6a24aa21a9ed  (固定前綴)
+&lt;32 bytes commitment&gt;
+
+commitment = SHA256(SHA256(
+  witness_root || witness_reserved_value
+))</code></pre>
+
+  <h2 id="stratum">Stratum 協議</h2>
+  <p>礦池與礦機之間的通訊協議：</p>
+
+  <h3>連接和訂閱</h3>
+  <pre><code class="language-json" is:raw>// 礦機 → 礦池: 訂閱
+{"id": 1, "method": "mining.subscribe", "params": ["miner/1.0"]}
+
+// 礦池 → 礦機: 響應
+{
+  "id": 1,
+  "result": [
+    [
+      ["mining.set_difficulty", "subscription_id"],
+      ["mining.notify", "subscription_id"]
+    ],
+    "extranonce1",
+    4  // extranonce2 大小
+  ],
+  "error": null
+}</code></pre>
+
+  <h3>授權</h3>
+  <pre><code class="language-json" is:raw>// 礦機 → 礦池: 授權
+{"id": 2, "method": "mining.authorize", "params": ["worker.1", "password"]}
+
+// 礦池 → 礦機
+{"id": 2, "result": true, "error": null}</code></pre>
+
+  <h3>工作分配</h3>
+  <pre><code class="language-json" is:raw>// 礦池 → 礦機: 新工作
+{
+  "id": null,
+  "method": "mining.notify",
+  "params": [
+    "job_id",
+    "prevhash",
+    "coinbase1",
+    "coinbase2",
+    ["merkle_branch_1", "merkle_branch_2", ...],
+    "version",
+    "nbits",
+    "ntime",
+    true  // 清除舊工作
+  ]
+}</code></pre>
+
+  <h3>提交份額</h3>
+  <pre><code class="language-json" is:raw>// 礦機 → 礦池: 提交
+{
+  "id": 3,
+  "method": "mining.submit",
+  "params": [
+    "worker.1",
+    "job_id",
+    "extranonce2",
+    "ntime",
+    "nonce"
+  ]
+}
+
+// 礦池 → 礦機
+{"id": 3, "result": true, "error": null}</code></pre>
+
+  <h2 id="stratum-v2">Stratum V2</h2>
+  <p>新一代礦池協議，改進安全性和去中心化：</p>
+
+  <ul>
+    <li><strong>加密通訊</strong>：使用 AEAD 加密</li>
+    <li><strong>二進制協議</strong>：比 JSON 更高效</li>
+    <li><strong>Job Negotiation</strong>：礦工可以構建自己的區塊模板</li>
+    <li><strong>更低延遲</strong>：優化的消息格式</li>
+  </ul>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>計算區塊雜湊</h3>
+  <pre><code class="language-typescript" is:raw>import * as crypto from 'crypto';
+
+interface BlockHeader {
+  version: number;
+  prevBlockHash: string;
+  merkleRoot: string;
+  timestamp: number;
+  bits: number;
+  nonce: number;
+}
+
+function serializeHeader(header: BlockHeader): Buffer {
+  const buffer = Buffer.alloc(80);
+
+  buffer.writeInt32LE(header.version, 0);
+  Buffer.from(header.prevBlockHash, 'hex').reverse().copy(buffer, 4);
+  Buffer.from(header.merkleRoot, 'hex').reverse().copy(buffer, 36);
+  buffer.writeUInt32LE(header.timestamp, 68);
+  buffer.writeUInt32LE(header.bits, 72);
+  buffer.writeUInt32LE(header.nonce, 76);
+
+  return buffer;
+}
+
+function hashBlock(header: BlockHeader): string {
+  const serialized = serializeHeader(header);
+  const hash1 = crypto.createHash('sha256').update(serialized).digest();
+  const hash2 = crypto.createHash('sha256').update(hash1).digest();
+  return hash2.reverse().toString('hex');
+}
+
+// 範例
+const header: BlockHeader = {
+  version: 0x20000000,
+  prevBlockHash: '00000000000000000002...',
+  merkleRoot: 'abc123...',
+  timestamp: 1700000000,
+  bits: 0x17034219,
+  nonce: 0,
+};
+
+const blockHash = hashBlock(header);
+console.log('Block hash:', blockHash);</code></pre>
+
+  <h3>難度計算</h3>
+  <pre><code class="language-typescript" is:raw>// bits 轉目標值
+function bitsToTarget(bits: number): bigint {
+  const exponent = (bits >> 24) &amp; 0xff;
+  const mantissa = bits &amp; 0x007fffff;
+
+  if (exponent &lt;= 3) {
+    return BigInt(mantissa >> (8 * (3 - exponent)));
+  } else {
+    return BigInt(mantissa) &lt;&lt; BigInt(8 * (exponent - 3));
+  }
+}
+
+// 計算難度
+function calculateDifficulty(bits: number): number {
+  const maxTarget = bitsToTarget(0x1d00ffff);
+  const currentTarget = bitsToTarget(bits);
+  return Number(maxTarget) / Number(currentTarget);
+}
+
+// 範例
+const bits = 0x17034219;
+const target = bitsToTarget(bits);
+const difficulty = calculateDifficulty(bits);
+
+console.log('Target:', target.toString(16));
+console.log('Difficulty:', difficulty.toExponential(2));</code></pre>
+
+  <h3>建立 Merkle 樹</h3>
+  <pre><code class="language-typescript" is:raw>function doubleSha256(data: Buffer): Buffer {
+  const hash1 = crypto.createHash('sha256').update(data).digest();
+  return crypto.createHash('sha256').update(hash1).digest();
+}
+
+function buildMerkleRoot(txids: string[]): string {
+  if (txids.length === 0) {
+    throw new Error('No transactions');
+  }
+
+  // 轉換為 Buffer 並反轉（內部位元組順序）
+  let hashes = txids.map((txid) =&gt;
+    Buffer.from(txid, 'hex').reverse()
+  );
+
+  while (hashes.length &gt; 1) {
+    const newHashes: Buffer[] = [];
+
+    // 如果奇數，複製最後一個
+    if (hashes.length % 2 === 1) {
+      hashes.push(hashes[hashes.length - 1]);
+    }
+
+    for (let i = 0; i &lt; hashes.length; i += 2) {
+      const combined = Buffer.concat([hashes[i], hashes[i + 1]]);
+      newHashes.push(doubleSha256(combined));
+    }
+
+    hashes = newHashes;
+  }
+
+  return hashes[0].reverse().toString('hex');
+}</code></pre>
+
+  <h3>簡單挖礦模擬</h3>
+  <pre><code class="language-typescript" is:raw>async function simpleMining(
+  header: BlockHeader,
+  targetBits: number
+): Promise&lt;{ nonce: number; hash: string } | null&gt; {
+  const target = bitsToTarget(targetBits);
+
+  for (let nonce = 0; nonce &lt; 0xffffffff; nonce++) {
+    header.nonce = nonce;
+    const hash = hashBlock(header);
+    const hashBigInt = BigInt('0x' + hash);
+
+    if (hashBigInt &lt; target) {
+      return { nonce, hash };
+    }
+
+    // 每 100 萬次報告進度
+    if (nonce % 1000000 === 0) {
+      console.log(`Tried ${nonce} nonces...`);
+    }
+  }
+
+  return null;
+}
+
+// 注意: 這只是演示，真正的挖礦需要
+// - 調整 coinbase 的 extranonce
+// - 使用 ASIC 硬體
+// - 連接礦池</code></pre>
+
+  <h2 id="mining-rpc">挖礦 RPC</h2>
+
+  <h3>常用命令</h3>
+  <pre><code class="language-bash" is:raw># 獲取挖礦資訊
+bitcoin-cli getmininginfo
+
+# 結果
+{
+  "blocks": 800000,
+  "difficulty": 55621444139429.57,
+  "networkhashps": 4.5e+20,
+  "pooledtx": 15000,
+  "chain": "main"
+}
+
+# 獲取網路雜湊率
+bitcoin-cli getnetworkhashps
+
+# 估算區塊數量
+bitcoin-cli getnetworkhashps 120 -1  # 最近 120 區塊
+
+# 提交區塊
+bitcoin-cli submitblock "hexdata..."</code></pre>
+
+  <h2 id="economics">挖礦經濟</h2>
+
+  <h3>獎勵時間表</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>減半次數</th>
+        <th>區塊範圍</th>
+        <th>獎勵</th>
+        <th>年份</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>0</td>
+        <td>0 - 209,999</td>
+        <td>50 BTC</td>
+        <td>2009-2012</td>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>210,000 - 419,999</td>
+        <td>25 BTC</td>
+        <td>2012-2016</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>420,000 - 629,999</td>
+        <td>12.5 BTC</td>
+        <td>2016-2020</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>630,000 - 839,999</td>
+        <td>6.25 BTC</td>
+        <td>2020-2024</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>840,000 - 1,049,999</td>
+        <td>3.125 BTC</td>
+        <td>2024-2028</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>收益計算</h3>
+  <pre><code class="language-typescript" is:raw>interface MiningProfitability {
+  hashrate: number;      // TH/s
+  powerConsumption: number; // Watts
+  electricityCost: number;  // $/kWh
+  poolFee: number;       // 比例 (0.02 = 2%)
+  btcPrice: number;      // USD
+}
+
+function calculateDailyProfit(
+  params: MiningProfitability,
+  networkHashrate: number,  // EH/s
+  blockReward: number
+): { revenue: number; cost: number; profit: number } {
+  const blocksPerDay = 144;
+  const totalRewardPerDay = blocksPerDay * blockReward;
+
+  // 份額 = 我的雜湊率 / 全網雜湊率
+  const share = (params.hashrate * 1e12) / (networkHashrate * 1e18);
+
+  // 日收入
+  const btcPerDay = totalRewardPerDay * share * (1 - params.poolFee);
+  const revenue = btcPerDay * params.btcPrice;
+
+  // 電費
+  const kwhPerDay = (params.powerConsumption * 24) / 1000;
+  const cost = kwhPerDay * params.electricityCost;
+
+  return {
+    revenue,
+    cost,
+    profit: revenue - cost,
+  };
+}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用 Stratum V2</strong>：更安全、更去中心化</li>
+    <li><strong>分散礦池</strong>：避免算力集中</li>
+    <li><strong>監控難度</strong>：預測收益變化</li>
+    <li><strong>優化電力</strong>：選擇低電費地區</li>
+    <li><strong>備份配置</strong>：保護礦工身份和設定</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://braiins.com/stratum-v2" target="_blank" rel="noopener noreferrer">Stratum V2</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0034.md" target="_blank" rel="noopener noreferrer">BIP-34 Coinbase 高度</a></li>
+    <li><a href="/tech/bitcoin-core/consensus">共識機制</a></li>
+    <li><a href="/tech/bitcoin-core/block-structure">區塊結構</a></li>
+  </ul>
+</ArticleLayout>

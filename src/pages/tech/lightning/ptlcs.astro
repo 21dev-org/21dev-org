@@ -1,0 +1,354 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="PTLCs 點時間鎖定合約"
+  description="了解 Point Time-Locked Contracts (PTLCs)，這是使用 Schnorr 簽名的 HTLC 替代方案，提供更好的隱私和功能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'PTLCs' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Watchtowers', href: '/tech/lightning/watchtowers' }}
+  nextPage={{ title: 'Dual-Funded Channels', href: '/tech/lightning/dual-funded' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 PTLC？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    PTLC（Point Time-Locked Contract，點時間鎖定合約）是 HTLC 的進化版本。
+    它使用 Schnorr 簽名和適配器簽名（Adaptor Signatures）來實現條件支付，
+    取代 HTLC 使用的哈希原像揭示機制，提供顯著的隱私和功能改進。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>前置知識：</strong>
+      理解 PTLC 需要先了解 <a href="/tech/lightning/htlc" class="underline">HTLC</a>、
+      <a href="/tech/bitcoin-core/schnorr" class="underline">Schnorr 簽名</a> 和
+      橢圓曲線密碼學的基礎知識。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 的隱私問題</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    HTLC 有一個根本性的隱私缺陷：整條支付路徑使用相同的 payment hash。
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 隱私問題：
+
+Alice ──HTLC(H)──> Bob ──HTLC(H)──> Carol ──HTLC(H)──> Dave
+                         │
+                         │ 相同的 H = SHA256(preimage)
+                         ▼
+問題 1：路徑關聯
+  - 如果 Bob 和 Dave 合謀，他們可以發現這是同一筆支付
+  - 他們可以推斷 Alice 是發送者，Dave 是接收者
+
+問題 2：Wormhole 攻擊
+  - 惡意節點可以「跳過」中間節點
+  - 收取路由費卻不提供服務
+
+問題 3：鏈上可追蹤
+  - 如果 HTLC 超時需要上鏈結算
+  - 相同的 hash 在區塊鏈上可見
+  - 可以關聯多個通道的關閉`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PTLC 解決方案</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    PTLC 使用「點」（橢圓曲線點）代替哈希，每一跳使用不同的點：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`PTLC 基本概念：
+
+設定：
+  - s = 秘密標量（只有 Dave 知道）
+  - S = s·G = 對應的公開點
+
+支付路徑：
+  Alice ──PTLC(S+a)──> Bob ──PTLC(S+b)──> Carol ──PTLC(S)──> Dave
+              │               │                │
+              │               │                └─ Dave 用 s 解鎖
+              │               └─ Carol 學到 s，用 s+b 解鎖給 Bob
+              └─ Bob 學到 s+b，但不知道 s，用 s+a+b 解鎖給 Alice
+
+關鍵：
+  - 每一跳的「點」都不同：S, S+b·G, S+(a+b)·G
+  - 即使 Bob 和 Dave 合謀，他們看到的是不同的點
+  - 無法確定這些點是否來自同一筆支付`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">適配器簽名</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    PTLC 的核心技術是適配器簽名（Adaptor Signatures），也稱為點鎖簽名：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`適配器簽名機制：
+
+標準 Schnorr 簽名：
+  sig = (R, s) where s = k + e·x
+  驗證：s·G = R + e·P
+
+適配器簽名：
+  設 T = t·G 是「適配點」
+
+  1. 簽名者創建「不完整簽名」：
+     s' = k + e·x  (但使用 R' = R + T)
+     發送 (R', s')
+
+  2. 驗證者檢查：
+     s'·G = R' + e·P - T
+     這證明：如果知道 t，就能得到有效簽名
+
+  3. 當秘密 t 被揭露時：
+     s = s' + t
+     (R, s) 是有效的 Schnorr 簽名
+
+  4. 反向：看到完整簽名可以推導 t：
+     t = s - s'
+
+關鍵屬性：
+  - 知道 t → 可以完成簽名
+  - 看到完成的簽名 → 可以學到 t`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PTLC 支付流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`PTLC 詳細流程（Alice → Bob → Carol → Dave）：
+
+1. 設定階段
+   Dave 生成秘密 s，公開 S = s·G
+   Alice 選擇路由，生成隨機數 a, b
+
+2. 轉發階段（洋蔥路由中攜帶 adaptor 資訊）
+
+   Alice → Bob:
+   - PTLC 鎖定點：S + (a+b)·G
+   - 包含 Bob 的 adaptor：b·G
+
+   Bob → Carol:
+   - PTLC 鎖定點：S + b·G
+   - 包含 Carol 的 adaptor：（無需額外）
+
+   Carol → Dave:
+   - PTLC 鎖定點：S
+   - Dave 用 s 解鎖
+
+3. 結算階段（逆向揭示秘密）
+
+   Dave → Carol:
+   - Dave 用 s 創建完整簽名花費 PTLC
+   - Carol 從簽名中提取 s
+
+   Carol → Bob:
+   - Carol 用 s + b 創建簽名（她知道 s，Alice 告訴她 b）
+   - 實際上：Carol 只需要用 s 解鎖，然後
+   - Bob 從簽名中提取 s + b（但不知道 s 和 b 分別是什麼）
+
+   Bob → Alice:
+   - Bob 用 s + a + b 解鎖
+   - Alice 從簽名中可以驗證支付完成`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">PTLC vs HTLC 對比</h2>
+
+  <div class="overflow-x-auto mb-8">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border-default)]">
+          <th class="text-left py-3 px-4 text-[var(--text-primary)]">特性</th>
+          <th class="text-left py-3 px-4 text-[var(--text-primary)]">HTLC</th>
+          <th class="text-left py-3 px-4 text-[var(--text-primary)]">PTLC</th>
+        </tr>
+      </thead>
+      <tbody class="text-[var(--text-secondary)]">
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">鎖定機制</td>
+          <td class="py-3 px-4">Hash(preimage)</td>
+          <td class="py-3 px-4">Point (s·G)</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">路徑關聯性</td>
+          <td class="py-3 px-4 text-red-500">相同 hash，可關聯</td>
+          <td class="py-3 px-4 text-green-500">不同點，無法關聯</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">Wormhole 攻擊</td>
+          <td class="py-3 px-4 text-red-500">可能</td>
+          <td class="py-3 px-4 text-green-500">不可能</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">鏈上足跡</td>
+          <td class="py-3 px-4 text-red-500">Hash 可見</td>
+          <td class="py-3 px-4 text-green-500">與普通支付相同</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">腳本複雜度</td>
+          <td class="py-3 px-4">需要 OP_HASH160</td>
+          <td class="py-3 px-4">純簽名</td>
+        </tr>
+        <tr class="border-b border-[var(--border-default)]">
+          <td class="py-3 px-4">所需密碼學</td>
+          <td class="py-3 px-4">ECDSA + Hash</td>
+          <td class="py-3 px-4">Schnorr + Adaptor</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優勢</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 隱私大幅提升</li>
+        <li>• 防止路徑關聯攻擊</li>
+        <li>• 更小的鏈上足跡</li>
+        <li>• 支援更複雜的條件支付</li>
+        <li>• 與 Taproot 完美結合</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">挑戰</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 需要 Schnorr 簽名（已有 Taproot）</li>
+        <li>• 適配器簽名較複雜</li>
+        <li>• 需要升級所有節點</li>
+        <li>• 與現有 HTLC 不兼容</li>
+        <li>• 仍在研究和開發中</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MuSig2 與 PTLC</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    PTLC 可以與 MuSig2 多簽結合，實現更強的隱私：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`MuSig2 + PTLC 通道：
+
+傳統 HTLC 通道關閉（鏈上可見）：
+┌─────────────────────────────────────┐
+│ IF                                  │
+│   <revocation_pubkey>               │
+│ ELSE                                │
+│   <local_delayed> CHECKSEQUENCEVERIFY │
+│   <local_pubkey>                    │
+│ ENDIF                               │
+│ CHECKSIG                            │
+└─────────────────────────────────────┘
+  看起來明顯是 Lightning 通道
+
+MuSig2 + PTLC + Taproot 通道關閉：
+┌─────────────────────────────────────┐
+│ <aggregated_pubkey> CHECKSIG        │
+└─────────────────────────────────────┘
+  看起來就像普通的單簽支付！
+
+隱私改進：
+- 合作關閉：無法區分是 2-of-2 還是 1-of-1
+- 強制關閉：使用 Tapscript，但主要路徑是 keypath
+- PTLC 結算：與普通交易無異`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">應用場景</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">原子多路徑支付 (AMP)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        PTLC 讓接收方可以同時解鎖所有路徑，確保要麼全部成功，要麼全部失敗，
+        而不需要 HTLC 的 payment_secret 機制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱蔽支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        結合 Route Blinding，PTLC 可以實現發送方和接收方都隱蔽的支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">DLC 整合</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        離散日誌合約（DLC）可以與 PTLC 結合，實現鏈下的條件合約。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開發狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">Taproot 已激活</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        2021 年 11 月，Taproot 在比特幣主網激活，提供了 Schnorr 簽名支援。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">Taproot Channels 開發中</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        各實現正在開發 Taproot 通道，這是 PTLC 的前置條件。LND 已在實驗性支援中。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-purple-500/30 bg-purple-500/10">
+      <h4 class="font-semibold text-purple-700 dark:text-purple-400 mb-2">PTLC 規範草案</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        社群正在討論 PTLC 的 BOLT 規範，預計在 Taproot Channels 穩定後推進。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://suredbits.com/payment-points-part-1/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Payment Points 系列文章</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/BlockstreamResearch/scriptless-scripts"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Scriptless Scripts 研究</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/taproot-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Taproot Channels</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/dual-funded"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">雙向資金通道</a
+      >
+      如何改善通道開設體驗。
+    </p>
+  </div>
+</ArticleLayout>

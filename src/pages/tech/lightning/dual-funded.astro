@@ -1,0 +1,400 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Dual-Funded Channels 雙向資金通道"
+  description="了解雙向資金通道如何讓通道雙方都可以提供初始資金，改善閃電網路的流動性和用戶體驗。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Dual-Funded Channels' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'PTLCs', href: '/tech/lightning/ptlcs' }}
+  nextPage={{ title: 'Zero-Conf Channels', href: '/tech/lightning/zero-conf' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是雙向資金通道？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    傳統的閃電網路通道是單向資金的：只有開啟通道的一方提供資金。
+    雙向資金通道（Dual-Funded Channels）允許雙方同時提供資金，
+    這意味著新開的通道立即就有雙向流動性，大幅改善用戶體驗。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心價值：</strong>
+      雙向資金通道解決了「新通道沒有入站容量」的問題，讓用戶可以立即接收支付，
+      而不需要先發送支付或購買入站流動性。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">單向 vs 雙向資金通道</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`單向資金通道（傳統）：
+
+Alice 開啟通道給 Bob，提供 0.1 BTC：
+
+  Funding TX:
+  ┌─────────────────────────────────────┐
+  │ Input: Alice's UTXO (0.1 BTC)       │
+  └─────────────────────────────────────┘
+                    │
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ Output: 2-of-2 multisig             │
+  │ Alice: 0.1 BTC (可發送)              │
+  │ Bob:   0   BTC (無法接收)            │
+  └─────────────────────────────────────┘
+
+問題：Bob 無法收到任何支付，直到 Alice 先發送給他
+
+────────────────────────────────────────────
+
+雙向資金通道：
+
+Alice 和 Bob 各提供 0.1 BTC：
+
+  Funding TX:
+  ┌─────────────────────────────────────┐
+  │ Input 1: Alice's UTXO (0.1 BTC)     │
+  │ Input 2: Bob's UTXO (0.1 BTC)       │
+  └─────────────────────────────────────┘
+                    │
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ Output: 2-of-2 multisig             │
+  │ Alice: 0.1 BTC (可發送，可接收 0.1)  │
+  │ Bob:   0.1 BTC (可發送，可接收 0.1)  │
+  └─────────────────────────────────────┘
+
+優勢：雙方立即有雙向流動性！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Interactive-TX 協議</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    雙向資金通道使用 Interactive-TX 協議（BOLT 提案）來協商 funding 交易：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Interactive-TX 流程：
+
+┌─────────┐                           ┌─────────┐
+│  Alice  │                           │   Bob   │
+└────┬────┘                           └────┬────┘
+     │                                     │
+     │──── open_channel2 ─────────────────>│
+     │     (propose dual-funding)          │
+     │                                     │
+     │<─── accept_channel2 ───────────────│
+     │     (agree to participate)          │
+     │                                     │
+     │══════ TX 協商開始 ══════════════════│
+     │                                     │
+     │──── tx_add_input ──────────────────>│
+     │     (Alice's UTXO)                  │
+     │                                     │
+     │<─── tx_add_input ──────────────────│
+     │     (Bob's UTXO)                    │
+     │                                     │
+     │──── tx_add_output ─────────────────>│
+     │     (2-of-2 funding output)         │
+     │                                     │
+     │<─── tx_add_output ─────────────────│
+     │     (Bob's change, if any)          │
+     │                                     │
+     │──── tx_add_output ─────────────────>│
+     │     (Alice's change, if any)        │
+     │                                     │
+     │──── tx_complete ───────────────────>│
+     │                                     │
+     │<─── tx_complete ───────────────────│
+     │                                     │
+     │══════ TX 協商完成 ══════════════════│
+     │                                     │
+     │──── commitment_signed ─────────────>│
+     │<─── commitment_signed ─────────────│
+     │                                     │
+     │──── tx_signatures ─────────────────>│
+     │<─── tx_signatures ─────────────────│
+     │                                     │
+     │     [廣播 funding tx]               │
+     ▼                                     ▼`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息格式</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >tx_add_input</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">添加輸入到協商中的交易</p>
+      <code class="text-xs text-[var(--text-tertiary)] block">
+        channel_id + serial_id + prevtx + prevtx_vout + sequence
+      </code>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >tx_add_output</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">添加輸出到協商中的交易</p>
+      <code class="text-xs text-[var(--text-tertiary)] block">
+        channel_id + serial_id + sats + script
+      </code>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >tx_remove_input/output</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">移除之前添加的輸入或輸出</p>
+      <code class="text-xs text-[var(--text-tertiary)] block">channel_id + serial_id</code>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >tx_complete</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">表示已完成添加輸入/輸出</p>
+      <code class="text-xs text-[var(--text-tertiary)] block">channel_id</code>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-blue-500/20 text-blue-600 dark:text-blue-400"
+          >tx_signatures</span
+        >
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">交換輸入簽名</p>
+      <code class="text-xs text-[var(--text-tertiary)] block">channel_id + txid + witnesses[]</code>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Liquidity Ads 流動性廣告</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    雙向資金通道還支援「流動性廣告」，讓節點可以出售入站流動性：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Liquidity Ads 運作方式：
+
+1. 賣方廣告（通過 node_announcement）：
+   "我願意提供入站流動性"
+   ┌──────────────────────────────────────┐
+   │ funding_weight: 交易大小            │
+   │ lease_fee_base_sat: 基礎費用        │
+   │ lease_fee_basis: 百分比費用         │
+   │ channel_fee_max_base_msat: 最高路由費│
+   │ channel_fee_max_prop_millionths     │
+   └──────────────────────────────────────┘
+
+2. 買方請求（在 open_channel2 中）：
+   "我想購買 X sats 的入站流動性"
+   ┌──────────────────────────────────────┐
+   │ request_funds: X sats               │
+   │ lease_start_blockheight             │
+   └──────────────────────────────────────┘
+
+3. 賣方同意（在 accept_channel2 中）：
+   "我會提供 X sats，收費 Y sats"
+   ┌──────────────────────────────────────┐
+   │ will_fund: X sats                   │
+   │ lease_fee: Y sats                   │
+   └──────────────────────────────────────┘
+
+租賃期間：
+- 賣方承諾在一定時間內不單方面關閉通道
+- 通過 CSV 時間鎖強制執行
+- 通常租賃期為 4032 區塊（約 1 個月）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">UTXO 探測攻擊</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        惡意節點可能假裝要開通道，但目的是探測你的 UTXO。解決方案：要求對方先提交輸入，或使用 RBF 保護。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">資金鎖定攻擊</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        對方可能故意拖延簽名交換，鎖定你的資金。解決方案：設定超時機制，使用 RBF 取回資金。
+      </p>
+    </div>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">RBF 保護</h3>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`RBF (Replace-By-Fee) 保護機制：
+
+1. 使用 require_confirmed_inputs
+   - 只接受已確認的 UTXO 作為輸入
+   - 防止對方使用低手續費交易阻止確認
+
+2. RBF 規則
+   - 所有輸入必須標記為 RBF 可替換 (sequence < 0xfffffffe)
+   - 如果協商失敗，可以用更高手續費替換
+
+3. 超時機制
+   - 設定協商超時時間
+   - 超時後自動中止並釋放 UTXO`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Splicing 的關係</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Interactive-TX 協議不僅用於開啟新通道，也是 <a href="/tech/lightning/splicing" class="text-yellow-600 dark:text-yellow-400 hover:underline">Splicing</a> 的基礎：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Interactive-TX 應用場景：
+
+1. 開啟新通道（Dual-Funded Channel Open）
+   - 雙方協商 funding transaction
+   - 使用 open_channel2 / accept_channel2
+
+2. 拼接通道（Splicing）
+   - 調整現有通道的容量
+   - 使用 splice_init / splice_ack
+   - 複用 tx_add_input, tx_add_output 等訊息
+
+3. 未來應用
+   - Channel Factories
+   - 多方通道`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        CLN 從 v0.10.1 開始支援雙向資金通道和流動性廣告，是第一個完整實現的節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >Eclair</span
+        >
+        <span class="text-sm font-semibold text-yellow-700 dark:text-yellow-400">已支援</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Eclair 支援雙向資金通道，Phoenix 錢包使用此功能進行按需通道開設。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-blue-500/20 text-blue-600 dark:text-blue-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-blue-700 dark:text-blue-400">開發中</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 正在開發雙向資金通道支援，預計在未來版本中加入。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用案例</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">LSP 即時開通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        用戶首次收款時，LSP 可以即時開啟雙向資金通道，提供入站流動性讓用戶立即收款。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">商家節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        商家可以購買入站流動性，確保客戶能夠即時支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">節點運營商</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過流動性廣告出售入站容量，創造被動收入。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">交易所</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        與用戶開啟雙向通道，支持即時存款和提款。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/851"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT: Dual-Funding 提案</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/878"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT: Liquidity Ads 提案</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/splicing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Splicing 通道拼接</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/zero-conf"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">零確認通道</a
+      >
+      如何實現即時通道開設。
+    </p>
+  </div>
+</ArticleLayout>

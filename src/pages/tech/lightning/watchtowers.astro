@@ -1,0 +1,344 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Watchtowers 瞭望塔"
+  description="了解閃電網路的瞭望塔機制，這是一種第三方監控服務，幫助保護離線節點免受通道詐騙。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Watchtowers' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Taproot Channels', href: '/tech/lightning/taproot-channels' }}
+  nextPage={{ title: 'PTLCs', href: '/tech/lightning/ptlcs' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Watchtower？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Watchtower（瞭望塔）是閃電網路中的第三方監控服務。當你的節點離線時，
+    瞭望塔會持續監控區塊鏈，如果發現對方廣播了過時的通道狀態（試圖詐騙），
+    瞭望塔會立即廣播懲罰交易，保護你的資金安全。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>為什麼重要：</strong>
+      閃電網路的安全性依賴於雙方監控區塊鏈。如果你的節點長時間離線，
+      惡意的通道對手可能會廣播對你不利的舊狀態。瞭望塔解決了這個「在線要求」問題。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全威脅模型</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">詐騙攻擊場景</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Alice 和 Bob 有一個通道，經過多次交易後 Bob 擁有 0.8 BTC。
+        Alice 發現 Bob 離線，廣播了一個舊狀態（當時 Alice 有 0.6 BTC）。
+        如果 Bob 在時間鎖到期前沒有發現並懲罰 Alice，Alice 就能偷走 0.4 BTC。
+      </p>
+    </div>
+  </div>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`詐騙攻擊時間線：
+
+時間 T0: Alice 廣播舊的 commitment tx
+        ┌─────────────────────────────────┐
+        │  to_local (Alice): 0.6 BTC      │
+        │  to_remote (Bob):  0.4 BTC      │  <- 過時狀態！
+        └─────────────────────────────────┘
+                    │
+                    ▼
+時間 T0 ~ T0+CSV:  爭議期間
+        Bob 必須在 CSV 時間鎖到期前發現並懲罰
+
+時間 T0+CSV: 如果 Bob 沒有反應
+        Alice 可以花費 to_local 輸出
+
+威脅：如果 Bob 離線超過 CSV 時間（通常 144~2016 區塊）
+      Bob 將損失資金`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Watchtower 運作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Watchtower 架構：
+
+┌─────────────────┐         ┌─────────────────┐
+│   你的節點       │         │   Watchtower    │
+│                 │         │                 │
+│  每次狀態更新時  │ ──────> │  儲存加密的      │
+│  發送 hint +    │         │  懲罰交易        │
+│  加密懲罰交易    │         │                 │
+└─────────────────┘         └────────┬────────┘
+                                     │
+                                     │ 監控區塊鏈
+                                     ▼
+                            ┌─────────────────┐
+                            │   Bitcoin       │
+                            │   Blockchain    │
+                            └─────────────────┘
+                                     │
+                                     │ 發現詐騙？
+                                     ▼
+                            ┌─────────────────┐
+                            │ 廣播懲罰交易     │
+                            │ 沒收詐騙者資金   │
+                            └─────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Watchtower 協議設計</h2>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. Blob 結構</h3>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    為了保護隱私，客戶端不會直接發送完整的交易資訊，而是發送加密的「blob」：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Watchtower Blob 結構：
+
+客戶端生成：
+  txid = commitment_tx 的 txid
+  hint = txid 的前 16 bytes（用於匹配）
+
+  encryption_key = SHA256(txid)
+  blob = AES-GCM-256(
+    key: encryption_key,
+    plaintext: justice_tx + sweep_address
+  )
+
+發送給 Watchtower：
+  ┌────────────────┬─────────────────────┐
+  │  hint (16 B)   │  encrypted_blob     │
+  └────────────────┴─────────────────────┘
+
+Watchtower 操作：
+  1. 儲存 (hint, blob) 對
+  2. 監控每個新區塊的交易
+  3. 如果發現匹配的 hint：
+     - 使用 txid 作為 key 解密 blob
+     - 廣播 justice_tx`}</pre>
+  </div>
+
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">2. 隱私保護</h3>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">客戶端隱私</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• Watchtower 只知道 hint，不知道完整 txid</li>
+        <li>• 加密的 blob 在沒有 txid 時無法解密</li>
+        <li>• 不知道通道金額或對手資訊</li>
+        <li>• 只有詐騙發生時才能得知交易細節</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">Watchtower 限制</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 無法主動偷取資金（沒有私鑰）</li>
+        <li>• 無法解密未發生的詐騙</li>
+        <li>• 可能收取服務費（從懲罰金額中扣除）</li>
+        <li>• 需要可靠的在線保證</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 13: Watchtower 規範</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BOLT 13 是 Watchtower 協議的草案規範，定義了標準化的介面：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 13 訊息類型：
+
+wt_session_init
+├── tower_pubkey: 33 bytes
+├── client_pubkey: 33 bytes
+├── session_id: 32 bytes
+└── max_updates: u16
+
+wt_state_update
+├── session_id: 32 bytes
+├── seq_num: u16
+├── hint: 16 bytes
+├── encrypted_blob: variable
+└── signature: 64 bytes
+
+wt_state_update_reply
+├── session_id: 32 bytes
+├── seq_num: u16
+├── code: u8 (success/error)
+└── signature: 64 bytes
+
+報酬模式：
+- Altruistic: 免費服務
+- Reward: 從懲罰交易中收取百分比`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">主要實現</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-blue-500/20 text-blue-600 dark:text-blue-400"
+          >LND</span
+        >
+        <h4 class="font-semibold text-[var(--text-primary)]">LND Watchtower</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        LND 內建的 Watchtower 實現，支援 Altruistic 模式。可以同時作為 Watchtower 伺服器和客戶端。
+      </p>
+      <code class="text-xs text-[var(--text-tertiary)]">lncli wtclient add [tower_pubkey]@[host]</code>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-purple-500/20 text-purple-600 dark:text-purple-400"
+          >CLN</span
+        >
+        <h4 class="font-semibold text-[var(--text-primary)]">The Eye of Satoshi</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        Core Lightning 的 Watchtower 插件，由 Talaia Labs 開發。支援 BOLT 13 草案。
+      </p>
+      <code class="text-xs text-[var(--text-tertiary)]">https://github.com/talaia-labs/rust-teos</code>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Eclair</span
+        >
+        <h4 class="font-semibold text-[var(--text-primary)]">Eclair Watchtower (開發中)</h4>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        ACINQ 的 Eclair 正在開發 Watchtower 支援，主要用於 Phoenix 錢包。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor Outputs 的影響</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Anchor Outputs 對 Watchtower 設計帶來了新的挑戰和改進：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Anchor Outputs 與 Watchtower：
+
+傳統模式問題：
+- 懲罰交易的手續費是預先簽名的
+- 如果鏈上手續費飆升，懲罰交易可能被卡住
+
+Anchor Outputs 改進：
+┌─────────────────────────────────────────┐
+│         Commitment Transaction          │
+├─────────────────────────────────────────┤
+│  to_local (with revocation)             │
+│  to_remote                              │
+│  anchor_local (330 sats)                │
+│  anchor_remote (330 sats)               │
+└─────────────────────────────────────────┘
+              │
+              ▼
+Watchtower 可以使用 CPFP (Child-Pays-For-Parent)
+動態增加懲罰交易的手續費
+
+新挑戰：
+- Watchtower 需要自己的 UTXO 來支付 CPFP 費用
+- 需要更複雜的費用管理
+- 可能需要報酬機制來覆蓋成本`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對於終端用戶</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 使用多個 Watchtower 增加冗餘</li>
+        <li>• 選擇信譽良好的 Watchtower 服務</li>
+        <li>• 定期檢查 Watchtower 連線狀態</li>
+        <li>• 考慮自己運行 Watchtower</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">對於 Watchtower 營運者</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 確保高可用性（99.9%+ uptime）</li>
+        <li>• 使用可靠的 Bitcoin 節點</li>
+        <li>• 準備足夠的 UTXO 用於 CPFP</li>
+        <li>• 定期備份 blob 資料庫</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來發展</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">VLS (Validating Lightning Signer)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        結合遠程簽名和 Watchtower 功能，提供更全面的安全解決方案。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <h4 class="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">OP_CHECKTEMPLATEVERIFY</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        未來可能使用 CTV 來簡化 Watchtower 設計，減少需要儲存的資料量。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/851"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 13 草案</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/talaia-labs/rust-teos"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">The Eye of Satoshi</a>
+    </li>
+    <li>
+      • <a
+        href="https://docs.lightning.engineering/lightning-network-tools/lnd/watchtower"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Watchtower 文檔</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/ptlcs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">PTLCs</a
+      >
+      如何改進 HTLC 的隱私和功能。
+    </p>
+  </div>
+</ArticleLayout>

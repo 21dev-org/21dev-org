@@ -1,0 +1,591 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="PSBT"
+  description="部分簽名比特幣交易：多方協作簽名、硬體錢包整合和離線交易"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'PSBT' },
+  ]}
+  difficulty="advanced"
+  readingTime="22 分鐘"
+  prevPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+  nextPage={{ title: 'Mining', href: '/tech/bitcoin-core/mining' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    PSBT（Partially Signed Bitcoin Transaction，部分簽名比特幣交易）是 BIP-174 定義的標準格式，
+    允許在多個參與者之間傳遞未完成簽名的交易。這對於硬體錢包、多簽錢包和複雜的簽名流程至關重要。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心價值：</strong>
+      PSBT 讓交易的「構建」和「簽名」完全分離。冷錢包可以離線簽名，
+      多簽參與者可以分別簽名，而無需暴露私鑰。
+    </p>
+  </div>
+
+  <h2 id="use-cases">使用場景</h2>
+  <ul>
+    <li><strong>硬體錢包</strong>：構建交易 → 傳送到硬體錢包 → 簽名 → 廣播</li>
+    <li><strong>多簽錢包</strong>：參與者依序簽名同一個 PSBT</li>
+    <li><strong>CoinJoin</strong>：多方構建共同交易</li>
+    <li><strong>離線簽名</strong>：氣隙電腦安全簽名</li>
+    <li><strong>交易協調</strong>：原子交換、閃電網路通道開啟</li>
+  </ul>
+
+  <h2 id="workflow">工作流程</h2>
+  <pre><code class="language-text" is:raw>PSBT 生命週期:
+
+1. Creator (創建者)
+   └─→ 創建未簽名交易，添加輸入輸出
+
+2. Updater (更新者)
+   └─→ 添加簽名所需的元數據（UTXO、腳本、派生路徑）
+
+3. Signer (簽名者)
+   └─→ 使用私鑰簽名各個輸入
+
+4. Combiner (合併者)
+   └─→ 合併來自不同簽名者的部分簽名
+
+5. Finalizer (完成者)
+   └─→ 構建最終的 scriptSig/witness
+
+6. Extractor (提取者)
+   └─→ 提取完整交易，準備廣播</code></pre>
+
+  <h2 id="structure">PSBT 結構</h2>
+
+  <h3>全局字段</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>說明</th>
+        <th>必須</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>PSBT_GLOBAL_UNSIGNED_TX</code></td>
+        <td>未簽名交易</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_GLOBAL_XPUB</code></td>
+        <td>擴展公鑰（BIP-32）</td>
+        <td>否</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_GLOBAL_TX_VERSION</code></td>
+        <td>交易版本</td>
+        <td>否</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_GLOBAL_FALLBACK_LOCKTIME</code></td>
+        <td>備用 locktime</td>
+        <td>否</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_GLOBAL_INPUT_COUNT</code></td>
+        <td>輸入數量</td>
+        <td>否</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_GLOBAL_OUTPUT_COUNT</code></td>
+        <td>輸出數量</td>
+        <td>否</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>輸入字段</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>PSBT_IN_NON_WITNESS_UTXO</code></td>
+        <td>完整的前置交易（非 SegWit）</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_WITNESS_UTXO</code></td>
+        <td>UTXO 的金額和 scriptPubKey</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_PARTIAL_SIG</code></td>
+        <td>部分簽名（pubkey → signature）</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_SIGHASH_TYPE</code></td>
+        <td>簽名雜湊類型</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_REDEEM_SCRIPT</code></td>
+        <td>P2SH 的 redeemScript</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_WITNESS_SCRIPT</code></td>
+        <td>P2WSH 的 witnessScript</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_BIP32_DERIVATION</code></td>
+        <td>公鑰的 BIP-32 派生路徑</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_FINAL_SCRIPTSIG</code></td>
+        <td>最終的 scriptSig</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_FINAL_SCRIPTWITNESS</code></td>
+        <td>最終的 witness</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_TAP_KEY_SIG</code></td>
+        <td>Taproot key path 簽名</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_IN_TAP_SCRIPT_SIG</code></td>
+        <td>Taproot script path 簽名</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>輸出字段</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>PSBT_OUT_REDEEM_SCRIPT</code></td>
+        <td>輸出的 redeemScript</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_OUT_WITNESS_SCRIPT</code></td>
+        <td>輸出的 witnessScript</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_OUT_BIP32_DERIVATION</code></td>
+        <td>輸出地址的派生路徑</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_OUT_TAP_INTERNAL_KEY</code></td>
+        <td>Taproot 內部公鑰</td>
+      </tr>
+      <tr>
+        <td><code>PSBT_OUT_TAP_TREE</code></td>
+        <td>Taproot 腳本樹</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="bitcoin-cli">Bitcoin CLI 操作</h2>
+
+  <h3>創建 PSBT</h3>
+  <pre><code class="language-bash" is:raw># 創建未簽名 PSBT
+bitcoin-cli createpsbt \
+  '[{"txid":"abc...", "vout":0}]' \
+  '[{"bc1q...": 0.001}, {"bc1q...": 0.0005}]'
+
+# 從錢包創建（自動選擇輸入）
+bitcoin-cli walletcreatefundedpsbt \
+  '[]' \
+  '[{"bc1q...": 0.001}]' \
+  0 \
+  '{"changeAddress": "bc1q..."}'</code></pre>
+
+  <h3>更新 PSBT</h3>
+  <pre><code class="language-bash" is:raw># 添加 UTXO 和派生信息
+bitcoin-cli utxoupdatepsbt "cHNidP8..."
+
+# 從錢包添加資訊
+bitcoin-cli walletprocesspsbt "cHNidP8..." true</code></pre>
+
+  <h3>簽名 PSBT</h3>
+  <pre><code class="language-bash" is:raw># 用錢包簽名
+bitcoin-cli walletprocesspsbt "cHNidP8..."
+
+# 結果
+{
+  "psbt": "cHNidP8...",
+  "complete": false  # 如果需要更多簽名
+}</code></pre>
+
+  <h3>合併和完成</h3>
+  <pre><code class="language-bash" is:raw># 合併多個 PSBT
+bitcoin-cli combinepsbt '["cHNidP8...", "cHNidP8..."]'
+
+# 完成 PSBT
+bitcoin-cli finalizepsbt "cHNidP8..."
+
+# 結果
+{
+  "hex": "0200000001...",  # 可廣播的交易
+  "complete": true
+}
+
+# 廣播
+bitcoin-cli sendrawtransaction "0200000001..."</code></pre>
+
+  <h3>分析 PSBT</h3>
+  <pre><code class="language-bash" is:raw># 解碼 PSBT
+bitcoin-cli decodepsbt "cHNidP8..."
+
+# 分析狀態
+bitcoin-cli analyzepsbt "cHNidP8..."
+
+# 結果
+{
+  "inputs": [
+    {
+      "has_utxo": true,
+      "is_final": false,
+      "next": "signer",
+      "missing": {
+        "signatures": ["02abc..."]
+      }
+    }
+  ],
+  "estimated_vsize": 141,
+  "estimated_feerate": 0.00001000,
+  "fee": 0.00000141,
+  "next": "signer"
+}</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>使用 bitcoinjs-lib</h3>
+  <pre><code class="language-typescript" is:raw>import * as bitcoin from 'bitcoinjs-lib';
+import { ECPairFactory } from 'ecpair';
+import * as ecc from 'tiny-secp256k1';
+
+const ECPair = ECPairFactory(ecc);
+
+// 創建 PSBT
+function createPsbt(
+  inputs: Array&lt;{
+    txid: string;
+    vout: number;
+    witnessUtxo: { script: Buffer; value: number };
+  }&gt;,
+  outputs: Array&lt;{ address: string; value: number }&gt;
+): bitcoin.Psbt {
+  const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+  // 添加輸入
+  for (const input of inputs) {
+    psbt.addInput({
+      hash: input.txid,
+      index: input.vout,
+      witnessUtxo: input.witnessUtxo,
+    });
+  }
+
+  // 添加輸出
+  for (const output of outputs) {
+    psbt.addOutput({
+      address: output.address,
+      value: output.value,
+    });
+  }
+
+  return psbt;
+}
+
+// 簽名 PSBT
+function signPsbt(psbt: bitcoin.Psbt, privateKey: Buffer): bitcoin.Psbt {
+  const keyPair = ECPair.fromPrivateKey(privateKey);
+
+  // 簽名所有可以簽名的輸入
+  for (let i = 0; i &lt; psbt.inputCount; i++) {
+    try {
+      psbt.signInput(i, keyPair);
+    } catch (e) {
+      // 此輸入不需要這個私鑰
+    }
+  }
+
+  return psbt;
+}
+
+// 完成和提取
+function finalizePsbt(psbt: bitcoin.Psbt): string {
+  psbt.finalizeAllInputs();
+  return psbt.extractTransaction().toHex();
+}</code></pre>
+
+  <h3>多簽 PSBT 流程</h3>
+  <pre><code class="language-typescript" is:raw>// 2-of-3 多簽範例
+async function multisigPsbtWorkflow() {
+  // 創建者：構建 PSBT
+  const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+  // 添加多簽輸入
+  const redeemScript = bitcoin.script.compile([
+    bitcoin.opcodes.OP_2,
+    pubKey1,
+    pubKey2,
+    pubKey3,
+    bitcoin.opcodes.OP_3,
+    bitcoin.opcodes.OP_CHECKMULTISIG,
+  ]);
+
+  psbt.addInput({
+    hash: 'txid...',
+    index: 0,
+    witnessUtxo: {
+      script: bitcoin.payments.p2wsh({
+        redeem: { output: redeemScript },
+      }).output!,
+      value: 100000,
+    },
+    witnessScript: redeemScript,
+  });
+
+  psbt.addOutput({
+    address: 'bc1q...',
+    value: 99000,
+  });
+
+  // 簽名者 1
+  const psbtBase64 = psbt.toBase64();
+  const psbt1 = bitcoin.Psbt.fromBase64(psbtBase64);
+  psbt1.signInput(0, keyPair1);
+
+  // 簽名者 2
+  const psbt2 = bitcoin.Psbt.fromBase64(psbt1.toBase64());
+  psbt2.signInput(0, keyPair2);
+
+  // 合併（如果分開簽名）
+  // psbt.combine(psbt1, psbt2);
+
+  // 完成
+  psbt2.finalizeAllInputs();
+  const txHex = psbt2.extractTransaction().toHex();
+
+  return txHex;
+}</code></pre>
+
+  <h3>Taproot PSBT</h3>
+  <pre><code class="language-typescript" is:raw>import { toXOnly } from 'bitcoinjs-lib/src/psbt/bip371';
+
+function createTaprootPsbt(
+  internalPubKey: Buffer,
+  privateKey: Buffer
+): bitcoin.Psbt {
+  const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+  // Taproot 輸出 (P2TR)
+  const { output, address } = bitcoin.payments.p2tr({
+    internalPubkey: toXOnly(internalPubKey),
+    network: bitcoin.networks.bitcoin,
+  });
+
+  // 添加 Taproot 輸入
+  psbt.addInput({
+    hash: 'txid...',
+    index: 0,
+    witnessUtxo: {
+      script: output!,
+      value: 100000,
+    },
+    tapInternalKey: toXOnly(internalPubKey),
+  });
+
+  psbt.addOutput({
+    address: 'bc1p...',
+    value: 99000,
+  });
+
+  // 簽名（使用 Schnorr）
+  const keyPair = ECPair.fromPrivateKey(privateKey);
+  psbt.signInput(0, keyPair);
+
+  psbt.finalizeAllInputs();
+  return psbt;
+}</code></pre>
+
+  <h3>PSBT 驗證</h3>
+  <pre><code class="language-typescript" is:raw>interface PsbtValidation {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  signedInputs: number;
+  totalInputs: number;
+  estimatedFee: number;
+}
+
+function validatePsbt(psbtBase64: string): PsbtValidation {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64);
+    let signedInputs = 0;
+    let totalValue = 0;
+    let outputValue = 0;
+
+    // 檢查輸入
+    for (let i = 0; i &lt; psbt.inputCount; i++) {
+      const input = psbt.data.inputs[i];
+
+      if (!input.witnessUtxo &amp;&amp; !input.nonWitnessUtxo) {
+        errors.push(`Input ${i}: Missing UTXO data`);
+      }
+
+      if (input.witnessUtxo) {
+        totalValue += input.witnessUtxo.value;
+      }
+
+      if (input.partialSig &amp;&amp; input.partialSig.length &gt; 0) {
+        signedInputs++;
+      }
+
+      if (input.finalScriptSig || input.finalScriptWitness) {
+        signedInputs++;
+      }
+    }
+
+    // 檢查輸出
+    for (const output of psbt.txOutputs) {
+      outputValue += output.value;
+    }
+
+    // 計算手續費
+    const estimatedFee = totalValue - outputValue;
+
+    if (estimatedFee &lt; 0) {
+      errors.push('Outputs exceed inputs (negative fee)');
+    }
+
+    if (estimatedFee &gt; totalValue * 0.1) {
+      warnings.push('Fee seems unusually high (&gt; 10% of inputs)');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      signedInputs,
+      totalInputs: psbt.inputCount,
+      estimatedFee: Math.max(0, estimatedFee),
+    };
+  } catch (e) {
+    return {
+      isValid: false,
+      errors: [`Invalid PSBT: ${e}`],
+      warnings: [],
+      signedInputs: 0,
+      totalInputs: 0,
+      estimatedFee: 0,
+    };
+  }
+}</code></pre>
+
+  <h2 id="hardware-wallet">硬體錢包整合</h2>
+
+  <h3>工作流程</h3>
+  <pre><code class="language-text" is:raw>1. 軟體錢包創建 PSBT
+   - 選擇 UTXO
+   - 構建交易
+   - 添加派生路徑資訊
+
+2. 傳輸到硬體錢包
+   - Base64 編碼
+   - QR 碼、USB、SD 卡
+
+3. 硬體錢包驗證和簽名
+   - 顯示交易詳情
+   - 用戶確認
+   - 離線簽名
+
+4. 返回簽名後的 PSBT
+   - 包含部分簽名
+   - 可能需要更多簽名
+
+5. 軟體錢包完成和廣播
+   - 合併簽名
+   - 最終化
+   - 廣播交易</code></pre>
+
+  <h3>派生路徑</h3>
+  <pre><code class="language-typescript" is:raw>// 添加 BIP-32 派生資訊
+function addDerivationInfo(
+  psbt: bitcoin.Psbt,
+  inputIndex: number,
+  pubKey: Buffer,
+  masterFingerprint: Buffer,
+  path: string
+) {
+  const bip32Derivation = [{
+    pubkey: pubKey,
+    masterFingerprint,
+    path,  // 例如 "m/84'/0'/0'/0/0"
+  }];
+
+  psbt.updateInput(inputIndex, { bip32Derivation });
+}</code></pre>
+
+  <h2 id="encoding">編碼格式</h2>
+
+  <h3>Base64</h3>
+  <pre><code class="language-typescript" is:raw>// 標準 PSBT Base64
+const base64 = psbt.toBase64();
+// "cHNidP8BAH0CAAAAAbi..."
+
+const decoded = bitcoin.Psbt.fromBase64(base64);</code></pre>
+
+  <h3>Hex</h3>
+  <pre><code class="language-typescript" is:raw>// 十六進位格式
+const hex = psbt.toHex();
+// "70736274ff01..."
+
+const decoded = bitcoin.Psbt.fromHex(hex);</code></pre>
+
+  <h3>Magic Bytes</h3>
+  <pre><code class="language-text" is:raw>PSBT 開頭始終是:
+0x70736274ff = "psbt" + 0xff
+
+這讓工具可以識別 PSBT 格式</code></pre>
+
+  <h2 id="psbt-v2">PSBT v2 (BIP-370)</h2>
+  <p>PSBT v2 引入了改進，主要用於多方協議：</p>
+
+  <ul>
+    <li><strong>Constructor 角色</strong>：分離交易構建和更新</li>
+    <li><strong>輸入/輸出計數</strong>：明確的計數字段</li>
+    <li><strong>Modifiable 標誌</strong>：指示 PSBT 是否可以添加輸入/輸出</li>
+    <li><strong>更好的 Locktime 處理</strong>：支援相對和絕對時間鎖</li>
+  </ul>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>驗證輸入</strong>：確保 UTXO 存在且金額正確</li>
+    <li><strong>檢查手續費</strong>：防止意外的高額手續費</li>
+    <li><strong>包含派生路徑</strong>：幫助硬體錢包找到正確的密鑰</li>
+    <li><strong>不重複簽名</strong>：檢查輸入是否已簽名</li>
+    <li><strong>保護 PSBT</strong>：未簽名的 PSBT 不要洩露</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0174.md" target="_blank" rel="noopener noreferrer">BIP-174 PSBT</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0370.md" target="_blank" rel="noopener noreferrer">BIP-370 PSBT v2</a></li>
+    <li><a href="https://github.com/bitcoinjs/bitcoinjs-lib" target="_blank" rel="noopener noreferrer">bitcoinjs-lib</a></li>
+    <li><a href="/tech/bitcoin-core/transaction">交易結構</a></li>
+    <li><a href="/tech/bitcoin-core/rpc-wallet">錢包 RPC</a></li>
+  </ul>
+</ArticleLayout>

@@ -1,0 +1,473 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Bitcoin Script"
+  description="比特幣腳本語言深入解析：操作碼、標準腳本類型和智能合約基礎"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Script' },
+  ]}
+  difficulty="advanced"
+  readingTime="25 分鐘"
+  prevPage={{ title: '交易結構', href: '/tech/bitcoin-core/transaction' }}
+  nextPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Bitcoin Script 是一種基於堆疊的腳本語言，用於定義交易輸出的花費條件。
+    它不是圖靈完備的，這是刻意設計以避免無限循環和複雜的安全問題。
+    每個比特幣交易都包含腳本，決定誰可以花費這些資金。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>設計哲學：</strong>
+      Script 故意保持簡單和受限。沒有循環、沒有狀態、執行時間可預測。
+      這讓每個節點都能快速驗證交易，確保網路安全。
+    </p>
+  </div>
+
+  <h2 id="stack-machine">堆疊機器</h2>
+  <p>
+    Script 使用兩個堆疊執行：主堆疊和替代堆疊。
+    操作碼從腳本中依序讀取，對堆疊進行操作。
+    執行結束時，如果主堆疊頂部是非零值（true），腳本成功。
+  </p>
+
+  <h3>執行流程</h3>
+  <pre><code class="language-text" is:raw>腳本: OP_2 OP_3 OP_ADD OP_5 OP_EQUAL
+
+執行步驟:
+1. OP_2     → 堆疊: [2]
+2. OP_3     → 堆疊: [2, 3]
+3. OP_ADD   → 堆疊: [5]        (2+3=5)
+4. OP_5     → 堆疊: [5, 5]
+5. OP_EQUAL → 堆疊: [1]        (5==5, true)
+
+結果: 成功 (堆疊頂部為 true)</code></pre>
+
+  <h2 id="opcodes">常用操作碼</h2>
+
+  <h3>常數操作</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>操作碼</th>
+        <th>Hex</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>OP_0</code> / <code>OP_FALSE</code></td>
+        <td><code>0x00</code></td>
+        <td>推入空字節數組（false）</td>
+      </tr>
+      <tr>
+        <td><code>OP_1</code> - <code>OP_16</code></td>
+        <td><code>0x51-0x60</code></td>
+        <td>推入數字 1-16</td>
+      </tr>
+      <tr>
+        <td><code>OP_1NEGATE</code></td>
+        <td><code>0x4f</code></td>
+        <td>推入 -1</td>
+      </tr>
+      <tr>
+        <td><code>OP_PUSHDATA1/2/4</code></td>
+        <td><code>0x4c-0x4e</code></td>
+        <td>推入指定長度的數據</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>堆疊操作</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>操作碼</th>
+        <th>說明</th>
+        <th>範例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>OP_DUP</code></td>
+        <td>複製堆疊頂部元素</td>
+        <td>[a] → [a, a]</td>
+      </tr>
+      <tr>
+        <td><code>OP_DROP</code></td>
+        <td>移除堆疊頂部元素</td>
+        <td>[a, b] → [a]</td>
+      </tr>
+      <tr>
+        <td><code>OP_SWAP</code></td>
+        <td>交換頂部兩元素</td>
+        <td>[a, b] → [b, a]</td>
+      </tr>
+      <tr>
+        <td><code>OP_PICK</code></td>
+        <td>複製第 n 個元素到頂部</td>
+        <td>[a, b, c, 2] → [a, b, c, a]</td>
+      </tr>
+      <tr>
+        <td><code>OP_ROLL</code></td>
+        <td>移動第 n 個元素到頂部</td>
+        <td>[a, b, c, 2] → [b, c, a]</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>加密操作</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>操作碼</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>OP_SHA256</code></td>
+        <td>SHA-256 雜湊</td>
+      </tr>
+      <tr>
+        <td><code>OP_HASH160</code></td>
+        <td>RIPEMD160(SHA256(x))</td>
+      </tr>
+      <tr>
+        <td><code>OP_HASH256</code></td>
+        <td>SHA256(SHA256(x))</td>
+      </tr>
+      <tr>
+        <td><code>OP_CHECKSIG</code></td>
+        <td>驗證簽名</td>
+      </tr>
+      <tr>
+        <td><code>OP_CHECKMULTISIG</code></td>
+        <td>驗證多重簽名</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>流程控制</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>操作碼</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>OP_IF</code> / <code>OP_NOTIF</code></td>
+        <td>條件執行</td>
+      </tr>
+      <tr>
+        <td><code>OP_ELSE</code></td>
+        <td>條件分支</td>
+      </tr>
+      <tr>
+        <td><code>OP_ENDIF</code></td>
+        <td>結束條件</td>
+      </tr>
+      <tr>
+        <td><code>OP_VERIFY</code></td>
+        <td>如果頂部不為 true 則失敗</td>
+      </tr>
+      <tr>
+        <td><code>OP_RETURN</code></td>
+        <td>標記輸出為不可花費</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="standard-scripts">標準腳本類型</h2>
+
+  <h3>P2PKH (Pay to Public Key Hash)</h3>
+  <p>最傳統的比特幣地址格式（以 1 開頭）。</p>
+  <pre><code class="language-text" is:raw>scriptPubKey: OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG
+scriptSig:    &lt;signature&gt; &lt;pubKey&gt;
+
+驗證流程:
+1. 推入 signature
+2. 推入 pubKey
+3. OP_DUP: 複製 pubKey
+4. OP_HASH160: 對 pubKey 做 HASH160
+5. 推入 pubKeyHash
+6. OP_EQUALVERIFY: 確認雜湊匹配
+7. OP_CHECKSIG: 驗證簽名</code></pre>
+
+  <h3>P2SH (Pay to Script Hash)</h3>
+  <p>允許複雜腳本，地址以 3 開頭。花費時提供完整腳本。</p>
+  <pre><code class="language-text" is:raw>scriptPubKey: OP_HASH160 &lt;scriptHash&gt; OP_EQUAL
+scriptSig:    &lt;sig1&gt; ... &lt;sigN&gt; &lt;redeemScript&gt;
+
+範例 - 2-of-3 多簽:
+redeemScript: OP_2 &lt;pubKey1&gt; &lt;pubKey2&gt; &lt;pubKey3&gt; OP_3 OP_CHECKMULTISIG</code></pre>
+
+  <h3>P2WPKH (SegWit v0)</h3>
+  <p>原生 SegWit 地址（以 bc1q 開頭），簽名移到 witness。</p>
+  <pre><code class="language-text" is:raw>scriptPubKey: OP_0 &lt;20-byte-pubKeyHash&gt;
+witness:      &lt;signature&gt; &lt;pubKey&gt;
+
+優點:
+- 手續費更低（witness 數據折扣）
+- 解決交易延展性問題
+- 更簡潔的腳本</code></pre>
+
+  <h3>P2WSH (SegWit Script)</h3>
+  <p>SegWit 版本的 P2SH，支援更複雜的腳本。</p>
+  <pre><code class="language-text" is:raw>scriptPubKey: OP_0 &lt;32-byte-scriptHash&gt;
+witness:      &lt;witness items&gt; &lt;witnessScript&gt;
+
+scriptHash = SHA256(witnessScript)</code></pre>
+
+  <h3>P2TR (Taproot)</h3>
+  <p>最新的地址格式（以 bc1p 開頭），支援 Schnorr 簽名和 MAST。</p>
+  <pre><code class="language-text" is:raw>scriptPubKey: OP_1 &lt;32-byte-tweaked-pubKey&gt;
+
+兩種花費路徑:
+1. Key Path: 直接用調整後的私鑰簽名
+2. Script Path: 揭露特定的腳本分支
+
+優點:
+- 隱私性更好（所有輸出看起來相同）
+- 支援複雜條件但只揭露使用的分支
+- Schnorr 簽名更高效</code></pre>
+
+  <h2 id="timelocks">時間鎖</h2>
+
+  <h3>絕對時間鎖</h3>
+  <pre><code class="language-text" is:raw>OP_CHECKLOCKTIMEVERIFY (CLTV)
+- 交易必須在指定時間/區塊後才能被包含
+- 數值 &lt; 500000000: 區塊高度
+- 數值 >= 500000000: Unix 時間戳
+
+範例: 2024年後才能花費
+&lt;1704067200&gt; OP_CLTV OP_DROP &lt;pubKey&gt; OP_CHECKSIG</code></pre>
+
+  <h3>相對時間鎖</h3>
+  <pre><code class="language-text" is:raw>OP_CHECKSEQUENCEVERIFY (CSV)
+- 相對於輸入 UTXO 被確認的時間
+- 用於通道協議和時間條件合約
+
+範例: 確認後 144 區塊（約 1 天）才能花費
+&lt;144&gt; OP_CSV OP_DROP &lt;pubKey&gt; OP_CHECKSIG</code></pre>
+
+  <h2 id="multisig">多重簽名</h2>
+  <pre><code class="language-text" is:raw>M-of-N 多簽結構:
+OP_M &lt;pubKey1&gt; &lt;pubKey2&gt; ... &lt;pubKeyN&gt; OP_N OP_CHECKMULTISIG
+
+範例 - 2-of-3 多簽:
+scriptPubKey:
+OP_2
+&lt;pubKey1&gt;
+&lt;pubKey2&gt;
+&lt;pubKey3&gt;
+OP_3
+OP_CHECKMULTISIG
+
+scriptSig:
+OP_0           // 修復 off-by-one bug
+&lt;sig1&gt;
+&lt;sig2&gt;</code></pre>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>歷史 Bug：</strong>
+      <code>OP_CHECKMULTISIG</code> 有一個 off-by-one bug，會從堆疊多彈出一個元素。
+      因此 scriptSig 開頭需要 <code>OP_0</code>。這個 bug 已成為共識規則的一部分。
+    </p>
+  </div>
+
+  <h2 id="htlc">HTLC (雜湊時間鎖合約)</h2>
+  <p>閃電網路的核心構建塊：</p>
+  <pre><code class="language-text" is:raw>OP_IF
+    // Hash Path: 知道 preimage 可以立即花費
+    OP_SHA256 &lt;hash&gt; OP_EQUALVERIFY
+    &lt;receiverPubKey&gt; OP_CHECKSIG
+OP_ELSE
+    // Timeout Path: 超時後發送方可以取回
+    &lt;timeout&gt; OP_CLTV OP_DROP
+    &lt;senderPubKey&gt; OP_CHECKSIG
+OP_ENDIF
+
+使用方式:
+- Hash Path: &lt;signature&gt; &lt;preimage&gt; OP_TRUE
+- Timeout Path: &lt;signature&gt; OP_FALSE</code></pre>
+
+  <h2 id="tapscript">Tapscript (SegWit v1)</h2>
+  <p>Taproot 引入的改進腳本：</p>
+
+  <h3>主要變化</h3>
+  <ul>
+    <li><strong>Schnorr 簽名</strong>：使用 <code>OP_CHECKSIG</code> 驗證 64 字節 Schnorr 簽名</li>
+    <li><strong>OP_CHECKSIGADD</strong>：替代 <code>OP_CHECKMULTISIG</code>，更靈活的多簽</li>
+    <li><strong>OP_SUCCESS</strong>：保留操作碼，用於未來升級</li>
+    <li><strong>簽名雜湊改進</strong>：更安全的 sighash 計算</li>
+  </ul>
+
+  <h3>新的多簽方式</h3>
+  <pre><code class="language-text" is:raw>傳統 2-of-3:
+OP_2 &lt;pk1&gt; &lt;pk2&gt; &lt;pk3&gt; OP_3 OP_CHECKMULTISIG
+
+Tapscript 2-of-3:
+&lt;pk1&gt; OP_CHECKSIG
+&lt;pk2&gt; OP_CHECKSIGADD
+&lt;pk3&gt; OP_CHECKSIGADD
+OP_2 OP_NUMEQUAL
+
+優點: 可以驗證任意組合，不限於連續簽名</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>解析腳本</h3>
+  <pre><code class="language-typescript" is:raw>const OP_CODES: Record&lt;number, string&gt; = {
+  0x00: 'OP_0',
+  0x51: 'OP_1',
+  0x52: 'OP_2',
+  0x53: 'OP_3',
+  0x76: 'OP_DUP',
+  0x87: 'OP_EQUAL',
+  0x88: 'OP_EQUALVERIFY',
+  0xa9: 'OP_HASH160',
+  0xac: 'OP_CHECKSIG',
+  0xae: 'OP_CHECKMULTISIG',
+};
+
+function parseScript(script: Buffer): string[] {
+  const result: string[] = [];
+  let i = 0;
+
+  while (i &lt; script.length) {
+    const opcode = script[i];
+
+    if (opcode &gt;= 0x01 &amp;&amp; opcode &lt;= 0x4b) {
+      // Push data directly
+      const data = script.slice(i + 1, i + 1 + opcode);
+      result.push(data.toString('hex'));
+      i += 1 + opcode;
+    } else if (OP_CODES[opcode]) {
+      result.push(OP_CODES[opcode]);
+      i++;
+    } else {
+      result.push(`OP_UNKNOWN_${opcode.toString(16)}`);
+      i++;
+    }
+  }
+
+  return result;
+}
+
+// 範例
+const p2pkh = Buffer.from(
+  '76a914' + '89abcdefabbaabbaabbaabbaabbaabbaabbaabba' + '88ac',
+  'hex'
+);
+console.log(parseScript(p2pkh));
+// ['OP_DUP', 'OP_HASH160', '89abcdef...', 'OP_EQUALVERIFY', 'OP_CHECKSIG']</code></pre>
+
+  <h3>建立 P2PKH 腳本</h3>
+  <pre><code class="language-typescript" is:raw>import * as bitcoin from 'bitcoinjs-lib';
+import { hash160 } from 'bitcoinjs-lib/src/crypto';
+
+function createP2PKH(pubKey: Buffer): Buffer {
+  const pubKeyHash = hash160(pubKey);
+
+  return bitcoin.script.compile([
+    bitcoin.opcodes.OP_DUP,
+    bitcoin.opcodes.OP_HASH160,
+    pubKeyHash,
+    bitcoin.opcodes.OP_EQUALVERIFY,
+    bitcoin.opcodes.OP_CHECKSIG,
+  ]);
+}
+
+// 建立 P2SH 多簽
+function createMultisigP2SH(
+  m: number,
+  pubKeys: Buffer[]
+): { address: string; redeemScript: Buffer } {
+  const redeemScript = bitcoin.script.compile([
+    bitcoin.opcodes.OP_0 + m, // OP_M
+    ...pubKeys,
+    bitcoin.opcodes.OP_0 + pubKeys.length, // OP_N
+    bitcoin.opcodes.OP_CHECKMULTISIG,
+  ]);
+
+  const scriptHash = hash160(redeemScript);
+  const outputScript = bitcoin.script.compile([
+    bitcoin.opcodes.OP_HASH160,
+    scriptHash,
+    bitcoin.opcodes.OP_EQUAL,
+  ]);
+
+  const address = bitcoin.address.fromOutputScript(
+    outputScript,
+    bitcoin.networks.bitcoin
+  );
+
+  return { address, redeemScript };
+}</code></pre>
+
+  <h3>建立 HTLC</h3>
+  <pre><code class="language-typescript" is:raw>import * as crypto from 'crypto';
+
+interface HTLCParams {
+  receiverPubKey: Buffer;
+  senderPubKey: Buffer;
+  paymentHash: Buffer;
+  timeout: number;
+}
+
+function createHTLC(params: HTLCParams): Buffer {
+  return bitcoin.script.compile([
+    bitcoin.opcodes.OP_IF,
+      bitcoin.opcodes.OP_SHA256,
+      params.paymentHash,
+      bitcoin.opcodes.OP_EQUALVERIFY,
+      params.receiverPubKey,
+      bitcoin.opcodes.OP_CHECKSIG,
+    bitcoin.opcodes.OP_ELSE,
+      bitcoin.script.number.encode(params.timeout),
+      bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,
+      bitcoin.opcodes.OP_DROP,
+      params.senderPubKey,
+      bitcoin.opcodes.OP_CHECKSIG,
+    bitcoin.opcodes.OP_ENDIF,
+  ]);
+}
+
+// 使用範例
+const preimage = crypto.randomBytes(32);
+const paymentHash = crypto.createHash('sha256').update(preimage).digest();
+
+const htlc = createHTLC({
+  receiverPubKey: Buffer.from('02...', 'hex'),
+  senderPubKey: Buffer.from('03...', 'hex'),
+  paymentHash,
+  timeout: 800000, // 區塊高度
+});</code></pre>
+
+  <h2 id="security">安全考量</h2>
+  <ul>
+    <li><strong>腳本大小限制</strong>：標準腳本最大 10,000 字節</li>
+    <li><strong>操作數限制</strong>：最多 201 個操作</li>
+    <li><strong>堆疊大小</strong>：每個元素最大 520 字節</li>
+    <li><strong>簽名檢查限制</strong>：每個區塊最多 80,000 次</li>
+    <li><strong>禁用操作碼</strong>：<code>OP_CAT</code>、<code>OP_MUL</code> 等已禁用</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/Script" target="_blank" rel="noopener noreferrer">Bitcoin Wiki - Script</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0341.md" target="_blank" rel="noopener noreferrer">BIP-341 Taproot</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0342.md" target="_blank" rel="noopener noreferrer">BIP-342 Tapscript</a></li>
+    <li><a href="/tech/bitcoin-core/transaction">交易結構</a></li>
+  </ul>
+</ArticleLayout>
