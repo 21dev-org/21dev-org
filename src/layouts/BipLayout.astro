@@ -1,0 +1,94 @@
+---
+import ArticleLayout from './ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+import { getBipByNumber, statusVariants, type BIP } from '@/data/bips';
+
+interface Props {
+  number: number;
+  prevBip?: number;
+  nextBip?: number;
+}
+
+const { number, prevBip, nextBip } = Astro.props;
+
+// Get BIP data from single source of truth
+const bip = getBipByNumber(number);
+
+if (!bip) {
+  throw new Error(`BIP-${number} not found in bips.ts`);
+}
+
+// Helper to format BIP number with padding
+function formatBipNumber(num: number): string {
+  return String(num).padStart(4, '0');
+}
+
+// Get prev/next BIP data for navigation
+const prevBipData = prevBip ? getBipByNumber(prevBip) : undefined;
+const nextBipData = nextBip ? getBipByNumber(nextBip) : undefined;
+
+// Construct navigation links
+const prevPage = prevBipData
+  ? { title: `BIP-${prevBip}: ${prevBipData.titleZh}`, href: `/bips/bip-${formatBipNumber(prevBip!)}` }
+  : undefined;
+
+const nextPage = nextBipData
+  ? { title: `BIP-${nextBip}: ${nextBipData.titleZh}`, href: `/bips/bip-${formatBipNumber(nextBip!)}` }
+  : undefined;
+
+// Status variant for Tag component
+const statusVariant = statusVariants[bip.status] || 'default';
+---
+
+<ArticleLayout
+  title={`BIP-${number}: ${bip.titleZh}`}
+  description={bip.summary}
+  breadcrumbs={[{ label: 'BIPs', href: '/bips/' }, { label: `BIP-${number}` }]}
+  tags={[bip.type, bip.status]}
+  author={bip.author}
+  date={bip.created ? new Date(bip.created) : undefined}
+  prevPage={prevPage}
+  nextPage={nextPage}
+>
+  <!-- BIP Meta Info Card -->
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]"
+  >
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">BIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">{number}</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">類型</span>
+        <p class="font-semibold text-[var(--text-primary)]">{bip.type}</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant={statusVariant} size="sm">{bip.status}</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">創建日期</span>
+        <p class="font-semibold text-[var(--text-primary)]">{bip.created || '-'}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Content -->
+  <slot />
+
+  <!-- GitHub Link -->
+  <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
+    <p class="text-sm text-bitcoin-700 dark:text-bitcoin-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a
+        href={`https://github.com/bitcoin/bips/blob/master/bip-${formatBipNumber(number)}.mediawiki`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:no-underline"
+      >
+        GitHub 上的完整 BIP-{number} 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>
