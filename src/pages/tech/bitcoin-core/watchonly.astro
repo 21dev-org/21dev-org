@@ -1,0 +1,370 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Watch-Only Wallets"
+  description="深入了解 Bitcoin Core 的 Watch-Only 錢包功能，監控地址而不持有私鑰。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Watch-Only Wallets' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'HD Wallets', href: '/tech/bitcoin-core/hd-wallets' }}
+  nextPage={{ title: 'Wallet Encryption', href: '/tech/bitcoin-core/wallet-encryption' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Watch-Only 錢包？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Watch-Only 錢包允許你監控比特幣地址的餘額和交易，而不需要持有私鑰。
+      這對於冷存儲、多簽錢包監控和會計審計非常有用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">使用場景</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">冷存儲監控</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 私鑰離線保存</li>
+            <li>• 在線監控餘額</li>
+            <li>• 創建未簽名交易</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">多簽錢包</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 監控多簽地址</li>
+            <li>• 協調簽名流程</li>
+            <li>• 審計交易歷史</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="create" class="text-2xl font-bold text-[var(--text-primary)]">創建 Watch-Only 錢包</h2>
+
+    <h3 id="descriptor-wallet" class="text-xl font-semibold text-[var(--text-primary)]">使用描述符（推薦）</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建空的描述符錢包（無私鑰）
+bitcoin-cli createwallet "watchonly" true true "" false true
+
+# 參數說明：
+# "watchonly" - 錢包名稱
+# true - disable_private_keys（禁用私鑰）
+# true - blank（空白錢包）
+# "" - passphrase
+# false - avoid_reuse
+# true - descriptors（使用描述符）
+
+# 導入公鑰描述符
+bitcoin-cli -rpcwallet=watchonly importdescriptors '[
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xpub.../0/*)#checksum",
+    "timestamp": "now",
+    "range": [0, 999],
+    "watchonly": true,
+    "active": true,
+    "internal": false
+  },
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xpub.../1/*)#checksum",
+    "timestamp": "now",
+    "range": [0, 999],
+    "watchonly": true,
+    "active": true,
+    "internal": true
+  }
+]'</code></pre>
+    </div>
+
+    <h3 id="legacy-import" class="text-xl font-semibold text-[var(--text-primary)]">導入單個地址（舊版）</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建舊版錢包
+bitcoin-cli createwallet "watchonly-legacy" true true "" false false
+
+# 導入地址（觸發重新掃描）
+bitcoin-cli -rpcwallet=watchonly-legacy importaddress \
+  "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq" \
+  "my-cold-storage" \
+  true
+
+# 導入公鑰
+bitcoin-cli -rpcwallet=watchonly-legacy importpubkey \
+  "02a1633cafcc01ebfb6d78e39f687a1f0995c62fc95f51ead10a02ee0be551b5dc" \
+  "pubkey-label" \
+  true
+
+# 導入多簽腳本
+bitcoin-cli -rpcwallet=watchonly-legacy importmulti '[
+  {
+    "scriptPubKey": {"address": "bc1q..."},
+    "timestamp": 0,
+    "watchonly": true,
+    "label": "multisig-watch"
+  }
+]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="operations" class="text-2xl font-bold text-[var(--text-primary)]">錢包操作</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看餘額
+bitcoin-cli -rpcwallet=watchonly getbalance
+
+# 列出未花費輸出
+bitcoin-cli -rpcwallet=watchonly listunspent
+
+# 查看交易歷史
+bitcoin-cli -rpcwallet=watchonly listtransactions "*" 10
+
+# 獲取新的接收地址（僅描述符錢包）
+bitcoin-cli -rpcwallet=watchonly getnewaddress
+
+# 查看錢包資訊
+bitcoin-cli -rpcwallet=watchonly getwalletinfo
+
+# 輸出示例
+{
+  "walletname": "watchonly",
+  "walletversion": 169900,
+  "balance": 1.23456789,
+  "unconfirmed_balance": 0.0,
+  "immature_balance": 0.0,
+  "txcount": 42,
+  "private_keys_enabled": false,
+  "avoid_reuse": false,
+  "scanning": false,
+  "descriptors": true
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="unsigned-tx" class="text-2xl font-bold text-[var(--text-primary)]">創建未簽名交易</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 PSBT 創建未簽名交易
+# 1. 創建 PSBT
+bitcoin-cli -rpcwallet=watchonly walletcreatefundedpsbt \
+  '[]' \
+  '[{"bc1q...": 0.5}]' \
+  0 \
+  '{"changeAddress": "bc1q..."}'
+
+# 輸出
+{
+  "psbt": "cHNidP8BAH...",
+  "fee": 0.00001410,
+  "changepos": 1
+}
+
+# 2. 分析 PSBT
+bitcoin-cli analyzepsbt "cHNidP8BAH..."
+
+# 輸出
+{
+  "inputs": [
+    {
+      "has_utxo": true,
+      "is_final": false,
+      "next": "signer"
+    }
+  ],
+  "estimated_vsize": 141,
+  "estimated_feerate": 0.00010000,
+  "fee": 0.00001410,
+  "next": "signer"
+}
+
+# 3. 將 PSBT 傳輸到持有私鑰的設備進行簽名
+# （使用 USB、二維碼或其他安全方式）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Watch-Only 交易流程：
+
+┌─────────────────────────────────────────────────────────────┐
+│  在線電腦（Watch-Only 錢包）                                │
+│  ├── 監控餘額和交易                                         │
+│  ├── 創建未簽名 PSBT                                        │
+│  └── 廣播已簽名交易                                         │
+└───────────────────────┬─────────────────────────────────────┘
+                        │ PSBT
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  離線設備（硬體錢包/冷存儲）                                 │
+│  ├── 持有私鑰                                               │
+│  ├── 簽名 PSBT                                              │
+│  └── 返回已簽名 PSBT                                        │
+└───────────────────────┬─────────────────────────────────────┘
+                        │ 已簽名 PSBT
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  在線電腦                                                   │
+│  ├── finalizepsbt（完成 PSBT）                              │
+│  └── sendrawtransaction（廣播）                             │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="xpub" class="text-2xl font-bold text-[var(--text-primary)]">導入 Extended Public Key</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從 xpub 創建描述符
+# BIP-84 (Native SegWit)
+XPUB="xpub6..."
+
+# 外部地址描述符
+DESC_EXT="wpkh([$XPUB]/0/*)"
+
+# 內部地址描述符（找零）
+DESC_INT="wpkh([$XPUB]/1/*)"
+
+# 獲取校驗和
+bitcoin-cli getdescriptorinfo "$DESC_EXT"
+# 輸出中包含 "descriptor" 字段帶校驗和
+
+# 導入描述符
+bitcoin-cli -rpcwallet=watchonly importdescriptors '[
+  {
+    "desc": "wpkh([fingerprint/84h/0h/0h]xpub.../0/*)#checksum",
+    "timestamp": 0,
+    "range": 1000,
+    "watchonly": true,
+    "active": true,
+    "internal": false
+  }
+]'
+
+# timestamp=0 表示掃描整個區塊鏈
+# 使用具體時間戳可以加快掃描</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">隱私提示：</strong>
+        Extended Public Key 可以派生所有子地址。不要與不信任的人分享 xpub。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rescan" class="text-2xl font-bold text-[var(--text-primary)]">重新掃描區塊鏈</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導入地址時自動重新掃描
+# （最後一個參數 true 表示 rescan）
+bitcoin-cli -rpcwallet=watchonly importaddress "bc1q..." "label" true
+
+# 手動重新掃描
+bitcoin-cli -rpcwallet=watchonly rescanblockchain 700000
+
+# 從特定區塊開始掃描（更快）
+bitcoin-cli -rpcwallet=watchonly rescanblockchain 700000 750000
+
+# 查看掃描進度
+bitcoin-cli -rpcwallet=watchonly getwalletinfo | jq '.scanning'
+
+# 輸出（掃描中）
+{
+  "duration": 123,
+  "progress": 0.456
+}
+
+# 中止掃描
+bitcoin-cli -rpcwallet=watchonly abortrescan</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="multisig" class="text-2xl font-bold text-[var(--text-primary)]">多簽 Watch-Only</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建 2-of-3 多簽 watch-only 錢包
+
+# 1. 創建錢包
+bitcoin-cli createwallet "multisig-watch" true true "" false true
+
+# 2. 導入多簽描述符
+bitcoin-cli -rpcwallet=multisig-watch importdescriptors '[
+  {
+    "desc": "wsh(sortedmulti(2,[fp1/48h/0h/0h/2h]xpub1.../*,[fp2/48h/0h/0h/2h]xpub2.../*,[fp3/48h/0h/0h/2h]xpub3.../*))#checksum",
+    "timestamp": "now",
+    "range": 100,
+    "watchonly": true,
+    "active": true
+  }
+]'
+
+# 3. 獲取多簽地址
+bitcoin-cli -rpcwallet=multisig-watch getnewaddress
+
+# 4. 創建 PSBT 給簽名者
+bitcoin-cli -rpcwallet=multisig-watch walletcreatefundedpsbt \
+  '[]' \
+  '[{"bc1q...": 1.0}]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="hwi" class="text-2xl font-bold text-[var(--text-primary)]">硬體錢包整合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 HWI（Hardware Wallet Interface）
+
+# 1. 安裝 HWI
+pip install hwi
+
+# 2. 列出連接的硬體錢包
+hwi enumerate
+
+# 3. 獲取 xpub
+hwi -d "device_id" getxpub "m/84'/0'/0'"
+
+# 4. 創建 watch-only 錢包並導入
+# （使用上述方法）
+
+# 5. 用硬體錢包簽名 PSBT
+hwi -d "device_id" signtx "cHNidP8..."
+
+# 6. 完成並廣播
+bitcoin-cli finalizepsbt "signed_psbt"
+bitcoin-cli sendrawtransaction "hex"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">安全監控：</strong>監控餘額而不暴露私鑰</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">描述符支持：</strong>使用 xpub 監控完整錢包</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">PSBT 整合：</strong>創建未簽名交易用於冷簽名</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">隱私：</strong>注意保護 xpub 的隱私</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,352 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Anchor Outputs"
+  description="深入了解 Anchor Outputs，解決閃電網路承諾交易的手續費問題。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Anchor Outputs' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'CPFP', href: '/tech/bitcoin-core/cpfp' }}
+  nextPage={{ title: 'Package Relay', href: '/tech/bitcoin-core/package-relay' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Anchor Outputs？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Anchor Outputs 是閃電網路的一項改進，在承諾交易中添加特殊的小額輸出，
+      允許任一方使用 CPFP（Child Pays For Parent）來提高交易手續費，
+      解決預簽名交易無法調整手續費的問題。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">問題背景</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路承諾交易的手續費問題：
+
+1. 承諾交易是預簽名的
+   - 在通道開啟時就決定了手續費
+   - 無法預測未來的手續費市場
+
+2. 手續費過低
+   - 交易可能無法及時確認
+   - 在緊急情況下（如惡意關閉）很危險
+
+3. 手續費過高
+   - 浪費資金
+   - 減少可用通道容量
+
+傳統解決方案：
+- 更新承諾交易以調整手續費
+- 但需要雙方在線協作</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="design" class="text-2xl font-bold text-[var(--text-primary)]">Anchor Output 設計</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>帶 Anchor Outputs 的承諾交易：
+
+┌─────────────────────────────────────────────────────────────┐
+│  Commitment Transaction                                     │
+│                                                             │
+│  Inputs:                                                    │
+│  ├── Funding Output (2-of-2 multisig)                      │
+│                                                             │
+│  Outputs:                                                   │
+│  ├── To Local (帶延遲的本地輸出)                            │
+│  ├── To Remote (遠端輸出)                                   │
+│  ├── HTLC Outputs (如果有)                                  │
+│  ├── Anchor Output A (330 sats) ← Alice 的錨點             │
+│  └── Anchor Output B (330 sats) ← Bob 的錨點               │
+│                                                             │
+│  手續費: 很低（接近最小值）                                  │
+└─────────────────────────────────────────────────────────────┘
+
+錨點輸出特點：
+- 金額: 330 satoshis（dust 限制）
+- 任一方可以花費自己的錨點
+- 用於添加 CPFP 子交易提高手續費</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Anchor Output 腳本
+// 任一方可立即花費（用於 CPFP）
+// 或 16 個區塊後任何人可花費（清理）
+
+const anchorScript = `
+  OP_IF
+    <local_pubkey>
+  OP_ELSE
+    OP_16
+    OP_CHECKSEQUENCEVERIFY
+    OP_DROP
+    <local_pubkey>
+  OP_ENDIF
+  OP_CHECKSIG
+`;
+
+// 簡化版（BOLT-3 定義）
+// 輸出類型：P2WSH
+// 金額：330 satoshis
+
+interface AnchorOutput {
+  value: 330;  // satoshis
+  scriptPubKey: P2WSH;  // 見證腳本雜湊
+  witnessScript: Script;  // 上述腳本
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="cpfp-flow" class="text-2xl font-bold text-[var(--text-primary)]">CPFP 流程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>使用 Anchor Output 進行 CPFP：
+
+1. 廣播承諾交易（低手續費）
+   ┌─────────────────────────────────┐
+   │  Commitment TX                  │
+   │  Fee: 1 sat/vB (很低)           │
+   │  ├── ...                        │
+   │  └── Anchor Output (330 sats)   │
+   └─────────────────────────────────┘
+
+2. 創建 CPFP 子交易
+   ┌─────────────────────────────────┐
+   │  CPFP TX                        │
+   │  Input: Anchor Output           │
+   │  Input: 額外的 UTXO（提供資金）  │
+   │  Output: 找零                   │
+   │  Fee: 100 sat/vB (高)           │
+   └─────────────────────────────────┘
+
+3. 礦工將兩筆交易一起打包
+   - 父交易：1 sat/vB
+   - 子交易：100 sat/vB
+   - 有效費率：計算兩者總和</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// CPFP 子交易創建
+function createCPFPTransaction(
+  anchorOutpoint: OutPoint,
+  anchorAmount: number,
+  additionalUtxo: UTXO,
+  targetFeeRate: number  // sat/vB
+): Transaction {
+  const tx = new Transaction();
+
+  // 輸入 1: Anchor Output
+  tx.addInput(anchorOutpoint, anchorWitness);
+
+  // 輸入 2: 額外的 UTXO（提供手續費資金）
+  tx.addInput(additionalUtxo.outpoint, additionalUtxo.witness);
+
+  // 計算所需手續費
+  // 需要覆蓋父交易 + 子交易的總費用
+  const parentSize = 500;  // 承諾交易虛擬大小
+  const childSize = 150;   // CPFP 交易虛擬大小
+  const totalSize = parentSize + childSize;
+
+  const totalFeeNeeded = totalSize * targetFeeRate;
+  const parentFee = 500;  // 承諾交易已付的手續費
+  const childFee = totalFeeNeeded - parentFee;
+
+  // 輸出: 找零
+  const totalInput = anchorAmount + additionalUtxo.value;
+  const changeAmount = totalInput - childFee;
+
+  if (changeAmount > DUST_LIMIT) {
+    tx.addOutput(changeAddress, changeAmount);
+  }
+
+  return tx;
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="package-relay" class="text-2xl font-bold text-[var(--text-primary)]">與 Package Relay 的關係</h2>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">重要：</strong>
+        Anchor Outputs 依賴 Bitcoin Core 的 CPFP 機制。Package Relay（BIP-331）
+        將進一步改善這一功能，允許同時提交父子交易。
+      </p>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>當前限制（無 Package Relay）：
+
+問題：如果承諾交易手續費低於 mempool 最小值
+┌─────────────────────────────────────────────────────────────┐
+│  Node Mempool                                               │
+│  Minimum fee: 5 sat/vB                                      │
+│                                                             │
+│  1. 廣播承諾交易（1 sat/vB）                                │
+│     → 被拒絕！低於最小費率                                  │
+│                                                             │
+│  2. 無法廣播 CPFP 子交易                                    │
+│     → 父交易不在 mempool 中                                 │
+│                                                             │
+│  結果：交易卡住                                              │
+└─────────────────────────────────────────────────────────────┘
+
+Package Relay 解決方案：
+
+┌─────────────────────────────────────────────────────────────┐
+│  使用 Package Relay                                         │
+│                                                             │
+│  1. 同時提交父子交易作為一個「包」                          │
+│     - 承諾交易（1 sat/vB）                                  │
+│     - CPFP 交易（100 sat/vB）                               │
+│                                                             │
+│  2. 節點計算包的有效費率                                    │
+│     → 有效費率高於最小值                                    │
+│                                                             │
+│  3. 兩筆交易都被接受                                        │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="mempool-policy" class="text-2xl font-bold text-[var(--text-primary)]">Mempool 政策</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Bitcoin Core 對 Anchor Outputs 的特殊處理：
+
+1. CPFP Carve-out（BIP-125 擴展）
+   - 允許一個額外的子交易繞過祖先限制
+   - 專門為閃電網路設計
+
+2. 規則：
+   - 祖先數量限制：25
+   - Carve-out 例外：
+     - 只有一個祖先（承諾交易）
+     - 大小 ≤ 1000 vB
+     - 允許第 26 個子交易
+
+3. 目的：
+   - 確保雙方都能進行 CPFP
+   - 防止一方阻止另一方提高手續費</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 相關設置
+
+# 祖先數量限制
+limitancestorcount=25
+
+# 後代數量限制
+limitdescendantcount=25
+
+# CPFP Carve-out 是硬編碼的，無法配置</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="zero-fee" class="text-2xl font-bold text-[var(--text-primary)]">零手續費 Anchor</h2>
+    <p class="text-[var(--text-secondary)]">
+      最新的閃電網路規範引入了「零手續費 Anchor」，進一步簡化設計。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>零手續費 Anchor Outputs（BOLT-3 更新）：
+
+特點：
+- 承諾交易手續費為 0
+- 完全依賴 CPFP 來支付手續費
+- 最大化通道容量
+
+優點：
+1. 不需要預測手續費
+2. 更多資金可用於支付
+3. 簡化通道管理
+
+要求：
+- 需要 Package Relay 支持
+- 需要節點有額外的 UTXO 用於 CPFP
+
+交易結構：
+┌─────────────────────────────────┐
+│  Commitment TX                  │
+│  Fee: 0 sat/vB                  │
+│  ├── To Local                   │
+│  ├── To Remote                  │
+│  ├── HTLCs                      │
+│  └── Single Anchor (330 sats)   │
+└─────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現狀態</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">實現</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">支持</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">備註</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">LND</td>
+              <td class="py-2">✓</td>
+              <td class="py-2">預設啟用</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">CLN</td>
+              <td class="py-2">✓</td>
+              <td class="py-2">實驗性</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Eclair</td>
+              <td class="py-2">✓</td>
+              <td class="py-2">支持</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Bitcoin Core</td>
+              <td class="py-2">部分</td>
+              <td class="py-2">CPFP carve-out 已實現</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">解決問題：</strong>預簽名交易的手續費調整</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">機制：</strong>使用 CPFP 子交易提高手續費</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Carve-out：</strong>確保雙方都能進行 CPFP</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">依賴：</strong>Package Relay 將進一步改善體驗</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

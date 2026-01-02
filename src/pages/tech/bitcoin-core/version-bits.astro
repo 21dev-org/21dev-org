@@ -1,0 +1,401 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Version Bits"
+  description="深入了解 Bitcoin Core 的版本位信號機制，用於協調軟分叉啟用。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Version Bits' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Soft Fork Activation', href: '/tech/bitcoin-core/softforks' }}
+  nextPage={{ title: 'Block Structure', href: '/tech/bitcoin-core/block-structure' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Version Bits？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Version Bits（BIP-9）是一種軟分叉啟用機制，允許礦工通過設置區塊頭中的版本位
+      來表示對提案的支持。這使得多個軟分叉可以並行部署和啟用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">版本位格式</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊版本號（4 bytes = 32 bits）：
+
+位 31-29：必須為 001（表示使用 BIP-9）
+位 28：保留
+位 27-0：可用於信號的 28 個位
+
+0010 0000 0000 0000 0000 0000 0000 0001
+│││                                  │
+││└──────────────────────────────────┴── 位 0: 信號位（如 SegWit）
+│└────────────────────────────────────── 位 28: 保留
+└─────────────────────────────────────── 位 29-31: 001 前綴
+
+十六進制：0x20000001（版本 1 + 信號位 0）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="states" class="text-2xl font-bold text-[var(--text-primary)]">部署狀態</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>BIP-9 狀態機：
+
+                    ┌─────────────────────┐
+                    │      DEFINED        │ 初始狀態
+                    └──────────┬──────────┘
+                               │ startTime 到達
+                               ▼
+                    ┌─────────────────────┐
+              ┌────▶│      STARTED        │◀────┐
+              │     └──────────┬──────────┘     │
+              │                │                │
+              │    閾值達到    │    閾值未達到   │
+              │                │                │
+              │                ▼                │
+              │     ┌─────────────────────┐     │
+    timeout   │     │     LOCKED_IN       │     │ 重試週期
+    未到達    │     └──────────┬──────────┘     │
+              │                │                │
+              └────────────────┼────────────────┘
+                               │ 下一個週期
+                               ▼
+                    ┌─────────────────────┐
+                    │       ACTIVE        │ 永久啟用
+                    └─────────────────────┘
+
+超時後（未達閾值）：
+                    ┌─────────────────────┐
+                    │       FAILED        │ 永久失敗
+                    └─────────────────────┘</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">狀態</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">描述</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">規則</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">DEFINED</td>
+              <td class="py-2">初始狀態</td>
+              <td class="py-2">新規則未啟用</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">STARTED</td>
+              <td class="py-2">信號收集中</td>
+              <td class="py-2">新規則未啟用</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">LOCKED_IN</td>
+              <td class="py-2">已鎖定</td>
+              <td class="py-2">新規則未強制</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">ACTIVE</td>
+              <td class="py-2">已啟用</td>
+              <td class="py-2">新規則強制執行</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">FAILED</td>
+              <td class="py-2">已失敗</td>
+              <td class="py-2">新規則未啟用</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="parameters" class="text-2xl font-bold text-[var(--text-primary)]">部署參數</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface BIP9Deployment {
+  // 信號位（0-28）
+  bit: number;
+
+  // 開始時間（Unix timestamp）
+  startTime: number;
+
+  // 超時時間（Unix timestamp）
+  timeout: number;
+
+  // 啟用閾值（區塊數）
+  threshold: number;
+
+  // 週期長度（區塊數）
+  // 主網: 2016（約 2 週）
+  period: number;
+
+  // 最小啟用高度（可選）
+  min_activation_height?: number;
+}
+
+// SegWit 部署範例（BIP-141）
+const segwitDeployment: BIP9Deployment = {
+  bit: 1,
+  startTime: 1479168000,  // 2016-11-15
+  timeout: 1510704000,    // 2017-11-15
+  threshold: 1916,        // 95% of 2016
+  period: 2016,
+};
+
+// Taproot 部署範例（使用 Speedy Trial）
+const taprootDeployment: BIP9Deployment = {
+  bit: 2,
+  startTime: 1619222400,  // 2021-04-24
+  timeout: 1628640000,    // 2021-08-11
+  threshold: 1815,        // 90% of 2016
+  period: 2016,
+  min_activation_height: 709632,
+};</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class VersionBitsManager {
+  // 計算部署狀態
+  getState(
+    deployment: BIP9Deployment,
+    blockIndex: BlockIndex
+  ): ThresholdState {
+    // 找到週期開始區塊
+    const periodStart = this.getPeriodStart(blockIndex, deployment.period);
+
+    // 獲取中位時間
+    const medianTime = this.getMedianTimePast(periodStart.prev);
+
+    // 狀態轉換邏輯
+    const prevState = this.getState(deployment, periodStart.prev);
+
+    switch (prevState) {
+      case ThresholdState.DEFINED:
+        if (medianTime >= deployment.timeout) {
+          return ThresholdState.FAILED;
+        }
+        if (medianTime >= deployment.startTime) {
+          return ThresholdState.STARTED;
+        }
+        return ThresholdState.DEFINED;
+
+      case ThresholdState.STARTED:
+        if (medianTime >= deployment.timeout) {
+          return ThresholdState.FAILED;
+        }
+        // 計算信號比例
+        const signalCount = this.countSignals(
+          periodStart.prev,
+          deployment.period,
+          deployment.bit
+        );
+        if (signalCount >= deployment.threshold) {
+          return ThresholdState.LOCKED_IN;
+        }
+        return ThresholdState.STARTED;
+
+      case ThresholdState.LOCKED_IN:
+        // 檢查最小啟用高度
+        if (deployment.min_activation_height &&
+            blockIndex.height < deployment.min_activation_height) {
+          return ThresholdState.LOCKED_IN;
+        }
+        return ThresholdState.ACTIVE;
+
+      case ThresholdState.ACTIVE:
+      case ThresholdState.FAILED:
+        return prevState;  // 終態
+    }
+  }
+
+  // 計算信號數量
+  countSignals(
+    tip: BlockIndex,
+    period: number,
+    bit: number
+  ): number {
+    let count = 0;
+    let block = tip;
+
+    for (let i = 0; i < period && block; i++) {
+      if (this.isSignaling(block, bit)) {
+        count++;
+      }
+      block = block.prev;
+    }
+
+    return count;
+  }
+
+  // 檢查區塊是否發信號
+  isSignaling(block: BlockIndex, bit: number): boolean {
+    // 檢查前綴
+    if ((block.version & 0xE0000000) !== 0x20000000) {
+      return false;
+    }
+    // 檢查信號位
+    return (block.version & (1 << bit)) !== 0;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="bip8" class="text-2xl font-bold text-[var(--text-primary)]">BIP-8 改進</h2>
+    <p class="text-[var(--text-secondary)]">
+      BIP-8 是 BIP-9 的改進版本，增加了強制鎖定選項（LOT=true），用於 Taproot 啟用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface BIP8Deployment extends BIP9Deployment {
+  // Lock On Timeout
+  // true: 超時後強制鎖定
+  // false: 超時後失敗（同 BIP-9）
+  lockinontimeout: boolean;
+}
+
+// BIP-8 狀態機（LOT=true）
+//
+// STARTED -> 超時 -> MUST_SIGNAL -> LOCKED_IN -> ACTIVE
+//    │                    │
+//    └── 閾值達到 ────────┘
+
+// 如果 LOT=true，超時後進入 MUST_SIGNAL 狀態
+// 要求所有區塊必須發信號，否則區塊無效</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">BIP-9</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 超時後失敗</li>
+          <li>• 礦工有否決權</li>
+          <li>• 更保守</li>
+        </ul>
+      </div>
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">BIP-8 (LOT=true)</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 超時後強制啟用</li>
+          <li>• 用戶主導</li>
+          <li>• 更激進</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控部署</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看軟分叉狀態
+bitcoin-cli getblockchaininfo | jq '.softforks'
+
+# 輸出示例
+{
+  "taproot": {
+    "type": "bip9",
+    "bip9": {
+      "status": "active",
+      "start_time": 1619222400,
+      "timeout": 1628640000,
+      "since": 709632,
+      "min_activation_height": 709632
+    },
+    "height": 709632,
+    "active": true
+  }
+}
+
+# 查看當前區塊版本
+bitcoin-cli getblockheader $(bitcoin-cli getbestblockhash) | jq '.version'
+
+# 解析版本位
+python3 -c "
+version = 0x20000004
+print(f'Version: {version}')
+print(f'Binary: {bin(version)}')
+for i in range(29):
+    if version & (1 << i):
+        print(f'Bit {i}: signaling')
+"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="history" class="text-2xl font-bold text-[var(--text-primary)]">歷史部署</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">軟分叉</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">BIP</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">位</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">啟用高度</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">CSV</td>
+              <td class="py-2">BIP-68/112/113</td>
+              <td class="py-2">0</td>
+              <td class="py-2">419328</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">SegWit</td>
+              <td class="py-2">BIP-141/143/144</td>
+              <td class="py-2">1</td>
+              <td class="py-2">481824</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Taproot</td>
+              <td class="py-2">BIP-340/341/342</td>
+              <td class="py-2">2</td>
+              <td class="py-2">709632</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">BIP-9：</strong>版本位軟分叉啟用機制</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">狀態機：</strong>DEFINED → STARTED → LOCKED_IN → ACTIVE</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">並行部署：</strong>28 個可用信號位</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">BIP-8：</strong>增加強制鎖定選項</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

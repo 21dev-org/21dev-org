@@ -1,0 +1,329 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="CJDNS Integration"
+  description="深入了解 Bitcoin Core 的 CJDNS 整合，使用端對端加密的網狀網路。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'CJDNS Integration' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'I2P', href: '/tech/bitcoin-core/i2p' }}
+  nextPage={{ title: 'Tor', href: '/tech/bitcoin-core/tor' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 CJDNS？</h2>
+    <p class="text-[var(--text-secondary)]">
+      CJDNS 是一個加密的網狀網路協議，為每個節點分配一個 IPv6 地址（fc00::/8）。
+      Bitcoin Core 從 v23.0 開始支持 CJDNS，提供另一種隱私網路選項。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">CJDNS 特點</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">優點</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 端對端加密</li>
+            <li>• 分散式路由</li>
+            <li>• IPv6 原生支持</li>
+            <li>• 低延遲</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">與 Tor/I2P 比較</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 更低延遲</li>
+            <li>• 不隱藏 IP（只加密）</li>
+            <li>• 需要對等互連</li>
+            <li>• 網狀拓撲</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="setup" class="text-2xl font-bold text-[var(--text-primary)]">設置 CJDNS</h2>
+
+    <h3 id="install" class="text-xl font-semibold text-[var(--text-primary)]">安裝 CJDNS</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Ubuntu/Debian
+sudo apt-get install cjdns
+
+# 從源碼編譯
+git clone https://github.com/cjdelisle/cjdns.git
+cd cjdns
+./do
+
+# 生成配置
+./cjdroute --genconf > /etc/cjdroute.conf
+
+# 啟動
+sudo ./cjdroute < /etc/cjdroute.conf
+
+# 檢查狀態
+ip addr show tun0
+# 應該看到 fc00::/8 範圍的 IPv6 地址</code></pre>
+    </div>
+
+    <h3 id="configure-cjdns" class="text-xl font-semibold text-[var(--text-primary)]">配置 CJDNS</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-json" is:raw>// /etc/cjdroute.conf 關鍵部分
+{
+  // 你的 CJDNS IPv6 地址（自動生成）
+  "ipv6": "fc12:3456:7890:abcd:ef01:2345:6789:abcd",
+
+  // 公鑰
+  "publicKey": "...",
+
+  // 私鑰（保密！）
+  "privateKey": "...",
+
+  // 對等節點
+  "interfaces": {
+    "UDPInterface": [
+      {
+        "bind": "0.0.0.0:12345",
+        "connectTo": {
+          // 添加對等節點
+          "1.2.3.4:12345": {
+            "publicKey": "...",
+            "password": "..."
+          }
+        }
+      }
+    ]
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        CJDNS 需要手動添加對等節點。可以在
+        <a href="https://peers.fc00.io/" class="text-bitcoin-500 hover:underline">peers.fc00.io</a>
+        找到公共對等節點。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="bitcoin-config" class="text-2xl font-bold text-[var(--text-primary)]">配置 Bitcoin Core</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 啟用 CJDNS
+cjdnsreachable=1
+
+# 綁定 CJDNS 地址
+bind=fc12:3456:7890:abcd:ef01:2345:6789:abcd
+
+# 可選：只使用 CJDNS
+# onlynet=cjdns
+
+# 可選：混合使用多個網路
+# onlynet=cjdns
+# onlynet=ipv4
+
+# 添加 CJDNS 種子節點
+addnode=fc00:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="verification" class="text-2xl font-bold text-[var(--text-primary)]">驗證連接</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查網路資訊
+bitcoin-cli getnetworkinfo | jq '.networks[] | select(.name == "cjdns")'
+
+# 輸出
+{
+  "name": "cjdns",
+  "limited": false,
+  "reachable": true,
+  "proxy": "",
+  "proxy_randomize_credentials": false
+}
+
+# 查看本地 CJDNS 地址
+bitcoin-cli getnetworkinfo | jq '.localaddresses[] | select(.address | startswith("fc"))'
+
+# 查看 CJDNS 節點連接
+bitcoin-cli getpeerinfo | jq '.[] | select(.network == "cjdns") | {addr, network}'
+
+# 檢查 CJDNS 路由
+ip -6 route | grep fc00</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="architecture" class="text-2xl font-bold text-[var(--text-primary)]">技術架構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>CJDNS 網路架構：
+
+┌─────────────────────────────────────────────────────────────┐
+│                    CJDNS 網狀網路                            │
+│                                                             │
+│    ┌──────┐         ┌──────┐         ┌──────┐              │
+│    │Node A│◄───────▶│Node B│◄───────▶│Node C│              │
+│    │fc00::│         │fc00::│         │fc00::│              │
+│    └──┬───┘         └──┬───┘         └──┬───┘              │
+│       │                │                │                   │
+│       └────────────────┼────────────────┘                   │
+│                        │                                    │
+│                        ▼                                    │
+│                   ┌─────────┐                               │
+│                   │Bitcoin  │                               │
+│                   │Core Node│                               │
+│                   │fc00::   │                               │
+│                   └─────────┘                               │
+└─────────────────────────────────────────────────────────────┘
+
+地址格式：
+- CJDNS 使用 fc00::/8 範圍的 IPv6 地址
+- 地址由公鑰派生（自我認證）
+- 例如：fc12:3456:7890:abcd:ef01:2345:6789:abcd
+
+加密：
+- 使用 Curve25519 密鑰交換
+- XSalsa20 加密
+- Poly1305 認證</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="comparison" class="text-2xl font-bold text-[var(--text-primary)]">網路比較</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">CJDNS</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Tor</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">I2P</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">隱藏 IP</td>
+              <td class="py-2">否</td>
+              <td class="py-2">是</td>
+              <td class="py-2">是</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">加密</td>
+              <td class="py-2">端對端</td>
+              <td class="py-2">洋蔥層</td>
+              <td class="py-2">大蒜層</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">延遲</td>
+              <td class="py-2">低</td>
+              <td class="py-2">中</td>
+              <td class="py-2">高</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">設置難度</td>
+              <td class="py-2">中</td>
+              <td class="py-2">低</td>
+              <td class="py-2">中</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">地址格式</td>
+              <td class="py-2">fc00::/8</td>
+              <td class="py-2">.onion</td>
+              <td class="py-2">.b32.i2p</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="use-cases" class="text-2xl font-bold text-[var(--text-primary)]">使用場景</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">適合場景</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 低延遲需求</li>
+          <li>• 已有 CJDNS 網路</li>
+          <li>• 信任對等節點</li>
+          <li>• 增加網路多樣性</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">不適合場景</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 需要隱藏真實 IP</li>
+          <li>• 無 CJDNS 對等節點</li>
+          <li>• 需要匿名性</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="troubleshooting" class="text-2xl font-bold text-[var(--text-primary)]">故障排除</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 CJDNS 是否運行
+pgrep cjdroute
+
+# 檢查 tun 介面
+ip link show tun0
+
+# 測試 CJDNS 連通性
+ping6 fc00::1
+
+# 查看 CJDNS 對等節點
+cat /etc/cjdroute.conf | jq '.interfaces.UDPInterface[0].connectTo'
+
+# 查看 Bitcoin Core 日誌
+tail -f ~/.bitcoin/debug.log | grep -i cjdns
+
+# 常見問題：
+# 1. tun0 不存在 - CJDNS 未運行
+# 2. 無法連接 - 需要添加對等節點
+# 3. 不可達 - 檢查 cjdnsreachable=1</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">加密網路：</strong>端對端加密通訊</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">IPv6：</strong>使用 fc00::/8 地址空間</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">低延遲：</strong>比 Tor/I2P 更快</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>不隱藏 IP，需要手動添加對等節點</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

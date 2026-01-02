@@ -1,0 +1,388 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Files"
+  description="深入了解 Bitcoin Core 的區塊文件管理，blk*.dat 和 rev*.dat 的結構與存儲。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Files' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Chain State', href: '/tech/bitcoin-core/chain-state' }}
+  nextPage={{ title: 'LevelDB', href: '/tech/bitcoin-core/leveldb' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">區塊文件概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 將區塊鏈數據存儲在 <code>blocks/</code> 目錄中。
+      區塊數據存儲在 blk*.dat 文件中，而對應的撤銷數據存儲在 rev*.dat 文件中。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">目錄結構</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/blocks/
+├── blk00000.dat      # 區塊數據文件 #0
+├── blk00001.dat      # 區塊數據文件 #1
+├── blk00002.dat      # ...
+├── ...
+├── blk04000.dat      # 最新的區塊文件（示例）
+│
+├── rev00000.dat      # 撤銷數據文件 #0
+├── rev00001.dat      # 撤銷數據文件 #1
+├── ...
+│
+└── index/            # 區塊索引（LevelDB）
+    ├── CURRENT
+    ├── LOCK
+    ├── LOG
+    ├── MANIFEST-*
+    └── *.ldb
+
+文件大小：
+- 每個 blk*.dat 文件最大約 128 MB（可配置）
+- 總區塊鏈大小約 500+ GB（2024 年）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="blk-format" class="text-2xl font-bold text-[var(--text-primary)]">blk*.dat 格式</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>blk*.dat 文件格式：
+
+┌────────────────────────────────────────────────────────────┐
+│ Block 1                                                    │
+│ ├── 4 bytes: Magic Number (0xD9B4BEF9 for mainnet)        │
+│ ├── 4 bytes: Block Size                                   │
+│ └── N bytes: Block Data                                   │
+│      ├── 80 bytes: Block Header                           │
+│      ├── VarInt: Transaction Count                        │
+│      └── Transactions...                                  │
+├────────────────────────────────────────────────────────────┤
+│ Block 2                                                    │
+│ ├── 4 bytes: Magic Number                                 │
+│ ├── 4 bytes: Block Size                                   │
+│ └── N bytes: Block Data                                   │
+├────────────────────────────────────────────────────────────┤
+│ ...                                                        │
+└────────────────────────────────────────────────────────────┘
+
+Magic Numbers:
+- Mainnet:  0xD9B4BEF9
+- Testnet:  0x0709110B
+- Signet:   0x40CF030A
+- Regtest:  0xDAB5BFFA</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 讀取 blk 文件
+interface BlockFileEntry {
+  magic: Buffer;      // 4 bytes
+  size: number;       // 4 bytes
+  blockData: Buffer;  // size bytes
+}
+
+function readBlockFile(path: string): Block[] {
+  const blocks: Block[] = [];
+  const file = fs.readFileSync(path);
+  let offset = 0;
+
+  while (offset < file.length) {
+    // 讀取 magic number
+    const magic = file.slice(offset, offset + 4);
+    offset += 4;
+
+    // 驗證 magic
+    if (!magic.equals(MAINNET_MAGIC)) {
+      break;  // 文件結束或損壞
+    }
+
+    // 讀取區塊大小
+    const size = file.readUInt32LE(offset);
+    offset += 4;
+
+    // 讀取區塊數據
+    const blockData = file.slice(offset, offset + size);
+    offset += size;
+
+    // 解析區塊
+    blocks.push(Block.deserialize(blockData));
+  }
+
+  return blocks;
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rev-format" class="text-2xl font-bold text-[var(--text-primary)]">rev*.dat 格式</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>rev*.dat 文件格式（Undo Data）：
+
+┌────────────────────────────────────────────────────────────┐
+│ Block Undo 1                                               │
+│ ├── 4 bytes: Magic Number                                 │
+│ ├── 4 bytes: Undo Size                                    │
+│ └── Undo Data                                             │
+│      ├── VarInt: 交易數量（不含 coinbase）                  │
+│      └── 每個交易的被花費輸出                              │
+│           ├── VarInt: 輸入數量                            │
+│           └── 每個輸入的 Coin                             │
+│                ├── 高度 + coinbase 標誌（壓縮）            │
+│                ├── 金額（壓縮）                            │
+│                └── scriptPubKey（壓縮）                    │
+├────────────────────────────────────────────────────────────┤
+│ Block Undo 2                                               │
+│ └── ...                                                    │
+└────────────────────────────────────────────────────────────┘
+
+用途：區塊鏈重組時恢復被花費的 UTXO</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="index" class="text-2xl font-bold text-[var(--text-primary)]">區塊索引</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// blocks/index/ 存儲的索引數據
+interface BlockIndex {
+  // 'b' + blockhash -> CBlockIndex
+  blockIndex: Map<Buffer, CBlockIndex>;
+
+  // 'f' + fileNumber -> CBlockFileInfo
+  fileInfo: Map<number, CBlockFileInfo>;
+
+  // 'l' -> lastBlockFile number
+  lastBlockFile: number;
+
+  // 'R' -> reindexing flag
+  reindexing: boolean;
+
+  // 'F' + flag -> boolean
+  flags: Map<string, boolean>;
+}
+
+interface CBlockIndex {
+  version: number;
+  hashPrev: Buffer;
+  hashMerkleRoot: Buffer;
+  nTime: number;
+  nBits: number;
+  nNonce: number;
+  height: number;
+  nFile: number;        // blk 文件編號
+  nDataPos: number;     // 區塊數據在文件中的位置
+  nUndoPos: number;     // undo 數據位置
+  nChainWork: bigint;
+  nTx: number;
+  nStatus: number;
+}
+
+interface CBlockFileInfo {
+  nBlocks: number;      // 文件中的區塊數量
+  nSize: number;        // 文件大小
+  nUndoSize: number;    // undo 文件大小
+  nHeightFirst: number; // 最低區塊高度
+  nHeightLast: number;  // 最高區塊高度
+  nTimeFirst: number;   // 最早時間戳
+  nTimeLast: number;    // 最晚時間戳
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="management" class="text-2xl font-bold text-[var(--text-primary)]">文件管理</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊文件
+ls -lh ~/.bitcoin/blocks/blk*.dat | head -10
+
+# 查看總大小
+du -sh ~/.bitcoin/blocks/
+
+# 查看文件數量
+ls ~/.bitcoin/blocks/blk*.dat | wc -l
+
+# 查看最新的區塊文件
+ls -lt ~/.bitcoin/blocks/blk*.dat | head -1
+
+# 使用 hexdump 查看文件頭
+hexdump -C ~/.bitcoin/blocks/blk00000.dat | head -5
+
+# 輸出（mainnet magic: F9 BE B4 D9）
+# 00000000  f9 be b4 d9 1d 01 00 00  01 00 00 00 00 00 00 00
+
+# 查看區塊文件信息（通過 RPC）
+bitcoin-cli getblockchaininfo | jq '.size_on_disk'</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊文件分配策略
+class BlockFileManager {
+  // 最大文件大小（約 128 MB）
+  private readonly MAX_BLOCKFILE_SIZE = 0x8000000;
+
+  // 當前寫入的文件
+  private currentFile: number = 0;
+  private currentPos: number = 0;
+
+  // 分配空間寫入區塊
+  allocate(blockSize: number): { file: number; pos: number } {
+    // 檢查當前文件是否有足夠空間
+    if (this.currentPos + blockSize > this.MAX_BLOCKFILE_SIZE) {
+      // 切換到新文件
+      this.currentFile++;
+      this.currentPos = 0;
+    }
+
+    const pos = this.currentPos;
+    this.currentPos += blockSize;
+
+    return {
+      file: this.currentFile,
+      pos: pos,
+    };
+  }
+
+  // 獲取文件路徑
+  getBlockFilePath(fileNumber: number): string {
+    const name = `blk${fileNumber.toString().padStart(5, '0')}.dat`;
+    return path.join(this.dataDir, 'blocks', name);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="pruning" class="text-2xl font-bold text-[var(--text-primary)]">Pruning 模式</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用 pruning（保留 550 MB）
+bitcoind -prune=550
+
+# 或在配置文件中
+# bitcoin.conf
+prune=550
+
+# Pruning 工作方式：
+# 1. 保留最近的區塊文件（約 550 MB）
+# 2. 刪除舊的 blk*.dat 和 rev*.dat
+# 3. 保留完整的 chainstate（UTXO 集）
+# 4. 保留區塊索引（可以知道區塊存在但無數據）
+
+# 查看 pruning 狀態
+bitcoin-cli getblockchaininfo | jq '{pruned, pruneheight, size_on_disk}'
+
+# 輸出示例
+{
+  "pruned": true,
+  "pruneheight": 700000,
+  "size_on_disk": 600000000
+}</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        Pruned 節點無法為其他節點提供歷史區塊，也無法使用 <code>txindex</code>。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="reindex" class="text-2xl font-bold text-[var(--text-primary)]">重建索引</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 重建所有索引（從 blk 文件重新驗證）
+bitcoind -reindex
+
+# 只重建 chainstate（不重新驗證區塊）
+bitcoind -reindex-chainstate
+
+# 工作流程：
+# -reindex:
+#   1. 刪除 blocks/index/
+#   2. 刪除 chainstate/
+#   3. 重新讀取所有 blk*.dat
+#   4. 重新驗證所有區塊
+#   5. 重建所有索引
+
+# -reindex-chainstate:
+#   1. 保留 blocks/index/
+#   2. 刪除 chainstate/
+#   3. 使用索引重建 UTXO 集
+#   4. 比 -reindex 快很多</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="tools" class="text-2xl font-bold text-[var(--text-primary)]">實用工具</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># Python 腳本：讀取 blk 文件
+import struct
+
+MAGIC = bytes.fromhex('F9BEB4D9')  # mainnet
+
+def read_blocks(filepath):
+    with open(filepath, 'rb') as f:
+        while True:
+            # 讀取 magic
+            magic = f.read(4)
+            if len(magic) < 4 or magic != MAGIC:
+                break
+
+            # 讀取大小
+            size = struct.unpack('<I', f.read(4))[0]
+
+            # 讀取區塊數據
+            block_data = f.read(size)
+
+            # 解析區塊頭
+            version = struct.unpack('<I', block_data[:4])[0]
+            prev_hash = block_data[4:36][::-1].hex()
+            merkle_root = block_data[36:68][::-1].hex()
+
+            yield {
+                'version': version,
+                'prev_hash': prev_hash,
+                'merkle_root': merkle_root,
+                'size': size,
+            }
+
+# 使用
+for block in read_blocks('~/.bitcoin/blocks/blk00000.dat'):
+    print(f"Block: {block['prev_hash'][:16]}... size={block['size']}")</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">blk*.dat：</strong>原始區塊數據，約 128 MB/文件</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">rev*.dat：</strong>撤銷數據，用於區塊重組</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">index/：</strong>LevelDB 區塊索引</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">Pruning：</strong>可刪除舊區塊文件節省空間</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
