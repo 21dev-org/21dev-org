@@ -1,0 +1,474 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Test Networks"
+  description="比特幣測試網路：Mainnet、Testnet、Signet 和 Regtest 的使用場景和配置"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Test Networks' },
+  ]}
+  difficulty="beginner"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Wallet Descriptors', href: '/tech/bitcoin-core/descriptors' }}
+  nextPage={{ title: 'Compact Blocks', href: '/tech/bitcoin-core/compact-blocks' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    比特幣提供多種網路環境供開發和測試使用。除了主網（Mainnet）之外，
+    還有 Testnet、Signet 和 Regtest，各有不同的特性和用途。
+    開發者應該在這些測試網路上充分測試後，才將應用部署到主網。
+  </p>
+
+  <h2 id="network-comparison">網路比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>網路</th>
+        <th>用途</th>
+        <th>挖礦難度</th>
+        <th>區塊時間</th>
+        <th>地址前綴</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Mainnet</strong></td>
+        <td>生產環境</td>
+        <td>真實難度</td>
+        <td>~10 分鐘</td>
+        <td>1, 3, bc1</td>
+      </tr>
+      <tr>
+        <td><strong>Testnet</strong></td>
+        <td>公開測試</td>
+        <td>可變（低）</td>
+        <td>~10 分鐘</td>
+        <td>m, n, tb1</td>
+      </tr>
+      <tr>
+        <td><strong>Signet</strong></td>
+        <td>可控測試</td>
+        <td>簽名控制</td>
+        <td>~10 分鐘</td>
+        <td>tb1</td>
+      </tr>
+      <tr>
+        <td><strong>Regtest</strong></td>
+        <td>本地開發</td>
+        <td>最低</td>
+        <td>即時</td>
+        <td>bcrt1</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="mainnet">Mainnet（主網）</h2>
+  <p>
+    主網是比特幣的生產網路，所有真實的比特幣交易都在這裡進行。
+  </p>
+
+  <h3>特點</h3>
+  <ul>
+    <li>真實的經濟價值</li>
+    <li>完整的安全保障</li>
+    <li>不可逆的交易</li>
+    <li>需要真實的手續費</li>
+  </ul>
+
+  <h3>配置</h3>
+  <pre><code class="language-text" is:raw># bitcoin.conf (預設為 mainnet)
+# 無需特別設定
+
+# 或明確指定
+chain=main
+
+# 資料目錄
+# Linux: ~/.bitcoin/
+# macOS: ~/Library/Application Support/Bitcoin/
+# Windows: %APPDATA%\Bitcoin\</code></pre>
+
+  <h2 id="testnet">Testnet（測試網）</h2>
+  <p>
+    Testnet 是公開的測試網路，目前運行的是 Testnet3。
+    幣沒有價值，可以從水龍頭免費獲取。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong>
+      Testnet 可能會被重置，且容易受到大量算力攻擊導致區塊時間不穩定。
+      對於需要穩定環境的測試，建議使用 Signet。
+    </p>
+  </div>
+
+  <h3>特點</h3>
+  <ul>
+    <li>公開網路，任何人都可以加入</li>
+    <li>幣沒有價值，可免費獲取</li>
+    <li>難度調整規則較寬鬆</li>
+    <li>可能有區塊時間不穩定的問題</li>
+  </ul>
+
+  <h3>配置</h3>
+  <pre><code class="language-bash" is:raw># 啟動 testnet
+bitcoind -testnet
+
+# 或在 bitcoin.conf 中設定
+chain=test
+
+# CLI 使用
+bitcoin-cli -testnet getblockchaininfo
+
+# 資料目錄
+# ~/.bitcoin/testnet3/</code></pre>
+
+  <h3>水龍頭（獲取測試幣）</h3>
+  <ul>
+    <li><a href="https://coinfaucet.eu/en/btc-testnet/" target="_blank" rel="noopener noreferrer">coinfaucet.eu</a></li>
+    <li><a href="https://testnet-faucet.mempool.co/" target="_blank" rel="noopener noreferrer">mempool.co faucet</a></li>
+    <li><a href="https://bitcoinfaucet.uo1.net/" target="_blank" rel="noopener noreferrer">bitcoinfaucet.uo1.net</a></li>
+  </ul>
+
+  <h2 id="signet">Signet（簽名網）</h2>
+  <p>
+    Signet（BIP-325）是一種由簽名控制出塊的測試網路。
+    區塊必須由指定的密鑰簽名才有效，提供更可控的測試環境。
+  </p>
+
+  <h3>特點</h3>
+  <ul>
+    <li>區塊產生穩定可預測</li>
+    <li>不受算力波動影響</li>
+    <li>可以創建自定義 Signet</li>
+    <li>預設的公開 Signet 由 Bitcoin Core 維護</li>
+  </ul>
+
+  <h3>配置</h3>
+  <pre><code class="language-bash" is:raw># 啟動預設 signet
+bitcoind -signet
+
+# 或在 bitcoin.conf 中設定
+chain=signet
+
+# CLI 使用
+bitcoin-cli -signet getblockchaininfo
+
+# 資料目錄
+# ~/.bitcoin/signet/</code></pre>
+
+  <h3>自定義 Signet</h3>
+  <pre><code class="language-text" is:raw># bitcoin.conf
+chain=signet
+
+# 指定簽名者的公鑰（挑戰腳本）
+signetchallenge=5121...公鑰...51ae
+
+# 指定自定義 signet 的種子節點
+signetseednode=192.168.1.100:38333</code></pre>
+
+  <h3>Signet 水龍頭</h3>
+  <ul>
+    <li><a href="https://signetfaucet.com/" target="_blank" rel="noopener noreferrer">signetfaucet.com</a></li>
+    <li><a href="https://signet.bc-2.jp/" target="_blank" rel="noopener noreferrer">signet.bc-2.jp</a></li>
+  </ul>
+
+  <h2 id="regtest">Regtest（迴歸測試）</h2>
+  <p>
+    Regtest 是完全本地的測試環境，可以即時生成區塊，
+    非常適合自動化測試和開發。
+  </p>
+
+  <h3>特點</h3>
+  <ul>
+    <li>完全本地，無需網路連接</li>
+    <li>可以即時生成區塊</li>
+    <li>完全控制區塊鏈狀態</li>
+    <li>適合單元測試和整合測試</li>
+  </ul>
+
+  <h3>配置</h3>
+  <pre><code class="language-bash" is:raw># 啟動 regtest
+bitcoind -regtest
+
+# 或在 bitcoin.conf 中設定
+chain=regtest
+
+# CLI 使用
+bitcoin-cli -regtest getblockchaininfo
+
+# 資料目錄
+# ~/.bitcoin/regtest/</code></pre>
+
+  <h3>基本操作</h3>
+  <pre><code class="language-bash" is:raw># 創建錢包
+bitcoin-cli -regtest createwallet "test"
+
+# 獲取新地址
+bitcoin-cli -regtest getnewaddress
+
+# 生成區塊（挖礦）
+bitcoin-cli -regtest generatetoaddress 101 "bcrt1q..."
+
+# 為什麼是 101 個區塊？
+# Coinbase 獎勵需要 100 個確認才能使用
+
+# 發送交易
+bitcoin-cli -regtest sendtoaddress "bcrt1q..." 1.0
+
+# 確認交易（生成新區塊）
+bitcoin-cli -regtest generatetoaddress 1 "bcrt1q..."</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>網路配置</h3>
+  <pre><code class="language-typescript" is:raw>import * as bitcoin from 'bitcoinjs-lib';
+
+// 網路定義
+const networks = {
+  mainnet: bitcoin.networks.bitcoin,
+  testnet: bitcoin.networks.testnet,
+  regtest: bitcoin.networks.regtest,
+};
+
+// Signet 網路定義（bitcoinjs-lib 可能需要自定義）
+const signet: bitcoin.Network = {
+  messagePrefix: '\x18Bitcoin Signed Message:\n',
+  bech32: 'tb',
+  bip32: {
+    public: 0x043587cf,
+    private: 0x04358394,
+  },
+  pubKeyHash: 0x6f,
+  scriptHash: 0xc4,
+  wif: 0xef,
+};
+
+// 根據環境選擇網路
+function getNetwork(env: string): bitcoin.Network {
+  switch (env) {
+    case 'mainnet':
+      return bitcoin.networks.bitcoin;
+    case 'testnet':
+      return bitcoin.networks.testnet;
+    case 'signet':
+      return signet;
+    case 'regtest':
+      return bitcoin.networks.regtest;
+    default:
+      throw new Error(`Unknown network: ${env}`);
+  }
+}</code></pre>
+
+  <h3>RPC 客戶端</h3>
+  <pre><code class="language-typescript" is:raw>interface RPCConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+}
+
+const networkPorts: Record&lt;string, number&gt; = {
+  mainnet: 8332,
+  testnet: 18332,
+  signet: 38332,
+  regtest: 18443,
+};
+
+function createRPCClient(network: string, config?: Partial&lt;RPCConfig&gt;) {
+  const defaults: RPCConfig = {
+    host: '127.0.0.1',
+    port: networkPorts[network] || 8332,
+    username: 'user',
+    password: 'password',
+  };
+
+  const settings = { ...defaults, ...config };
+
+  return {
+    async call(method: string, params: any[] = []): Promise&lt;any&gt; {
+      const response = await fetch(
+        `http://${settings.host}:${settings.port}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization:
+              'Basic ' +
+              Buffer.from(`${settings.username}:${settings.password}`).toString(
+                'base64'
+              ),
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: Date.now(),
+            method,
+            params,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      return data.result;
+    },
+  };
+}
+
+// 使用範例
+const regtest = createRPCClient('regtest');
+const blockCount = await regtest.call('getblockcount');</code></pre>
+
+  <h3>Regtest 測試輔助</h3>
+  <pre><code class="language-typescript" is:raw>class RegtestHelper {
+  private rpc: ReturnType&lt;typeof createRPCClient&gt;;
+  private minerAddress?: string;
+
+  constructor() {
+    this.rpc = createRPCClient('regtest');
+  }
+
+  async setup(): Promise&lt;void&gt; {
+    // 創建錢包
+    try {
+      await this.rpc.call('createwallet', ['test']);
+    } catch (e) {
+      // 錢包可能已存在
+      await this.rpc.call('loadwallet', ['test']);
+    }
+
+    // 獲取挖礦地址
+    this.minerAddress = await this.rpc.call('getnewaddress');
+
+    // 生成初始區塊
+    await this.mine(101);
+  }
+
+  async mine(blocks: number = 1): Promise&lt;string[]&gt; {
+    if (!this.minerAddress) {
+      throw new Error('Call setup() first');
+    }
+    return this.rpc.call('generatetoaddress', [blocks, this.minerAddress]);
+  }
+
+  async getBalance(): Promise&lt;number&gt; {
+    return this.rpc.call('getbalance');
+  }
+
+  async sendToAddress(address: string, amount: number): Promise&lt;string&gt; {
+    const txid = await this.rpc.call('sendtoaddress', [address, amount]);
+    await this.mine(1); // 確認交易
+    return txid;
+  }
+
+  async fundAddress(address: string, amount: number): Promise&lt;string&gt; {
+    return this.sendToAddress(address, amount);
+  }
+
+  async getNewAddress(): Promise&lt;string&gt; {
+    return this.rpc.call('getnewaddress');
+  }
+
+  async reset(): Promise&lt;void&gt; {
+    // 停止節點並刪除資料目錄來重置
+    // 這通常在測試框架中處理
+  }
+}
+
+// 測試範例
+async function runTest() {
+  const helper = new RegtestHelper();
+  await helper.setup();
+
+  console.log('Balance:', await helper.getBalance());
+
+  const testAddress = await helper.getNewAddress();
+  const txid = await helper.sendToAddress(testAddress, 1.0);
+  console.log('Sent tx:', txid);
+}</code></pre>
+
+  <h2 id="docker">Docker 環境</h2>
+  <pre><code class="language-yaml" is:raw># docker-compose.yml
+version: '3.8'
+
+services:
+  bitcoin-regtest:
+    image: ruimarinho/bitcoin-core:latest
+    command:
+      - -regtest
+      - -rpcuser=user
+      - -rpcpassword=password
+      - -rpcallowip=0.0.0.0/0
+      - -rpcbind=0.0.0.0
+      - -fallbackfee=0.0001
+    ports:
+      - "18443:18443"
+    volumes:
+      - bitcoin-regtest-data:/home/bitcoin/.bitcoin
+
+  bitcoin-testnet:
+    image: ruimarinho/bitcoin-core:latest
+    command:
+      - -testnet
+      - -rpcuser=user
+      - -rpcpassword=password
+      - -rpcallowip=0.0.0.0/0
+      - -rpcbind=0.0.0.0
+    ports:
+      - "18332:18332"
+    volumes:
+      - bitcoin-testnet-data:/home/bitcoin/.bitcoin
+
+volumes:
+  bitcoin-regtest-data:
+  bitcoin-testnet-data:</code></pre>
+
+  <h2 id="testing-frameworks">測試框架整合</h2>
+
+  <h3>Jest 整合</h3>
+  <pre><code class="language-typescript" is:raw>// jest.setup.ts
+import { RegtestHelper } from './regtest-helper';
+
+let regtest: RegtestHelper;
+
+beforeAll(async () => {
+  regtest = new RegtestHelper();
+  await regtest.setup();
+});
+
+afterEach(async () => {
+  // 每個測試後生成區塊確保狀態一致
+  await regtest.mine(1);
+});
+
+// test.spec.ts
+describe('Bitcoin transactions', () => {
+  it('should send and receive bitcoin', async () => {
+    const address = await regtest.getNewAddress();
+    const txid = await regtest.sendToAddress(address, 0.5);
+
+    expect(txid).toMatch(/^[a-f0-9]{64}$/);
+  });
+});</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>開發階段用 Regtest</strong>：快速迭代，完全控制</li>
+    <li><strong>整合測試用 Signet</strong>：穩定的公開環境</li>
+    <li><strong>上線前用 Testnet</strong>：最接近主網的體驗</li>
+    <li><strong>永遠不要在主網測試</strong>：避免損失真實資金</li>
+    <li><strong>使用不同的錢包</strong>：測試網錢包和主網錢包分開</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0325.md" target="_blank" rel="noopener noreferrer">BIP-325 Signet</a></li>
+    <li><a href="https://en.bitcoin.it/wiki/Testnet" target="_blank" rel="noopener noreferrer">Bitcoin Wiki - Testnet</a></li>
+    <li><a href="https://developer.bitcoin.org/examples/testing.html" target="_blank" rel="noopener noreferrer">Bitcoin Developer - Testing</a></li>
+    <li><a href="/tech/bitcoin-core/rpc-guide">RPC 接口指南</a></li>
+  </ul>
+</ArticleLayout>

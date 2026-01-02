@@ -1,0 +1,450 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Address Types"
+  description="比特幣地址格式：Base58、Bech32 編碼和各種地址類型詳解"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Address Types' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Compact Blocks', href: '/tech/bitcoin-core/compact-blocks' }}
+  nextPage={{ title: 'Coin Selection', href: '/tech/bitcoin-core/coin-selection' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    比特幣地址是用戶接收資金的標識符。隨著協議的演進，
+    出現了多種地址格式，每種都有不同的特性和用途。
+    理解這些格式對於開發比特幣應用至關重要。
+  </p>
+
+  <h2 id="address-types">地址類型總覽</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>類型</th>
+        <th>前綴</th>
+        <th>編碼</th>
+        <th>腳本類型</th>
+        <th>引入時間</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>P2PKH</td>
+        <td>1</td>
+        <td>Base58Check</td>
+        <td>Pay to Public Key Hash</td>
+        <td>2009</td>
+      </tr>
+      <tr>
+        <td>P2SH</td>
+        <td>3</td>
+        <td>Base58Check</td>
+        <td>Pay to Script Hash</td>
+        <td>2012 (BIP-16)</td>
+      </tr>
+      <tr>
+        <td>P2WPKH</td>
+        <td>bc1q</td>
+        <td>Bech32</td>
+        <td>Native SegWit</td>
+        <td>2017 (BIP-141)</td>
+      </tr>
+      <tr>
+        <td>P2WSH</td>
+        <td>bc1q</td>
+        <td>Bech32</td>
+        <td>SegWit Script</td>
+        <td>2017 (BIP-141)</td>
+      </tr>
+      <tr>
+        <td>P2TR</td>
+        <td>bc1p</td>
+        <td>Bech32m</td>
+        <td>Taproot</td>
+        <td>2021 (BIP-341)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="base58">Base58Check 編碼</h2>
+  <p>
+    Base58 是為比特幣特別設計的編碼，避免了容易混淆的字符（0, O, I, l）。
+  </p>
+
+  <h3>字符集</h3>
+  <pre><code class="language-text" is:raw>Base58 字符集:
+123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+
+排除的字符:
+- 0 (零) 和 O (大寫 O) - 容易混淆
+- I (大寫 i) 和 l (小寫 L) - 容易混淆</code></pre>
+
+  <h3>編碼流程</h3>
+  <pre><code class="language-text" is:raw>Base58Check 編碼:
+1. 添加版本前綴
+   - 0x00: P2PKH mainnet
+   - 0x05: P2SH mainnet
+   - 0x6f: P2PKH testnet
+   - 0xc4: P2SH testnet
+
+2. 計算校驗碼
+   checksum = SHA256(SHA256(version + payload))[:4]
+
+3. Base58 編碼
+   address = Base58(version + payload + checksum)
+
+範例:
+payload = HASH160(公鑰) = 20 bytes
+version = 0x00
+checksum = SHA256(SHA256(0x00 + payload))[:4]
+address = Base58(0x00 + payload + checksum)
+結果: 1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</code></pre>
+
+  <h2 id="p2pkh">P2PKH (Pay to Public Key Hash)</h2>
+  <p>最經典的比特幣地址格式，以數字 1 開頭。</p>
+
+  <h3>結構</h3>
+  <pre><code class="language-text" is:raw>公鑰 → SHA256 → RIPEMD160 → Base58Check
+
+scriptPubKey:
+OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG
+
+地址長度: 25-34 字符
+範例: 1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>import * as crypto from 'crypto';
+import bs58check from 'bs58check';
+
+function hash160(buffer: Buffer): Buffer {
+  const sha256 = crypto.createHash('sha256').update(buffer).digest();
+  return crypto.createHash('ripemd160').update(sha256).digest();
+}
+
+function publicKeyToP2PKH(publicKey: Buffer, network: 'mainnet' | 'testnet' = 'mainnet'): string {
+  const pubKeyHash = hash160(publicKey);
+
+  // 版本前綴
+  const version = network === 'mainnet' ? 0x00 : 0x6f;
+
+  // 添加版本並編碼
+  const payload = Buffer.concat([Buffer.from([version]), pubKeyHash]);
+
+  return bs58check.encode(payload);
+}
+
+// 使用範例
+const pubKey = Buffer.from('02...', 'hex');
+const address = publicKeyToP2PKH(pubKey);
+console.log(address); // 1...</code></pre>
+
+  <h2 id="p2sh">P2SH (Pay to Script Hash)</h2>
+  <p>允許支付到腳本雜湊，支持多簽和複雜條件，以數字 3 開頭。</p>
+
+  <h3>結構</h3>
+  <pre><code class="language-text" is:raw>redeemScript → SHA256 → RIPEMD160 → Base58Check
+
+scriptPubKey:
+OP_HASH160 &lt;scriptHash&gt; OP_EQUAL
+
+地址長度: 34 字符
+範例: 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy</code></pre>
+
+  <h3>常見用途</h3>
+  <ul>
+    <li>多簽錢包 (2-of-3, 3-of-5 等)</li>
+    <li>P2SH-P2WPKH（兼容 SegWit）</li>
+    <li>時間鎖合約</li>
+  </ul>
+
+  <h2 id="bech32">Bech32 編碼</h2>
+  <p>
+    Bech32（BIP-173）是為 SegWit 設計的新編碼格式，
+    提供更好的錯誤檢測和全小寫支持。
+  </p>
+
+  <h3>字符集</h3>
+  <pre><code class="language-text" is:raw>Bech32 字符集:
+qpzry9x8gf2tvdw0s3jn54khce6mua7l
+
+結構:
+bc1q...  (mainnet P2WPKH/P2WSH)
+tb1q...  (testnet)
+bc1p...  (mainnet P2TR)
+tb1p...  (testnet P2TR)</code></pre>
+
+  <h3>組成部分</h3>
+  <pre><code class="language-text" is:raw>Bech32 地址結構:
+hrp + "1" + data + checksum
+
+hrp (Human Readable Part):
+- bc: Bitcoin mainnet
+- tb: Bitcoin testnet/signet
+- bcrt: Bitcoin regtest
+
+data:
+- witness version (0-16)
+- witness program
+
+checksum:
+- 6 字符 BCH 校驗碼</code></pre>
+
+  <h2 id="p2wpkh">P2WPKH (Native SegWit)</h2>
+  <p>原生 SegWit 地址，以 bc1q 開頭，交易更小、手續費更低。</p>
+
+  <h3>結構</h3>
+  <pre><code class="language-text" is:raw>scriptPubKey:
+OP_0 &lt;20-byte-pubKeyHash&gt;
+
+witness:
+&lt;signature&gt; &lt;publicKey&gt;
+
+地址長度: 42 字符 (mainnet)
+範例: bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>import { bech32 } from 'bech32';
+
+function publicKeyToP2WPKH(
+  publicKey: Buffer,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  const pubKeyHash = hash160(publicKey);
+
+  // witness version 0
+  const words = [0, ...bech32.toWords(pubKeyHash)];
+
+  const hrp = network === 'mainnet' ? 'bc' : 'tb';
+
+  return bech32.encode(hrp, words);
+}
+
+// 解碼 Bech32 地址
+function decodeBech32(address: string): {
+  version: number;
+  program: Buffer;
+} {
+  const { prefix, words } = bech32.decode(address);
+
+  const version = words[0];
+  const program = Buffer.from(bech32.fromWords(words.slice(1)));
+
+  return { version, program };
+}</code></pre>
+
+  <h2 id="p2wsh">P2WSH (SegWit Script)</h2>
+  <p>SegWit 版本的 P2SH，用於複雜腳本。</p>
+
+  <pre><code class="language-text" is:raw>scriptPubKey:
+OP_0 &lt;32-byte-scriptHash&gt;
+
+scriptHash = SHA256(witnessScript)
+
+地址長度: 62 字符 (mainnet)
+範例: bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3</code></pre>
+
+  <h2 id="p2tr">P2TR (Taproot)</h2>
+  <p>
+    Taproot 地址（BIP-341），以 bc1p 開頭，使用 Bech32m 編碼。
+    支持 Schnorr 簽名和 MAST。
+  </p>
+
+  <h3>Bech32m</h3>
+  <pre><code class="language-text" is:raw>Bech32m 是 Bech32 的改進版本（BIP-350）:
+- 修復了 Bech32 的一個缺陷
+- 用於 witness version 1+ 的地址
+- witness version 0 仍使用 Bech32</code></pre>
+
+  <h3>結構</h3>
+  <pre><code class="language-text" is:raw>scriptPubKey:
+OP_1 &lt;32-byte-tweaked-pubkey&gt;
+
+tweaked_pubkey = internal_pubkey + H(internal_pubkey || merkle_root) × G
+
+地址長度: 62 字符 (mainnet)
+範例: bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>import { bech32m } from 'bech32';
+
+function internalKeyToP2TR(
+  internalPubKey: Buffer,  // 32 bytes x-only
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  // 計算 tweaked public key
+  const tweakedKey = tweakPublicKey(internalPubKey);
+
+  // witness version 1
+  const words = [1, ...bech32m.toWords(tweakedKey)];
+
+  const hrp = network === 'mainnet' ? 'bc' : 'tb';
+
+  return bech32m.encode(hrp, words);
+}
+
+function tweakPublicKey(internalKey: Buffer, merkleRoot?: Buffer): Buffer {
+  // t = H_TapTweak(P || r)
+  const data = merkleRoot
+    ? Buffer.concat([internalKey, merkleRoot])
+    : internalKey;
+
+  const tweak = taggedHash('TapTweak', data);
+
+  // Q = P + t×G
+  // 需要橢圓曲線運算
+  return computeTweakedKey(internalKey, tweak);
+}
+
+function taggedHash(tag: string, data: Buffer): Buffer {
+  const tagHash = crypto.createHash('sha256').update(tag).digest();
+  return crypto
+    .createHash('sha256')
+    .update(Buffer.concat([tagHash, tagHash, data]))
+    .digest();
+}</code></pre>
+
+  <h2 id="validation">地址驗證</h2>
+
+  <h3>通用驗證</h3>
+  <pre><code class="language-typescript" is:raw>import * as bitcoin from 'bitcoinjs-lib';
+
+interface AddressInfo {
+  valid: boolean;
+  type?: 'p2pkh' | 'p2sh' | 'p2wpkh' | 'p2wsh' | 'p2tr';
+  network?: 'mainnet' | 'testnet';
+  scriptPubKey?: Buffer;
+}
+
+function validateAddress(address: string): AddressInfo {
+  try {
+    // 嘗試 mainnet
+    const outputScript = bitcoin.address.toOutputScript(
+      address,
+      bitcoin.networks.bitcoin
+    );
+
+    return {
+      valid: true,
+      type: getAddressType(address),
+      network: 'mainnet',
+      scriptPubKey: outputScript,
+    };
+  } catch {
+    try {
+      // 嘗試 testnet
+      const outputScript = bitcoin.address.toOutputScript(
+        address,
+        bitcoin.networks.testnet
+      );
+
+      return {
+        valid: true,
+        type: getAddressType(address),
+        network: 'testnet',
+        scriptPubKey: outputScript,
+      };
+    } catch {
+      return { valid: false };
+    }
+  }
+}
+
+function getAddressType(address: string): AddressInfo['type'] {
+  if (address.startsWith('1')) return 'p2pkh';
+  if (address.startsWith('3')) return 'p2sh';
+  if (address.startsWith('bc1q') || address.startsWith('tb1q')) {
+    return address.length === 42 ? 'p2wpkh' : 'p2wsh';
+  }
+  if (address.startsWith('bc1p') || address.startsWith('tb1p')) return 'p2tr';
+  return undefined;
+}</code></pre>
+
+  <h2 id="conversion">地址轉換</h2>
+
+  <h3>從腳本推導地址</h3>
+  <pre><code class="language-typescript" is:raw>import * as bitcoin from 'bitcoinjs-lib';
+
+// 從 scriptPubKey 獲取地址
+function scriptToAddress(
+  script: Buffer,
+  network: bitcoin.Network = bitcoin.networks.bitcoin
+): string | null {
+  try {
+    return bitcoin.address.fromOutputScript(script, network);
+  } catch {
+    return null;
+  }
+}
+
+// 從地址獲取 scriptPubKey
+function addressToScript(
+  address: string,
+  network: bitcoin.Network = bitcoin.networks.bitcoin
+): Buffer {
+  return bitcoin.address.toOutputScript(address, network);
+}</code></pre>
+
+  <h2 id="fee-comparison">手續費比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>地址類型</th>
+        <th>輸入大小 (vBytes)</th>
+        <th>相對成本</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>P2PKH</td>
+        <td>~148</td>
+        <td>100%</td>
+      </tr>
+      <tr>
+        <td>P2SH-P2WPKH</td>
+        <td>~91</td>
+        <td>~61%</td>
+      </tr>
+      <tr>
+        <td>P2WPKH</td>
+        <td>~68</td>
+        <td>~46%</td>
+      </tr>
+      <tr>
+        <td>P2TR (key path)</td>
+        <td>~57.5</td>
+        <td>~39%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>建議：</strong>
+      優先使用 P2TR 或 P2WPKH 地址，可節省約 50-60% 的交易手續費。
+    </p>
+  </div>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>新應用使用 P2TR</strong>：最低手續費，最佳隱私</li>
+    <li><strong>兼容性需求用 P2WPKH</strong>：廣泛支持的 SegWit</li>
+    <li><strong>驗證地址類型</strong>：確保地址與預期網路匹配</li>
+    <li><strong>不要重複使用地址</strong>：每次接收使用新地址</li>
+    <li><strong>備份助記詞</strong>：地址可以重新派生</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0173.md" target="_blank" rel="noopener noreferrer">BIP-173 Bech32</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0350.md" target="_blank" rel="noopener noreferrer">BIP-350 Bech32m</a></li>
+    <li><a href="https://en.bitcoin.it/wiki/Address" target="_blank" rel="noopener noreferrer">Bitcoin Wiki - Address</a></li>
+    <li><a href="/tech/bitcoin-core/script">Bitcoin Script</a></li>
+    <li><a href="/tech/bitcoin-core/descriptors">Wallet Descriptors</a></li>
+  </ul>
+</ArticleLayout>

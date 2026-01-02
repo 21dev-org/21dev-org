@@ -1,0 +1,422 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="AssumeUTXO"
+  description="快速同步技術：使用預計算的 UTXO 快照加速節點初始化"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'AssumeUTXO' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Coin Selection', href: '/tech/bitcoin-core/coin-selection' }}
+  nextPage={{ title: '共識機制', href: '/tech/bitcoin-core/consensus' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    AssumeUTXO 是一種快速同步技術，允許節點從預計算的 UTXO 集合快照啟動，
+    而不是從創世區塊開始驗證整個區塊鏈。這可以將初始同步時間從數天縮短到幾小時。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>信任模型：</strong>
+      AssumeUTXO 不是「信任第三方」，而是信任 Bitcoin Core 代碼中硬編碼的雜湊值。
+      節點會在背景完整驗證整個區塊鏈，最終確認快照的正確性。
+    </p>
+  </div>
+
+  <h2 id="problem">解決的問題</h2>
+
+  <h3>傳統同步</h3>
+  <pre><code class="language-text" is:raw>傳統 IBD (Initial Block Download):
+1. 下載所有區塊（~600 GB）
+2. 驗證每個區塊和交易
+3. 構建 UTXO 集合
+4. 時間：數天到數週
+
+問題:
+- 新用戶等待時間過長
+- 需要大量 CPU 和 I/O
+- 入門門檻高</code></pre>
+
+  <h3>AssumeUTXO 解決方案</h3>
+  <pre><code class="language-text" is:raw>AssumeUTXO 流程:
+1. 載入 UTXO 快照（~10 GB）
+2. 立即可用（分鐘級別）
+3. 同步最新區塊
+4. 背景驗證歷史區塊
+
+優勢:
+- 快速啟動
+- 完整的安全性（最終驗證）
+- 無需信任第三方</code></pre>
+
+  <h2 id="how-it-works">工作原理</h2>
+
+  <h3>UTXO 快照</h3>
+  <pre><code class="language-text" is:raw>快照內容:
+- 特定區塊高度的完整 UTXO 集合
+- 每個 UTXO 的 txid、vout、金額、腳本
+- UTXO 集合的雜湊值（用於驗證）
+
+快照識別:
+- 區塊高度
+- 區塊雜湊
+- UTXO 集合雜湊
+- UTXO 數量</code></pre>
+
+  <h3>兩階段同步</h3>
+  <pre><code class="language-text" is:raw>階段 1: 前台同步（快速）
+├── 載入 UTXO 快照
+├── 驗證快照雜湊
+├── 從快照高度開始同步
+└── 立即可以使用錢包
+
+階段 2: 背景驗證（完整）
+├── 從創世區塊開始驗證
+├── 重建 UTXO 集合
+├── 驗證與快照一致
+└── 完成後移除臨時數據</code></pre>
+
+  <h2 id="usage">使用方法</h2>
+
+  <h3>創建快照</h3>
+  <pre><code class="language-bash" is:raw># 在完全同步的節點上創建快照
+bitcoin-cli dumptxoutset /path/to/utxo.dat
+
+# 輸出
+{
+  "coins_written": 95000000,
+  "base_hash": "0000000000000000000...",
+  "base_height": 800000,
+  "path": "/path/to/utxo.dat",
+  "txoutset_hash": "a1b2c3d4e5f6..."
+}</code></pre>
+
+  <h3>載入快照</h3>
+  <pre><code class="language-bash" is:raw># 在新節點上載入快照
+bitcoin-cli loadtxoutset /path/to/utxo.dat
+
+# 監控同步狀態
+bitcoin-cli getblockchaininfo
+
+# 結果
+{
+  "chain": "main",
+  "blocks": 815000,
+  "headers": 815000,
+  "bestblockhash": "...",
+  "initialblockdownload": false,
+  "assumeutxo": {
+    "height": 800000,
+    "hash": "0000000000000000000...",
+    "txoutset_hash": "a1b2c3d4e5f6...",
+    "background_validation": {
+      "progress": 0.45,
+      "height": 360000
+    }
+  }
+}</code></pre>
+
+  <h2 id="verification">驗證機制</h2>
+
+  <h3>硬編碼的雜湊值</h3>
+  <pre><code class="language-cpp" is:raw>// Bitcoin Core 源碼中的 AssumeUTXO 參數
+// src/kernel/chainparams.cpp
+
+static const AssumeutxoData ASSUMEUTXO_DATA = {
+    .height = 800000,
+    .hash_serialized = AssumeutxoHash{uint256{"a1b2c3..."}},
+    .nChainTx = 850000000,
+    .blockhash = uint256{"0000000000000000000..."},
+};</code></pre>
+
+  <h3>背景驗證流程</h3>
+  <pre><code class="language-text" is:raw>背景驗證:
+1. 下載歷史區塊（從創世到快照高度）
+2. 完整驗證每個區塊
+3. 獨立構建 UTXO 集合
+4. 比較兩個 UTXO 集合的雜湊
+
+如果不匹配:
+- 快照被標記為無效
+- 節點回退到傳統同步
+- 需要重新同步</code></pre>
+
+  <h2 id="security">安全性分析</h2>
+
+  <h3>信任假設</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>同步方式</th>
+        <th>信任對象</th>
+        <th>風險窗口</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>傳統 IBD</td>
+        <td>Bitcoin Core 代碼</td>
+        <td>無</td>
+      </tr>
+      <tr>
+        <td>AssumeUTXO</td>
+        <td>Bitcoin Core 代碼 + 硬編碼雜湊</td>
+        <td>直到背景驗證完成</td>
+      </tr>
+      <tr>
+        <td>SPV</td>
+        <td>完全信任全節點</td>
+        <td>永久</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>攻擊場景</h3>
+  <pre><code class="language-text" is:raw>潛在攻擊:
+1. 惡意快照（偽造 UTXO）
+   - 防護：硬編碼雜湊驗證
+   - 防護：背景完整驗證
+
+2. 代碼被篡改
+   - 與傳統同步風險相同
+   - 防護：開源代碼審查
+
+3. 快照來源不可信
+   - 防護：總是驗證雜湊
+   - 防護：使用官方二進制</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>快照格式解析</h3>
+  <pre><code class="language-typescript" is:raw>interface UTXOSnapshot {
+  version: number;
+  networkMagic: Buffer;
+  blockHash: Buffer;
+  blockHeight: number;
+  utxoCount: number;
+  utxos: UTXO[];
+}
+
+interface UTXO {
+  txid: Buffer;
+  vout: number;
+  height: number;
+  isCoinbase: boolean;
+  value: bigint;
+  scriptPubKey: Buffer;
+}
+
+async function parseSnapshot(
+  filePath: string
+): Promise&lt;UTXOSnapshot&gt; {
+  const file = await fs.open(filePath, 'r');
+  const buffer = Buffer.alloc(4);
+
+  // 讀取版本
+  await file.read(buffer, 0, 4, 0);
+  const version = buffer.readUInt32LE();
+
+  // 讀取網路魔數
+  const magic = Buffer.alloc(4);
+  await file.read(magic, 0, 4, null);
+
+  // 讀取區塊雜湊
+  const blockHash = Buffer.alloc(32);
+  await file.read(blockHash, 0, 32, null);
+
+  // 讀取區塊高度
+  await file.read(buffer, 0, 4, null);
+  const blockHeight = buffer.readUInt32LE();
+
+  // 讀取 UTXO 數量
+  const countBuffer = Buffer.alloc(8);
+  await file.read(countBuffer, 0, 8, null);
+  const utxoCount = Number(countBuffer.readBigUInt64LE());
+
+  // 讀取 UTXO 條目
+  const utxos: UTXO[] = [];
+  for (let i = 0; i &lt; utxoCount; i++) {
+    utxos.push(await readUTXO(file));
+  }
+
+  await file.close();
+
+  return {
+    version,
+    networkMagic: magic,
+    blockHash,
+    blockHeight,
+    utxoCount,
+    utxos,
+  };
+}</code></pre>
+
+  <h3>UTXO 集合雜湊</h3>
+  <pre><code class="language-typescript" is:raw>import * as crypto from 'crypto';
+
+interface UTXOSetHash {
+  hash: Buffer;
+  count: number;
+  totalAmount: bigint;
+}
+
+function computeUTXOSetHash(utxos: UTXO[]): UTXOSetHash {
+  // MuHash3072 用於 UTXO 集合雜湊
+  // 這是簡化版本，實際使用 MuHash
+
+  let totalAmount = 0n;
+  const hashes: Buffer[] = [];
+
+  for (const utxo of utxos) {
+    // 序列化 UTXO
+    const serialized = serializeUTXO(utxo);
+
+    // 計算單個 UTXO 的雜湊
+    const hash = crypto.createHash('sha256').update(serialized).digest();
+    hashes.push(hash);
+
+    totalAmount += utxo.value;
+  }
+
+  // 組合所有雜湊（簡化版）
+  const combined = Buffer.concat(hashes.sort(Buffer.compare));
+  const finalHash = crypto.createHash('sha256').update(combined).digest();
+
+  return {
+    hash: finalHash,
+    count: utxos.length,
+    totalAmount,
+  };
+}
+
+function serializeUTXO(utxo: UTXO): Buffer {
+  const parts: Buffer[] = [];
+
+  // Outpoint
+  parts.push(utxo.txid);
+  const voutBuf = Buffer.alloc(4);
+  voutBuf.writeUInt32LE(utxo.vout);
+  parts.push(voutBuf);
+
+  // Coin
+  const heightAndCoinbase = (utxo.height &lt;&lt; 1) | (utxo.isCoinbase ? 1 : 0);
+  parts.push(encodeVarInt(heightAndCoinbase));
+  parts.push(encodeVarInt(Number(utxo.value)));
+  parts.push(utxo.scriptPubKey);
+
+  return Buffer.concat(parts);
+}</code></pre>
+
+  <h3>同步狀態監控</h3>
+  <pre><code class="language-typescript" is:raw>interface SyncStatus {
+  phase: 'loading' | 'syncing' | 'validating' | 'complete';
+  frontendProgress: number;
+  backendProgress: number;
+  estimatedTimeRemaining: number;
+}
+
+async function monitorAssumeUTXOSync(
+  rpcClient: RPCClient
+): Promise&lt;AsyncGenerator&lt;SyncStatus&gt;&gt; {
+  async function* monitor(): AsyncGenerator&lt;SyncStatus&gt; {
+    while (true) {
+      const info = await rpcClient.call('getblockchaininfo');
+
+      if (!info.assumeutxo) {
+        yield {
+          phase: 'complete',
+          frontendProgress: 1,
+          backendProgress: 1,
+          estimatedTimeRemaining: 0,
+        };
+        return;
+      }
+
+      const { background_validation } = info.assumeutxo;
+
+      yield {
+        phase: background_validation ? 'validating' : 'syncing',
+        frontendProgress: info.verificationprogress,
+        backendProgress: background_validation?.progress || 0,
+        estimatedTimeRemaining: estimateTime(background_validation?.progress),
+      };
+
+      await sleep(10000); // 每 10 秒檢查
+    }
+  }
+
+  return monitor();
+}</code></pre>
+
+  <h2 id="performance">效能比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>指標</th>
+        <th>傳統 IBD</th>
+        <th>AssumeUTXO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>可用時間</td>
+        <td>數天</td>
+        <td>~1 小時</td>
+      </tr>
+      <tr>
+        <td>下載量（初始）</td>
+        <td>~600 GB</td>
+        <td>~10 GB + 最新區塊</td>
+      </tr>
+      <tr>
+        <td>完整驗證時間</td>
+        <td>N/A</td>
+        <td>數天（背景）</td>
+      </tr>
+      <tr>
+        <td>CPU 使用</td>
+        <td>持續高</td>
+        <td>初始低，背景高</td>
+      </tr>
+      <tr>
+        <td>最終狀態</td>
+        <td>完全驗證</td>
+        <td>完全驗證</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="config">配置選項</h2>
+  <pre><code class="language-text" is:raw># bitcoin.conf
+
+# AssumeUTXO 相關設置目前主要通過 RPC 控制
+
+# 背景驗證優先級（未來可能添加）
+# assumeutxo_validation_priority=low
+
+# 限制背景驗證的 CPU 使用
+# par=2  # 限制驗證線程數</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>僅使用官方快照</strong>：確保雜湊與 Bitcoin Core 代碼匹配</li>
+    <li><strong>等待背景驗證完成</strong>：重要用途需完整驗證</li>
+    <li><strong>監控同步狀態</strong>：確保背景驗證正常進行</li>
+    <li><strong>保留足夠空間</strong>：背景驗證需要額外存儲空間</li>
+    <li><strong>避免中斷</strong>：背景驗證期間避免關閉節點</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bitcoin/blob/master/doc/design/assumeutxo.md" target="_blank" rel="noopener noreferrer">AssumeUTXO 設計文檔</a></li>
+    <li><a href="https://bitcoinops.org/en/topics/assumeutxo/" target="_blank" rel="noopener noreferrer">Bitcoin Optech - AssumeUTXO</a></li>
+    <li><a href="/tech/bitcoin-core/utxo">UTXO 模型</a></li>
+    <li><a href="/tech/bitcoin-core/consensus">共識機制</a></li>
+  </ul>
+</ArticleLayout>

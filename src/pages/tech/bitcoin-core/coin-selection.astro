@@ -1,0 +1,472 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Coin Selection"
+  description="UTXO 選擇算法：優化交易手續費和隱私的策略"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Coin Selection' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Address Types', href: '/tech/bitcoin-core/addresses' }}
+  nextPage={{ title: 'AssumeUTXO', href: '/tech/bitcoin-core/assumeutxo' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Coin Selection（幣選擇）是決定使用哪些 UTXO 來支付交易的過程。
+    好的選擇算法可以最小化手續費、保護隱私、並維護錢包的長期健康。
+    這是錢包開發中最複雜的問題之一。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>核心權衡：</strong>
+      使用較少的 UTXO 可以降低當前交易的手續費，但會產生較大的找零，
+      可能增加未來交易的成本。
+    </p>
+  </div>
+
+  <h2 id="goals">選擇目標</h2>
+  <ul>
+    <li><strong>最小化手續費</strong>：選擇最少的輸入數量</li>
+    <li><strong>避免找零</strong>：找零會增加輸出大小和未來成本</li>
+    <li><strong>維護隱私</strong>：避免關聯不同的地址</li>
+    <li><strong>UTXO 健康</strong>：避免積累大量小額 UTXO（灰塵）</li>
+    <li><strong>確認時間</strong>：優先使用已確認的 UTXO</li>
+  </ul>
+
+  <h2 id="algorithms">選擇算法</h2>
+
+  <h3>Branch and Bound (BnB)</h3>
+  <p>Bitcoin Core 的主要算法，嘗試找到精確匹配（無找零）：</p>
+  <pre><code class="language-text" is:raw>目標：找到 UTXO 組合使得
+sum(inputs) = target + fee
+
+優點：
+- 避免產生找零
+- 長期降低 UTXO 集合大小
+- 隱私更好（輸出數量少）
+
+缺點：
+- 不總是能找到精確匹配
+- 計算複雜度較高</code></pre>
+
+  <h3>Knapsack (背包算法)</h3>
+  <p>當 BnB 失敗時的備選方案：</p>
+  <pre><code class="language-text" is:raw>策略：
+1. 隨機選擇 UTXO
+2. 嘗試多次組合
+3. 選擇最接近目標的組合
+
+優點：
+- 總能找到解決方案
+- 相對快速
+
+缺點：
+- 通常產生找零
+- 非確定性（結果可能不同）</code></pre>
+
+  <h3>Single Random Draw (SRD)</h3>
+  <p>簡單的隨機選擇：</p>
+  <pre><code class="language-text" is:raw>策略：
+1. 隨機打亂 UTXO 列表
+2. 依序添加直到足夠
+3. 產生找零
+
+用途：
+- 最後的備選方案
+- 簡單實現</code></pre>
+
+  <h3>Lowest Larger</h3>
+  <p>選擇最小的足夠 UTXO：</p>
+  <pre><code class="language-text" is:raw>策略：
+找到最小的 UTXO 使得 value >= target + fee
+
+優點：
+- 最簡單的實現
+- 保留大額 UTXO
+
+缺點：
+- 可能產生大量小額找零
+- 長期累積灰塵</code></pre>
+
+  <h2 id="bitcoin-core">Bitcoin Core 實作</h2>
+  <pre><code class="language-text" is:raw>選擇流程：
+
+1. 過濾候選 UTXO
+   - 移除未確認的（可選）
+   - 移除鎖定的
+   - 移除低於灰塵閾值的
+
+2. 嘗試 Branch and Bound
+   - 搜索精確匹配
+   - 考慮費率範圍
+
+3. 如果 BnB 失敗，嘗試 Knapsack
+   - 1000 次隨機迭代
+   - 選擇最佳組合
+
+4. 如果 Knapsack 失敗，使用 SRD
+
+5. 計算找零輸出（如需要）</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>UTXO 類型定義</h3>
+  <pre><code class="language-typescript" is:raw>interface UTXO {
+  txid: string;
+  vout: number;
+  value: number;        // satoshis
+  scriptPubKey: Buffer;
+  confirmations: number;
+  addressType: 'p2pkh' | 'p2sh' | 'p2wpkh' | 'p2wsh' | 'p2tr';
+}
+
+interface SelectionResult {
+  inputs: UTXO[];
+  fee: number;
+  change: number;
+  effectiveFeeRate: number;
+}
+
+// 輸入大小（vBytes）
+const INPUT_SIZES: Record&lt;string, number&gt; = {
+  p2pkh: 148,
+  p2sh: 91,      // P2SH-P2WPKH
+  p2wpkh: 68,
+  p2wsh: 104,    // 2-of-3 多簽
+  p2tr: 57.5,
+};
+
+// 輸出大小（vBytes）
+const OUTPUT_SIZES: Record&lt;string, number&gt; = {
+  p2pkh: 34,
+  p2sh: 32,
+  p2wpkh: 31,
+  p2wsh: 43,
+  p2tr: 43,
+};</code></pre>
+
+  <h3>費用計算</h3>
+  <pre><code class="language-typescript" is:raw>function calculateFee(
+  inputs: UTXO[],
+  outputs: number,
+  feeRate: number,  // sat/vB
+  changeType: string = 'p2wpkh'
+): { fee: number; vsize: number } {
+  // 基礎交易開銷
+  let vsize = 10.5;  // 版本 + locktime + 輸入/輸出計數
+
+  // 輸入大小
+  for (const input of inputs) {
+    vsize += INPUT_SIZES[input.addressType] || 68;
+  }
+
+  // 輸出大小（不含找零）
+  vsize += outputs * OUTPUT_SIZES.p2wpkh;
+
+  // 找零輸出
+  vsize += OUTPUT_SIZES[changeType];
+
+  const fee = Math.ceil(vsize * feeRate);
+
+  return { fee, vsize };
+}
+
+function effectiveValue(utxo: UTXO, feeRate: number): number {
+  const inputCost = (INPUT_SIZES[utxo.addressType] || 68) * feeRate;
+  return utxo.value - inputCost;
+}</code></pre>
+
+  <h3>Branch and Bound</h3>
+  <pre><code class="language-typescript" is:raw>interface BnBResult {
+  success: boolean;
+  selection?: UTXO[];
+}
+
+function branchAndBound(
+  utxos: UTXO[],
+  target: number,
+  feeRate: number,
+  costOfChange: number = 50  // 創建找零的額外成本
+): BnBResult {
+  // 按有效價值排序
+  const sorted = [...utxos]
+    .map((u) =&gt; ({ utxo: u, effective: effectiveValue(u, feeRate) }))
+    .filter((u) =&gt; u.effective &gt; 0)
+    .sort((a, b) =&gt; b.effective - a.effective);
+
+  const targetRange = {
+    min: target,
+    max: target + costOfChange,
+  };
+
+  let bestSelection: UTXO[] | undefined;
+  let bestWaste = Infinity;
+
+  function search(
+    index: number,
+    currentValue: number,
+    currentSelection: UTXO[]
+  ): void {
+    // 剪枝：如果當前值已超過最大目標太多
+    if (currentValue &gt; targetRange.max + sorted[sorted.length - 1]?.effective) {
+      return;
+    }
+
+    // 找到有效解
+    if (currentValue &gt;= targetRange.min &amp;&amp; currentValue &lt;= targetRange.max) {
+      const waste = currentValue - target;
+      if (waste &lt; bestWaste) {
+        bestWaste = waste;
+        bestSelection = [...currentSelection];
+      }
+      return;
+    }
+
+    // 超出搜索範圍
+    if (index &gt;= sorted.length) {
+      return;
+    }
+
+    // 剪枝：剩餘 UTXO 不足以達到目標
+    const remaining = sorted
+      .slice(index)
+      .reduce((sum, u) =&gt; sum + u.effective, 0);
+    if (currentValue + remaining &lt; targetRange.min) {
+      return;
+    }
+
+    // 包含當前 UTXO
+    search(
+      index + 1,
+      currentValue + sorted[index].effective,
+      [...currentSelection, sorted[index].utxo]
+    );
+
+    // 不包含當前 UTXO
+    search(index + 1, currentValue, currentSelection);
+  }
+
+  search(0, 0, []);
+
+  return bestSelection
+    ? { success: true, selection: bestSelection }
+    : { success: false };
+}</code></pre>
+
+  <h3>Knapsack 算法</h3>
+  <pre><code class="language-typescript" is:raw>function knapsackSelection(
+  utxos: UTXO[],
+  target: number,
+  feeRate: number,
+  iterations: number = 1000
+): UTXO[] {
+  let bestSelection: UTXO[] = [];
+  let bestExcess = Infinity;
+
+  for (let i = 0; i &lt; iterations; i++) {
+    // 隨機打亂
+    const shuffled = [...utxos].sort(() =&gt; Math.random() - 0.5);
+
+    const selection: UTXO[] = [];
+    let total = 0;
+
+    for (const utxo of shuffled) {
+      selection.push(utxo);
+      total += effectiveValue(utxo, feeRate);
+
+      if (total &gt;= target) {
+        const excess = total - target;
+        if (excess &lt; bestExcess) {
+          bestExcess = excess;
+          bestSelection = [...selection];
+        }
+        break;
+      }
+    }
+  }
+
+  return bestSelection;
+}</code></pre>
+
+  <h3>完整選擇器</h3>
+  <pre><code class="language-typescript" is:raw>interface CoinSelectionOptions {
+  target: number;           // 目標金額（satoshis）
+  feeRate: number;          // sat/vB
+  outputCount: number;      // 輸出數量
+  changeType?: string;      // 找零地址類型
+  minConfirmations?: number;
+}
+
+function selectCoins(
+  utxos: UTXO[],
+  options: CoinSelectionOptions
+): SelectionResult | null {
+  const {
+    target,
+    feeRate,
+    outputCount,
+    changeType = 'p2wpkh',
+    minConfirmations = 0,
+  } = options;
+
+  // 過濾 UTXO
+  const candidates = utxos.filter((u) =&gt; {
+    if (u.confirmations &lt; minConfirmations) return false;
+    if (effectiveValue(u, feeRate) &lt;= 0) return false;
+    return true;
+  });
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  // 計算基本費用（不含輸入）
+  const baseFee = (10.5 + outputCount * OUTPUT_SIZES.p2wpkh) * feeRate;
+
+  // 嘗試 Branch and Bound
+  const bnbResult = branchAndBound(
+    candidates,
+    target + baseFee,
+    feeRate
+  );
+
+  let selectedInputs: UTXO[];
+
+  if (bnbResult.success &amp;&amp; bnbResult.selection) {
+    selectedInputs = bnbResult.selection;
+  } else {
+    // 回退到 Knapsack
+    selectedInputs = knapsackSelection(
+      candidates,
+      target + baseFee,
+      feeRate
+    );
+  }
+
+  if (selectedInputs.length === 0) {
+    return null;
+  }
+
+  // 計算最終費用和找零
+  const totalInput = selectedInputs.reduce((sum, u) =&gt; sum + u.value, 0);
+  const { fee, vsize } = calculateFee(
+    selectedInputs,
+    outputCount,
+    feeRate,
+    changeType
+  );
+
+  const change = totalInput - target - fee;
+
+  // 檢查找零是否為灰塵
+  const dustThreshold = 546;
+  const finalChange = change &gt; dustThreshold ? change : 0;
+  const finalFee = fee + (change &gt; dustThreshold ? 0 : change);
+
+  return {
+    inputs: selectedInputs,
+    fee: finalFee,
+    change: finalChange,
+    effectiveFeeRate: finalFee / vsize,
+  };
+}</code></pre>
+
+  <h2 id="dust">灰塵處理</h2>
+  <pre><code class="language-text" is:raw>灰塵 (Dust) 定義:
+花費 UTXO 的成本 > UTXO 的價值
+
+灰塵閾值計算:
+dustThreshold = (inputSize + 34) × 3 × minRelayFee
+
+標準閾值:
+- P2PKH: 546 satoshis
+- P2WPKH: 294 satoshis
+- P2TR: 330 satoshis
+
+處理策略:
+1. 避免創建低於閾值的找零
+2. 將小額找零加入手續費
+3. 考慮未來合併灰塵的成本</code></pre>
+
+  <h2 id="privacy">隱私考量</h2>
+
+  <h3>輸入合併問題</h3>
+  <pre><code class="language-text" is:raw>問題:
+使用多個 UTXO 作為輸入會暴露它們屬於同一所有者
+
+緩解策略:
+1. 優先使用單個 UTXO
+2. 只合併來自同一地址的 UTXO
+3. 使用 CoinJoin</code></pre>
+
+  <h3>找零識別</h3>
+  <pre><code class="language-text" is:raw>分析者可以識別找零:
+- 找零通常是較小的輸出
+- 找零地址類型可能與輸入匹配
+
+緩解策略:
+1. 使用相同類型的地址
+2. 使用 Paynym/靜態支付碼
+3. 無找零交易（BnB）</code></pre>
+
+  <h2 id="batch">批次支付</h2>
+  <pre><code class="language-typescript" is:raw>// 批次支付可以顯著降低每筆交易的手續費
+function createBatchPayment(
+  recipients: Array&lt;{ address: string; amount: number }&gt;,
+  utxos: UTXO[],
+  feeRate: number
+): SelectionResult | null {
+  const totalAmount = recipients.reduce((sum, r) =&gt; sum + r.amount, 0);
+
+  return selectCoins(utxos, {
+    target: totalAmount,
+    feeRate,
+    outputCount: recipients.length,
+  });
+}
+
+// 範例：10 筆支付
+// 單獨交易: 10 × (10.5 + 68 + 31) vB = 1095 vB
+// 批次交易: 10.5 + 68 + (10 × 31) vB = 388.5 vB
+// 節省: 65%</code></pre>
+
+  <h2 id="rpc">RPC 命令</h2>
+  <pre><code class="language-bash" is:raw># 列出可用 UTXO
+bitcoin-cli listunspent
+
+# 手動選擇 UTXO
+bitcoin-cli createrawtransaction \
+  '[{"txid":"...", "vout":0}]' \
+  '[{"bc1q...": 0.001}]'
+
+# 自動選擇（使用錢包）
+bitcoin-cli walletcreatefundedpsbt \
+  '[]' \
+  '[{"bc1q...": 0.001}]'
+
+# 設置手續費策略
+bitcoin-cli settxfee 0.0001  # BTC/kB</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>優先使用 BnB</strong>：盡量避免產生找零</li>
+    <li><strong>定期整合 UTXO</strong>：在低手續費時期合併小額 UTXO</li>
+    <li><strong>使用批次支付</strong>：多筆支付合併為一筆交易</li>
+    <li><strong>考慮隱私</strong>：避免不必要的輸入合併</li>
+    <li><strong>監控 UTXO 健康</strong>：追蹤 UTXO 數量和金額分佈</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://murch.one/posts/coin-selection/" target="_blank" rel="noopener noreferrer">Coin Selection by Murch</a></li>
+    <li><a href="https://github.com/bitcoin/bitcoin/blob/master/src/wallet/coinselection.cpp" target="_blank" rel="noopener noreferrer">Bitcoin Core 源碼</a></li>
+    <li><a href="/tech/bitcoin-core/utxo">UTXO 模型</a></li>
+    <li><a href="/tech/bitcoin-core/mempool">Mempool</a></li>
+  </ul>
+</ArticleLayout>

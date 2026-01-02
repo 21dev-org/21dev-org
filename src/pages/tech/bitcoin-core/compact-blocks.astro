@@ -1,0 +1,429 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Compact Blocks"
+  description="BIP-152 緊湊區塊中繼：減少區塊傳播延遲和頻寬消耗"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Compact Blocks' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Test Networks', href: '/tech/bitcoin-core/test-networks' }}
+  nextPage={{ title: 'Address Types', href: '/tech/bitcoin-core/addresses' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Compact Blocks（BIP-152）是一種優化區塊傳播的協議。
+    由於節點的 mempool 中通常已經有區塊中的大部分交易，
+    因此只需傳送交易的短 ID，而非完整交易數據，大幅減少頻寬和延遲。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>效果：</strong>
+      傳統區塊傳播需要傳送約 1MB 數據，Compact Blocks 通常只需要 ~15KB，
+      降低了 98% 以上的頻寬消耗。
+    </p>
+  </div>
+
+  <h2 id="problem">解決的問題</h2>
+
+  <h3>傳統區塊傳播</h3>
+  <pre><code class="language-text" is:raw>傳統流程:
+1. 節點 A 挖到新區塊
+2. A 發送 inv 訊息給節點 B
+3. B 請求區塊 (getdata)
+4. A 發送完整區塊 (~1MB)
+5. B 驗證區塊
+
+問題:
+- 區塊中 99% 的交易 B 已經有了（在 mempool 中）
+- 重複傳送這些交易浪費頻寬
+- 傳播延遲影響挖礦公平性</code></pre>
+
+  <h3>Compact Blocks 解決方案</h3>
+  <pre><code class="language-text" is:raw>優化流程:
+1. 節點 A 挖到新區塊
+2. A 直接發送 cmpctblock 給 B
+3. cmpctblock 只包含:
+   - 區塊頭
+   - 交易短 ID 列表
+   - 預填充的 coinbase 交易
+4. B 用短 ID 從 mempool 重建區塊
+5. 如果缺少某些交易，請求完整數據</code></pre>
+
+  <h2 id="modes">兩種模式</h2>
+
+  <h3>Low Bandwidth Mode（低頻寬模式）</h3>
+  <pre><code class="language-text" is:raw>流程:
+1. A → B: inv (區塊公告)
+2. B → A: getdata(CMPCT_BLOCK)
+3. A → B: cmpctblock
+4. B 重建區塊
+
+特點:
+- 節點明確請求後才發送
+- 適合頻寬受限的節點
+- 預設模式</code></pre>
+
+  <h3>High Bandwidth Mode（高頻寬模式）</h3>
+  <pre><code class="language-text" is:raw>流程:
+1. A → B: cmpctblock (直接發送，無需請求)
+2. B 重建區塊
+
+特點:
+- 區塊一挖到就立即發送
+- 最低延遲
+- 可能收到重複的區塊
+- 最多向 3 個節點請求高頻寬模式</code></pre>
+
+  <h2 id="short-ids">短 ID 計算</h2>
+  <p>每個交易被壓縮為 6 字節的短 ID：</p>
+
+  <pre><code class="language-text" is:raw>計算步驟:
+1. 建立 SipHash 密鑰
+   key = SHA256(block_header || nonce)[:16]
+
+2. 計算交易短 ID
+   short_id = SipHash-2-4(key, txid)[:6]
+
+為什麼用 SipHash:
+- 快速計算
+- 足夠的抗碰撞性（6 bytes = 48 bits）
+- 使用區塊特定的密鑰防止預計算攻擊</code></pre>
+
+  <h2 id="message-types">訊息類型</h2>
+
+  <h3>sendcmpct</h3>
+  <pre><code class="language-text" is:raw>宣告支援 Compact Blocks:
+
+sendcmpct {
+  announce: bool,    // 是否請求高頻寬模式
+  version: uint64    // 版本號 (1 或 2)
+}
+
+版本:
+- 1: 傳統交易 ID
+- 2: 使用 SegWit wtxid</code></pre>
+
+  <h3>cmpctblock</h3>
+  <pre><code class="language-text" is:raw>緊湊區塊:
+
+cmpctblock {
+  header: BlockHeader,      // 80 bytes
+  nonce: uint64,            // SipHash 密鑰的一部分
+  short_ids: ShortId[],     // 6 bytes × 交易數
+  prefilled_txs: PrefilledTx[]  // 預填充交易
+}
+
+PrefilledTx {
+  index: varint,    // 交易在區塊中的位置
+  tx: Transaction   // 完整交易
+}
+
+通常只預填充 coinbase 交易</code></pre>
+
+  <h3>getblocktxn</h3>
+  <pre><code class="language-text" is:raw>請求缺失的交易:
+
+getblocktxn {
+  block_hash: hash,
+  indexes: varint[]  // 缺失交易的索引
+}</code></pre>
+
+  <h3>blocktxn</h3>
+  <pre><code class="language-text" is:raw>回應缺失的交易:
+
+blocktxn {
+  block_hash: hash,
+  transactions: Transaction[]
+}</code></pre>
+
+  <h2 id="reconstruction">區塊重建</h2>
+  <pre><code class="language-text" is:raw>重建流程:
+
+1. 收到 cmpctblock
+2. 驗證區塊頭
+3. 計算 SipHash 密鑰
+
+4. 對於每個 short_id:
+   a. 在 mempool 中搜索匹配的交易
+   b. 可能有多個候選（碰撞）
+
+5. 處理預填充交易
+   - 將 coinbase 放在正確位置
+
+6. 嘗試重建區塊
+   a. 如果所有交易都找到且無碰撞 → 成功
+   b. 如果有缺失 → 發送 getblocktxn
+   c. 如果有碰撞 → 請求完整區塊
+
+7. 驗證 Merkle root 匹配
+
+8. 完整驗證區塊</code></pre>
+
+  <h2 id="collision">碰撞處理</h2>
+  <p>當多個交易有相同的短 ID 時：</p>
+
+  <pre><code class="language-text" is:raw>碰撞概率:
+- 6 bytes = 48 bits
+- 區塊中約 2000 筆交易
+- mempool 約 50000 筆交易
+- 碰撞概率 ≈ 0.1%
+
+處理策略:
+1. 如果只有一個 mempool 交易匹配 → 使用它
+2. 如果多個交易匹配 → 嘗試所有組合
+3. 如果 Merkle root 不匹配 → 回退到完整區塊</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>計算短 ID</h3>
+  <pre><code class="language-typescript" is:raw>import { siphash } from 'siphash';
+import * as crypto from 'crypto';
+
+interface CompactBlockHeader {
+  blockHeader: Buffer;  // 80 bytes
+  nonce: bigint;
+}
+
+function computeSipHashKey(header: CompactBlockHeader): Buffer {
+  const data = Buffer.concat([
+    header.blockHeader,
+    Buffer.from(header.nonce.toString(16).padStart(16, '0'), 'hex'),
+  ]);
+
+  const hash = crypto.createHash('sha256').update(data).digest();
+  return hash.slice(0, 16);  // 128-bit key
+}
+
+function computeShortId(key: Buffer, txid: Buffer): Buffer {
+  // SipHash-2-4
+  const k0 = key.readBigUInt64LE(0);
+  const k1 = key.readBigUInt64LE(8);
+
+  const hash = siphash24(k0, k1, txid);
+
+  // 取前 6 bytes
+  const shortId = Buffer.alloc(6);
+  shortId.writeBigUInt64LE(hash, 0);
+  return shortId.slice(0, 6);
+}
+
+// 簡化的 SipHash-2-4 實作
+function siphash24(k0: bigint, k1: bigint, data: Buffer): bigint {
+  // 實際實作需要完整的 SipHash 算法
+  // 這裡省略細節
+  return 0n;
+}</code></pre>
+
+  <h3>區塊重建</h3>
+  <pre><code class="language-typescript" is:raw>interface CompactBlock {
+  header: Buffer;
+  nonce: bigint;
+  shortIds: Buffer[];
+  prefilledTxs: Array&lt;{ index: number; tx: Buffer }&gt;;
+}
+
+interface Mempool {
+  getTxByShortId(shortId: Buffer): Buffer | null;
+  getTxById(txid: string): Buffer | null;
+}
+
+interface ReconstructionResult {
+  success: boolean;
+  block?: Buffer;
+  missingIndexes?: number[];
+}
+
+function reconstructBlock(
+  compact: CompactBlock,
+  mempool: Mempool
+): ReconstructionResult {
+  const sipKey = computeSipHashKey({
+    blockHeader: compact.header,
+    nonce: compact.nonce,
+  });
+
+  const txs: (Buffer | null)[] = new Array(
+    compact.shortIds.length + compact.prefilledTxs.length
+  ).fill(null);
+
+  // 填入預填充交易
+  for (const prefilled of compact.prefilledTxs) {
+    txs[prefilled.index] = prefilled.tx;
+  }
+
+  // 從 mempool 匹配交易
+  const missingIndexes: number[] = [];
+  let shortIdIndex = 0;
+
+  for (let i = 0; i &lt; txs.length; i++) {
+    if (txs[i] !== null) continue;  // 已預填充
+
+    const shortId = compact.shortIds[shortIdIndex++];
+    const tx = mempool.getTxByShortId(shortId);
+
+    if (tx) {
+      txs[i] = tx;
+    } else {
+      missingIndexes.push(i);
+    }
+  }
+
+  if (missingIndexes.length &gt; 0) {
+    return { success: false, missingIndexes };
+  }
+
+  // 構建完整區塊
+  const block = buildBlock(compact.header, txs as Buffer[]);
+
+  // 驗證 Merkle root
+  if (!verifyMerkleRoot(compact.header, txs as Buffer[])) {
+    return { success: false };
+  }
+
+  return { success: true, block };
+}
+
+function buildBlock(header: Buffer, txs: Buffer[]): Buffer {
+  // 構建完整區塊
+  const txCount = Buffer.alloc(3);
+  // ... 序列化邏輯
+  return Buffer.concat([header, txCount, ...txs]);
+}
+
+function verifyMerkleRoot(header: Buffer, txs: Buffer[]): boolean {
+  const merkleRoot = header.slice(36, 68);
+  const computedRoot = computeMerkleRoot(txs);
+  return merkleRoot.equals(computedRoot);
+}
+
+function computeMerkleRoot(txs: Buffer[]): Buffer {
+  // 計算 Merkle root
+  // ... 實作略
+  return Buffer.alloc(32);
+}</code></pre>
+
+  <h3>Mempool 索引</h3>
+  <pre><code class="language-typescript" is:raw>class CompactBlockMempool {
+  private txs: Map&lt;string, Buffer&gt; = new Map();
+  private shortIdIndex: Map&lt;string, string[]&gt; = new Map();
+  private currentKey?: Buffer;
+
+  addTransaction(txid: string, tx: Buffer): void {
+    this.txs.set(txid, tx);
+    this.invalidateIndex();
+  }
+
+  removeTransaction(txid: string): void {
+    this.txs.delete(txid);
+    this.invalidateIndex();
+  }
+
+  private invalidateIndex(): void {
+    this.shortIdIndex.clear();
+    this.currentKey = undefined;
+  }
+
+  buildIndex(sipKey: Buffer): void {
+    if (this.currentKey?.equals(sipKey)) {
+      return;  // 索引仍然有效
+    }
+
+    this.shortIdIndex.clear();
+    this.currentKey = sipKey;
+
+    for (const [txid, _] of this.txs) {
+      const shortId = computeShortId(
+        sipKey,
+        Buffer.from(txid, 'hex')
+      ).toString('hex');
+
+      const existing = this.shortIdIndex.get(shortId) || [];
+      existing.push(txid);
+      this.shortIdIndex.set(shortId, existing);
+    }
+  }
+
+  findByShortId(shortId: Buffer): Buffer[] {
+    const key = shortId.toString('hex');
+    const txids = this.shortIdIndex.get(key) || [];
+    return txids
+      .map((txid) =&gt; this.txs.get(txid))
+      .filter((tx): tx is Buffer =&gt; tx !== undefined);
+  }
+}</code></pre>
+
+  <h2 id="performance">效能優化</h2>
+
+  <h3>預填充策略</h3>
+  <pre><code class="language-text" is:raw>預填充哪些交易:
+
+1. Coinbase (必須)
+   - 接收方 mempool 中不會有
+
+2. 低傳播交易
+   - 剛剛加入的交易
+   - mempool 中可能還沒有
+
+3. 非標準交易
+   - 可能被其他節點拒絕
+
+Bitcoin Core 預設:
+- 只預填充 coinbase
+- 保持最小化頻寬</code></pre>
+
+  <h3>高頻寬節點選擇</h3>
+  <pre><code class="language-text" is:raw>選擇標準:
+- 連接時間最長的節點
+- 區塊中繼最快的節點
+- 最多 3 個節點
+
+目的:
+- 確保快速收到新區塊
+- 避免依賴單一節點</code></pre>
+
+  <h2 id="statistics">統計數據</h2>
+  <pre><code class="language-bash" is:raw># 查看 Compact Block 統計
+bitcoin-cli getpeerinfo | jq '.[].bytesrecv_per_msg'
+
+# 區塊重建成功率
+# 通常 > 99% 不需要額外請求
+
+# 頻寬節省
+# 完整區塊: ~1,000,000 bytes
+# Compact Block: ~15,000 bytes
+# 節省: ~98.5%</code></pre>
+
+  <h2 id="config">配置選項</h2>
+  <pre><code class="language-text" is:raw># bitcoin.conf
+
+# 啟用 Compact Blocks（預設啟用）
+blockreconstructionextratxn=100
+
+# 保留的額外交易數量用於重建
+# 即使交易被移出 mempool 也保留一段時間</code></pre>
+
+  <h2 id="related">相關協議</h2>
+
+  <h3>Erlay (BIP-330)</h3>
+  <p>交易中繼優化，與 Compact Blocks 互補：</p>
+  <ul>
+    <li>Compact Blocks 優化區塊傳播</li>
+    <li>Erlay 優化交易傳播</li>
+    <li>兩者結合可大幅降低節點頻寬需求</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0152.md" target="_blank" rel="noopener noreferrer">BIP-152 Compact Block Relay</a></li>
+    <li><a href="https://bitcoincore.org/en/2016/06/07/compact-blocks-faq/" target="_blank" rel="noopener noreferrer">Compact Blocks FAQ</a></li>
+    <li><a href="/tech/bitcoin-core/p2p-protocol">P2P 協議概覽</a></li>
+    <li><a href="/tech/bitcoin-core/message-types">訊息類型</a></li>
+  </ul>
+</ArticleLayout>
