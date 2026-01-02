@@ -1,0 +1,93 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Route Hints 路由提示"
+  description="了解閃電網路發票中的路由提示，如何幫助付款人找到私有通道路徑。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Route Hints' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Private Channels', href: '/tech/lightning/private-channels' }}
+  nextPage={{ title: 'Invoice Encoding', href: '/tech/lightning/invoice-encoding' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是路由提示？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    路由提示是 BOLT 11 發票中包含的額外路由資訊，告訴付款人如何到達使用私有通道的接收者。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>私有通道必需：</strong>
+      如果接收者只有私有通道，發票必須包含路由提示。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`路由提示解決的問題：
+
+沒有路由提示：
+┌──────────────────────────────────────────────────────────────┐
+│ [Alice] ──> [Hub A] ──> [Hub B] ──> ???                      │
+│ Bob 只有私有通道，Alice 看不到 Bob                           │
+└──────────────────────────────────────────────────────────────┘
+
+有路由提示：
+┌──────────────────────────────────────────────────────────────┐
+│ 發票包含：{ pubkey: Hub B, scid: 私有通道, fee: ... }        │
+│ Alice 知道：找到 Hub B，使用私有通道到 Bob                   │
+│ [Alice] ──> [Hub A] ──> [Hub B] ──private──> [Bob] ✓         │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 11 格式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`每個 hop hint 包含：
+┌──────────────────────────────────────────────────────────────┐
+│ pubkey: 33 bytes（前一節點公鑰）                             │
+│ short_channel_id: 8 bytes                                    │
+│ fee_base_msat: 4 bytes                                       │
+│ fee_proportional_millionths: 4 bytes                         │
+│ cltv_expiry_delta: 2 bytes                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">BOLT 11 限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        路由提示會暴露私有通道資訊。BOLT 12 盲化路徑解決這問題。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">SCID Alias</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用通道別名而非真實 ID，提供一定程度的隱私保護。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/private-channels" class="text-yellow-600 dark:text-yellow-400 hover:underline">私有通道</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/blinded-paths" class="text-yellow-600 dark:text-yellow-400 hover:underline">盲化路徑</a>
+    </li>
+  </ul>
+</ArticleLayout>

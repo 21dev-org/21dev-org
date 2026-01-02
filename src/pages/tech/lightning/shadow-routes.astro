@@ -1,0 +1,88 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Shadow Routes 影子路由"
+  description="了解閃電網路的影子路由技術，如何通過添加額外跳數來增強支付隱私。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Shadow Routes' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Payment Probes', href: '/tech/lightning/payment-probes' }}
+  nextPage={{ title: 'Route Blinding', href: '/tech/lightning/route-blinding' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是影子路由？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    影子路由通過在 CLTV 和費用中添加額外的「虛擬跳數」，
+    使路由分析者更難判斷支付的真實目的地。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>被動隱私：</strong>
+      影子路由不需要接收者配合，發送者可以單方面實施。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`影子路由解決的問題：
+
+沒有影子路由：
+┌──────────────────────────────────────────────────────────────┐
+│ Alice ──> Bob ──> Carol ──> Dave（接收者）                   │
+│                                                              │
+│ Carol 看到 outgoing_cltv 接近 min_final                      │
+│ 可以推斷 Dave 就是最終接收者                                 │
+└──────────────────────────────────────────────────────────────┘
+
+有影子路由：
+┌──────────────────────────────────────────────────────────────┐
+│ 添加虛擬跳的 CLTV（如 +80 blocks）                           │
+│                                                              │
+│ Carol 看到 outgoing_cltv 還有很大餘量                        │
+│ 無法確定 Dave 是否是最終節點                                 │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">優點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        增加路由分析難度、保護接收者隱私、不增加實際跳數。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">缺點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        增加 CLTV 鎖定時間、可能觸發 max_cltv 限制。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>預設行為：</strong>
+      大多數現代錢包默認啟用影子路由。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/route-blinding" class="text-yellow-600 dark:text-yellow-400 hover:underline">Route Blinding</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/cltv-expiry" class="text-yellow-600 dark:text-yellow-400 hover:underline">CLTV Delta</a>
+    </li>
+  </ul>
+</ArticleLayout>

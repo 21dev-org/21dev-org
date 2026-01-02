@@ -1,0 +1,191 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Checkpoints"
+  description="深入了解 Bitcoin Core 的檢查點機制，用於加速初始區塊下載和防止長距離攻擊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Checkpoints' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'CoinStatsIndex', href: '/tech/bitcoin-core/coinstatsindex' }}
+  nextPage={{ title: 'AddrMan', href: '/tech/bitcoin-core/addrman' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Checkpoints？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Checkpoints（檢查點）是硬編碼在 Bitcoin Core 中的特定區塊哈希，用於加速初始區塊下載（IBD）
+      並提供額外的安全保護。節點會驗證這些已知的區塊哈希，確保正在同步的是正確的區塊鏈。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Checkpoints 的作用</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">加速同步</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 跳過 checkpoint 前的腳本驗證</li>
+            <li>• 減少 IBD 時的 CPU 使用</li>
+            <li>• 更快完成初始同步</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">安全保護</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 防止長距離重組攻擊</li>
+            <li>• 確保同步到正確的鏈</li>
+            <li>• 降低 eclipse 攻擊風險</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="hardcoded" class="text-2xl font-bold text-[var(--text-primary)]">硬編碼的 Checkpoints</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// chainparams.cpp 中的 checkpoints 示例
+static Checkpoints::MapCheckpoints mapCheckpoints = {
+    {  11111, uint256S("0x0000000069e244f73d78e8fd29...")},
+    {  33333, uint256S("0x000000002dd5588a74784eaa7a...")},
+    { 210000, uint256S("0x000000000000048b95347e8319...")},  // 第一次減半
+    { 420000, uint256S("0x000000000000000002cce8167...")},   // 第二次減半
+    { 630000, uint256S("0x000000000000000000024bead...")},   // 第三次減半
+    // ... 更多 checkpoints
+};</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">Checkpoints vs AssumeValid</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Checkpoints</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">AssumeValid</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">主要目的</td>
+              <td class="py-2">防止長距離重組</td>
+              <td class="py-2">加速腳本驗證</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">可覆蓋</td>
+              <td class="py-2 text-red-400">否</td>
+              <td class="py-2 text-green-400">是</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">驗證影響</td>
+              <td class="py-2">拒絕不符合的鏈</td>
+              <td class="py-2">跳過簽名驗證</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CheckpointVerifier {
+  private checkpoints: Map<number, string>;
+
+  // 驗證區塊是否符合 checkpoint
+  verifyBlock(block: Block): boolean {
+    const checkpoint = this.checkpoints.get(block.height);
+
+    if (checkpoint && block.hash !== checkpoint) {
+      console.error(`Checkpoint mismatch at height ${block.height}`);
+      return false;  // 拒絕這條鏈
+    }
+
+    return true;
+  }
+
+  // 檢查是否在 checkpoint 之前
+  isBeforeLastCheckpoint(height: number): boolean {
+    const lastHeight = Math.max(...this.checkpoints.keys());
+    return height < lastHeight;
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        現代 Bitcoin Core 主要依賴 AssumeValid 來加速同步，Checkpoints 的角色已減弱。
+        AssumeValid 更靈活，可被用戶覆蓋。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全考量</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>長距離攻擊防護：
+
+攻擊者嘗試：從創世區塊創建替代鏈
+
+     主鏈：  Genesis → ... → CP1 → ... → CP2 → ...
+                              ↑           ↑
+                         Checkpoint   Checkpoint
+
+     攻擊鏈：Genesis → ... → X → ...
+                              ↑
+                         不同的區塊 → 被拒絕！
+
+由於攻擊鏈在 checkpoint 處不匹配，會被拒絕</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">優點</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 防止歷史重寫攻擊</li>
+          <li>• 加速初始同步</li>
+          <li>• 確認歷史區塊的正確性</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">爭議</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 由開發者決定「正確」的鏈</li>
+          <li>• 違背去中心化原則</li>
+          <li>• 無法被用戶覆蓋</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">防護作用：</strong>防止長距離重組攻擊</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">硬編碼：</strong>無法通過配置禁用</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">角色減弱：</strong>現代版本更依賴 AssumeValid</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

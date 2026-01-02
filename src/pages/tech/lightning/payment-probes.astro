@@ -1,0 +1,121 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Payment Probes 支付探測"
+  description="了解閃電網路的支付探測技術，如何在實際支付前驗證路由可行性和通道流動性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Payment Probes' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Pathfinding', href: '/tech/lightning/pathfinding' }}
+  nextPage={{ title: 'Shadow Routes', href: '/tech/lightning/shadow-routes' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是支付探測？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    支付探測是發送「假」支付來測試路由可行性的技術。探測使用隨機的 payment_hash，
+    會在最終節點失敗，但可以驗證路由是否通暢、通道是否有足夠流動性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>免費探測：</strong>
+      探測不會實際轉移資金，因此不需要支付路由費用。
+      這使得在支付前驗證路由成為可能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">探測原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`探測工作流程：
+
+基本原理：
+┌──────────────────────────────────────────────────────────────┐
+│ 正常支付：                                                   │
+│ payment_hash = SHA256(preimage)                              │
+│ 接收者知道 preimage，可以結算                                │
+│                                                              │
+│ 探測：                                                       │
+│ payment_hash = random_32_bytes()                             │
+│ 沒有人知道 preimage，無法結算                                │
+│ → 必定在最終節點失敗                                         │
+└──────────────────────────────────────────────────────────────┘
+
+探測流程：
+┌──────────────────────────────────────────────────────────────┐
+│ 發送者           中繼1          中繼2          目標          │
+│    │               │              │              │           │
+│    │─── HTLC ─────>│─── HTLC ────>│─── HTLC ───>│           │
+│    │               │              │    [無法識別]│           │
+│    │<── FAIL ──────│<── FAIL ─────│<── FAIL ────│           │
+│    │                                                         │
+│    │ 錯誤：INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS              │
+│    │ 結論：路由可行！                                        │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤解讀</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`探測結果分析：
+
+成功到達目標：
+┌──────────────────────────────────────────────────────────────┐
+│ INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS                         │
+│ ├── 到達目標，payment_hash 未知                              │
+│ └── 結論：路由完全可行                                       │
+└──────────────────────────────────────────────────────────────┘
+
+中途失敗：
+┌──────────────────────────────────────────────────────────────┐
+│ TEMPORARY_CHANNEL_FAILURE → 通道暫時不可用                   │
+│ UNKNOWN_NEXT_PEER → 下一跳未知                               │
+│ CHANNEL_DISABLED → 通道已禁用                                │
+│ FEE_INSUFFICIENT → 費用過時                                  │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">優點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        免費驗證路由、提高成功率、支援智能路由選擇。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">缺點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        增加延遲、可能被濫用探測餘額、增加網路負擔。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>隱私影響：</strong>
+      惡意探測可以用來估計通道餘額，這是隱私威脅。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/pathfinding" class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑搜索</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/probing-privacy" class="text-yellow-600 dark:text-yellow-400 hover:underline">探測與隱私</a>
+    </li>
+  </ul>
+</ArticleLayout>

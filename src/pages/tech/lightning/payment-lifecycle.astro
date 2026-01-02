@@ -1,0 +1,92 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Payment Lifecycle 支付生命週期"
+  description="深入了解閃電網路支付的完整生命週期，從發票創建到支付完成的每個階段。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Payment Lifecycle' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'HTLC', href: '/tech/lightning/htlc' }}
+  nextPage={{ title: 'Failure Codes', href: '/tech/lightning/failure-codes' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付流程概覽</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電支付涉及多個階段：發票創建、路由發現、HTLC 轉發、preimage 揭露和結算。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>原子性：</strong>
+      閃電支付要麼完全成功，要麼完全失敗。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">完整流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`支付生命週期：
+
+1. 發票創建（接收者）：
+┌──────────────────────────────────────────────────────────────┐
+│ preimage = random(32)                                        │
+│ payment_hash = SHA256(preimage)                              │
+│ payment_secret = random(32)                                  │
+│ invoice = encode(hash, secret, amount, expiry)               │
+└──────────────────────────────────────────────────────────────┘
+
+2. 路由發現（發送者）：
+┌──────────────────────────────────────────────────────────────┐
+│ decode(invoice)                                              │
+│ paths = dijkstra(graph, source, destination, amount)         │
+│ best_path = select_best(paths)                               │
+└──────────────────────────────────────────────────────────────┘
+
+3. HTLC 轉發：
+┌──────────────────────────────────────────────────────────────┐
+│ Alice ─HTLC─> Bob ─HTLC─> Carol ─HTLC─> Dave                 │
+│ 每跳：update_add_htlc + commitment_signed                    │
+└──────────────────────────────────────────────────────────────┘
+
+4. 結算（Preimage 揭露）：
+┌──────────────────────────────────────────────────────────────┐
+│ Dave 驗證 hash/secret → 揭露 preimage                        │
+│ Dave → Carol → Bob → Alice：update_fulfill_htlc              │
+│ 支付完成！                                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">典型時間</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        成功支付通常在 1-5 秒內完成。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">失敗處理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        失敗會反向傳播加密錯誤，發送者重試其他路由。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/htlc" class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 詳解</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/failure-codes" class="text-yellow-600 dark:text-yellow-400 hover:underline">錯誤代碼</a>
+    </li>
+  </ul>
+</ArticleLayout>

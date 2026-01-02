@@ -1,0 +1,98 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Scoring 通道評分"
+  description="了解閃電網路路由算法中的通道評分機制，如何選擇最佳支付路徑。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Scoring' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Pathfinding', href: '/tech/lightning/pathfinding' }}
+  nextPage={{ title: 'Payment Probes', href: '/tech/lightning/payment-probes' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是通道評分？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    通道評分是路由算法用來評估通道和路徑優劣的機制。好的評分系統能提高支付成功率。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>動態學習：</strong>
+      現代評分系統根據成功/失敗歷史動態調整。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">評分因素</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`評分考量因素：
+
+靜態因素（從 Gossip）：
+┌──────────────────────────────────────────────────────────────┐
+│ • 費用（越低越好）                                           │
+│ • CLTV Delta（越小越好）                                     │
+│ • 通道容量                                                   │
+│ • 通道年齡                                                   │
+└──────────────────────────────────────────────────────────────┘
+
+動態因素（從歷史學習）：
+┌──────────────────────────────────────────────────────────────┐
+│ • 歷史成功率                                                 │
+│ • 最近失敗記錄                                               │
+│ • 觀察到的可用容量                                           │
+│ • 響應延遲                                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LND Mission Control</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`期望成本計算：
+
+expected_cost = (fees + time_lock_penalty)
+                / success_probability
+                + attempt_cost
+
+路徑成功機率 = P(hop1) × P(hop2) × ... × P(hopN)
+
+範例：4 跳，每跳 90%：
+P(路徑) = 0.9^4 = 65.6%`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">冷啟動問題</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        新節點沒有歷史數據，需要依賴先驗假設。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私權衡</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        評分數據會暴露支付模式。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/pathfinding" class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑搜索</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/payment-probes" class="text-yellow-600 dark:text-yellow-400 hover:underline">支付探測</a>
+    </li>
+  </ul>
+</ArticleLayout>

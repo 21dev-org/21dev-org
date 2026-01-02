@@ -1,0 +1,299 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="LevelDB"
+  description="深入了解 Bitcoin Core 使用的 LevelDB 鍵值資料庫，儲存區塊索引和 UTXO 集。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'LevelDB' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Block-Relay-Only', href: '/tech/bitcoin-core/block-relay-only' }}
+  nextPage={{ title: 'Orphan Transactions', href: '/tech/bitcoin-core/orphan-transactions' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 LevelDB？</h2>
+    <p class="text-[var(--text-secondary)]">
+      LevelDB 是 Google 開發的快速鍵值儲存庫，Bitcoin Core 用它來儲存區塊索引和 UTXO 集（chainstate）。
+      它使用 LSM-tree（Log-Structured Merge-tree）結構，針對寫入密集型工作負載優化。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Bitcoin Core 中的 LevelDB</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">blocks/index/</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 區塊頭索引</li>
+            <li>• 區塊在 blk*.dat 中的位置</li>
+            <li>• 區塊元數據</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">chainstate/</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• UTXO 集</li>
+            <li>• 當前最佳區塊哈希</li>
+            <li>• 數據庫版本</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="structure" class="text-2xl font-bold text-[var(--text-primary)]">數據結構</h2>
+
+    <h3 id="block-index" class="text-xl font-semibold text-[var(--text-primary)]">區塊索引格式</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// blocks/index 的鍵值格式
+
+// 區塊索引條目
+// Key: 'b' + block_hash (33 bytes)
+// Value: CDiskBlockIndex 序列化
+interface BlockIndexEntry {
+  version: number;
+  height: number;
+  status: number;        // 驗證狀態
+  nTx: number;           // 交易數量
+  nFile: number;         // blk*.dat 檔案編號
+  nDataPos: number;      // 區塊在檔案中的位置
+  nUndoPos: number;      // undo 數據位置
+  header: BlockHeader;   // 區塊頭
+}
+
+// 檔案資訊
+// Key: 'f' + file_number (5 bytes)
+// Value: 檔案統計資訊
+interface FileInfo {
+  blocks: number;        // 區塊數量
+  size: number;          // 檔案大小
+  undoSize: number;      // undo 檔案大小
+  heightFirst: number;   // 最低區塊高度
+  heightLast: number;    // 最高區塊高度
+  timeFirst: number;     // 最早時間戳
+  timeLast: number;      // 最晚時間戳
+}
+
+// 最後一個區塊檔案編號
+// Key: 'l' (1 byte)
+// Value: 最後的檔案編號
+
+// 重新索引標記
+// Key: 'R' (1 byte)
+// Value: 1 表示需要重新索引
+
+// 區塊標誌
+// Key: 'F' + flag_name
+// Value: 布林值</code></pre>
+    </div>
+
+    <h3 id="chainstate" class="text-xl font-semibold text-[var(--text-primary)]">Chainstate 格式</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// chainstate 的鍵值格式
+
+// UTXO 條目
+// Key: 'C' + txid (33 bytes)
+// Value: 壓縮的 UTXO 數據
+interface UTXOEntry {
+  // Varint 編碼的高度和 coinbase 標誌
+  // 最低位 = coinbase，其餘位 = height
+  heightAndCoinbase: number;
+
+  // 每個未花費輸出
+  outputs: Array<{
+    // Varint: 與上一個輸出的索引差
+    // 0 = 輸出 0，1 = 輸出 1，...
+    // 如果輸出已花費則跳過
+    index: number;
+
+    // 壓縮的金額（特殊編碼節省空間）
+    amount: CompressedAmount;
+
+    // 壓縮的腳本
+    script: CompressedScript;
+  }>;
+}
+
+// 最佳區塊哈希
+// Key: 'B' (1 byte)
+// Value: 32 字節區塊哈希
+
+// 數據庫版本
+// Key: 'D' + 'b' (2 bytes)
+// Value: 版本號
+
+// Obfuscation key
+// Key: 14 bytes (固定)
+// Value: XOR 混淆密鑰</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="lsm-tree" class="text-2xl font-bold text-[var(--text-primary)]">LSM-Tree 結構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>LevelDB LSM-Tree 結構：
+
+┌─────────────────────────────────────────────────────┐
+│                    MemTable                          │
+│            （記憶體中的寫入緩衝）                      │
+│                  ↓ 滿了後刷新                         │
+├─────────────────────────────────────────────────────┤
+│                 Immutable MemTable                   │
+│               （等待寫入磁碟）                         │
+│                  ↓ 寫入                              │
+├─────────────────────────────────────────────────────┤
+│  Level 0: SSTable SSTable SSTable ...               │
+│           （剛從 MemTable 刷新，可能重疊）             │
+│                  ↓ 合併                              │
+├─────────────────────────────────────────────────────┤
+│  Level 1: SSTable SSTable SSTable ...               │
+│           （已排序，不重疊）                           │
+│                  ↓ 合併                              │
+├─────────────────────────────────────────────────────┤
+│  Level 2: SSTable SSTable SSTable SSTable ...       │
+│                  ↓                                   │
+│  ...更多層級...                                      │
+└─────────────────────────────────────────────────────┘
+
+SSTable = Sorted String Table（已排序的字符串表）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">讀寫特性</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">操作</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">寫入</td>
+              <td class="py-2">O(1) - 先寫入 MemTable</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">讀取</td>
+              <td class="py-2">O(log N) - 可能需要查詢多個層級</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">範圍掃描</td>
+              <td class="py-2">高效 - 數據已排序</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">刪除</td>
+              <td class="py-2">寫入 tombstone 標記</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="obfuscation" class="text-2xl font-bold text-[var(--text-primary)]">數據混淆</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 使用 XOR 混淆來防止殺毒軟體誤報（區塊鏈數據可能包含看起來像惡意內容的模式）：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ObfuscatedDB {
+  private obfuscateKey: Buffer;
+
+  constructor() {
+    // 首次創建時生成隨機密鑰
+    // 或從數據庫讀取現有密鑰
+    this.obfuscateKey = this.getOrCreateKey();
+  }
+
+  write(key: Buffer, value: Buffer): void {
+    const obfuscated = this.xor(value, this.obfuscateKey);
+    this.db.put(key, obfuscated);
+  }
+
+  read(key: Buffer): Buffer {
+    const obfuscated = this.db.get(key);
+    return this.xor(obfuscated, this.obfuscateKey);
+  }
+
+  private xor(data: Buffer, key: Buffer): Buffer {
+    const result = Buffer.alloc(data.length);
+    for (let i = 0; i < data.length; i++) {
+      result[i] = data[i] ^ key[i % key.length];
+    }
+    return result;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="maintenance" class="text-2xl font-bold text-[var(--text-primary)]">維護與診斷</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 數據庫位置
+~/.bitcoin/blocks/index/    # 區塊索引
+~/.bitcoin/chainstate/      # UTXO 集
+
+# 檢查數據庫大小
+du -sh ~/.bitcoin/blocks/index/
+du -sh ~/.bitcoin/chainstate/
+
+# 常見錯誤處理
+# "Corruption: block checksum mismatch"
+# "LevelDB read failure"
+# → 通常需要 -reindex 或 -reindex-chainstate
+
+# 重建區塊索引
+bitcoind -reindex
+
+# 僅重建 chainstate
+bitcoind -reindex-chainstate
+
+# 增加 dbcache 可以減少 LevelDB I/O
+bitcoind -dbcache=4096</code></pre>
+    </div>
+
+    <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-red-400">警告：</strong>
+        不要直接修改 LevelDB 文件。數據庫損壞可能導致節點無法啟動。
+        如果懷疑數據庫損壞，使用 -reindex 重建。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">用途：</strong>儲存區塊索引和 UTXO 集</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">LSM-Tree：</strong>針對寫入密集型工作優化</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">混淆：</strong>XOR 加密防止殺毒軟體誤報</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">維護：</strong>損壞時使用 -reindex 重建</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

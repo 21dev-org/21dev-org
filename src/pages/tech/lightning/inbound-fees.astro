@@ -1,0 +1,93 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Inbound Fees 入站費用"
+  description="了解閃電網路的入站費用機制，包括負費用概念和流動性激勵。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Inbound Fees' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Fees', href: '/tech/lightning/fees' }}
+  nextPage={{ title: 'Rebalancing', href: '/tech/lightning/rebalancing' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是入站費用？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    入站費用是節點對從特定通道流入的支付收取的費用。
+    傳統上只有「出站費用」，入站費用可以是負值（折扣）來激勵特定方向的流量。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>實驗性功能：</strong>
+      入站費用在 LND 0.18+ 中實驗性支援。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">負費用的用途</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`負費用場景：
+
+流動性不平衡時：
+┌──────────────────────────────────────────────────────────────┐
+│ Alice ══════════════════════ Bob                             │
+│ [幾乎沒有本地餘額]          [大量本地餘額]                   │
+│                                                              │
+│ Bob 設定負入站費用：-100 ppm                                 │
+│ 從 Alice 進入的支付會「更便宜」                              │
+│ 激勵路由經過這個方向，幫助平衡流動性                         │
+└──────────────────────────────────────────────────────────────┘
+
+計算範例：
+┌──────────────────────────────────────────────────────────────┐
+│ 出站費用：1000 base + 500 ppm                                │
+│ 入站費用：-200 ppm                                           │
+│                                                              │
+│ 轉發 1,000,000 msat：                                        │
+│ outbound = 1000 + 500 = 1500 msat                            │
+│ inbound = -200 msat                                          │
+│ 總費用 = 1300 msat（vs 無折扣的 1500）                       │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">優點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        精細的流動性控制、自動平衡激勵、區分流量價值。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        總費用不能為負。需要路由軟體支援。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>採用現狀：</strong>
+      入站費用是較新功能，需要發送者和接收者的軟體都支援。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a href="/tech/lightning/fees" class="text-yellow-600 dark:text-yellow-400 hover:underline">費用與經濟</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/rebalancing" class="text-yellow-600 dark:text-yellow-400 hover:underline">通道再平衡</a>
+    </li>
+  </ul>
+</ArticleLayout>

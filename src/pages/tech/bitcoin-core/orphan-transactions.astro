@@ -1,0 +1,338 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Orphan Transactions"
+  description="深入了解 Bitcoin Core 如何處理孤立交易，即引用未知父交易的交易。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Orphan Transactions' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'LevelDB', href: '/tech/bitcoin-core/leveldb' }}
+  nextPage={{ title: 'Orphan Blocks', href: '/tech/bitcoin-core/orphan-blocks' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Orphan Transactions？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Orphan transactions（孤立交易）是指引用了未知輸入的交易。當節點收到一筆交易，
+      但其父交易（提供輸入的交易）尚未到達時，該交易會被暫時存放在孤立交易池中。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>孤立交易場景：
+
+正常順序：
+  TX_A (父) ──────→ TX_B (子)
+     先到達           後到達
+     ✓ 接受           ✓ 接受（父已知）
+
+亂序到達：
+  TX_B (子) ──────→ TX_A (父)
+     先到達           後到達
+     ? 孤立！         ✓ 接受
+     （父未知）        ↓
+                    TX_B 從孤立池移到 mempool</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="causes" class="text-2xl font-bold text-[var(--text-primary)]">產生原因</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">網路傳播順序</strong>
+            <p class="text-sm">子交易可能比父交易更早到達某些節點</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">CPFP（Child Pays For Parent）</strong>
+            <p class="text-sm">用戶發送子交易來加速父交易確認</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">Package Relay</strong>
+            <p class="text-sm">交易包中的依賴關係</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="handling" class="text-2xl font-bold text-[var(--text-primary)]">處理機制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface OrphanTx {
+  tx: Transaction;
+  fromPeer: number;        // 來源節點
+  timeExpire: number;      // 過期時間
+  missingInputs: string[]; // 缺失的父交易 ID
+}
+
+class OrphanPool {
+  private orphans: Map<string, OrphanTx> = new Map();
+  private byPrevOut: Map<string, Set<string>> = new Map();
+
+  // 限制
+  private readonly MAX_ORPHAN_TRANSACTIONS = 100;
+  private readonly ORPHAN_TX_EXPIRE_TIME = 20 * 60; // 20 分鐘
+
+  // 添加孤立交易
+  addOrphanTx(tx: Transaction, fromPeer: number): boolean {
+    const txid = tx.txid;
+
+    // 1. 檢查是否已存在
+    if (this.orphans.has(txid)) {
+      return false;
+    }
+
+    // 2. 檢查大小限制
+    if (tx.size > 100000) {  // 100KB 限制
+      return false;
+    }
+
+    // 3. 如果池滿了，隨機驅逐一個
+    if (this.orphans.size >= this.MAX_ORPHAN_TRANSACTIONS) {
+      this.evictRandom();
+    }
+
+    // 4. 添加到池中
+    const orphan: OrphanTx = {
+      tx,
+      fromPeer,
+      timeExpire: Date.now() + this.ORPHAN_TX_EXPIRE_TIME * 1000,
+      missingInputs: this.findMissingInputs(tx),
+    };
+
+    this.orphans.set(txid, orphan);
+
+    // 5. 建立按父交易查詢的索引
+    for (const input of tx.inputs) {
+      const prevOutKey = `${input.txid}:${input.vout}`;
+      if (!this.byPrevOut.has(prevOutKey)) {
+        this.byPrevOut.set(prevOutKey, new Set());
+      }
+      this.byPrevOut.get(prevOutKey)!.add(txid);
+    }
+
+    return true;
+  }
+
+  // 當父交易到達時處理孤立交易
+  onParentReceived(parentTxid: string): Transaction[] {
+    const resolved: Transaction[] = [];
+
+    // 找到所有等待這個父交易的孤立交易
+    for (const orphan of this.orphans.values()) {
+      if (orphan.missingInputs.includes(parentTxid)) {
+        // 移除已解決的依賴
+        orphan.missingInputs = orphan.missingInputs.filter(
+          id => id !== parentTxid
+        );
+
+        // 如果所有依賴都解決了
+        if (orphan.missingInputs.length === 0) {
+          resolved.push(orphan.tx);
+          this.removeOrphan(orphan.tx.txid);
+        }
+      }
+    }
+
+    return resolved;  // 返回可以處理的交易
+  }
+
+  // 定期清理過期的孤立交易
+  expire(): number {
+    const now = Date.now();
+    let removed = 0;
+
+    for (const [txid, orphan] of this.orphans) {
+      if (orphan.timeExpire < now) {
+        this.removeOrphan(txid);
+        removed++;
+      }
+    }
+
+    return removed;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="limits" class="text-2xl font-bold text-[var(--text-primary)]">限制與保護</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">孤立交易池限制</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">限制</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">值</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">目的</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最大數量</td>
+              <td class="py-2">100 筆</td>
+              <td class="py-2">防止記憶體耗盡</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">單筆大小</td>
+              <td class="py-2">100 KB</td>
+              <td class="py-2">防止大交易 DoS</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">過期時間</td>
+              <td class="py-2">20 分鐘</td>
+              <td class="py-2">清理無效的孤立交易</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">每個節點限制</td>
+              <td class="py-2">追蹤來源</td>
+              <td class="py-2">防止單節點濫用</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">DoS 防護</h4>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>攻擊者可能發送大量引用不存在父交易的孤立交易</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>隨機驅逐策略防止特定交易被保留</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>大小限制防止記憶體耗盡</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <span>過期機制自動清理</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="resolution" class="text-2xl font-bold text-[var(--text-primary)]">解決流程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class MempoolManager {
+  private mempool: Mempool;
+  private orphanPool: OrphanPool;
+
+  // 接收新交易
+  async processTransaction(tx: Transaction, fromPeer: number): Promise<void> {
+    // 1. 嘗試添加到 mempool
+    const result = await this.mempool.acceptTransaction(tx);
+
+    if (result.success) {
+      // 2. 成功！檢查是否有孤立交易在等待這個
+      const resolved = this.orphanPool.onParentReceived(tx.txid);
+
+      // 3. 遞迴處理解決的孤立交易
+      for (const orphanTx of resolved) {
+        await this.processTransaction(orphanTx, fromPeer);
+      }
+    } else if (result.error === 'missing-inputs') {
+      // 4. 缺少父交易，添加到孤立池
+      this.orphanPool.addOrphanTx(tx, fromPeer);
+
+      // 5. 可選：請求缺失的父交易
+      for (const input of tx.inputs) {
+        if (!this.mempool.hasTx(input.txid)) {
+          this.requestTx(fromPeer, input.txid);
+        }
+      }
+    }
+    // 其他錯誤：丟棄交易
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="vs-orphan-blocks" class="text-2xl font-bold text-[var(--text-primary)]">孤立交易 vs 孤立區塊</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">孤立交易</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">孤立區塊</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">缺失</td>
+              <td class="py-2">父交易</td>
+              <td class="py-2">父區塊</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">儲存位置</td>
+              <td class="py-2">記憶體</td>
+              <td class="py-2">記憶體</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最大數量</td>
+              <td class="py-2">100</td>
+              <td class="py-2">無硬限制</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">常見原因</td>
+              <td class="py-2">CPFP、網路延遲</td>
+              <td class="py-2">競爭區塊、同步</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">定義：</strong>引用未知父交易的交易</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">處理：</strong>暫存在孤立池，父交易到達後處理</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">限制：</strong>最多 100 筆，單筆最大 100KB</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">過期：</strong>20 分鐘後自動清理</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

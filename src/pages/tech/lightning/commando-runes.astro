@@ -1,0 +1,168 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Commando & Runes CLN 遠程控制"
+  description="了解 Core Lightning 的 Commando 插件和 Runes 認證系統，實現安全的遠程節點控制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Commando & Runes' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Macaroons', href: '/tech/lightning/macaroons' }}
+  nextPage={{ title: 'Node Operation', href: '/tech/lightning/node-operation' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Commando？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Commando 是 Core Lightning 的內建插件，允許通過閃電網路本身遠程控制節點。
+    結合 Runes 認證系統，提供安全的無服務器遠程訪問。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>無需額外連接：</strong>
+      Commando 使用閃電網路的洋蔥訊息傳輸命令，不需要開放額外端口或 VPN。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Runes 認證系統</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Runes vs Macaroons：
+
+概念類似：
+┌──────────────────────────────────────────────────────────────┐
+│ 兩者都是：                                                   │
+│ ├── 可委託的認證令牌                                         │
+│ ├── 支援添加限制（restrictions）                             │
+│ ├── 不能移除已有限制                                         │
+│ └── 密碼學驗證完整性                                         │
+│                                                              │
+│ Runes 特點：                                                 │
+│ ├── 專為 CLN 設計                                            │
+│ ├── 更簡潔的格式                                             │
+│ ├── 支援複雜的條件表達式                                     │
+│ └── 原生整合 Commando                                        │
+└──────────────────────────────────────────────────────────────┘
+
+Rune 結構：
+┌──────────────────────────────────────────────────────────────┐
+│ rune = base64(                                               │
+│   sha256(secret + restrictions) +                            │
+│   restrictions_string                                        │
+│ )                                                            │
+│                                                              │
+│ 限制範例：                                                   │
+│ method=listpeers       // 只允許 listpeers 命令              │
+│ method^list            // 允許所有 list* 命令                │
+│ time<1700000000        // 時間限制                           │
+│ rate=10                // 每分鐘最多 10 次                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 Commando</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Commando 操作：
+
+創建 Rune：
+┌──────────────────────────────────────────────────────────────┐
+│ # 創建無限制的 rune（危險！）                                │
+│ lightning-cli commando-rune                                  │
+│                                                              │
+│ # 創建只讀 rune                                              │
+│ lightning-cli commando-rune restrictions='["method^list"]'   │
+│                                                              │
+│ # 創建有時間限制的 rune                                      │
+│ lightning-cli commando-rune restrictions='["time<1700000000"]'
+└──────────────────────────────────────────────────────────────┘
+
+遠程執行命令：
+┌──────────────────────────────────────────────────────────────┐
+│ # 從另一個節點執行命令                                       │
+│ lightning-cli commando \\                                     │
+│   peer_id=<target_node_id> \\                                 │
+│   rune=<rune_string> \\                                       │
+│   method=listpeers                                           │
+│                                                              │
+│ # 使用 lnmessage（Python 庫）                                │
+│ from lnmessage import LNMessage                              │
+│ ln = LNMessage(node_id, rune)                                │
+│ result = ln.call("listpeers")                                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Rune 安全最佳實踐：
+
+最小權限：
+┌──────────────────────────────────────────────────────────────┐
+│ # 只允許特定命令                                             │
+│ restrictions='["method=getinfo|method=listfunds"]'           │
+│                                                              │
+│ # 限制參數                                                   │
+│ restrictions='["method=pay", "pmsatoshi<1000000"]'           │
+└──────────────────────────────────────────────────────────────┘
+
+時間和速率限制：
+┌──────────────────────────────────────────────────────────────┐
+│ # 24 小時後過期                                              │
+│ restrictions='["time<'$(( $(date +%s) + 86400 ))'"]'         │
+│                                                              │
+│ # 限制調用頻率                                               │
+│ restrictions='["rate=10"]'  // 每分鐘 10 次                  │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">優點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        無需開放端口、使用閃電網路加密、靈活的權限控制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">用途</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        移動錢包後端、監控工具、自動化腳本。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>Rune 保管：</strong>
+      Rune 是敏感的認證令牌，應像密碼一樣妥善保管。洩漏的 Rune 應立即撤銷。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://docs.corelightning.org/docs/commando"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">CLN Commando 文檔</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/macaroons" class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Macaroons</a>
+    </li>
+    <li>
+      • <a href="/tech/lightning/node-operation" class="text-yellow-600 dark:text-yellow-400 hover:underline">節點運營</a>
+    </li>
+  </ul>
+</ArticleLayout>
