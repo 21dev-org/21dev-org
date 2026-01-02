@@ -1,0 +1,417 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Data Directory"
+  description="深入了解 Bitcoin Core 的數據目錄結構，包括區塊、索引和錢包文件。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Data Directory' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'LevelDB', href: '/tech/bitcoin-core/leveldb' }}
+  nextPage={{ title: 'Block Files', href: '/tech/bitcoin-core/block-files' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">數據目錄概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 在數據目錄中存儲區塊鏈、索引、錢包和配置文件。
+      了解這些文件的結構對於節點管理、備份和故障排除至關重要。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">預設位置</h3>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw># Linux
+~/.bitcoin/
+
+# macOS
+~/Library/Application Support/Bitcoin/
+
+# Windows
+%APPDATA%\Bitcoin\
+
+# 自定義位置
+bitcoind -datadir=/path/to/data</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="structure" class="text-2xl font-bold text-[var(--text-primary)]">目錄結構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/
+├── bitcoin.conf          # 配置文件
+├── debug.log             # 日誌文件
+├── .cookie               # RPC 認證 cookie
+├── fee_estimates.dat     # 手續費估算數據
+├── peers.dat             # 已知節點地址
+├── banlist.json          # 封禁節點列表
+├── mempool.dat           # Mempool 持久化
+├── anchors.dat           # 錨定連接
+│
+├── blocks/               # 區塊數據
+│   ├── blk00000.dat     # 區塊文件（~128 MB）
+│   ├── blk00001.dat
+│   ├── ...
+│   ├── rev00000.dat     # Undo 數據
+│   ├── rev00001.dat
+│   └── index/           # 區塊索引（LevelDB）
+│       ├── CURRENT
+│       ├── LOCK
+│       ├── LOG
+│       ├── MANIFEST-*
+│       └── *.ldb
+│
+├── chainstate/           # UTXO 集（LevelDB）
+│   ├── CURRENT
+│   ├── LOCK
+│   ├── LOG
+│   ├── MANIFEST-*
+│   └── *.ldb
+│
+├── indexes/              # 可選索引
+│   ├── txindex/         # 交易索引
+│   ├── blockfilter/     # 區塊過濾器
+│   └── coinstats/       # UTXO 統計
+│
+└── wallets/              # 錢包目錄
+    ├── wallet.dat       # 舊格式錢包
+    └── mywallet/        # 描述符錢包
+        └── wallet.dat</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="blocks" class="text-2xl font-bold text-[var(--text-primary)]">區塊文件</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>blocks/ 目錄結構：
+
+blk*.dat - 原始區塊數據
+├── 每個文件最大 ~128 MB
+├── 包含完整的原始區塊
+├── 區塊按接收順序存儲（非高度順序）
+└── 當前約 600+ 個文件（~600 GB）
+
+rev*.dat - Undo 數據
+├── 對應每個 blk 文件
+├── 包含被花費的 UTXO 資訊
+└── 用於區塊鏈重組
+
+index/ - 區塊索引
+├── 使用 LevelDB 存儲
+├── 區塊哈希 → 文件位置映射
+├── 區塊高度 → 區塊哈希映射
+└── 區塊頭鏈信息</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊文件
+ls -lh ~/.bitcoin/blocks/blk*.dat | head -10
+ls -lh ~/.bitcoin/blocks/rev*.dat | head -10
+
+# 計算總大小
+du -sh ~/.bitcoin/blocks/
+
+# 查看最新區塊文件
+ls -lt ~/.bitcoin/blocks/blk*.dat | head -1</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="chainstate" class="text-2xl font-bold text-[var(--text-primary)]">Chainstate</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>chainstate/ - UTXO 集數據庫
+
+存儲內容：
+├── 所有未花費交易輸出（UTXO）
+├── 當前約 8000 萬個 UTXO
+├── 大小約 5-8 GB
+└── 使用 LevelDB 存儲
+
+鍵值對格式：
+├── 'C' + txid + vout → coin 數據
+│   ├── 高度（壓縮）
+│   ├── 是否 coinbase
+│   ├── 金額（壓縮）
+│   └── scriptPubKey（壓縮）
+│
+├── 'B' → 最佳區塊哈希
+└── 其他元數據</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">警告：</strong>
+        絕對不要手動修改 chainstate 目錄。如果損壞，需要使用 -reindex-chainstate 重建。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="wallets" class="text-2xl font-bold text-[var(--text-primary)]">錢包文件</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>錢包存儲位置：
+
+舊版（v0.20 前）：
+~/.bitcoin/wallet.dat
+
+新版描述符錢包：
+~/.bitcoin/wallets/錢包名稱/
+├── wallet.dat      # SQLite 數據庫
+└── database/       # BDB 文件（如適用）
+
+多錢包支持：
+~/.bitcoin/wallets/
+├── default/
+├── savings/
+├── trading/
+└── coldwallet/</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 列出錢包
+bitcoin-cli listwalletdir
+
+# 載入錢包
+bitcoin-cli loadwallet "mywallet"
+
+# 創建新錢包
+bitcoin-cli createwallet "newwallet" false false "" false true true
+#                                    disable_private_keys
+#                                          blank
+#                                               passphrase
+#                                                   avoid_reuse
+#                                                        descriptors
+#                                                             load_on_startup</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="config-files" class="text-2xl font-bold text-[var(--text-primary)]">配置文件</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 示例
+
+# 網路設置
+server=1
+listen=1
+maxconnections=125
+
+# RPC 設置
+rpcuser=myuser
+rpcpassword=mypassword
+rpcallowip=127.0.0.1
+
+# 索引
+txindex=1
+blockfilterindex=1
+
+# 性能
+dbcache=4096
+
+# 網路選擇
+#testnet=1
+#signet=1
+#regtest=1</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>其他重要文件：
+
+debug.log
+├── 運行時日誌
+├── 自動輪換（10 MB）
+└── 可用 -debuglogfile 自定義
+
+.cookie
+├── RPC 認證
+├── 格式：__cookie__:隨機值
+└── 每次啟動重新生成
+
+peers.dat
+├── 已知節點地址
+├── 二進制格式
+└── 包含上次連接時間
+
+banlist.json
+├── 封禁的節點
+└── JSON 格式（v22.0+）
+
+mempool.dat
+├── 關閉時保存 mempool
+├── 啟動時載入
+└── -persistmempool 控制</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="indexes" class="text-2xl font-bold text-[var(--text-primary)]">可選索引</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>indexes/ 目錄：
+
+txindex/（-txindex=1）
+├── 交易哈希 → 區塊位置
+├── 允許查詢任意交易
+└── 增加約 30 GB 存儲
+
+blockfilter/（-blockfilterindex=1）
+├── BIP-157/158 區塊過濾器
+├── 支持輕客戶端
+└── basic 類型約 3 GB
+
+coinstats/（-coinstatsindex=1）
+├── UTXO 集統計
+├── 支持 gettxoutsetinfo
+└── 約 2 GB</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看索引大小
+du -sh ~/.bitcoin/indexes/txindex/
+du -sh ~/.bitcoin/indexes/blockfilter/
+du -sh ~/.bitcoin/indexes/coinstats/
+
+# 檢查索引狀態
+bitcoin-cli getindexinfo</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="disk-space" class="text-2xl font-bold text-[var(--text-primary)]">磁盤空間</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">組件</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">大小（約）</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">必需</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">blocks/</td>
+              <td class="py-2">600+ GB</td>
+              <td class="py-2">是（可修剪）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">chainstate/</td>
+              <td class="py-2">5-8 GB</td>
+              <td class="py-2">是</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">txindex</td>
+              <td class="py-2">~30 GB</td>
+              <td class="py-2">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">blockfilterindex</td>
+              <td class="py-2">~3 GB</td>
+              <td class="py-2">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">coinstatsindex</td>
+              <td class="py-2">~2 GB</td>
+              <td class="py-2">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">修剪模式</td>
+              <td class="py-2">~10-15 GB</td>
+              <td class="py-2">替代方案</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="backup" class="text-2xl font-bold text-[var(--text-primary)]">備份策略</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 必須備份
+~/.bitcoin/wallets/          # 錢包文件！
+
+# 建議備份
+~/.bitcoin/bitcoin.conf      # 配置
+~/.bitcoin/peers.dat         # 節點列表
+
+# 不需要備份（可重建）
+~/.bitcoin/blocks/           # 可重新下載
+~/.bitcoin/chainstate/       # 可重建
+~/.bitcoin/indexes/          # 可重建
+
+# 安全備份錢包
+bitcoin-cli backupwallet "/path/to/backup/wallet.dat"
+
+# 導出描述符（推薦）
+bitcoin-cli listdescriptors true > descriptors_backup.json</code></pre>
+    </div>
+
+    <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-green-400">最佳實踐：</strong>
+        定期備份錢包文件，並將備份存儲在多個安全位置。描述符錢包建議同時備份描述符。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="networks" class="text-2xl font-bold text-[var(--text-primary)]">測試網路目錄</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>不同網路的數據目錄：
+
+主網（Mainnet）
+~/.bitcoin/
+
+測試網（Testnet3）
+~/.bitcoin/testnet3/
+
+Signet
+~/.bitcoin/signet/
+
+Regtest
+~/.bitcoin/regtest/
+
+每個網路目錄包含相同結構：
+├── blocks/
+├── chainstate/
+├── wallets/
+└── ...</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">blocks/：</strong>原始區塊和 undo 數據</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">chainstate/：</strong>UTXO 集數據庫</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">wallets/：</strong>錢包文件（必須備份）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>完整節點需要 600+ GB 空間</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

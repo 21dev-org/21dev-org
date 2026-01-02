@@ -1,0 +1,433 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="nSequence"
+  description="深入了解 Bitcoin 交易輸入的 nSequence 字段，其在 RBF、時間鎖和相對鎖定中的應用。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'nSequence' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Timelock', href: '/tech/bitcoin-core/timelock' }}
+  nextPage={{ title: 'Sighash Types', href: '/tech/bitcoin-core/sighash' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 nSequence？</h2>
+    <p class="text-[var(--text-secondary)]">
+      nSequence 是每個交易輸入的 32 位字段，最初設計用於交易替換，
+      後來被重新定義用於 RBF（Replace-By-Fee）信號和相對時間鎖（BIP-68）。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">nSequence 演進</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">時期</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">用途</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最初設計</td>
+              <td class="py-2">交易替換（已棄用）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">BIP-68（2016）</td>
+              <td class="py-2">相對時間鎖</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">BIP-125（2015）</td>
+              <td class="py-2">RBF 選擇性加入</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="structure" class="text-2xl font-bold text-[var(--text-primary)]">字段結構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>nSequence 32 位結構：
+
+┌─────────────────────────────────────────────────────────────┐
+│ Bit 31 │ Bit 22 │ Bits 21-16 │ Bits 15-0                   │
+│ Disable│ Type   │ Reserved   │ Value                       │
+│ Flag   │ Flag   │            │                             │
+└─────────────────────────────────────────────────────────────┘
+
+Bit 31（Disable Flag）:
+├── 1 = 禁用相對時間鎖（BIP-68 不適用）
+└── 0 = 啟用相對時間鎖
+
+Bit 22（Type Flag）:
+├── 1 = 以 512 秒為單位的時間鎖
+└── 0 = 以區塊數為單位
+
+Bits 15-0（Value）:
+├── 時間鎖值
+└── 最大 65535（區塊或 512 秒單位）
+
+特殊值：
+├── 0xFFFFFFFF (4294967295) = 禁用 RBF 和相對鎖
+├── 0xFFFFFFFE (4294967294) = 禁用相對鎖，啟用 RBF
+└── < 0xFFFFFFFE = 啟用 RBF</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rbf" class="text-2xl font-bold text-[var(--text-primary)]">RBF 信號</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF（Replace-By-Fee）信號規則：
+
+任何輸入的 nSequence < 0xFFFFFFFE 時：
+└── 交易被標記為可替換（BIP-125）
+
+常用值：
+├── 0xFFFFFFFD = 啟用 RBF，禁用相對鎖
+├── 0xFFFFFFFE = 禁用 RBF，禁用相對鎖
+└── 0xFFFFFFFF = 禁用 RBF，禁用相對鎖（最終）
+
+┌─────────────────────────────────────────────────────────────┐
+│ nSequence 值         │ RBF   │ 相對時間鎖                   │
+├─────────────────────────────────────────────────────────────┤
+│ 0xFFFFFFFF           │ 否    │ 否（禁用）                   │
+│ 0xFFFFFFFE           │ 否    │ 否（禁用）                   │
+│ 0xFFFFFFFD           │ 是    │ 否（禁用）                   │
+│ 0x00000000 - 0xEFFF  │ 是    │ 是（區塊）                   │
+│ 0x00400000 - 0x40EF  │ 是    │ 是（時間）                   │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建可替換交易
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc...", "vout": 0, "sequence": 4294967293}
+]' '[{"bc1q...": 0.5}]'
+
+# 4294967293 = 0xFFFFFFFD（啟用 RBF）
+
+# 使用 send 命令啟用 RBF
+bitcoin-cli send '[{"bc1q...": 0.5}]' null "unset" null '{"replaceable": true}'
+
+# 檢查交易是否可替換
+bitcoin-cli getmempoolentry "txid" | jq '.bip125-replaceable'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="relative-timelock" class="text-2xl font-bold text-[var(--text-primary)]">相對時間鎖</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>BIP-68 相對時間鎖：
+
+當 Bit 31 = 0 時，nSequence 定義相對鎖定：
+
+區塊高度鎖定（Bit 22 = 0）：
+├── 值 = 區塊數
+├── 最大 65535 區塊（約 455 天）
+└── 輸入必須等待 N 個區塊確認
+
+時間鎖定（Bit 22 = 1）：
+├── 值 = 512 秒單位數
+├── 最大 65535 × 512 秒（約 388 天）
+└── 輸入必須等待 N × 512 秒
+
+示例：
+├── 0x00000001 = 等待 1 個區塊
+├── 0x00000006 = 等待 6 個區塊
+├── 0x00400001 = 等待 512 秒
+├── 0x0040000C = 等待 6144 秒（~1.7 小時）
+└── 0x80000000 = 禁用（Bit 31 = 1）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 計算 nSequence 值
+
+# 區塊相對鎖定
+def block_sequence(blocks: int) -> int:
+    """區塊數相對鎖定"""
+    assert 0 < blocks <= 0xFFFF
+    return blocks
+
+# 時間相對鎖定
+def time_sequence(seconds: int) -> int:
+    """時間相對鎖定（512 秒為單位）"""
+    units = (seconds + 511) // 512  # 向上取整
+    assert 0 < units <= 0xFFFF
+    return (1 << 22) | units  # 設置 Bit 22
+
+# 示例
+print(hex(block_sequence(6)))        # 0x6 - 等待 6 區塊
+print(hex(time_sequence(3600)))      # 0x400007 - 等待約 1 小時
+
+# 禁用相對鎖定
+SEQUENCE_FINAL = 0xFFFFFFFF
+SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="csv" class="text-2xl font-bold text-[var(--text-primary)]">OP_CHECKSEQUENCEVERIFY</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>OP_CHECKSEQUENCEVERIFY (CSV) - BIP-112
+
+用途：在腳本中強制執行相對時間鎖
+
+工作原理：
+1. 從堆棧取值作為要求的 sequence
+2. 比較交易輸入的 nSequence
+3. 如果 nSequence 不滿足要求，驗證失敗
+
+示例腳本：
+┌─────────────────────────────────────────────────────────────┐
+│ <6> OP_CHECKSEQUENCEVERIFY OP_DROP <pubkey> OP_CHECKSIG    │
+│                                                             │
+│ 含義：必須等待 6 個區塊確認後才能花費                        │
+└─────────────────────────────────────────────────────────────┘
+
+比較規則：
+├── 類型必須匹配（都是區塊或都是時間）
+├── 實際 sequence >= 要求的 sequence
+└── 禁用標誌必須一致</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建帶 CSV 的腳本
+
+# P2WSH 腳本：10 區塊後可花費
+# OP_10 OP_CSV OP_DROP <pubkey> OP_CHECKSIG
+script="5ab27521$(pubkey)ac"
+
+# 使用 miniscript 表示
+# and_v(v:older(10),pk(key))
+
+# 在交易中設置 sequence
+bitcoin-cli createrawtransaction '[
+  {"txid": "...", "vout": 0, "sequence": 10}
+]' '[{"bc1q...": 0.5}]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="lightning" class="text-2xl font-bold text-[var(--text-primary)]">閃電網路應用</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路中的 nSequence 使用：
+
+1. HTLC 超時
+   ├── 使用 CSV 設置 HTLC 超時
+   ├── 防止過早取回資金
+   └── 給對方足夠時間提供原像
+
+2. 懲罰交易延遲
+   ├── to_local 輸出有 CSV 延遲
+   ├── 典型值：144 區塊（~1 天）
+   └── 給對方時間發現作弊並懲罰
+
+3. 承諾交易結構
+   ┌─────────────────────────────────────────────────────────┐
+   │ 本地輸出（to_local）：                                   │
+   │ <revocation_pubkey> OP_CHECKSIG                         │
+   │ OP_IFDUP OP_NOTIF                                       │
+   │   <delay> OP_CSV OP_DROP                                │
+   │   <local_delayed_pubkey> OP_CHECKSIG                    │
+   │ OP_ENDIF                                                │
+   └─────────────────────────────────────────────────────────┘
+
+4. 錨點輸出
+   ├── 使用 1 區塊 CSV
+   └── 防止第三方搶占</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="examples" class="text-2xl font-bold text-[var(--text-primary)]">實用範例</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 範例 1：創建 RBF 可替換交易
+
+# 使用低 sequence 值
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc...", "vout": 0, "sequence": 4294967293}
+]' '[{"bc1q...": 0.5}]'
+
+# 替換交易（提高手續費）
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc...", "vout": 0, "sequence": 4294967293}
+]' '[{"bc1q...": 0.499}]'  # 更低金額 = 更高手續費
+
+# 範例 2：創建相對時間鎖交易
+
+# 等待 6 個區塊
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc...", "vout": 0, "sequence": 6}
+]' '[{"bc1q...": 0.5}]'
+
+# 等待 1 小時（7 × 512 秒）
+bitcoin-cli createrawtransaction '[
+  {"txid": "abc...", "vout": 0, "sequence": 4194311}
+]' '[{"bc1q...": 0.5}]'
+# 4194311 = 0x400007 = (1 << 22) | 7</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 解析 nSequence 值
+
+def parse_sequence(seq: int) -> dict:
+    """解析 nSequence 字段"""
+    DISABLE_FLAG = 1 << 31
+    TYPE_FLAG = 1 << 22
+    VALUE_MASK = 0xFFFF
+
+    if seq >= 0xFFFFFFFE:
+        return {
+            "rbf": seq < 0xFFFFFFFF,
+            "relative_lock": False,
+            "final": seq == 0xFFFFFFFF
+        }
+
+    disabled = bool(seq & DISABLE_FLAG)
+    if disabled:
+        return {
+            "rbf": True,
+            "relative_lock": False
+        }
+
+    is_time = bool(seq & TYPE_FLAG)
+    value = seq & VALUE_MASK
+
+    return {
+        "rbf": True,
+        "relative_lock": True,
+        "type": "time" if is_time else "blocks",
+        "value": value,
+        "seconds": value * 512 if is_time else None,
+        "blocks": value if not is_time else None
+    }
+
+# 示例
+print(parse_sequence(0xFFFFFFFF))  # final, no RBF
+print(parse_sequence(0xFFFFFFFD))  # RBF enabled
+print(parse_sequence(6))           # 6 blocks relative lock
+print(parse_sequence(0x400007))    # ~1 hour time lock</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="nlocktime" class="text-2xl font-bold text-[var(--text-primary)]">與 nLockTime 的關係</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>nSequence vs nLockTime：
+
+nLockTime（交易級別）：
+├── 絕對時間鎖
+├── 區塊高度或 Unix 時間戳
+├── 需要所有輸入的 nSequence < 0xFFFFFFFF
+└── 使用 OP_CHECKLOCKTIMEVERIFY 腳本驗證
+
+nSequence（輸入級別）：
+├── 相對時間鎖
+├── 相對於 UTXO 確認的時間
+├── 每個輸入可以不同
+└── 使用 OP_CHECKSEQUENCEVERIFY 腳本驗證
+
+組合使用：
+┌─────────────────────────────────────────────────────────────┐
+│ 場景：2024年後 + 確認後 1 週才能花費                         │
+│                                                             │
+│ nLockTime: 1704067200（2024-01-01 的 Unix 時間戳）          │
+│ nSequence: 1008（約 1 週的區塊數）                           │
+│                                                             │
+│ 腳本：                                                      │
+│ <1704067200> OP_CLTV OP_DROP                                │
+│ <1008> OP_CSV OP_DROP                                       │
+│ <pubkey> OP_CHECKSIG                                        │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="common-values" class="text-2xl font-bold text-[var(--text-primary)]">常用值參考</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">nSequence</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">十六進制</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">含義</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">4294967295</td>
+              <td class="py-2 font-mono">0xFFFFFFFF</td>
+              <td class="py-2">最終（無 RBF，無相對鎖）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">4294967294</td>
+              <td class="py-2 font-mono">0xFFFFFFFE</td>
+              <td class="py-2">無 RBF，無相對鎖，啟用 nLockTime</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">4294967293</td>
+              <td class="py-2 font-mono">0xFFFFFFFD</td>
+              <td class="py-2">啟用 RBF，無相對鎖</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">1</td>
+              <td class="py-2 font-mono">0x00000001</td>
+              <td class="py-2">相對鎖：1 區塊</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">144</td>
+              <td class="py-2 font-mono">0x00000090</td>
+              <td class="py-2">相對鎖：~1 天</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2 font-mono">4194305</td>
+              <td class="py-2 font-mono">0x00400001</td>
+              <td class="py-2">相對鎖：512 秒</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">RBF 信號：</strong>nSequence &lt; 0xFFFFFFFE 啟用替換</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">相對鎖：</strong>BIP-68 定義基於區塊或時間的鎖定</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">CSV：</strong>OP_CHECKSEQUENCEVERIFY 腳本驗證</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>與 nLockTime 配合使用更強大</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

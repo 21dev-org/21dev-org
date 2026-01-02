@@ -1,0 +1,513 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="MuSig2"
+  description="深入了解 MuSig2 多簽協議，實現高效的 Schnorr 簽名聚合。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'MuSig2' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Schnorr Signatures', href: '/tech/bitcoin-core/schnorr' }}
+  nextPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 MuSig2？</h2>
+    <p class="text-[var(--text-secondary)]">
+      MuSig2 是一種多方 Schnorr 簽名協議，允許多個參與者協作創建單一簽名，
+      看起來與普通單簽名完全相同。這提供了卓越的隱私性和效率，是比特幣 Taproot 的關鍵技術。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">MuSig 演進</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">版本</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">輪數</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">特點</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MuSig（原版）</td>
+              <td class="py-2">3 輪</td>
+              <td class="py-2">安全但交互多</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MuSig-DN</td>
+              <td class="py-2">2 輪</td>
+              <td class="py-2">確定性 nonce</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MuSig2</td>
+              <td class="py-2">2 輪</td>
+              <td class="py-2">安全、高效、實用</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="benefits" class="text-2xl font-bold text-[var(--text-primary)]">優勢</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>MuSig2 vs 傳統多簽：
+
+傳統 OP_CHECKMULTISIG（2-of-3）：
+├── 交易大小：~297 vbytes
+├── 鏈上可見多簽結構
+├── 暴露參與者數量
+└── 費用較高
+
+MuSig2（2-of-3）：
+├── 交易大小：~111 vbytes（與單簽相同）
+├── 鏈上無法區分
+├── 完全隱私
+└── 費用最低
+
+優勢總結：
+┌─────────────────────────────────────────────────────────────┐
+│ 1. 隱私：無法從鏈上區分單簽和多簽                            │
+│ 2. 效率：固定大小簽名，無論參與者數量                        │
+│ 3. 費用：與單簽相同的交易費用                                │
+│ 4. 可組合：與 Taproot 完美配合                               │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="protocol" class="text-2xl font-bold text-[var(--text-primary)]">協議流程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>MuSig2 簽名協議（2 輪）：
+
+參與者：Alice (A), Bob (B), Carol (C)
+目標：創建 n-of-n 聚合簽名
+
+═══════════════════════════════════════════════════════════════
+第 0 步：密鑰聚合（一次性）
+═══════════════════════════════════════════════════════════════
+
+每個參與者：
+├── 生成私鑰 sk_i，公鑰 P_i = sk_i * G
+└── 廣播公鑰 P_i
+
+聚合公鑰計算：
+├── L = H(P_1 || P_2 || ... || P_n)  # 密鑰列表哈希
+├── a_i = H(L || P_i)                 # 每個密鑰的係數
+└── P = Σ (a_i * P_i)                 # 聚合公鑰
+
+═══════════════════════════════════════════════════════════════
+第 1 輪：Nonce 交換
+═══════════════════════════════════════════════════════════════
+
+每個參與者生成兩個 nonce：
+├── r_i1, r_i2（隨機數）
+├── R_i1 = r_i1 * G
+├── R_i2 = r_i2 * G
+└── 廣播 (R_i1, R_i2)
+
+═══════════════════════════════════════════════════════════════
+第 2 輪：簽名
+═══════════════════════════════════════════════════════════════
+
+收到所有 nonce 後：
+├── R_1 = Σ R_i1
+├── R_2 = Σ R_i2
+├── b = H(R_1 || R_2 || P || m)      # 組合係數
+├── R = R_1 + b * R_2                 # 聚合 nonce 點
+├── e = H(R || P || m)                # 挑戰
+│
+├── 每個參與者計算：
+│   r_i = r_i1 + b * r_i2
+│   s_i = r_i + e * a_i * sk_i
+│   廣播 s_i
+│
+└── 聚合簽名：
+    s = Σ s_i
+    最終簽名：(R, s)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="key-aggregation" class="text-2xl font-bold text-[var(--text-primary)]">密鑰聚合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>import hashlib
+from typing import List
+
+# 假設使用 secp256k1 曲線
+# 這是簡化的示範代碼
+
+def tagged_hash(tag: str, data: bytes) -> bytes:
+    """BIP-340 tagged hash"""
+    tag_hash = hashlib.sha256(tag.encode()).digest()
+    return hashlib.sha256(tag_hash + tag_hash + data).digest()
+
+def aggregate_public_keys(pubkeys: List[bytes]) -> bytes:
+    """
+    聚合多個公鑰為單一公鑰
+
+    pubkeys: 排序後的公鑰列表（33 bytes 壓縮格式）
+    """
+    # 1. 計算密鑰列表哈希 L
+    L = tagged_hash("KeyAgg list", b"".join(sorted(pubkeys)))
+
+    # 2. 計算每個密鑰的係數
+    coefficients = []
+    for pk in pubkeys:
+        a_i = tagged_hash("KeyAgg coefficient", L + pk)
+        coefficients.append(int.from_bytes(a_i, 'big'))
+
+    # 3. 聚合公鑰 P = Σ (a_i * P_i)
+    # 實際實現需要橢圓曲線點乘和加法
+    aggregated = point_add_weighted(pubkeys, coefficients)
+
+    return aggregated
+
+# 使用示例
+alice_pk = bytes.fromhex("02...")
+bob_pk = bytes.fromhex("03...")
+carol_pk = bytes.fromhex("02...")
+
+# 聚合公鑰（看起來像普通公鑰）
+agg_pk = aggregate_public_keys([alice_pk, bob_pk, carol_pk])</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="signing" class="text-2xl font-bold text-[var(--text-primary)]">簽名過程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># MuSig2 簽名示範（簡化版）
+
+class MuSig2Signer:
+    def __init__(self, private_key: int, all_pubkeys: List[bytes]):
+        self.sk = private_key
+        self.pk = point_multiply(G, private_key)
+        self.all_pubkeys = sorted(all_pubkeys)
+
+        # 計算聚合係數
+        L = tagged_hash("KeyAgg list", b"".join(self.all_pubkeys))
+        self.coefficient = int.from_bytes(
+            tagged_hash("KeyAgg coefficient", L + self.pk),
+            'big'
+        )
+
+    def generate_nonces(self) -> tuple:
+        """第 1 輪：生成兩個 nonce"""
+        import secrets
+
+        self.r1 = secrets.randbelow(CURVE_ORDER)
+        self.r2 = secrets.randbelow(CURVE_ORDER)
+
+        R1 = point_multiply(G, self.r1)
+        R2 = point_multiply(G, self.r2)
+
+        return (R1, R2)
+
+    def create_partial_sig(self,
+                           all_nonces: List[tuple],
+                           message: bytes) -> int:
+        """第 2 輪：創建部分簽名"""
+
+        # 聚合 nonces
+        R1 = point_sum([n[0] for n in all_nonces])
+        R2 = point_sum([n[1] for n in all_nonces])
+
+        # 計算組合係數
+        P = aggregate_public_keys(self.all_pubkeys)
+        b = int.from_bytes(
+            tagged_hash("MuSig/noncecoef",
+                        point_serialize(R1) +
+                        point_serialize(R2) +
+                        P + message),
+            'big'
+        )
+
+        # 聚合 nonce 點
+        R = point_add(R1, point_multiply(R2, b))
+
+        # 計算挑戰
+        e = int.from_bytes(
+            tagged_hash("BIP0340/challenge",
+                        point_x(R) + P + message),
+            'big'
+        )
+
+        # 計算有效 nonce
+        r = (self.r1 + b * self.r2) % CURVE_ORDER
+
+        # 部分簽名
+        s_i = (r + e * self.coefficient * self.sk) % CURVE_ORDER
+
+        return s_i
+
+def aggregate_signatures(partial_sigs: List[int],
+                         R: bytes) -> tuple:
+    """聚合所有部分簽名"""
+    s = sum(partial_sigs) % CURVE_ORDER
+    return (R, s.to_bytes(32, 'big'))</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="taproot" class="text-2xl font-bold text-[var(--text-primary)]">與 Taproot 整合</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>MuSig2 + Taproot 組合：
+
+場景：2-of-3 多簽 + 備份腳本
+
+┌─────────────────────────────────────────────────────────────┐
+│                     Taproot 輸出                             │
+│                                                             │
+│  Internal Key: MuSig2(Alice, Bob, Carol)                    │
+│                                                             │
+│  Script Tree:                                               │
+│       [root]                                                │
+│       /    \                                                │
+│    2-of-3   Timelock                                        │
+│   (腳本)    (備份)                                          │
+└─────────────────────────────────────────────────────────────┘
+
+花費路徑：
+
+1. Key Path（最常用，最便宜）
+   ├── 三方協作使用 MuSig2
+   ├── 鏈上只有單一簽名
+   └── 無法區分是單簽還是多簽
+
+2. Script Path（備份）
+   ├── 使用傳統 2-of-3 腳本
+   └── 或時間鎖後的恢復腳本</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 Bitcoin Core 創建 MuSig2 地址（實驗性）
+# 需要 Bitcoin Core 26.0+ 和 musig 模組
+
+# 1. 創建描述符錢包
+bitcoin-cli createwallet "musig-test" false false "" false true
+
+# 2. 獲取各方公鑰
+alice_xpub="xpub..."
+bob_xpub="xpub..."
+carol_xpub="xpub..."
+
+# 3. 創建 MuSig 描述符
+# tr(musig(alice_pk, bob_pk, carol_pk))
+
+# 4. 導入描述符
+bitcoin-cli importdescriptors '[{
+  "desc": "tr(musig([fp1]xpub1/*,[fp2]xpub2/*,[fp3]xpub3/*))#checksum",
+  "timestamp": "now",
+  "active": true
+}]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全考慮</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>MuSig2 安全要點：
+
+1. Nonce 安全性
+   ├── 絕對不能重用 nonce
+   ├── 必須使用密碼學安全隨機數
+   └── 建議：存儲 nonce 直到簽名完成
+
+2. 為什麼需要兩個 nonce？
+   ├── 防止 Wagner 攻擊
+   ├── 允許預生成 nonce
+   └── 減少到 2 輪交互
+
+3. Nonce 預生成
+   ├── 可以提前生成 (R1, R2) 對
+   ├── 適用於冷存儲場景
+   └── 但每對只能使用一次！
+
+4. 密鑰取消攻擊防護
+   ├── 使用密鑰係數 a_i
+   ├── 防止惡意參與者操縱聚合密鑰
+   └── 所有參與者必須先提交公鑰
+
+⚠️ 關鍵警告：
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Nonce 重用 = 私鑰洩露                                     │
+│ 2. 必須驗證其他參與者的 nonce 承諾                           │
+│ 3. 不要在部分簽名後改變 nonce                                │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="threshold" class="text-2xl font-bold text-[var(--text-primary)]">門檻簽名</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>MuSig2 門檻變體（t-of-n）：
+
+標準 MuSig2 是 n-of-n，但可以擴展：
+
+方法 1：預簽名樹
+├── 為每種 t-of-n 組合預生成 MuSig 密鑰
+├── 使用 Taproot 腳本樹
+└── 缺點：組合數可能很大
+
+方法 2：FROST（Flexible Round-Optimized Schnorr Threshold）
+├── 真正的 t-of-n 門檻簽名
+├── 基於 Shamir 秘密分享
+└── 與 MuSig2 互補
+
+示例：2-of-3 使用預簽名樹
+┌─────────────────────────────────────────────────────────────┐
+│ Taproot Script Tree:                                        │
+│                                                             │
+│        [root]                                               │
+│       /      \                                              │
+│   MuSig(A,B)  [node]                                        │
+│              /      \                                       │
+│         MuSig(A,C)  MuSig(B,C)                              │
+│                                                             │
+│ 任意兩方可以協作簽名                                         │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementations" class="text-2xl font-bold text-[var(--text-primary)]">實現庫</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">庫</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">語言</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">狀態</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">secp256k1-zkp</td>
+              <td class="py-2">C</td>
+              <td class="py-2">生產就緒</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">libsecp256k1 (musig module)</td>
+              <td class="py-2">C</td>
+              <td class="py-2">實驗性</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">rust-secp256k1</td>
+              <td class="py-2">Rust</td>
+              <td class="py-2">開發中</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">bitcoinjs-lib</td>
+              <td class="py-2">JavaScript</td>
+              <td class="py-2">實驗性</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-c" is:raw>// 使用 libsecp256k1 musig 模組（C 語言示例）
+
+#include <secp256k1.h>
+#include <secp256k1_musig.h>
+
+// 1. 密鑰聚合
+secp256k1_musig_keyagg_cache keyagg_cache;
+secp256k1_pubkey agg_pk;
+secp256k1_musig_pubkey_agg(ctx, NULL, &agg_pk,
+                            &keyagg_cache, pubkeys, n_signers);
+
+// 2. 生成 nonces
+secp256k1_musig_secnonce secnonce;
+secp256k1_musig_pubnonce pubnonce;
+secp256k1_musig_nonce_gen(ctx, &secnonce, &pubnonce,
+                           session_id, seckey, &agg_pk,
+                           msg32, NULL, NULL);
+
+// 3. 聚合 nonces
+secp256k1_musig_aggnonce agg_nonce;
+secp256k1_musig_nonce_agg(ctx, &agg_nonce, pubnonces, n_signers);
+
+// 4. 創建部分簽名
+secp256k1_musig_partial_sig partial_sig;
+secp256k1_musig_session session;
+secp256k1_musig_nonce_process(ctx, &session, &agg_nonce,
+                               msg32, &keyagg_cache, NULL);
+secp256k1_musig_partial_sign(ctx, &partial_sig, &secnonce,
+                              &keypair, &keyagg_cache, &session);
+
+// 5. 聚合簽名
+unsigned char sig64[64];
+secp256k1_musig_partial_sig_agg(ctx, sig64, &session,
+                                 partial_sigs, n_signers);</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="use-cases" class="text-2xl font-bold text-[var(--text-primary)]">應用場景</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">適合場景</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 多簽錢包（企業、家庭）</li>
+          <li>• 閃電網路通道</li>
+          <li>• 交易所冷存儲</li>
+          <li>• 跨鏈原子交換</li>
+          <li>• 隱私增強多簽</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">挑戰</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 需要多輪交互</li>
+          <li>• Nonce 管理複雜</li>
+          <li>• 參與者必須同時在線</li>
+          <li>• 實現複雜度高</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">隱私：</strong>多簽看起來像單簽</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">效率：</strong>固定大小簽名，最低費用</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">2 輪：</strong>比原版 MuSig 更高效</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>需要謹慎的 nonce 管理</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

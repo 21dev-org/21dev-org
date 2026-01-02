@@ -1,0 +1,465 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="SPV"
+  description="深入了解簡化支付驗證（SPV）的原理、實現和安全性考慮。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'SPV' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Merkle Tree', href: '/tech/bitcoin-core/merkle-tree' }}
+  nextPage={{ title: 'Compact Block Filters', href: '/tech/bitcoin-core/compact-block-filters' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 SPV？</h2>
+    <p class="text-[var(--text-secondary)]">
+      簡化支付驗證（Simplified Payment Verification）是中本聰在比特幣白皮書中描述的輕量級驗證方法。
+      SPV 客戶端只需下載區塊頭（約 60 MB）而非完整區塊鏈（600+ GB），即可驗證交易是否被確認。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">全節點 vs SPV</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">全節點</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 下載所有區塊（600+ GB）</li>
+            <li>• 驗證所有交易和區塊</li>
+            <li>• 維護完整 UTXO 集</li>
+            <li>• 最高安全性</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">SPV 客戶端</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 只下載區塊頭（~60 MB）</li>
+            <li>• 驗證區塊頭和 Merkle 證明</li>
+            <li>• 依賴全節點提供交易數據</li>
+            <li>• 適合移動設備</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="how-it-works" class="text-2xl font-bold text-[var(--text-primary)]">工作原理</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>SPV 驗證流程：
+
+1. 同步區塊頭
+   ┌─────────────────────────────────────────────────────────────┐
+   │ 區塊頭（80 bytes）                                          │
+   │ ├── version (4 bytes)                                       │
+   │ ├── prev_block_hash (32 bytes)                              │
+   │ ├── merkle_root (32 bytes)    ← 用於驗證交易                 │
+   │ ├── timestamp (4 bytes)                                     │
+   │ ├── bits (4 bytes)                                          │
+   │ └── nonce (4 bytes)                                         │
+   └─────────────────────────────────────────────────────────────┘
+
+2. 驗證區塊頭鏈
+   ├── 檢查 PoW（hash < target）
+   ├── 驗證區塊連接（prev_hash）
+   └── 選擇最長有效鏈
+
+3. 請求交易的 Merkle 證明
+   ├── 從全節點獲取
+   └── 包含必要的兄弟節點哈希
+
+4. 驗證 Merkle 證明
+   ├── 計算路徑上的哈希
+   └── 比對區塊頭中的 merkle_root</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="merkle-proof" class="text-2xl font-bold text-[var(--text-primary)]">Merkle 證明</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Merkle 證明示例：
+
+假設區塊包含 8 筆交易，驗證 Tx2：
+
+              Root（在區塊頭中）
+             /              \
+          H01                H23
+         /    \            /    \
+       H0      H1        H2      H3
+       |       |         |       |
+      Tx0    Tx1       Tx2*    Tx3
+
+驗證 Tx2 需要的證明：
+├── Tx2 本身
+├── H3 = Hash(Tx3)        ← 兄弟節點
+├── H01 = Hash(H0 || H1)  ← 兄弟節點
+└── 計算：
+    H2 = Hash(Tx2)
+    H23 = Hash(H2 || H3)
+    Root = Hash(H01 || H23)
+    比對區塊頭的 merkle_root
+
+證明大小：O(log n)
+├── 8 筆交易 → 3 個哈希
+├── 1024 筆交易 → 10 個哈希
+└── 每個哈希 32 bytes</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>import hashlib
+
+def double_sha256(data: bytes) -> bytes:
+    """Bitcoin 使用的雙重 SHA256"""
+    return hashlib.sha256(hashlib.sha256(data).digest()).digest()
+
+def verify_merkle_proof(tx_hash: bytes, proof: list,
+                        merkle_root: bytes, index: int) -> bool:
+    """
+    驗證 Merkle 證明
+
+    tx_hash: 交易哈希
+    proof: 兄弟節點哈希列表
+    merkle_root: 區塊頭中的 merkle root
+    index: 交易在區塊中的位置
+    """
+    current = tx_hash
+
+    for sibling in proof:
+        if index % 2 == 0:
+            # 當前節點在左邊
+            current = double_sha256(current + sibling)
+        else:
+            # 當前節點在右邊
+            current = double_sha256(sibling + current)
+        index //= 2
+
+    return current == merkle_root
+
+# 使用示例
+is_valid = verify_merkle_proof(
+    tx_hash=bytes.fromhex("abc123..."),
+    proof=[bytes.fromhex("..."), bytes.fromhex("...")],
+    merkle_root=bytes.fromhex("merkle_root_from_header"),
+    index=2
+)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="bloom-filters" class="text-2xl font-bold text-[var(--text-primary)]">Bloom Filters（BIP-37）</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>BIP-37 Bloom Filter SPV（已棄用）：
+
+工作流程：
+1. SPV 客戶端創建 Bloom Filter
+   ├── 包含關注的地址/交易
+   └── 有一定的誤報率
+
+2. 發送 filterload 消息給節點
+   └── 節點存儲 filter
+
+3. 節點發送匹配的交易
+   ├── 通過 merkleblock 消息
+   └── 包含交易和 Merkle 證明
+
+問題：
+├── 隱私洩露（節點知道你關注什麼）
+├── DoS 風險（節點需要為每個客戶端過濾）
+└── 誤報可能被利用來追蹤
+
+狀態：
+├── Bitcoin Core 已禁用（-peerbloomfilters=0）
+└── 被 BIP-157/158 取代</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">警告：</strong>
+        BIP-37 Bloom Filters 存在嚴重隱私問題，已被棄用。請使用 BIP-157/158 Compact Block Filters。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="neutrino" class="text-2xl font-bold text-[var(--text-primary)]">Neutrino（BIP-157/158）</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>BIP-157/158 Compact Block Filters：
+
+改進的 SPV 方法：
+
+1. 服務器生成區塊過濾器
+   ├── 每個區塊一個固定過濾器
+   ├── 包含區塊中所有 scriptPubKeys
+   └── 使用 Golomb-Rice 編碼壓縮
+
+2. 客戶端下載過濾器
+   ├── 過濾器承諾在區塊頭中（可驗證）
+   └── 按需下載相關區塊
+
+3. 客戶端本地匹配
+   ├── 不向服務器透露興趣
+   └── 保護隱私
+
+優勢：
+├── 隱私：服務器不知道客戶端關注什麼
+├── 效率：服務器只需一次計算
+├── 可驗證：過濾器承諾可驗證
+└── 輕量：每個過濾器約 20 KB</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Bitcoin Core 啟用區塊過濾器服務
+# bitcoin.conf
+blockfilterindex=basic
+peerblockfilters=1
+
+# 獲取過濾器頭
+bitcoin-cli getblockfilter "blockhash" "basic"
+
+# 輸出
+{
+  "filter": "0187a5...",
+  "header": "7a3dfc..."
+}
+
+# 使用 Neutrino 客戶端（如 btcd 的 neutrino）
+# 客戶端會：
+# 1. 下載所有過濾器頭
+# 2. 下載需要的過濾器
+# 3. 本地匹配
+# 4. 下載匹配的完整區塊</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全性考慮</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>SPV 安全模型：
+
+假設：
+├── 最長鏈代表最多工作量
+├── 多數礦工是誠實的
+└── 至少連接到一個誠實節點
+
+可驗證：
+├── 區塊頭的 PoW
+├── 區塊連接正確
+├── 交易包含在區塊中（Merkle 證明）
+└── 交易有足夠確認數
+
+無法驗證：
+├── 交易本身是否有效
+├── 輸入是否未被花費
+├── 區塊中的其他交易
+└── 共識規則
+
+攻擊向量：
+1. 隱藏攻擊
+   └── 礦工不向 SPV 客戶端發送交易
+
+2. 雙花攻擊
+   └── 礦工創建沖突區塊
+
+3. 無效區塊攻擊
+   └── 區塊 PoW 有效但內容無效
+
+4. Eclipse 攻擊
+   └── 隔離客戶端只連接惡意節點</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">SPV 優勢</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 極低資源需求</li>
+          <li>• 快速同步</li>
+          <li>• 適合移動設備</li>
+          <li>• 基本交易驗證</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">SPV 風險</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 信任假設更多</li>
+          <li>• 無法驗證交易有效性</li>
+          <li>• 可能被欺騙</li>
+          <li>• 隱私較差（取決於實現）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementations" class="text-2xl font-bold text-[var(--text-primary)]">SPV 實現</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">錢包</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">方法</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">隱私</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Electrum</td>
+              <td class="py-2">Electrum Server</td>
+              <td class="py-2">服務器知道地址</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Bitcoin Wallet (Android)</td>
+              <td class="py-2">BIP-37 Bloom</td>
+              <td class="py-2">較差</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Breez</td>
+              <td class="py-2">Neutrino</td>
+              <td class="py-2">較好</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Phoenix</td>
+              <td class="py-2">Electrum</td>
+              <td class="py-2">服務器知道地址</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Wasabi</td>
+              <td class="py-2">BIP-157/158</td>
+              <td class="py-2">較好</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="electrum" class="text-2xl font-bold text-[var(--text-primary)]">Electrum 協議</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Electrum 架構：
+
+┌─────────────────────────────────────────────────────────────┐
+│  Electrum Client  ←→  Electrum Server  ←→  Bitcoin Core    │
+└─────────────────────────────────────────────────────────────┘
+
+特點：
+├── 服務器維護地址索引
+├── 客戶端通過 JSON-RPC 查詢
+├── 支持訂閱地址更新
+└── 快速交易廣播
+
+隱私考慮：
+├── 服務器知道你的所有地址
+├── 可以關聯地址到 IP
+└── 建議運行自己的服務器
+
+運行自己的 Electrum Server：
+├── electrs（Rust）
+├── ElectrumX（Python）
+└── Fulcrum（C++）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># Electrum 協議示例
+
+import socket
+import json
+
+def electrum_request(method, params=[]):
+    """發送 Electrum 請求"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(("electrum.blockstream.info", 50002))
+
+    # 使用 SSL 包裝
+    import ssl
+    sock = ssl.wrap_socket(sock)
+
+    request = {
+        "id": 1,
+        "method": method,
+        "params": params
+    }
+
+    sock.send((json.dumps(request) + "\n").encode())
+    response = sock.recv(4096).decode()
+    sock.close()
+
+    return json.loads(response)
+
+# 獲取地址餘額
+result = electrum_request(
+    "blockchain.scripthash.get_balance",
+    ["scripthash_of_address"]
+)
+
+# 獲取交易歷史
+history = electrum_request(
+    "blockchain.scripthash.get_history",
+    ["scripthash_of_address"]
+)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="recommendations" class="text-2xl font-bold text-[var(--text-primary)]">建議</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>SPV 使用建議：
+
+1. 小額交易
+   ├── SPV 足夠安全
+   └── 等待更多確認
+
+2. 大額交易
+   ├── 使用全節點驗證
+   └── 或等待 6+ 確認
+
+3. 隱私敏感
+   ├── 使用 BIP-157/158（Neutrino）
+   ├── 運行自己的後端服務器
+   └── 通過 Tor 連接
+
+4. 最佳實踐
+   ├── 連接多個節點
+   ├── 驗證區塊頭鏈
+   ├── 等待足夠確認
+   └── 考慮運行全節點</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">輕量級：</strong>只需區塊頭和 Merkle 證明</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Neutrino：</strong>BIP-157/158 改進隱私</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">適用：</strong>移動設備和資源受限環境</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">權衡：</strong>安全性低於全節點，大額交易建議全節點</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

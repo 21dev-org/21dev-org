@@ -1,0 +1,415 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Wallet Types"
+  description="深入了解 Bitcoin Core 的錢包類型，比較 Legacy 錢包和 Descriptor 錢包的特性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Wallet Types' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'HD Wallets', href: '/tech/bitcoin-core/hd-wallets' }}
+  nextPage={{ title: 'Watch-Only Wallets', href: '/tech/bitcoin-core/watchonly' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">錢包類型概覽</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 支持兩種錢包類型：Legacy 錢包（舊式）和 Descriptor 錢包（新式）。
+      從 v0.21.0 開始，Descriptor 錢包成為預設選項，提供更好的備份、恢復和多簽支持。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">錢包演進</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">版本</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">變更</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">v0.13.0</td>
+              <td class="py-2">引入 HD 錢包</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">v0.17.0</td>
+              <td class="py-2">引入描述符概念</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">v0.21.0</td>
+              <td class="py-2">Descriptor 錢包成為預設</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">v23.0</td>
+              <td class="py-2">Legacy 錢包創建被棄用</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">v26.0+</td>
+              <td class="py-2">計劃移除 Legacy 錢包支持</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="legacy" class="text-2xl font-bold text-[var(--text-primary)]">Legacy 錢包</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Legacy 錢包特性：
+
+存儲格式：
+├── Berkeley DB（BDB）格式
+├── 單一 wallet.dat 文件
+└── 複雜的內部結構
+
+密鑰管理：
+├── 預生成密鑰池（keypool）
+├── HD 密鑰派生（可選）
+├── 隱式腳本類型推導
+└── 手動導入密鑰/腳本
+
+地址類型支持：
+├── P2PKH（1...）
+├── P2SH-P2WPKH（3...）
+└── P2WPKH（bc1q...）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建 Legacy 錢包（已棄用）
+bitcoin-cli -named createwallet \
+  wallet_name="legacy-wallet" \
+  descriptors=false
+
+# 查看錢包類型
+bitcoin-cli getwalletinfo | jq '.format, .descriptors'
+
+# Legacy 錢包備份
+bitcoin-cli backupwallet "/path/to/backup.dat"
+
+# 導出私鑰（需要解鎖）
+bitcoin-cli dumpprivkey "地址"
+
+# 導入私鑰
+bitcoin-cli importprivkey "私鑰" "標籤" true</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        Legacy 錢包正在被逐步淘汰。新項目應使用 Descriptor 錢包。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="descriptor" class="text-2xl font-bold text-[var(--text-primary)]">Descriptor 錢包</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Descriptor 錢包特性：
+
+存儲格式：
+├── SQLite 數據庫
+├── 結構化存儲
+└── 更可靠的事務處理
+
+密鑰管理：
+├── 輸出描述符定義地址
+├── 明確的腳本類型
+├── 支持複雜腳本
+└── 更好的多簽支持
+
+地址類型支持：
+├── 所有 Legacy 類型
+├── P2TR（bc1p...）Taproot
+└── 任意複雜腳本</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建 Descriptor 錢包（預設）
+bitcoin-cli createwallet "my-wallet"
+
+# 或明確指定
+bitcoin-cli -named createwallet \
+  wallet_name="descriptor-wallet" \
+  descriptors=true
+
+# 查看錢包描述符
+bitcoin-cli listdescriptors
+
+# 輸出示例
+{
+  "wallet_name": "my-wallet",
+  "descriptors": [
+    {
+      "desc": "wpkh([fingerprint/84'/0'/0']xpub.../0/*)#checksum",
+      "timestamp": 1640000000,
+      "active": true,
+      "internal": false,
+      "range": [0, 999]
+    },
+    {
+      "desc": "wpkh([fingerprint/84'/0'/0']xpub.../1/*)#checksum",
+      "timestamp": 1640000000,
+      "active": true,
+      "internal": true,  # 找零地址
+      "range": [0, 999]
+    }
+  ]
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="comparison" class="text-2xl font-bold text-[var(--text-primary)]">比較</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Legacy</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Descriptor</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">存儲格式</td>
+              <td class="py-2">Berkeley DB</td>
+              <td class="py-2">SQLite</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Taproot 支持</td>
+              <td class="py-2">有限</td>
+              <td class="py-2">完整</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">備份方式</td>
+              <td class="py-2">文件複製</td>
+              <td class="py-2">描述符導出</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">恢復難度</td>
+              <td class="py-2">複雜</td>
+              <td class="py-2">簡單</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">多簽支持</td>
+              <td class="py-2">基本</td>
+              <td class="py-2">完整</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">腳本靈活性</td>
+              <td class="py-2">有限</td>
+              <td class="py-2">高</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">未來支持</td>
+              <td class="py-2">將移除</td>
+              <td class="py-2">長期</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="descriptor-backup" class="text-2xl font-bold text-[var(--text-primary)]">Descriptor 備份</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導出所有描述符（包含私鑰）
+bitcoin-cli listdescriptors true > wallet_backup.json
+
+# 輸出包含 xprv（私鑰）
+{
+  "descriptors": [
+    {
+      "desc": "wpkh([fp/84'/0'/0']xprv.../0/*)#checksum",
+      ...
+    }
+  ]
+}
+
+# 創建新錢包並導入
+bitcoin-cli createwallet "restored" true true "" false true
+bitcoin-cli -rpcwallet=restored importdescriptors '[
+  {
+    "desc": "wpkh([fp/84h/0h/0h]xprv.../0/*)#checksum",
+    "timestamp": "now",
+    "active": true,
+    "internal": false
+  },
+  {
+    "desc": "wpkh([fp/84h/0h/0h]xprv.../1/*)#checksum",
+    "timestamp": "now",
+    "active": true,
+    "internal": true
+  }
+]'</code></pre>
+    </div>
+
+    <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-green-400">優勢：</strong>
+        描述符備份是純文本，可以輕鬆驗證、複製和在任何支持描述符的錢包中恢復。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="migration" class="text-2xl font-bold text-[var(--text-primary)]">錢包遷移</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從 Legacy 遷移到 Descriptor（v24.0+）
+bitcoin-cli migratewallet
+
+# 遷移過程：
+# 1. 創建備份
+# 2. 轉換密鑰為描述符
+# 3. 創建新的 SQLite 錢包
+# 4. 遷移所有數據
+
+# 遷移結果
+{
+  "wallet_name": "migrated_wallet",
+  "backup_path": "/path/to/backup"
+}
+
+# 手動遷移步驟
+# 1. 備份原錢包
+bitcoin-cli -rpcwallet=legacy backupwallet "/backup/legacy.dat"
+
+# 2. 導出所有私鑰
+bitcoin-cli -rpcwallet=legacy dumpwallet "/backup/keys.txt"
+
+# 3. 創建新描述符錢包
+bitcoin-cli createwallet "new-wallet"
+
+# 4. 導入描述符
+bitcoin-cli -rpcwallet=new-wallet importdescriptors '[...]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="wallet-options" class="text-2xl font-bold text-[var(--text-primary)]">創建選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># createwallet 完整參數
+bitcoin-cli -named createwallet \
+  wallet_name="my-wallet" \         # 錢包名稱
+  disable_private_keys=false \      # 禁用私鑰（watch-only）
+  blank=false \                     # 空白錢包（無密鑰）
+  passphrase="" \                   # 加密密碼
+  avoid_reuse=false \               # 避免地址重用
+  descriptors=true \                # 使用描述符
+  load_on_startup=true \            # 啟動時載入
+  external_signer=""                # 外部簽名器
+
+# 常見組合
+
+# 標準熱錢包
+bitcoin-cli createwallet "hot-wallet"
+
+# 加密熱錢包
+bitcoin-cli -named createwallet wallet_name="encrypted" passphrase="secret"
+
+# Watch-only 錢包
+bitcoin-cli -named createwallet \
+  wallet_name="watch" \
+  disable_private_keys=true
+
+# 硬件錢包整合
+bitcoin-cli -named createwallet \
+  wallet_name="hww" \
+  disable_private_keys=true \
+  blank=true</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="descriptor-types" class="text-2xl font-bold text-[var(--text-primary)]">預設描述符</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Descriptor 錢包預設生成的描述符：
+
+BIP-86 (Taproot) - 預設
+├── tr([fp/86'/0'/0']xpub.../0/*) - 外部
+└── tr([fp/86'/0'/0']xpub.../1/*) - 內部
+
+BIP-84 (Native SegWit)
+├── wpkh([fp/84'/0'/0']xpub.../0/*) - 外部
+└── wpkh([fp/84'/0'/0']xpub.../1/*) - 內部
+
+BIP-49 (Nested SegWit)
+├── sh(wpkh([fp/49'/0'/0']xpub.../0/*)) - 外部
+└── sh(wpkh([fp/49'/0'/0']xpub.../1/*)) - 內部
+
+BIP-44 (Legacy)
+├── pkh([fp/44'/0'/0']xpub.../0/*) - 外部
+└── pkh([fp/44'/0'/0']xpub.../1/*) - 內部
+
+v24.0+ 預設只創建 Taproot 描述符
+較早版本創建多種類型</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 新錢包使用 Descriptor 類型</li>
+          <li>• 定期導出描述符備份</li>
+          <li>• 使用密碼加密錢包</li>
+          <li>• 遷移舊 Legacy 錢包</li>
+          <li>• 測試備份恢復流程</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">注意事項</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• Legacy 錢包將被棄用</li>
+          <li>• 遷移前務必備份</li>
+          <li>• 私鑰備份需安全存儲</li>
+          <li>• 確認備份包含所有描述符</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Descriptor：</strong>新標準，使用 SQLite 和描述符</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">更好備份：</strong>描述符可以完整描述錢包</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Taproot：</strong>完整支持 BIP-86</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">遷移：</strong>建議將 Legacy 錢包遷移到 Descriptor</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
