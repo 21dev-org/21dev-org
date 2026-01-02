@@ -114,7 +114,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h2 id="job-request">任務請求 (Kind 5xxx)</h2>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 5002,
   "content": "",
   "tags": [
@@ -173,7 +173,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h2 id="job-result">任務結果 (Kind 6xxx)</h2>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 6002,
   "pubkey": "<service-provider-pubkey>",
   "content": "你好，你好嗎？",
@@ -189,7 +189,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="job-feedback">任務回饋 (Kind 7000)</h2>
   <p>服務提供者用來更新任務狀態：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 7000,
   "content": "",
   "tags": [
@@ -285,7 +285,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>發布任務請求（客戶端）</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent } from 'nostr-tools';
 
 interface JobRequest {
   kind: number;
@@ -386,7 +386,7 @@ const imageJob = createJobRequest(
 );`}</code></pre>
 
   <h3>監聽任務結果</h3>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 
@@ -463,7 +463,7 @@ const sub = subscribeToJobResults(
 );`}</code></pre>
 
   <h3>處理任務（服務提供者）</h3>
-  <pre><code class="language-typescript">{`// 服務提供者：監聽任務請求
+  <pre><code class="language-typescript" is:raw>{`// 服務提供者：監聽任務請求
 function startDVMService(
   servicePrivateKey: Uint8Array,
   supportedKinds: number[],
@@ -551,7 +551,7 @@ startDVMService(
     可以將前一個任務的輸出作為下一個任務的輸入，實現複雜的工作流程：
   </p>
 
-  <pre><code class="language-typescript">{`// 範例：播客轉錄 → 摘要 → 翻譯
+  <pre><code class="language-typescript" is:raw>{`// 範例：播客轉錄 → 摘要 → 翻譯
 
 // 1. 語音轉文字
 const transcribeJob = createJobRequest(privateKey, {
@@ -582,7 +582,7 @@ const translateJob = createJobRequest(privateKey, {
   <h2 id="encryption">加密請求</h2>
   <p>敏感資料可以使用 NIP-04 加密：</p>
 
-  <pre><code class="language-typescript">{`import * as nip04 from 'nostr-tools/nip04';
+  <pre><code class="language-typescript" is:raw>{`import * as nip04 from 'nostr-tools/nip04';
 
 // 建立加密的任務請求
 async function createEncryptedJobRequest(
@@ -621,7 +621,7 @@ async function createEncryptedJobRequest(
   <h2 id="service-discovery">服務發現</h2>
   <p>服務提供者可以使用 NIP-89 發布能力：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 31990,
   "content": "{\"name\":\"AI 翻譯服務\",\"about\":\"支援 50+ 語言\"}",
   "tags": [
@@ -634,7 +634,7 @@ async function createEncryptedJobRequest(
 }`}</code></pre>
 
   <h2 id="cancellation">取消任務</h2>
-  <pre><code class="language-typescript">{`// 取消任務請求
+  <pre><code class="language-typescript" is:raw>{`// 取消任務請求
 function cancelJob(
   privateKey: Uint8Array,
   jobRequestId: string

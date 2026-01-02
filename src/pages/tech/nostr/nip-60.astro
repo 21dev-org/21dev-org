@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-60: Cashu Wallet"
   description="在 Nostr 上管理 Cashu ecash 錢包"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-60' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -88,7 +92,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <h3>加密內容結構</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "mints": [
     {
       "url": "https://mint.example.com",
@@ -121,7 +125,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <h3>加密內容（Cashu Token V4）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "mint": "https://mint.example.com",
   "proofs": [
     {
@@ -139,7 +143,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h3>加密內容</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "direction": "in",
   "amount": 100,
   "unit": "sat",
@@ -151,7 +155,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>錢包類別</h3>
-  <pre><code class="language-typescript">import { nip44 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { nip44 } from 'nostr-tools';
 import { CashuMint, CashuWallet, getEncodedToken } from '@cashu/cashu-ts';
 
 interface WalletState {
@@ -273,7 +277,7 @@ class NostrCashuWallet {
 }</code></pre>
 
   <h3>從 Nostr 載入錢包</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 async function loadWallet(
   pool: SimplePool,
@@ -327,7 +331,7 @@ async function loadWallet(
 }</code></pre>
 
   <h3>接收 Cashu 代幣</h3>
-  <pre><code class="language-typescript">import { getDecodedToken } from '@cashu/cashu-ts';
+  <pre><code class="language-typescript" is:raw>import { getDecodedToken } from '@cashu/cashu-ts';
 
 async function receiveToken(
   wallet: NostrCashuWallet,
@@ -375,7 +379,7 @@ async function receiveToken(
 }</code></pre>
 
   <h3>發送 Cashu 代幣</h3>
-  <pre><code class="language-typescript">async function sendToken(
+  <pre><code class="language-typescript" is:raw>async function sendToken(
   wallet: NostrCashuWallet,
   pool: SimplePool,
   relays: string[],
@@ -433,7 +437,7 @@ function selectProofs(proofs: Proof[], amount: number): Proof[] {
     total += proof.amount;
   }
 
-  if (total < amount) {
+  if (total &lt; amount) {
     throw new Error('Insufficient balance');
   }
 

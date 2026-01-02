@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-72: 審核社群"
   description="Nostr 審核社群定義，支援版主管理和貼文審核機制"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-72' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -48,7 +52,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     社群定義是一個可替換事件，包含社群的基本資訊、版主列表和中繼器設定。
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 34550,
   "tags": [
     ["d", "nostr-dev"],
@@ -119,7 +123,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     使用 NIP-22 格式的 kind 1111 事件發布社群貼文。貼文必須包含 <code>a</code> 標籤指向目標社群。
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "這是我在社群發布的第一篇貼文！",
   "tags": [
@@ -141,7 +145,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     但客戶端通常只會顯示由社群定義中指定的版主所批准的內容。
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 4550,
   "content": "{\"id\":\"...\",\"pubkey\":\"...\",\"content\":\"原始貼文內容...\",\"kind\":1111,...}",
   "tags": [
@@ -193,7 +197,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3>1. 逐版本批准 (Per-version)</h3>
   <p>只使用 <code>e</code> 標籤。每次作者更新內容都需要重新批准。</p>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "tags": [
     ["a", "34550:&lt;community-pubkey&gt;:community-id"],
     ["e", "&lt;specific-version-id&gt;"],
@@ -204,7 +208,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3>2. 全面授權 (Blanket authorization)</h3>
   <p>使用 <code>a</code> 標籤指向貼文。作者可以更新內容而無需額外批准。</p>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "tags": [
     ["a", "34550:&lt;community-pubkey&gt;:community-id"],
     ["a", "30023:&lt;author-pubkey&gt;:article-id"],
@@ -221,7 +225,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     社群支援使用 NIP-18 轉發（kind 6 或 kind 16）進行跨社群分享：
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 6,
   "content": "{\"id\":\"...\",\"content\":\"原始貼文...\",\"kind\":1,...}",
   "tags": [
@@ -234,7 +238,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立社群</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
 
 interface CommunityConfig {
   identifier: string;
@@ -332,7 +336,7 @@ const community = createCommunity(
 console.log(community);</code></pre>
 
   <h3>發布社群貼文</h3>
-  <pre><code class="language-typescript">interface CommunityReference {
+  <pre><code class="language-typescript" is:raw>interface CommunityReference {
   creatorPubkey: string;
   identifier: string;
   relay?: string;
@@ -393,7 +397,7 @@ const post = createCommunityPost(
 );</code></pre>
 
   <h3>批准貼文</h3>
-  <pre><code class="language-typescript">function approvePost(
+  <pre><code class="language-typescript" is:raw>function approvePost(
   post: any,
   community: CommunityReference,
   moderatorSecretKey: Uint8Array,
@@ -443,7 +447,7 @@ const approval = approvePost(
 );</code></pre>
 
   <h3>查詢社群內容</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];

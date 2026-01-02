@@ -41,7 +41,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <code>nostr:</code> URI 由協議前綴加上 NIP-19 編碼組成：
   </p>
 
-  <pre><code class="language-text">{`nostr:<NIP-19 編碼>`}</code></pre>
+  <pre><code class="language-text" is:raw>{`nostr:<NIP-19 編碼>`}</code></pre>
 
   <h3>支援的編碼類型</h3>
   <div class="overflow-x-auto my-6">
@@ -94,27 +94,27 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">URI 範例</h2>
 
   <h3>用戶連結</h3>
-  <pre><code class="language-text">{`# 簡單公鑰連結
+  <pre><code class="language-text" is:raw>{`# 簡單公鑰連結
 nostr:npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
 
 # 帶中繼器資訊（推薦）
 nostr:nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p`}</code></pre>
 
   <h3>事件連結</h3>
-  <pre><code class="language-text">{`# 簡單事件 ID 連結
+  <pre><code class="language-text" is:raw>{`# 簡單事件 ID 連結
 nostr:note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc
 
 # 帶中繼器和作者資訊（推薦）
 nostr:nevent1qqst8cujky046negxgwwm5ynqwn53t8aqjr6afd8g59nfqwxpdhylpcpzamhxue69uhhyetvv9ujuetd9ehx7um5wge5wqhh5...`}</code></pre>
 
   <h3>可替換事件連結</h3>
-  <pre><code class="language-text">{`# 長文章連結
+  <pre><code class="language-text" is:raw>{`# 長文章連結
 nostr:naddr1qqxnzdesxqmnxvpexqunzvpcqy28wumn8ghj7un9d3shjtnyv9kh2uewd9hj7qg4waehxw309ahx7um5wghx6at5d9h8jampd3kx2apwvdhk6...`}</code></pre>
 
   <h2 id="implementation">實作</h2>
 
   <h3>建立 nostr: URI</h3>
-  <pre><code class="language-typescript">{`import { nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { nip19 } from 'nostr-tools';
 
 // 建立用戶連結
 function createUserUri(pubkey: string, relays?: string[]): string {
@@ -183,7 +183,7 @@ const articleUri = createAddressUri(
 // nostr:naddr1...`}</code></pre>
 
   <h3>解析 nostr: URI</h3>
-  <pre><code class="language-typescript">{`import { nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { nip19 } from 'nostr-tools';
 
 interface ParsedNostrUri {
   type: 'npub' | 'nprofile' | 'note' | 'nevent' | 'naddr';
@@ -258,27 +258,27 @@ function handleNostrUri(uri: string) {
   </p>
 
   <h3>關聯作者</h3>
-  <pre><code class="language-html">{`<!-- 網頁作者的 Nostr 身份 -->
+  <pre><code class="language-html" is:raw>{`<!-- 網頁作者的 Nostr 身份 -->
 <link rel="author" href="nostr:npub1..." />
 
 <!-- 或使用 nprofile 包含中繼器 -->
 <link rel="author" href="nostr:nprofile1..." />`}</code></pre>
 
   <h3>關聯內容</h3>
-  <pre><code class="language-html">{`<!-- 這篇文章也發布在 Nostr 上 -->
+  <pre><code class="language-html" is:raw>{`<!-- 這篇文章也發布在 Nostr 上 -->
 <link rel="alternate" href="nostr:nevent1..." />
 
 <!-- 長文章使用 naddr -->
 <link rel="alternate" href="nostr:naddr1..." />`}</code></pre>
 
   <h3>身份驗證</h3>
-  <pre><code class="language-html">{`<!-- 證明網站擁有者的 Nostr 身份 -->
+  <pre><code class="language-html" is:raw>{`<!-- 證明網站擁有者的 Nostr 身份 -->
 <link rel="me" href="nostr:npub1..." />`}</code></pre>
 
   <h2 id="html-links">HTML 連結</h2>
   <p>在網頁中建立可點擊的 Nostr 連結：</p>
 
-  <pre><code class="language-html">{`<!-- 連結到用戶資料 -->
+  <pre><code class="language-html" is:raw>{`<!-- 連結到用戶資料 -->
 <a href="nostr:npub1sn0wdenkukak0d9dfczzeacvhkrgz92ak56egt7vdgzn8pv2wfqqhrjdv9">
   @fiatjaf
 </a>
@@ -300,7 +300,7 @@ function handleNostrUri(uri: string) {
   </p>
 
   <h3>網頁應用</h3>
-  <pre><code class="language-javascript">{`// 註冊為協議處理器（需要 HTTPS）
+  <pre><code class="language-javascript" is:raw>{`// 註冊為協議處理器（需要 HTTPS）
 if ('registerProtocolHandler' in navigator) {
   navigator.registerProtocolHandler(
     'web+nostr',  // 注意：標準要求 web+ 前綴
@@ -317,7 +317,7 @@ if (nostrUri) {
 }`}</code></pre>
 
   <h3>桌面應用（macOS Info.plist）</h3>
-  <pre><code class="language-xml">{`<key>CFBundleURLTypes</key>
+  <pre><code class="language-xml" is:raw>{`<key>CFBundleURLTypes</key>
 <array>
   <dict>
     <key>CFBundleURLName</key>
@@ -330,7 +330,7 @@ if (nostrUri) {
 </array>`}</code></pre>
 
   <h3>Android（AndroidManifest.xml）</h3>
-  <pre><code class="language-xml">{`<intent-filter>
+  <pre><code class="language-xml" is:raw>{`<intent-filter>
   <action android:name="android.intent.action.VIEW" />
   <category android:name="android.intent.category.DEFAULT" />
   <category android:name="android.intent.category.BROWSABLE" />
@@ -338,7 +338,7 @@ if (nostrUri) {
 </intent-filter>`}</code></pre>
 
   <h2 id="react-component">React 組件範例</h2>
-  <pre><code class="language-tsx">{`import { nip19 } from 'nostr-tools';
+  <pre><code class="language-tsx" is:raw>{`import { nip19 } from 'nostr-tools';
 
 interface NostrLinkProps {
   uri: string;
@@ -418,7 +418,7 @@ function NostrLink({ uri, children, fallbackUrl }: NostrLinkProps) {
     <li><a href="https://primal.net" target="_blank" rel="noopener">primal.net</a> - 社交客戶端</li>
   </ul>
 
-  <pre><code class="language-typescript">{`// 將 nostr: URI 轉換為網頁閘道器連結
+  <pre><code class="language-typescript" is:raw>{`// 將 nostr: URI 轉換為網頁閘道器連結
 function toWebUrl(nostrUri: string): string {
   const encoded = nostrUri.replace('nostr:', '');
   return \`https://njump.me/\${encoded}\`;

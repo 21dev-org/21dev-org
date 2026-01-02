@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-03: OpenTimestamps"
   description="使用比特幣區塊鏈為 Nostr 事件提供不可篡改的時間戳證明"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-03' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -31,7 +35,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </ol>
 
   <h2 id="tag-format">標籤格式</h2>
-  <pre><code class="language-json">["ots", "&lt;base64-encoded-ots-proof&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["ots", "&lt;base64-encoded-ots-proof&gt;"]</code></pre>
 
   <p>
     <code>ots</code> 標籤包含 Base64 編碼的 OpenTimestamps 證明檔案。
@@ -41,7 +45,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="workflow">工作流程</h2>
 
   <h3>1. 建立事件並獲取 ID</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "id": "a1b2c3d4...",
   "pubkey": "...",
   "created_at": 1704067200,
@@ -58,7 +62,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p>通常需要幾個小時到一天，等待 OTS 將雜湊錨定到比特幣區塊。</p>
 
   <h3>4. 獲取並附加證明</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "id": "a1b2c3d4...",
   "pubkey": "...",
   "created_at": 1704067200,
@@ -73,7 +77,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>帶有 OTS 證明的事件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這份聲明發布於 2024 年 1 月 1 日",
   "tags": [
@@ -86,7 +90,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>長文時間戳</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30023,
   "content": "# 重要公告\n\n本文件的內容在此時間戳之前就已存在...",
   "tags": [
@@ -99,7 +103,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>提交時間戳請求</h3>
-  <pre><code class="language-typescript">import OpenTimestamps from 'opentimestamps';
+  <pre><code class="language-typescript" is:raw>import OpenTimestamps from 'opentimestamps';
 
 async function submitTimestamp(eventId: string): Promise&lt;Uint8Array&gt; {
   // 將事件 ID 轉換為字節
@@ -133,7 +137,7 @@ const proof = await submitTimestamp(event.id);
 const proofBase64 = btoa(String.fromCharCode(...proof));</code></pre>
 
   <h3>升級時間戳（等待確認）</h3>
-  <pre><code class="language-typescript">async function upgradeTimestamp(
+  <pre><code class="language-typescript" is:raw>async function upgradeTimestamp(
   proofBytes: Uint8Array
 ): Promise&lt;Uint8Array | null&gt; {
   // 反序列化現有證明
@@ -171,7 +175,7 @@ async function waitForConfirmation(
 }</code></pre>
 
   <h3>驗證時間戳</h3>
-  <pre><code class="language-typescript">interface VerificationResult {
+  <pre><code class="language-typescript" is:raw>interface VerificationResult {
   verified: boolean;
   attestations: {
     type: string;
@@ -234,7 +238,7 @@ if (result.verified) {
 }</code></pre>
 
   <h3>建立帶時間戳的事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 async function createTimestampedEvent(
   content: string,
@@ -275,7 +279,7 @@ function addOtsTag(event: any, otsProof: string): any {
 }</code></pre>
 
   <h3>React 元件</h3>
-  <pre><code class="language-typescript">interface TimestampBadgeProps {
+  <pre><code class="language-typescript" is:raw>interface TimestampBadgeProps {
   event: any;
 }
 

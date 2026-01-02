@@ -39,7 +39,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="event-structure">事件結構</h2>
   <p>檢舉使用 kind 1984 事件：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1984,
   "content": "檢舉原因說明（選填）",
   "tags": [
@@ -102,7 +102,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="reporting-user">檢舉用戶</h2>
   <p>檢舉用戶的整體行為：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1984,
   "content": "此帳號持續發送垃圾訊息",
   "tags": [
@@ -114,7 +114,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="reporting-event">檢舉特定事件</h2>
   <p>檢舉特定貼文或事件，需要同時包含 <code>e</code> 和 <code>p</code> 標籤：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1984,
   "content": "這則貼文包含不當圖片",
   "tags": [
@@ -127,7 +127,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="reporting-media">檢舉媒體</h2>
   <p>檢舉特定的媒體檔案（使用檔案雜湊）：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1984,
   "content": "此圖片包含惡意軟體",
   "tags": [
@@ -142,7 +142,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>建立檢舉</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent } from 'nostr-tools';
 
 type ReportType =
   | 'nudity'
@@ -234,7 +234,7 @@ const nudityReport = reportEvent(
 );`}</code></pre>
 
   <h3>查詢檢舉</h3>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -264,7 +264,7 @@ async function getReportsByUser(reporterPubkey: string) {
 }`}</code></pre>
 
   <h3>分析檢舉</h3>
-  <pre><code class="language-typescript">{`interface ReportSummary {
+  <pre><code class="language-typescript" is:raw>{`interface ReportSummary {
   pubkey: string;
   totalReports: number;
   byType: Record<ReportType, number>;
@@ -316,7 +316,7 @@ function analyzeReports(reports: Event[]): ReportSummary {
   <h2 id="client-usage">客戶端使用</h2>
   <p>客戶端可以根據社交圖譜來使用檢舉資訊：</p>
 
-  <pre><code class="language-typescript">{`// 檢查內容是否被朋友檢舉
+  <pre><code class="language-typescript" is:raw>{`// 檢查內容是否被朋友檢舉
 async function checkFriendReports(
   eventId: string,
   myFollowing: string[]
@@ -364,7 +364,7 @@ function getContentDisplay(
     </p>
   </div>
 
-  <pre><code class="language-typescript">{`// 中繼器端：只信任特定審核者的檢舉
+  <pre><code class="language-typescript" is:raw>{`// 中繼器端：只信任特定審核者的檢舉
 const trustedModerators = [
   'npub1moderator1...',
   'npub1moderator2...',
@@ -383,7 +383,7 @@ function shouldBlockContent(
 }`}</code></pre>
 
   <h2 id="react-component">React 組件範例</h2>
-  <pre><code class="language-tsx">{`interface ReportButtonProps {
+  <pre><code class="language-tsx" is:raw>{`interface ReportButtonProps {
   eventId?: string;
   userPubkey: string;
   onReport: (type: ReportType, reason: string) => void;

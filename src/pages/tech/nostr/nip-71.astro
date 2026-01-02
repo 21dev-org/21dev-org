@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-71: 影片事件"
   description="Nostr 影片內容發布標準，支援一般影片與短影音格式"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-71' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -35,7 +39,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="event-structure">事件結構</h2>
 
   <h3>一般影片事件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 21,
   "content": "這是一部關於 Nostr 協議的入門教學影片...",
   "tags": [
@@ -59,7 +63,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>短影音事件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 22,
   "content": "快速展示如何使用 Nostr 客戶端 #nostr #web3",
   "tags": [
@@ -243,7 +247,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <code>text-track</code> 標籤用於添加 WebVTT 格式的字幕、旁白或章節資訊：
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "tags": [
     ["text-track", "https://example.com/captions-zh.vtt", "captions", "zh"],
     ["text-track", "https://example.com/captions-en.vtt", "captions", "en"],
@@ -266,7 +270,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <code>segment</code> 標籤用於定義影片章節，方便觀眾跳轉到特定部分：
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "tags": [
     ["segment", "0", "120", "開場介紹", "https://example.com/thumb1.jpg"],
     ["segment", "120", "300", "核心概念", "https://example.com/thumb2.jpg"],
@@ -280,7 +284,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立影片事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
 
 interface VideoMetadata {
   url: string;
@@ -417,7 +421,7 @@ const signedEvent = finalizeEvent(videoEvent, sk);
 console.log(signedEvent);</code></pre>
 
   <h3>建立短影音</h3>
-  <pre><code class="language-typescript">const shortVideoEvent = createVideoEvent(
+  <pre><code class="language-typescript" is:raw>const shortVideoEvent = createVideoEvent(
   '30 秒學會 Zaps',
   '快速了解如何在 Nostr 上發送比特幣打賞！ #nostr #bitcoin #zaps',
   {
@@ -437,7 +441,7 @@ console.log(signedEvent);</code></pre>
 const signedShort = finalizeEvent(shortVideoEvent, sk);</code></pre>
 
   <h3>解析影片事件</h3>
-  <pre><code class="language-typescript">interface ParsedVideoEvent {
+  <pre><code class="language-typescript" is:raw>interface ParsedVideoEvent {
   kind: 21 | 22;
   title: string;
   description: string;
@@ -551,7 +555,7 @@ function parseVideoEvent(event: any): ParsedVideoEvent | null {
   <h2 id="query-examples">查詢範例</h2>
 
   <h3>查詢所有影片</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -575,13 +579,13 @@ const shortVideos = await pool.querySync(relays, {
 });</code></pre>
 
   <h3>查詢特定用戶的影片</h3>
-  <pre><code class="language-typescript">const userVideos = await pool.querySync(relays, {
+  <pre><code class="language-typescript" is:raw>const userVideos = await pool.querySync(relays, {
   kinds: [21, 22],
   authors: ['&lt;user-pubkey&gt;'],
 });</code></pre>
 
   <h3>查詢特定主題的影片</h3>
-  <pre><code class="language-typescript">const nostrVideos = await pool.querySync(relays, {
+  <pre><code class="language-typescript" is:raw>const nostrVideos = await pool.querySync(relays, {
   kinds: [21, 22],
   '#t': ['nostr'],
 });</code></pre>

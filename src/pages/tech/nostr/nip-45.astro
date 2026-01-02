@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-45: Counting Results"
   description="使用 COUNT 請求高效獲取事件數量統計"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-45' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -18,14 +22,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     COUNT 請求的格式與 REQ 類似，但使用 <code>COUNT</code> 動詞：
   </p>
 
-  <pre><code class="language-json">["COUNT", "&lt;subscription_id&gt;", &lt;filter&gt;, ...]</code></pre>
+  <pre><code class="language-json" is:raw>["COUNT", "&lt;subscription_id&gt;", &lt;filter&gt;, ...]</code></pre>
 
   <h3>過濾器</h3>
   <p>
     過濾器格式與 NIP-01 的 REQ 請求相同：
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kinds": [1],
   "authors": ["pubkey1", "pubkey2"],
   "#e": ["event_id"],
@@ -39,40 +43,40 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     中繼器回應包含計數結果：
   </p>
 
-  <pre><code class="language-json">["COUNT", "&lt;subscription_id&gt;", {"count": 238}]</code></pre>
+  <pre><code class="language-json" is:raw>["COUNT", "&lt;subscription_id&gt;", {"count": 238}]</code></pre>
 
   <h3>可選的近似值標記</h3>
   <p>
     當計數可能不精確時，中繼器可以標記為近似值：
   </p>
 
-  <pre><code class="language-json">["COUNT", "&lt;subscription_id&gt;", {"count": 238, "approximate": true}]</code></pre>
+  <pre><code class="language-json" is:raw>["COUNT", "&lt;subscription_id&gt;", {"count": 238, "approximate": true}]</code></pre>
 
   <h2 id="examples">使用範例</h2>
 
   <h3>統計追蹤者數量</h3>
-  <pre><code class="language-json">// 請求
+  <pre><code class="language-json" is:raw>// 請求
 ["COUNT", "followers", {"kinds": [3], "#p": ["目標用戶公鑰"]}]
 
 // 回應
 ["COUNT", "followers", {"count": 1523}]</code></pre>
 
   <h3>統計貼文按讚數</h3>
-  <pre><code class="language-json">// 請求
+  <pre><code class="language-json" is:raw>// 請求
 ["COUNT", "likes", {"kinds": [7], "#e": ["貼文事件ID"]}]
 
 // 回應
 ["COUNT", "likes", {"count": 42}]</code></pre>
 
   <h3>統計回覆數</h3>
-  <pre><code class="language-json">// 請求
+  <pre><code class="language-json" is:raw>// 請求
 ["COUNT", "replies", {"kinds": [1], "#e": ["原始貼文ID"]}]
 
 // 回應
 ["COUNT", "replies", {"count": 15}]</code></pre>
 
   <h3>統計用戶貼文數</h3>
-  <pre><code class="language-json">// 請求
+  <pre><code class="language-json" is:raw>// 請求
 ["COUNT", "posts", {"kinds": [1], "authors": ["用戶公鑰"]}]
 
 // 回應
@@ -81,7 +85,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>基礎計數函數</h3>
-  <pre><code class="language-typescript">interface CountResult {
+  <pre><code class="language-typescript" is:raw>interface CountResult {
   count: number;
   approximate?: boolean;
 }
@@ -119,7 +123,7 @@ const result = await countEvents(relay, {
 console.log(`按讚數: ${result.count}`);</code></pre>
 
   <h3>多中繼器計數</h3>
-  <pre><code class="language-typescript">interface MultiRelayCountResult {
+  <pre><code class="language-typescript" is:raw>interface MultiRelayCountResult {
   total: number;
   byRelay: Map&lt;string, number&gt;;
   hasApproximate: boolean;
@@ -165,7 +169,7 @@ async function countFromMultipleRelays(
 }</code></pre>
 
   <h3>社交統計類別</h3>
-  <pre><code class="language-typescript">class NostrStats {
+  <pre><code class="language-typescript" is:raw>class NostrStats {
   private relays: string[];
 
   constructor(relays: string[]) {
@@ -248,7 +252,7 @@ const posts = await stats.getPostCount(pubkey);
 console.log(`追蹤者: ${followers}, 貼文: ${posts}`);</code></pre>
 
   <h3>React Hook</h3>
-  <pre><code class="language-typescript">import { useState, useEffect } from 'react';
+  <pre><code class="language-typescript" is:raw>import { useState, useEffect } from 'react';
 
 interface EventStats {
   reactions: number;
@@ -308,7 +312,7 @@ function PostStats({ eventId }: { eventId: string }) {
 }</code></pre>
 
   <h2 id="relay-support">中繼器支援檢測</h2>
-  <pre><code class="language-typescript">async function supportsCount(relayUrl: string): Promise&lt;boolean&gt; {
+  <pre><code class="language-typescript" is:raw>async function supportsCount(relayUrl: string): Promise&lt;boolean&gt; {
   try {
     const response = await fetch(
       relayUrl.replace('wss://', 'https://').replace('ws://', 'http://'),

@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-70: 受保護事件"
   description="使用 - 標籤防止事件被中繼器廣播到其他地方"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-70' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -15,7 +19,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h2 id="tag-format">標籤格式</h2>
-  <pre><code class="language-json">["-"]</code></pre>
+  <pre><code class="language-json" is:raw>["-"]</code></pre>
 
   <p>
     這是一個簡單的單元素標籤，不需要任何額外參數。
@@ -38,7 +42,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </ul>
 
   <h3>錯誤回應</h3>
-  <pre><code class="language-json">["OK", "&lt;event-id&gt;", false, "blocked: event is protected"]</code></pre>
+  <pre><code class="language-json" is:raw>["OK", "&lt;event-id&gt;", false, "blocked: event is protected"]</code></pre>
 
   <h2 id="use-cases">使用場景</h2>
 
@@ -65,7 +69,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>受保護的短文</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這是僅限此中繼器的獨家內容！",
   "tags": [
@@ -78,7 +82,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>受保護的長文</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30023,
   "content": "# 付費會員專屬文章\n\n這篇文章僅供付費中繼器會員閱讀...",
   "tags": [
@@ -89,7 +93,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>受保護的媒體事件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1063,
   "content": "獨家影片內容",
   "tags": [
@@ -102,7 +106,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立受保護事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 function createProtectedEvent(
   content: string,
@@ -145,7 +149,7 @@ const protectedArticle = createProtectedEvent(
 );</code></pre>
 
   <h3>檢測受保護事件</h3>
-  <pre><code class="language-typescript">function isProtectedEvent(event: any): boolean {
+  <pre><code class="language-typescript" is:raw>function isProtectedEvent(event: any): boolean {
   return event.tags.some((tag: string[]) => tag[0] === '-' && tag.length === 1);
 }
 
@@ -168,7 +172,7 @@ if (status.isProtected) {
 }</code></pre>
 
   <h3>中繼器端驗證</h3>
-  <pre><code class="language-typescript">interface RelayValidationResult {
+  <pre><code class="language-typescript" is:raw>interface RelayValidationResult {
   accepted: boolean;
   message?: string;
 }
@@ -209,7 +213,7 @@ if (!result.accepted) {
 }</code></pre>
 
   <h3>客戶端處理</h3>
-  <pre><code class="language-typescript">interface PublishOptions {
+  <pre><code class="language-typescript" is:raw>interface PublishOptions {
   relays: string[];
   protect?: boolean;
 }
@@ -266,7 +270,7 @@ const result = await publishEvent(
 console.log(`已發布到 ${result.results.filter((r) => r.success).length} 個中繼器`);</code></pre>
 
   <h3>UI 指示器</h3>
-  <pre><code class="language-typescript">// React 元件範例
+  <pre><code class="language-typescript" is:raw>// React 元件範例
 function ProtectedBadge({ event }: { event: any }) {
   if (!isProtectedEvent(event)) {
     return null;

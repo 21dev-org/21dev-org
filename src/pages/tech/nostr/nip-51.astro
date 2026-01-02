@@ -99,7 +99,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h3>事件結構</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 10000,
   "tags": [
     ["p", "<被靜音用戶的公鑰>"],
@@ -121,7 +121,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </ul>
 
   <h3>TypeScript 範例</h3>
-  <pre><code class="language-typescript">{`import { getPublicKey, finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { encrypt } from 'nostr-tools/nip04';
 
 // 建立靜音列表
@@ -165,7 +165,7 @@ const muteEvent = await createMuteList(
   <h2 id="pin-list">置頂列表 (Kind 10001)</h2>
   <p>置頂列表讓用戶可以標記重要的筆記，客戶端可以將這些筆記顯示在個人檔案頂部。</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 10001,
   "tags": [
     ["e", "<置頂筆記的事件 ID>", "<中繼器 URL>"],
@@ -176,7 +176,7 @@ const muteEvent = await createMuteList(
 }`}</code></pre>
 
   <h3>TypeScript 範例</h3>
-  <pre><code class="language-typescript">{`// 建立置頂列表
+  <pre><code class="language-typescript" is:raw>{`// 建立置頂列表
 function createPinList(privateKey: Uint8Array, pinnedNotes: {id: string, relay: string}[]) {
   const tags = pinnedNotes.map(note => ['e', note.id, note.relay]);
 
@@ -199,7 +199,7 @@ const pinEvent = createPinList(privateKey, [
   <h2 id="bookmark-list">書籤列表 (Kind 10003)</h2>
   <p>書籤列表用於收藏感興趣的筆記，類似於社交媒體的「儲存」功能。</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 10003,
   "tags": [
     ["e", "<書籤筆記 ID>", "<中繼器 URL>"],
@@ -226,7 +226,7 @@ const pinEvent = createPinList(privateKey, [
   </p>
 
   <h3>人物集合 (Kind 30000)</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 30000,
   "tags": [
     ["d", "bitcoiners"],
@@ -239,7 +239,7 @@ const pinEvent = createPinList(privateKey, [
 }`}</code></pre>
 
   <h3>書籤集合 (Kind 30001)</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 30001,
   "tags": [
     ["d", "programming-articles"],
@@ -251,7 +251,7 @@ const pinEvent = createPinList(privateKey, [
 }`}</code></pre>
 
   <h3>表情集合 (Kind 30003)</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 30003,
   "tags": [
     ["d", "my-emojis"],
@@ -268,7 +268,7 @@ const pinEvent = createPinList(privateKey, [
     列表可以同時包含公開和私密的條目。私密條目使用 NIP-04 加密後儲存在 <code>content</code> 欄位中。
   </p>
 
-  <pre><code class="language-typescript">{`import { encrypt, decrypt } from 'nostr-tools/nip04';
+  <pre><code class="language-typescript" is:raw>{`import { encrypt, decrypt } from 'nostr-tools/nip04';
 
 // 解密私密列表內容
 async function decryptPrivateEntries(
@@ -298,7 +298,7 @@ async function getAllTags(event: Event, privateKey: Uint8Array) {
 
   <h2 id="querying-lists">查詢列表</h2>
 
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -340,7 +340,7 @@ async function getPeopleSet(pubkey: string, setName: string) {
     更新時需要發布包含完整列表的新事件。
   </p>
 
-  <pre><code class="language-typescript">{`// 新增項目到書籤列表
+  <pre><code class="language-typescript" is:raw>{`// 新增項目到書籤列表
 async function addBookmark(
   privateKey: Uint8Array,
   currentEvent: Event | null,

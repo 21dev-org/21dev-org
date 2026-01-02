@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-22: 評論"
   description="Nostr 結構化評論系統，支援對各類內容進行層級討論"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-22' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -66,7 +70,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="basic-example">基本範例</h2>
 
   <h3>對部落格文章的評論（根評論）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "這篇文章寫得很好！對 Nostr 的解釋非常清楚。",
   "tags": [
@@ -80,7 +84,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>對評論的回覆（嵌套評論）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "同意！我也覺得寫得很清楚。",
   "tags": [
@@ -141,7 +145,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="use-cases">使用場景</h2>
 
   <h3>對部落格文章評論 (kind 30023)</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "很棒的教學！",
   "tags": [
@@ -155,7 +159,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>對檔案評論 (NIP-94)</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "這張照片拍得很美！",
   "tags": [
@@ -169,7 +173,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>對外部網站評論</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "這個網站設計得很好！",
   "tags": [
@@ -181,7 +185,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>對播客評論</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1111,
   "content": "這集播客內容很精彩！",
   "tags": [
@@ -195,7 +199,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立評論</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
 
 type CommentTarget =
   | { type: 'event'; eventId: string; kind: number; pubkey: string; relay?: string }
@@ -274,7 +278,7 @@ const blogComment = createComment(
 console.log(blogComment);</code></pre>
 
   <h3>回覆評論</h3>
-  <pre><code class="language-typescript">// 回覆現有評論
+  <pre><code class="language-typescript" is:raw>// 回覆現有評論
 const replyComment = createComment(
   {
     root: {
@@ -297,7 +301,7 @@ const replyComment = createComment(
 );</code></pre>
 
   <h3>對外部內容評論</h3>
-  <pre><code class="language-typescript">// 對網站評論
+  <pre><code class="language-typescript" is:raw>// 對網站評論
 const websiteComment = createComment(
   {
     root: {
@@ -322,7 +326,7 @@ const youtubeComment = createComment(
 );</code></pre>
 
   <h3>查詢評論</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -359,7 +363,7 @@ const articleComments = await getCommentsForContent(
 console.log(`找到 ${articleComments.length} 則評論`);</code></pre>
 
   <h3>建立評論樹</h3>
-  <pre><code class="language-typescript">interface CommentNode {
+  <pre><code class="language-typescript" is:raw>interface CommentNode {
   event: any;
   replies: CommentNode[];
 }

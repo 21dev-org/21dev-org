@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-99: 分類廣告"
   description="在 Nostr 上發布和管理商品、服務、工作等分類廣告"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-99' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -153,7 +157,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 id="price-format">價格格式</h2>
 
-  <pre><code class="language-json">["price", "&lt;數量&gt;", "&lt;貨幣&gt;", "&lt;頻率&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["price", "&lt;數量&gt;", "&lt;貨幣&gt;", "&lt;頻率&gt;"]</code></pre>
 
   <h3>貨幣代碼</h3>
   <ul>
@@ -175,7 +179,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>商品出售</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30402,
   "content": "出售九成新 MacBook Pro 2023 M3 晶片版本。\n\n配置：\n- 14 吋螢幕\n- 18GB 記憶體\n- 512GB SSD\n\n附原廠充電器和保護殼。\n\n可面交或順豐到付。",
   "tags": [
@@ -196,7 +200,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>服務提供</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30402,
   "content": "提供專業網站開發服務。\n\n服務內容：\n- 前端開發（React、Vue）\n- 後端開發（Node.js、Python）\n- 全端應用\n- 區塊鏈整合\n\n支援比特幣/閃電網路支付。",
   "tags": [
@@ -214,7 +218,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>工作機會</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30402,
   "content": "我們正在尋找全端工程師加入團隊！\n\n要求：\n- 3 年以上開發經驗\n- 熟悉 TypeScript、React、Node.js\n- 對 Bitcoin/Nostr 有興趣\n\n待遇：\n- 遠端工作\n- 彈性工時\n- 比特幣薪資可議",
   "tags": [
@@ -233,7 +237,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>房屋租賃</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30402,
   "content": "台北市中心套房出租。\n\n房屋資訊：\n- 獨立衛浴\n- 採光良好\n- 近捷運站\n- 包水電網路\n\n押金兩個月，租期至少一年。接受 Bitcoin 付款。",
   "tags": [
@@ -255,7 +259,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立分類廣告</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 type ListingType = 'for-sale' | 'wanted' | 'service' | 'job' | 'rental' | 'event';
 type Currency = 'USD' | 'TWD' | 'EUR' | 'BTC' | 'SAT';
@@ -347,7 +351,7 @@ const forSaleListing = createClassifiedListing(
 );</code></pre>
 
   <h3>解析分類廣告</h3>
-  <pre><code class="language-typescript">interface ParsedListing {
+  <pre><code class="language-typescript" is:raw>interface ParsedListing {
   identifier: string;
   title: string;
   content: string;
@@ -421,7 +425,7 @@ if (listing) {
 }</code></pre>
 
   <h3>搜尋分類廣告</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 interface ListingSearchOptions {
   type?: ListingType;
@@ -489,7 +493,7 @@ listings.forEach((event) => {
 });</code></pre>
 
   <h3>React 元件</h3>
-  <pre><code class="language-typescript">interface ListingCardProps {
+  <pre><code class="language-typescript" is:raw>interface ListingCardProps {
   event: any;
 }
 

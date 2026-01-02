@@ -84,7 +84,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     內容是 JSON 格式的頻道中繼資料。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 40,
   "content": "{\"name\":\"Nostr 開發者\",\"about\":\"討論 Nostr 開發相關話題\",\"picture\":\"https://example.com/channel.png\"}",
   "tags": [
@@ -108,7 +108,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     客戶端應該只接受來自頻道創建者的 kind 41 事件。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 41,
   "content": "{\"name\":\"Nostr 開發者（官方）\",\"about\":\"更新後的描述\"}",
   "tags": [
@@ -132,7 +132,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h3>發送新訊息</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 42,
   "content": "大家好！這是我的第一則頻道訊息",
   "tags": [
@@ -142,7 +142,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }`}</code></pre>
 
   <h3>回覆訊息</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 42,
   "content": "歡迎！有什麼問題都可以問",
   "tags": [
@@ -161,7 +161,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     只影響發布者自己看到的內容。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 43,
   "content": "{\"reason\":\"垃圾訊息\"}",
   "tags": [
@@ -176,7 +176,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     該用戶在頻道中的所有訊息都會被隱藏。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 44,
   "content": "{\"reason\":\"騷擾行為\"}",
   "tags": [
@@ -188,7 +188,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>建立頻道</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent } from 'nostr-tools';
 
 interface ChannelMetadata {
   name: string;
@@ -234,7 +234,7 @@ const channel = createChannel(
 // channel.id 就是頻道 ID`}</code></pre>
 
   <h3>更新頻道資訊</h3>
-  <pre><code class="language-typescript">{`// 更新頻道中繼資料（只有創建者可以）
+  <pre><code class="language-typescript" is:raw>{`// 更新頻道中繼資料（只有創建者可以）
 function updateChannelMetadata(
   privateKey: Uint8Array,
   channelId: string,
@@ -250,7 +250,7 @@ function updateChannelMetadata(
 }`}</code></pre>
 
   <h3>發送頻道訊息</h3>
-  <pre><code class="language-typescript">{`interface MessageOptions {
+  <pre><code class="language-typescript" is:raw>{`interface MessageOptions {
   channelId: string;
   relay: string;
   content: string;
@@ -302,7 +302,7 @@ const reply = sendChannelMessage(privateKey, {
 });`}</code></pre>
 
   <h3>隱藏和靜音</h3>
-  <pre><code class="language-typescript">{`// 隱藏特定訊息
+  <pre><code class="language-typescript" is:raw>{`// 隱藏特定訊息
 function hideMessage(
   privateKey: Uint8Array,
   messageId: string,
@@ -331,7 +331,7 @@ function muteUser(
 }`}</code></pre>
 
   <h2 id="querying">查詢頻道</h2>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -404,7 +404,7 @@ function subscribeToChannel(
 }`}</code></pre>
 
   <h2 id="filtering">過濾隱藏內容</h2>
-  <pre><code class="language-typescript">{`// 取得用戶的隱藏和靜音列表
+  <pre><code class="language-typescript" is:raw>{`// 取得用戶的隱藏和靜音列表
 async function getUserFilters(userPubkey: string) {
   const [hideEvents, muteEvents] = await Promise.all([
     pool.querySync(relays, {
@@ -446,7 +446,7 @@ function filterMessages(
 }`}</code></pre>
 
   <h2 id="threading">訊息串結構</h2>
-  <pre><code class="language-typescript">{`interface ThreadedMessage {
+  <pre><code class="language-typescript" is:raw>{`interface ThreadedMessage {
   event: Event;
   replies: ThreadedMessage[];
 }

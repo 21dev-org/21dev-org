@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-61: Nutzaps"
   description="使用 Cashu ecash 進行 Zaps 打賞"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-61' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -80,7 +84,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <h3>範例</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 10019,
   "pubkey": "接收者公鑰",
   "tags": [
@@ -143,7 +147,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <h3>範例</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 9321,
   "pubkey": "打賞者公鑰",
   "tags": [
@@ -173,7 +177,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>發布 Nutzap 資訊</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 interface NutzapConfig {
   mints: { url: string; unit: string }[];
@@ -224,7 +228,7 @@ const nutzapInfo = createNutzapInfo(
 );</code></pre>
 
   <h3>發送 Nutzap</h3>
-  <pre><code class="language-typescript">import { CashuMint, CashuWallet, getEncodedToken, Proof } from '@cashu/cashu-ts';
+  <pre><code class="language-typescript" is:raw>import { CashuMint, CashuWallet, getEncodedToken, Proof } from '@cashu/cashu-ts';
 
 interface NutzapTarget {
   pubkey: string;
@@ -293,7 +297,7 @@ const nutzap = await sendNutzap(
 );</code></pre>
 
   <h3>接收 Nutzaps</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 interface ReceivedNutzap {
   id: string;
@@ -363,7 +367,7 @@ async function redeemNutzap(
 }</code></pre>
 
   <h3>查詢用戶的 Nutzap 配置</h3>
-  <pre><code class="language-typescript">interface UserNutzapConfig {
+  <pre><code class="language-typescript" is:raw>interface UserNutzapConfig {
   mints: { url: string; unit: string }[];
   relays: string[];
   p2pkPubkey?: string;
@@ -410,7 +414,7 @@ async function supportsNutzaps(
   pubkey: string
 ): Promise&lt;boolean&gt; {
   const config = await getUserNutzapConfig(pool, relays, pubkey);
-  return config !== null && config.mints.length > 0;
+  return config !== null &amp;&amp; config.mints.length &gt; 0;
 }</code></pre>
 
   <h2 id="comparison">Nutzaps vs 傳統 Zaps</h2>

@@ -57,7 +57,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="repost-structure">轉發結構 (Kind 6)</h2>
   <p>Kind 6 用於轉發 kind 1 的短文筆記：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 6,
   "tags": [
     ["e", "<原始事件 ID>", "<中繼器 URL>"],
@@ -74,7 +74,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     中包含原始事件的 JSON 字串：
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 6,
   "tags": [
     ["e", "abc123...", "wss://relay.damus.io"],
@@ -89,7 +89,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     Kind 16 可以轉發任意類型的事件，需要額外的 <code>k</code> 標籤指定原始事件類型：
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 16,
   "tags": [
     ["e", "<原始事件 ID>", "<中繼器 URL>"],
@@ -101,7 +101,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }`}</code></pre>
 
   <h3>轉發長文範例</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 16,
   "tags": [
     ["e", "article123...", "wss://relay.example.com"],
@@ -115,7 +115,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>建立轉發</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
 
 interface Event {
   id: string;
@@ -177,7 +177,7 @@ const repost = createRepost(privateKey, originalNote, 'wss://relay.damus.io');
 const articleRepost = createGenericRepost(privateKey, articleEvent, 'wss://nos.lol');`}</code></pre>
 
   <h3>解析轉發</h3>
-  <pre><code class="language-typescript">{`// 解析轉發事件
+  <pre><code class="language-typescript" is:raw>{`// 解析轉發事件
 function parseRepost(repostEvent: Event): {
   originalEventId: string;
   originalAuthor: string;
@@ -217,7 +217,7 @@ function parseRepost(repostEvent: Event): {
 }`}</code></pre>
 
   <h3>查詢轉發</h3>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -267,7 +267,7 @@ async function hasUserReposted(
 }`}</code></pre>
 
   <h2 id="fetching-original">取得原始事件</h2>
-  <pre><code class="language-typescript">{`// 取得轉發的原始事件
+  <pre><code class="language-typescript" is:raw>{`// 取得轉發的原始事件
 async function getOriginalEvent(repostEvent: Event): Promise<Event | null> {
   const parsed = parseRepost(repostEvent);
 
@@ -302,7 +302,7 @@ async function getOriginalEvent(repostEvent: Event): Promise<Event | null> {
     <li>轉發時間和原始發布時間都應顯示</li>
   </ul>
 
-  <pre><code class="language-typescript">{`// React 組件範例
+  <pre><code class="language-typescript" is:raw>{`// React 組件範例
 function RepostNote({ repostEvent }: { repostEvent: Event }) {
   const [originalEvent, setOriginalEvent] = useState<Event | null>(null);
   const [reposter, setReposter] = useState<Profile | null>(null);
@@ -338,7 +338,7 @@ function RepostNote({ repostEvent }: { repostEvent: Event }) {
     並引用原始事件：
   </p>
 
-  <pre><code class="language-typescript">{`// 引用轉發（帶評論）
+  <pre><code class="language-typescript" is:raw>{`// 引用轉發（帶評論）
 function createQuoteRepost(
   privateKey: Uint8Array,
   originalEvent: Event,

@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-26: Delegated Event Signing"
   description="允許其他密鑰代表你簽署事件的委託機制"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-26' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -20,7 +24,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h3>標籤格式</h3>
-  <pre><code class="language-json">["delegation", "&lt;委託者公鑰&gt;", "&lt;條件字串&gt;", "&lt;簽名&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["delegation", "&lt;委託者公鑰&gt;", "&lt;條件字串&gt;", "&lt;簽名&gt;"]</code></pre>
 
   <table>
     <thead>
@@ -78,26 +82,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <h3>條件範例</h3>
-  <pre><code class="language-text"># 只允許發布 kind 1（短文）
+  <pre><code class="language-text" is:raw># 只允許發布 kind 1（短文）
 kind=1
 
 # 只允許在特定時間範圍內發布
-created_at>1640000000&created_at<1700000000
+created_at&gt;1640000000&amp;created_at&lt;1700000000
 
 # 只允許發布 kind 1，且有時間限制
-kind=1&created_at>1640000000&created_at<1700000000</code></pre>
+kind=1&amp;created_at&gt;1640000000&amp;created_at&lt;1700000000</code></pre>
 
   <h2 id="signature">簽名生成</h2>
   <p>
     委託簽名是對以下字串的 Schnorr 簽名：
   </p>
 
-  <pre><code class="language-text">nostr:delegation:&lt;被委託者公鑰&gt;:&lt;條件字串&gt;</code></pre>
+  <pre><code class="language-text" is:raw>nostr:delegation:&lt;被委託者公鑰&gt;:&lt;條件字串&gt;</code></pre>
 
   <h2 id="examples">範例</h2>
 
   <h3>委託事件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "id": "...",
   "pubkey": "&lt;被委託者公鑰&gt;",
   "created_at": 1650000000,
@@ -106,7 +110,7 @@ kind=1&created_at>1640000000&created_at<1700000000</code></pre>
     [
       "delegation",
       "&lt;委託者公鑰&gt;",
-      "kind=1&created_at>1640000000&created_at<1700000000",
+      "kind=1&amp;created_at&gt;1640000000&amp;created_at&lt;1700000000",
       "&lt;委託簽名&gt;"
     ]
   ],
@@ -117,7 +121,7 @@ kind=1&created_at>1640000000&created_at<1700000000</code></pre>
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立委託令牌</h3>
-  <pre><code class="language-typescript">import { schnorr } from '@noble/curves/secp256k1';
+  <pre><code class="language-typescript" is:raw>import { schnorr } from '@noble/curves/secp256k1';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha256';
 
@@ -140,10 +144,10 @@ function buildConditionsString(conditions: DelegationConditions): string {
     parts.push(`kind=${conditions.kind}`);
   }
   if (conditions.since !== undefined) {
-    parts.push(`created_at>${conditions.since}`);
+    parts.push(`created_at&gt;${conditions.since}`);
   }
   if (conditions.until !== undefined) {
-    parts.push(`created_at<${conditions.until}`);
+    parts.push(`created_at&lt;${conditions.until}`);
   }
 
   return parts.join('&');
@@ -188,7 +192,7 @@ const token = createDelegationToken(
 );</code></pre>
 
   <h3>驗證委託</h3>
-  <pre><code class="language-typescript">function verifyDelegation(
+  <pre><code class="language-typescript" is:raw>function verifyDelegation(
   event: any,
   delegationTag: string[]
 ): boolean {
@@ -225,12 +229,12 @@ function validateConditions(event: any, conditions: string): boolean {
     if (part.startsWith('kind=')) {
       const kind = parseInt(part.slice(5));
       if (event.kind !== kind) return false;
-    } else if (part.startsWith('created_at>')) {
+    } else if (part.startsWith('created_at&gt;')) {
       const since = parseInt(part.slice(11));
-      if (event.created_at <= since) return false;
-    } else if (part.startsWith('created_at<')) {
+      if (event.created_at &lt;= since) return false;
+    } else if (part.startsWith('created_at&lt;')) {
       const until = parseInt(part.slice(11));
-      if (event.created_at >= until) return false;
+      if (event.created_at &gt;= until) return false;
     }
   }
 
@@ -244,7 +248,7 @@ if (delegationTag && verifyDelegation(event, delegationTag)) {
 }</code></pre>
 
   <h3>使用委託發布事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 function createDelegatedEvent(
   content: string,

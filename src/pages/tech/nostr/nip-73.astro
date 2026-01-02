@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-73: 外部內容 ID"
   description="使用 i 標籤引用外部內容的唯一識別符"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-73' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -15,7 +19,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h2 id="tag-format">標籤格式</h2>
-  <pre><code class="language-json">["i", "&lt;type&gt;:&lt;id&gt;", "&lt;proof-url&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["i", "&lt;type&gt;:&lt;id&gt;", "&lt;proof-url&gt;"]</code></pre>
 
   <table>
     <thead>
@@ -181,7 +185,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>電影評論</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "剛看完《乘風破浪》，非常精彩的電影！劇情緊湊，演員演技出色。推薦！⭐⭐⭐⭐⭐",
   "tags": [
@@ -191,7 +195,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>音樂分享</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這首歌最近單曲循環中 🎵",
   "tags": [
@@ -201,7 +205,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>書籍討論</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "終於讀完了《精通比特幣》，強烈推薦給所有想深入了解區塊鏈的人！",
   "tags": [
@@ -211,7 +215,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>Podcast 討論</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "今天這集 Podcast 聊到了很多有趣的觀點！",
   "tags": [
@@ -221,7 +225,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>地點打卡</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "今天來到這家咖啡廳，環境很棒！☕",
   "tags": [
@@ -232,7 +236,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>遊戲評論</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "剛通關這款遊戲，故事線非常感人！",
   "tags": [
@@ -244,7 +248,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立外部內容引用</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 type ExternalContentType =
   | 'imdb'
@@ -314,7 +318,7 @@ const musicShare = createExternalReferenceEvent(
 );</code></pre>
 
   <h3>解析外部引用</h3>
-  <pre><code class="language-typescript">interface ParsedExternalRef {
+  <pre><code class="language-typescript" is:raw>interface ParsedExternalRef {
   type: string;
   id: string;
   proofUrl?: string;
@@ -357,7 +361,7 @@ refs.forEach((ref) => {
 });</code></pre>
 
   <h3>產生外部連結</h3>
-  <pre><code class="language-typescript">function getExternalUrl(ref: ParsedExternalRef): string | null {
+  <pre><code class="language-typescript" is:raw>function getExternalUrl(ref: ParsedExternalRef): string | null {
   switch (ref.type) {
     case 'imdb':
       return `https://www.imdb.com/title/${ref.id}`;
@@ -418,7 +422,7 @@ refs.forEach((ref) => {
 });</code></pre>
 
   <h3>搜尋相關事件</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 async function findEventsForContent(
   pool: SimplePool,
@@ -448,7 +452,7 @@ const movieDiscussions = await findEventsForContent(
 console.log(`找到 ${movieDiscussions.length} 則相關討論`);</code></pre>
 
   <h3>React 元件</h3>
-  <pre><code class="language-typescript">interface ExternalContentCardProps {
+  <pre><code class="language-typescript" is:raw>interface ExternalContentCardProps {
   reference: ParsedExternalRef;
 }
 

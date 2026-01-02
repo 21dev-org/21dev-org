@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-55: Android Signer Application"
   description="Android 平台的 Nostr 簽名應用程式標準，實現安全的密鑰管理"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-55' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -28,7 +32,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="intent-actions">Intent Actions</h2>
 
   <h3>簽名應用宣告</h3>
-  <pre><code class="language-xml">&lt;intent-filter&gt;
+  <pre><code class="language-xml" is:raw>&lt;intent-filter&gt;
   &lt;action android:name="android.intent.action.VIEW" /&gt;
   &lt;category android:name="android.intent.category.DEFAULT" /&gt;
   &lt;category android:name="android.intent.category.BROWSABLE" /&gt;
@@ -81,26 +85,26 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="request-format">請求格式</h2>
 
   <h3>取得公鑰</h3>
-  <pre><code class="language-text">nostrsigner:get_public_key?callback=myapp://callback</code></pre>
+  <pre><code class="language-text" is:raw>nostrsigner:get_public_key?callback=myapp://callback</code></pre>
 
   <h3>簽名事件</h3>
-  <pre><code class="language-text">nostrsigner:sign_event?event=&lt;base64-encoded-event&gt;&amp;callback=myapp://callback</code></pre>
+  <pre><code class="language-text" is:raw>nostrsigner:sign_event?event=&lt;base64-encoded-event&gt;&amp;callback=myapp://callback</code></pre>
 
   <h3>加密訊息</h3>
-  <pre><code class="language-text">nostrsigner:nip04_encrypt?pubkey=&lt;recipient-pubkey&gt;&amp;plaintext=&lt;base64-text&gt;&amp;callback=myapp://callback</code></pre>
+  <pre><code class="language-text" is:raw>nostrsigner:nip04_encrypt?pubkey=&lt;recipient-pubkey&gt;&amp;plaintext=&lt;base64-text&gt;&amp;callback=myapp://callback</code></pre>
 
   <h3>解密訊息</h3>
-  <pre><code class="language-text">nostrsigner:nip04_decrypt?pubkey=&lt;sender-pubkey&gt;&amp;ciphertext=&lt;encrypted-text&gt;&amp;callback=myapp://callback</code></pre>
+  <pre><code class="language-text" is:raw>nostrsigner:nip04_decrypt?pubkey=&lt;sender-pubkey&gt;&amp;ciphertext=&lt;encrypted-text&gt;&amp;callback=myapp://callback</code></pre>
 
   <h2 id="response-format">回應格式</h2>
 
   <p>簽名應用透過 callback URI 返回結果：</p>
 
   <h3>成功回應</h3>
-  <pre><code class="language-text">myapp://callback?result=&lt;base64-encoded-result&gt;</code></pre>
+  <pre><code class="language-text" is:raw>myapp://callback?result=&lt;base64-encoded-result&gt;</code></pre>
 
   <h3>錯誤回應</h3>
-  <pre><code class="language-text">myapp://callback?error=user_rejected</code></pre>
+  <pre><code class="language-text" is:raw>myapp://callback?error=user_rejected</code></pre>
 
   <h3>常見錯誤碼</h3>
   <table>
@@ -135,7 +139,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p>對於需要同步返回的場景，可使用 Content Provider：</p>
 
   <h3>URI 格式</h3>
-  <pre><code class="language-text">content://com.example.signer/sign
+  <pre><code class="language-text" is:raw>content://com.example.signer/sign
 content://com.example.signer/get_public_key
 content://com.example.signer/nip04_encrypt
 content://com.example.signer/nip04_decrypt</code></pre>
@@ -143,7 +147,7 @@ content://com.example.signer/nip04_decrypt</code></pre>
   <h2 id="implementation">Android 實作</h2>
 
   <h3>客戶端：發送簽名請求</h3>
-  <pre><code class="language-kotlin">import android.content.Intent
+  <pre><code class="language-kotlin" is:raw>import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 
@@ -213,7 +217,7 @@ class NostrSignerClient(private val activity: Activity) {
 }</code></pre>
 
   <h3>客戶端：處理回應</h3>
-  <pre><code class="language-kotlin">override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+  <pre><code class="language-kotlin" is:raw>override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     super.onActivityResult(requestCode, resultCode, data)
 
     val uri = data?.data ?: return
@@ -260,7 +264,7 @@ private fun handleError(error: String) {
 }</code></pre>
 
   <h3>簽名應用：處理請求</h3>
-  <pre><code class="language-kotlin">class SignerActivity : AppCompatActivity() {
+  <pre><code class="language-kotlin" is:raw>class SignerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -329,7 +333,7 @@ private fun handleError(error: String) {
 }</code></pre>
 
   <h3>AndroidManifest.xml 配置</h3>
-  <pre><code class="language-xml">&lt;!-- 簽名應用 --&gt;
+  <pre><code class="language-xml" is:raw>&lt;!-- 簽名應用 --&gt;
 &lt;activity
     android:name=".SignerActivity"
     android:exported="true"&gt;

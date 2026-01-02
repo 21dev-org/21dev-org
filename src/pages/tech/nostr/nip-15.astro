@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-15: Nostr 市場"
   description="基於 Nostr 的去中心化市場協議，支持商品展示、訂單管理和支付整合"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-15' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -43,7 +47,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p>商店是商家的店面，包含基本資訊和支付配置。</p>
 
   <h3>Content 欄位（JSON）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "id": "stall-unique-id",
   "name": "我的比特幣商店",
   "description": "販售各種比特幣相關商品",
@@ -89,7 +93,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p>商品是商店中的具體項目，包含價格、庫存和圖片等資訊。</p>
 
   <h3>Content 欄位（JSON）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "id": "product-unique-id",
   "stall_id": "stall-unique-id",
   "name": "Bitcoin 硬體錢包",
@@ -136,7 +140,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>建立商店</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30017,
   "content": "{\"id\":\"btc-store-2024\",\"name\":\"比特幣精品店\",\"description\":\"提供各種比特幣周邊商品\",\"currency\":\"sat\",\"shipping\":[{\"id\":\"tw-shipping\",\"name\":\"台灣宅配\",\"cost\":5000,\"regions\":[\"TW\"]}]}",
   "tags": [
@@ -147,7 +151,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>發布商品</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30018,
   "content": "{\"id\":\"coldcard-mk4\",\"stall_id\":\"btc-store-2024\",\"name\":\"Coldcard Mk4 硬體錢包\",\"description\":\"頂級比特幣硬體錢包，支援氣隙簽名\",\"images\":[\"https://example.com/coldcard.jpg\"],\"currency\":\"sat\",\"price\":1500000,\"quantity\":5,\"specs\":[[\"品牌\",\"Coinkite\"],[\"型號\",\"Mk4\"],[\"顏色\",\"黑色\"]],\"shipping\":[{\"id\":\"tw-shipping\",\"cost\":5000}]}",
   "tags": [
@@ -161,7 +165,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>定義類型</h3>
-  <pre><code class="language-typescript">interface ShippingOption {
+  <pre><code class="language-typescript" is:raw>interface ShippingOption {
   id: string;
   name: string;
   cost: number;
@@ -200,7 +204,7 @@ interface Product {
 }</code></pre>
 
   <h3>建立商店</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 function createStall(
   stall: Stall,
@@ -237,7 +241,7 @@ const stallEvent = createStall(
 );</code></pre>
 
   <h3>建立商品</h3>
-  <pre><code class="language-typescript">function createProduct(
+  <pre><code class="language-typescript" is:raw>function createProduct(
   product: Product,
   secretKey: Uint8Array,
   tags: string[][] = []
@@ -284,7 +288,7 @@ const productEvent = createProduct(
 );</code></pre>
 
   <h3>解析商店與商品</h3>
-  <pre><code class="language-typescript">function parseStall(event: any): Stall | null {
+  <pre><code class="language-typescript" is:raw>function parseStall(event: any): Stall | null {
   if (event.kind !== 30017) return null;
 
   try {
@@ -314,7 +318,7 @@ if (stall && product) {
 }</code></pre>
 
   <h3>搜尋商品</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 interface ProductSearchOptions {
   tags?: string[];
@@ -364,7 +368,7 @@ results.forEach(({ product }) => {
 });</code></pre>
 
   <h3>取得商家所有商品</h3>
-  <pre><code class="language-typescript">async function getMerchantCatalog(
+  <pre><code class="language-typescript" is:raw>async function getMerchantCatalog(
   pool: SimplePool,
   relays: string[],
   merchantPubkey: string
@@ -400,7 +404,7 @@ results.forEach(({ product }) => {
 }</code></pre>
 
   <h3>React 元件</h3>
-  <pre><code class="language-typescript">interface ProductCardProps {
+  <pre><code class="language-typescript" is:raw>interface ProductCardProps {
   product: Product;
   onAddToCart?: (product: Product) => void;
 }

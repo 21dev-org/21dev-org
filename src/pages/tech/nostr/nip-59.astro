@@ -78,7 +78,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     但沒有 <code>id</code> 和 <code>sig</code> 欄位。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "pubkey": "<發送者公鑰>",
   "created_at": 1234567890,
   "kind": 14,
@@ -94,7 +94,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     但 <code>created_at</code> 應該隨機化以隱藏實際時間。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "id": "<事件 ID>",
   "pubkey": "<發送者公鑰>",
   "created_at": <隨機時間戳>,
@@ -110,7 +110,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     接收者的公鑰放在 <code>p</code> 標籤中，以便接收者的客戶端可以找到它。
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "id": "<事件 ID>",
   "pubkey": "<隨機一次性公鑰>",
   "created_at": <隨機時間戳>,
@@ -125,7 +125,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作流程</h2>
 
   <h3>發送訊息</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent, getPublicKey, generateSecretKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent, getPublicKey, generateSecretKey } from 'nostr-tools';
 import { encrypt } from 'nostr-tools/nip44';
 
 // 建立謠言（未簽名的訊息）
@@ -222,7 +222,7 @@ async function sendGiftWrappedMessage(
 }`}</code></pre>
 
   <h3>接收訊息</h3>
-  <pre><code class="language-typescript">{`import { decrypt } from 'nostr-tools/nip44';
+  <pre><code class="language-typescript" is:raw>{`import { decrypt } from 'nostr-tools/nip44';
 import { verifyEvent } from 'nostr-tools';
 
 // 解開禮物包裝
@@ -274,7 +274,7 @@ async function unwrapGiftWrap(
 }`}</code></pre>
 
   <h2 id="querying">查詢禮物包裝</h2>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -307,7 +307,7 @@ function subscribeToGiftWraps(
     NIP-17 定義了基於禮物包裝的私訊標準，使用 kind 14 作為內部訊息類型：
   </p>
 
-  <pre><code class="language-typescript">{`// NIP-17 私訊的謠言結構
+  <pre><code class="language-typescript" is:raw>{`// NIP-17 私訊的謠言結構
 const directMessageRumor = {
   pubkey: senderPubkey,
   created_at: Math.floor(Date.now() / 1000),

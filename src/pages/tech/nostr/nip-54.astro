@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-54: Wiki"
   description="在 Nostr 上建立去中心化的維基百科式知識庫"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-54' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -139,7 +143,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>基本 Wiki 條目</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30818,
   "content": "# Bitcoin\n\nBitcoin 是一種去中心化的數位貨幣，由中本聰於 2008 年提出，2009 年正式上線。\n\n## 特點\n\n- **去中心化**：沒有中央機構控制\n- **有限供應**：總量限制為 2100 萬枚\n- **開源**：任何人都可以審查程式碼\n\n## 相關主題\n\n- [[lightning-network|閃電網路]]\n- [[satoshi-nakamoto|中本聰]]\n\n## 參考資料\n\n- [Bitcoin 白皮書](https://bitcoin.org/bitcoin.pdf)",
   "tags": [
@@ -153,7 +157,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>引用其他條目</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30818,
   "content": "# 閃電網路\n\n閃電網路是建立在 [[bitcoin|Bitcoin]] 之上的二層擴展方案。\n\n## 工作原理\n\n透過支付通道實現快速、低成本的交易...\n\n## 相關技術\n\n- [[htlc|HTLC]]\n- [[payment-channel|支付通道]]",
   "tags": [
@@ -171,13 +175,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <p>在內容中可以使用 Wiki 風格的連結語法：</p>
 
-  <pre><code class="language-text">[[topic-name]]           → 連結到同一作者的條目
+  <pre><code class="language-text" is:raw>[[topic-name]]           → 連結到同一作者的條目
 [[topic-name|顯示文字]]   → 自訂顯示文字</code></pre>
 
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立 Wiki 條目</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 interface WikiArticle {
   topic: string;
@@ -235,7 +239,7 @@ const wikiEvent = createWikiEvent(
 );</code></pre>
 
   <h3>解析 Wiki 條目</h3>
-  <pre><code class="language-typescript">interface ParsedWikiArticle {
+  <pre><code class="language-typescript" is:raw>interface ParsedWikiArticle {
   topic: string;
   title: string;
   content: string;
@@ -278,7 +282,7 @@ function parseWikiEvent(event: any): ParsedWikiArticle | null {
 }</code></pre>
 
   <h3>解析 Wiki 連結</h3>
-  <pre><code class="language-typescript">interface WikiLink {
+  <pre><code class="language-typescript" is:raw>interface WikiLink {
   topic: string;
   displayText: string;
   start: number;
@@ -322,7 +326,7 @@ function renderWikiContent(
 }</code></pre>
 
   <h3>搜尋 Wiki 條目</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 interface WikiSearchOptions {
   topic?: string;
@@ -386,7 +390,7 @@ async function getArticleVersions(
 }</code></pre>
 
   <h3>React 元件</h3>
-  <pre><code class="language-typescript">import ReactMarkdown from 'react-markdown';
+  <pre><code class="language-typescript" is:raw>import ReactMarkdown from 'react-markdown';
 
 interface WikiArticleViewProps {
   article: ParsedWikiArticle;

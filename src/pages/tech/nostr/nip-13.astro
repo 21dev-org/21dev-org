@@ -84,10 +84,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     事件必須包含 <code>nonce</code> 標籤來聲明工作量證明。標籤格式為：
   </p>
 
-  <pre><code class="language-json">{`["nonce", "<nonce 值>", "<目標難度>"]`}</code></pre>
+  <pre><code class="language-json" is:raw>{`["nonce", "<nonce 值>", "<目標難度>"]`}</code></pre>
 
   <h3>事件範例</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "id": "000006d8c378af1779d2feebc7603a125d99eca0ccf1085959b307f64e5dd358",
   "pubkey": "a]48...",
   "created_at": 1651794653,
@@ -107,7 +107,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>計算前導零位元</h3>
-  <pre><code class="language-typescript">{`// 計算事件 ID 的前導零位元數
+  <pre><code class="language-typescript" is:raw>{`// 計算事件 ID 的前導零位元數
 function countLeadingZeroBits(hex: string): number {
   let count = 0;
 
@@ -131,7 +131,7 @@ console.log(countLeadingZeroBits('0000ffff...')); // 16
 console.log(countLeadingZeroBits('00000000...')); // 32`}</code></pre>
 
   <h3>挖掘事件</h3>
-  <pre><code class="language-typescript">{`import { getEventHash, finalizeEvent, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { getEventHash, finalizeEvent, getPublicKey } from 'nostr-tools';
 
 interface UnsignedEvent {
   kind: number;
@@ -211,7 +211,7 @@ async function createPowEvent(
     對於較高難度的 PoW，建議使用 Web Worker 避免阻塞主線程：
   </p>
 
-  <pre><code class="language-typescript">{`// pow-worker.ts
+  <pre><code class="language-typescript" is:raw>{`// pow-worker.ts
 self.onmessage = (e) => {
   const { event, targetDifficulty, startNonce, endNonce } = e.data;
 
@@ -274,7 +274,7 @@ async function mineWithWorkers(
 }`}</code></pre>
 
   <h2 id="verification">驗證</h2>
-  <pre><code class="language-typescript">{`// 驗證事件的工作量證明
+  <pre><code class="language-typescript" is:raw>{`// 驗證事件的工作量證明
 function verifyPow(event: Event): { valid: boolean; difficulty: number } {
   // 找到 nonce 標籤
   const nonceTag = event.tags.find(t => t[0] === 'nonce');
@@ -303,14 +303,14 @@ if (result.valid) {
   <h2 id="relay-usage">中繼器應用</h2>
   <p>中繼器可以通過 NIP-11 聲明對 PoW 的要求：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "limitation": {
     "min_pow_difficulty": 16
   }
 }`}</code></pre>
 
   <h3>查詢帶有 PoW 的事件</h3>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io'];
@@ -350,7 +350,7 @@ async function getHighPowEvents(minDifficulty: number) {
     為防止 PoW 被重複使用在不同事件上，nonce 標籤可以包含對特定欄位的承諾：
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "tags": [
     ["nonce", "776797", "20", "pubkey,created_at"]
   ]

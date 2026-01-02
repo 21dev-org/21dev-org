@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-49: 私鑰加密"
   description="使用密碼保護 Nostr 私鑰的標準加密格式"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-49' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -19,7 +23,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     加密後的私鑰使用 bech32 編碼，前綴為 <code>ncryptsec</code>：
   </p>
 
-  <pre><code class="language-text">ncryptsec1qgg9947rlpvqu76pj5ecreduf9jxhselq2nae2kghhvd5g7dgjtcxfqtd67p9m0w57lspw8gsq6yphnm8623nsl8xn9j4jdzz84zm3frztj3z7s35vpzmqf6ksu8r89qk5z2zxfmu5gv8th8wclt0h4p</code></pre>
+  <pre><code class="language-text" is:raw>ncryptsec1qgg9947rlpvqu76pj5ecreduf9jxhselq2nae2kghhvd5g7dgjtcxfqtd67p9m0w57lspw8gsq6yphnm8623nsl8xn9j4jdzz84zm3frztj3z7s35vpzmqf6ksu8r89qk5z2zxfmu5gv8th8wclt0h4p</code></pre>
 
   <h3>二進制結構（91 位元組）</h3>
   <table>
@@ -70,7 +74,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p>
     密碼必須正規化為 Unicode NFKC 格式，確保在不同電腦和客戶端上輸入一致：
   </p>
-  <pre><code class="language-typescript">const normalizedPassword = password.normalize('NFKC');</code></pre>
+  <pre><code class="language-typescript" is:raw>const normalizedPassword = password.normalize('NFKC');</code></pre>
 
   <h3>2. 密鑰派生（scrypt）</h3>
   <table>
@@ -192,10 +196,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>安裝依賴</h3>
-  <pre><code class="language-bash">npm install @noble/hashes @noble/ciphers nostr-tools</code></pre>
+  <pre><code class="language-bash" is:raw>npm install @noble/hashes @noble/ciphers nostr-tools</code></pre>
 
   <h3>加密私鑰</h3>
-  <pre><code class="language-typescript">import { scrypt } from '@noble/hashes/scrypt';
+  <pre><code class="language-typescript" is:raw>import { scrypt } from '@noble/hashes/scrypt';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha';
 import { randomBytes } from '@noble/hashes/utils';
 import { bech32 } from '@scure/base';
@@ -251,7 +255,7 @@ const ncryptsec = encryptPrivateKey(sk, 'my-strong-password');
 console.log('加密後的私鑰:', ncryptsec);</code></pre>
 
   <h3>解密私鑰</h3>
-  <pre><code class="language-typescript">import { scrypt } from '@noble/hashes/scrypt';
+  <pre><code class="language-typescript" is:raw>import { scrypt } from '@noble/hashes/scrypt';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha';
 import { bech32 } from '@scure/base';
 
@@ -327,7 +331,7 @@ try {
 }</code></pre>
 
   <h3>完整的密鑰管理類別</h3>
-  <pre><code class="language-typescript">import { scrypt } from '@noble/hashes/scrypt';
+  <pre><code class="language-typescript" is:raw>import { scrypt } from '@noble/hashes/scrypt';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha';
 import { randomBytes, bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { bech32 } from '@scure/base';

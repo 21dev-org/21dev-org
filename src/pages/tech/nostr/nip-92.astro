@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-92: 媒體附件"
   description="在 Nostr 事件中嵌入圖片、影片和檔案的標準方法"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-92' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -23,7 +27,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <li>對應的 <code>imeta</code> 標籤包含元資料</li>
   </ol>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "看看這張美麗的風景照！\n\nhttps://example.com/photo.jpg",
   "tags": [
@@ -42,7 +46,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <code>imeta</code> 標籤是可變長度的，使用空格分隔的鍵值對：
   </p>
 
-  <pre><code class="language-text">["imeta", "key1 value1", "key2 value2", ...]</code></pre>
+  <pre><code class="language-text" is:raw>["imeta", "key1 value1", "key2 value2", ...]</code></pre>
 
   <h3>必要欄位</h3>
   <table>
@@ -118,7 +122,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>單張圖片</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "今天的日落真美！\n\nhttps://cdn.example.com/sunset.jpg",
   "tags": [
@@ -133,7 +137,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>多張圖片</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "週末旅行的照片集：\n\nhttps://cdn.example.com/trip1.jpg\nhttps://cdn.example.com/trip2.jpg\nhttps://cdn.example.com/trip3.jpg",
   "tags": [
@@ -159,7 +163,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>影片附件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "剛錄的教學影片：\n\nhttps://cdn.example.com/tutorial.mp4",
   "tags": [
@@ -174,7 +178,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>帶備用連結的圖片</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "重要的圖片：\n\nhttps://cdn.example.com/important.png",
   "tags": [
@@ -192,7 +196,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立帶媒體附件的事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey } from 'nostr-tools';
 
 interface MediaAttachment {
   url: string;
@@ -276,7 +280,7 @@ const event = createMediaEvent(
 console.log(event);</code></pre>
 
   <h3>解析媒體附件</h3>
-  <pre><code class="language-typescript">interface ParsedMedia {
+  <pre><code class="language-typescript" is:raw>interface ParsedMedia {
   url: string;
   mimeType?: string;
   dimensions?: { width: number; height: number };
@@ -348,7 +352,7 @@ attachments.forEach((media, i) => {
 });</code></pre>
 
   <h3>上傳並附加媒體</h3>
-  <pre><code class="language-typescript">import { sha256 } from '@noble/hashes/sha256';
+  <pre><code class="language-typescript" is:raw>import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex } from '@noble/hashes/utils';
 import { encode } from 'blurhash';
 

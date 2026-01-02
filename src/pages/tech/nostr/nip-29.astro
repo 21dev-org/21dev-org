@@ -41,7 +41,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     群組使用 <code>&lt;host&gt;'&lt;group-id&gt;</code> 格式識別：
   </p>
 
-  <pre><code class="language-text">{`groups.nostr.com'bitcoin-dev
+  <pre><code class="language-text" is:raw>{`groups.nostr.com'bitcoin-dev
 relay.example.com'my-group-123
 nos.lol'_`}</code></pre>
 
@@ -198,7 +198,7 @@ nos.lol'_`}</code></pre>
   <h2 id="tagging">標籤要求</h2>
   <p>所有群組內容都需要 <code>h</code> 標籤標識群組：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 9,
   "content": "群組訊息內容",
   "tags": [
@@ -214,7 +214,7 @@ nos.lol'_`}</code></pre>
   </p>
 
   <h2 id="group-metadata">群組中繼資料 (Kind 39000)</h2>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 39000,
   "pubkey": "<relay-pubkey>",
   "content": "",
@@ -230,7 +230,7 @@ nos.lol'_`}</code></pre>
 }`}</code></pre>
 
   <h2 id="admin-list">管理員列表 (Kind 39001)</h2>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 39001,
   "pubkey": "<relay-pubkey>",
   "content": "",
@@ -246,7 +246,7 @@ nos.lol'_`}</code></pre>
   <h2 id="implementation">實作</h2>
 
   <h3>請求加入群組</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent } from 'nostr-tools';
 
 // 請求加入群組
 function requestJoinGroup(
@@ -283,7 +283,7 @@ function requestLeaveGroup(
 }`}</code></pre>
 
   <h3>發送群組訊息</h3>
-  <pre><code class="language-typescript">{`// 發送群組訊息
+  <pre><code class="language-typescript" is:raw>{`// 發送群組訊息
 function sendGroupMessage(
   privateKey: Uint8Array,
   groupId: string,
@@ -309,7 +309,7 @@ function sendGroupMessage(
 }`}</code></pre>
 
   <h3>管理操作（需要管理員權限）</h3>
-  <pre><code class="language-typescript">{`// 添加用戶到群組
+  <pre><code class="language-typescript" is:raw>{`// 添加用戶到群組
 function addUserToGroup(
   adminPrivateKey: Uint8Array,
   groupId: string,
@@ -405,7 +405,7 @@ function createInvite(
 }`}</code></pre>
 
   <h2 id="querying">查詢群組</h2>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 // 取得群組資訊
 async function getGroupInfo(
@@ -484,7 +484,7 @@ function subscribeToGroup(
 }`}</code></pre>
 
   <h2 id="membership-check">檢查成員身份</h2>
-  <pre><code class="language-typescript">{`// 檢查用戶是否為群組成員
+  <pre><code class="language-typescript" is:raw>{`// 檢查用戶是否為群組成員
 async function checkMembership(
   pool: SimplePool,
   relayUrl: string,
@@ -558,7 +558,7 @@ async function checkMembership(
     所有用戶都被視為成員，依賴中繼器的一般審核機制。
   </p>
 
-  <pre><code class="language-typescript">{`// 在任何中繼器上使用非託管群組
+  <pre><code class="language-typescript" is:raw>{`// 在任何中繼器上使用非託管群組
 const unmanagedGroupId = 'bitcoin-chat';
 
 // 直接發送訊息（無需加入）

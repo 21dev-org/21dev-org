@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-35: Torrents"
   description="在 Nostr 上分享和發現 BitTorrent 種子"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-35' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -107,12 +111,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     可以從事件的標籤中組合成 Magnet URI：
   </p>
 
-  <pre><code class="language-text">magnet:?xt=urn:btih:&lt;info-hash&gt;&amp;dn=&lt;title&gt;&amp;tr=&lt;tracker&gt;</code></pre>
+  <pre><code class="language-text" is:raw>magnet:?xt=urn:btih:&lt;info-hash&gt;&amp;dn=&lt;title&gt;&amp;tr=&lt;tracker&gt;</code></pre>
 
   <h2 id="examples">範例</h2>
 
   <h3>開源軟體種子</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 2003,
   "content": "Ubuntu 24.04 LTS (Noble Numbat) 官方 ISO 映像檔。\n\n## 特點\n- 長期支援版本（5年支援）\n- GNOME 46 桌面環境\n- Linux 內核 6.8\n\n請從官方來源驗證 SHA256 校驗碼。",
   "tags": [
@@ -130,7 +134,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>多檔案種子</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 2003,
   "content": "Bitcoin 核心客戶端 v27.0 所有平台版本。\n\n包含 Windows、macOS、Linux 版本及簽名檔。",
   "tags": [
@@ -150,7 +154,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>定義類型</h3>
-  <pre><code class="language-typescript">interface TorrentFile {
+  <pre><code class="language-typescript" is:raw>interface TorrentFile {
   name: string;
   size: number;
 }
@@ -167,7 +171,7 @@ interface Torrent {
 }</code></pre>
 
   <h3>建立種子事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 function createTorrentEvent(
   torrent: Torrent,
@@ -227,7 +231,7 @@ const torrentEvent = createTorrentEvent(
 );</code></pre>
 
   <h3>解析種子事件</h3>
-  <pre><code class="language-typescript">interface ParsedTorrent {
+  <pre><code class="language-typescript" is:raw>interface ParsedTorrent {
   title: string;
   description: string;
   infoHash: string;
@@ -302,7 +306,7 @@ if (torrent) {
 }</code></pre>
 
   <h3>搜尋種子</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 interface TorrentSearchOptions {
   tags?: string[];
@@ -343,7 +347,7 @@ const torrents = await searchTorrents(pool, relays, {
 });</code></pre>
 
   <h3>格式化工具</h3>
-  <pre><code class="language-typescript">function formatBytes(bytes: number): string {
+  <pre><code class="language-typescript" is:raw>function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
 
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -358,7 +362,7 @@ function copyMagnetLink(magnetUri: string): void {
 }</code></pre>
 
   <h3>React 元件</h3>
-  <pre><code class="language-typescript">interface TorrentCardProps {
+  <pre><code class="language-typescript" is:raw>interface TorrentCardProps {
   torrent: ParsedTorrent;
 }
 

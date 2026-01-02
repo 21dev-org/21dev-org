@@ -33,10 +33,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     使用 <code>expiration</code> 標籤指定事件的過期時間，值為 Unix 時間戳（秒）：
   </p>
 
-  <pre><code class="language-json">{`["expiration", "<Unix 時間戳>"]`}</code></pre>
+  <pre><code class="language-json" is:raw>{`["expiration", "<Unix 時間戳>"]`}</code></pre>
 
   <h3>事件範例</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "id": "...",
   "pubkey": "...",
   "created_at": 1700000000,
@@ -51,7 +51,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>建立過期事件</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent, getPublicKey } from 'nostr-tools';
 
 // 建立帶有過期時間的事件
 function createExpiringEvent(
@@ -116,7 +116,7 @@ const newYearEvent = createEventExpiringAt(
 );`}</code></pre>
 
   <h3>檢查事件是否過期</h3>
-  <pre><code class="language-typescript">{`// 檢查事件是否已過期
+  <pre><code class="language-typescript" is:raw>{`// 檢查事件是否已過期
 function isEventExpired(event: Event): boolean {
   const expirationTag = event.tags.find(t => t[0] === 'expiration');
 
@@ -171,7 +171,7 @@ function formatTimeRemaining(seconds: number): string {
 }`}</code></pre>
 
   <h3>過濾過期事件</h3>
-  <pre><code class="language-typescript">{`import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { SimplePool } from 'nostr-tools';
 
 const pool = new SimplePool();
 const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
@@ -226,7 +226,7 @@ function subscribeToActiveEvents(
   <h2 id="use-cases">應用場景</h2>
 
   <h3>限時公告</h3>
-  <pre><code class="language-typescript">{`// 活動公告，活動結束後過期
+  <pre><code class="language-typescript" is:raw>{`// 活動公告，活動結束後過期
 const eventAnnouncement = createEventExpiringAt(
   privateKey,
   '🎉 線上聚會今晚 8 點開始！加入連結：...',
@@ -234,7 +234,7 @@ const eventAnnouncement = createEventExpiringAt(
 );`}</code></pre>
 
   <h3>閃購優惠</h3>
-  <pre><code class="language-typescript">{`// 限時優惠，24 小時後過期
+  <pre><code class="language-typescript" is:raw>{`// 限時優惠，24 小時後過期
 const flashSale = createExpiringEvent(
   privateKey,
   '⚡ 限時優惠！使用代碼 NOSTR24 享 50% 折扣',
@@ -242,7 +242,7 @@ const flashSale = createExpiringEvent(
 );`}</code></pre>
 
   <h3>臨時訊息</h3>
-  <pre><code class="language-typescript">{`// 臨時位置分享，1 小時後過期
+  <pre><code class="language-typescript" is:raw>{`// 臨時位置分享，1 小時後過期
 const locationShare = createExpiringEvent(
   privateKey,
   '📍 我現在在台北 101，想見面的朋友來找我',
@@ -250,7 +250,7 @@ const locationShare = createExpiringEvent(
 );`}</code></pre>
 
   <h3>投票與問卷</h3>
-  <pre><code class="language-typescript">{`// 投票，截止時間後過期
+  <pre><code class="language-typescript" is:raw>{`// 投票，截止時間後過期
 const poll = {
   kind: 1,
   created_at: Math.floor(Date.now() / 1000),
@@ -263,7 +263,7 @@ const poll = {
 };`}</code></pre>
 
   <h2 id="ui-display">UI 顯示建議</h2>
-  <pre><code class="language-typescript">{`// React 組件範例
+  <pre><code class="language-typescript" is:raw>{`// React 組件範例
 function ExpiringNote({ event }: { event: Event }) {
   const [remaining, setRemaining] = useState(getTimeRemaining(event));
 

@@ -33,10 +33,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     使用 <code>content-warning</code> 標籤標記敏感內容，可選擇性地附帶原因說明：
   </p>
 
-  <pre><code class="language-json">{`["content-warning", "<警告原因>"]`}</code></pre>
+  <pre><code class="language-json" is:raw>{`["content-warning", "<警告原因>"]`}</code></pre>
 
   <h3>事件範例</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1,
   "tags": [
     ["content-warning", "暴力內容"]
@@ -48,7 +48,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h3>無原因的警告</h3>
   <p>如果不想說明具體原因，可以留空：</p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1,
   "tags": [
     ["content-warning", ""]
@@ -60,7 +60,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>建立敏感內容事件</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent } from 'nostr-tools';
 
 // 建立帶有內容警告的事件
 function createSensitiveEvent(
@@ -100,7 +100,7 @@ const triggerPost = createSensitiveEvent(
 );`}</code></pre>
 
   <h3>檢查敏感內容</h3>
-  <pre><code class="language-typescript">{`interface ContentWarning {
+  <pre><code class="language-typescript" is:raw>{`interface ContentWarning {
   hasSensitiveContent: boolean;
   reason: string | null;
 }
@@ -127,7 +127,7 @@ if (hasSensitiveContent) {
 }`}</code></pre>
 
   <h3>過濾敏感內容</h3>
-  <pre><code class="language-typescript">{`// 過濾掉所有敏感內容
+  <pre><code class="language-typescript" is:raw>{`// 過濾掉所有敏感內容
 function filterSensitiveContent(events: Event[]): Event[] {
   return events.filter(event => {
     const { hasSensitiveContent } = checkContentWarning(event);
@@ -172,7 +172,7 @@ function categorizeContent(events: Event[]): {
     <li>允許用戶設定偏好（總是隱藏、總是顯示等）</li>
   </ul>
 
-  <pre><code class="language-typescript">{`// React 組件範例
+  <pre><code class="language-typescript" is:raw>{`// React 組件範例
 function SensitiveNote({ event }: { event: Event }) {
   const [revealed, setRevealed] = useState(false);
   const { hasSensitiveContent, reason } = checkContentWarning(event);
@@ -220,7 +220,7 @@ function SensitiveNote({ event }: { event: Event }) {
 }`}</code></pre>
 
   <h2 id="user-settings">用戶偏好設定</h2>
-  <pre><code class="language-typescript">{`// 用戶敏感內容偏好
+  <pre><code class="language-typescript" is:raw>{`// 用戶敏感內容偏好
 type SensitiveContentPreference =
   | 'always_hide'      // 總是隱藏
   | 'show_warning'     // 顯示警告（預設）
@@ -291,7 +291,7 @@ function shouldShowContent(
   <h2 id="media-content">媒體內容處理</h2>
   <p>對於包含媒體的敏感內容，建議額外處理：</p>
 
-  <pre><code class="language-typescript">{`// 敏感媒體處理
+  <pre><code class="language-typescript" is:raw>{`// 敏感媒體處理
 function processSensitiveMedia(event: Event): {
   content: string;
   mediaUrls: string[];

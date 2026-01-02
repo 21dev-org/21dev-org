@@ -76,7 +76,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     自訂表情使用 <code>emoji</code> 標籤定義：
   </p>
 
-  <pre><code class="language-json">{`["emoji", "<shortcode>", "<image-url>"]`}</code></pre>
+  <pre><code class="language-json" is:raw>{`["emoji", "<shortcode>", "<image-url>"]`}</code></pre>
 
   <ul>
     <li><code>shortcode</code> - 表情代碼，只能包含字母、數字和底線</li>
@@ -90,7 +90,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <li>建議使用小寫以保持一致性</li>
   </ul>
 
-  <pre><code class="language-json">{`// ✓ 正確
+  <pre><code class="language-json" is:raw>{`// ✓ 正確
 ["emoji", "pepe_happy", "https://example.com/pepe_happy.gif"]
 ["emoji", "bitcoin", "https://example.com/btc.png"]
 ["emoji", "nostr_logo", "https://example.com/nostr.svg"]
@@ -105,7 +105,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     在內容中使用 <code>:shortcode:</code> 格式引用表情：
   </p>
 
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1,
   "content": "今天心情超好 :pepe_happy: 來點比特幣 :bitcoin:",
   "tags": [
@@ -118,7 +118,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">事件範例</h2>
 
   <h3>個人資料 (Kind 0)</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 0,
   "content": "{\"name\":\"Alice :nostr:\",\"about\":\"Nostr 愛好者 :bitcoin: :lightning:\"}",
   "tags": [
@@ -130,7 +130,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }`}</code></pre>
 
   <h3>貼文 (Kind 1)</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 1,
   "content": "剛剛完成了新功能！:ship_it: :party_parrot:",
   "tags": [
@@ -141,7 +141,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }`}</code></pre>
 
   <h3>自訂表情反應 (Kind 7)</h3>
-  <pre><code class="language-json">{`{
+  <pre><code class="language-json" is:raw>{`{
   "kind": 7,
   "content": ":pepe_love:",
   "tags": [
@@ -155,7 +155,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">實作</h2>
 
   <h3>建立帶表情的事件</h3>
-  <pre><code class="language-typescript">{`import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>{`import { finalizeEvent } from 'nostr-tools';
 
 interface CustomEmoji {
   shortcode: string;
@@ -201,7 +201,7 @@ const post = createPostWithEmojis(
 );`}</code></pre>
 
   <h3>建立自訂表情反應</h3>
-  <pre><code class="language-typescript">{`// 使用自訂表情反應
+  <pre><code class="language-typescript" is:raw>{`// 使用自訂表情反應
 function createCustomEmojiReaction(
   privateKey: Uint8Array,
   targetEventId: string,
@@ -236,7 +236,7 @@ const reaction = createCustomEmojiReaction(
 );`}</code></pre>
 
   <h3>解析並渲染表情</h3>
-  <pre><code class="language-typescript">{`interface EmojiMap {
+  <pre><code class="language-typescript" is:raw>{`interface EmojiMap {
   [shortcode: string]: string;
 }
 
@@ -278,7 +278,7 @@ const rendered = renderEmojis(event.content, emojiMap);
 // 太棒了 <img src="https://example.com/party.gif" ... /> <img src="https://example.com/fire.gif" ... />`}</code></pre>
 
   <h2 id="react-component">React 組件範例</h2>
-  <pre><code class="language-tsx">{`interface CustomEmojiProps {
+  <pre><code class="language-tsx" is:raw>{`interface CustomEmojiProps {
   shortcode: string;
   url: string;
 }
@@ -354,7 +354,7 @@ function EmojifiedText({ content, emojis }: EmojifiedTextProps) {
     並提供 shortcode 列表供用戶使用。
   </p>
 
-  <pre><code class="language-typescript">{`// 表情包定義
+  <pre><code class="language-typescript" is:raw>{`// 表情包定義
 interface EmojiPack {
   name: string;
   author: string;
@@ -398,7 +398,7 @@ function createPostWithPack(
   </ul>
 
   <h3>CSS 樣式建議</h3>
-  <pre><code class="language-css">{`.custom-emoji {
+  <pre><code class="language-css" is:raw>{`.custom-emoji {
   display: inline-block;
   height: 1.2em;
   width: 1.2em;

@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-48: 代理標籤"
   description="標記從其他協議橋接到 Nostr 的內容來源"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-48' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -15,7 +19,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h2 id="tag-format">標籤格式</h2>
-  <pre><code class="language-json">["proxy", "&lt;id&gt;", "&lt;protocol&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["proxy", "&lt;id&gt;", "&lt;protocol&gt;"]</code></pre>
 
   <table>
     <thead>
@@ -73,7 +77,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="examples">範例</h2>
 
   <h3>從 ActivityPub 橋接</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這是從 Mastodon 橋接過來的貼文！",
   "tags": [
@@ -82,7 +86,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>從 Bluesky (AT Protocol) 橋接</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這是從 Bluesky 橋接過來的貼文！",
   "tags": [
@@ -91,7 +95,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>從 RSS 橋接</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這是部落格的新文章摘要...",
   "tags": [
@@ -100,7 +104,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>從 Twitter/X 橋接</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這是從 Twitter 橋接過來的推文！",
   "tags": [
@@ -111,7 +115,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立代理事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 type ProxyProtocol = 'activitypub' | 'atproto' | 'rss' | 'web';
 
@@ -152,7 +156,7 @@ const mastodonPost = createProxiedEvent(
 );</code></pre>
 
   <h3>檢測代理事件</h3>
-  <pre><code class="language-typescript">interface ProxyInfo {
+  <pre><code class="language-typescript" is:raw>interface ProxyInfo {
   id: string;
   protocol: string;
   isProxied: boolean;
@@ -184,7 +188,7 @@ if (proxyInfo) {
 }</code></pre>
 
   <h3>去重處理</h3>
-  <pre><code class="language-typescript">interface DeduplicatedEvent {
+  <pre><code class="language-typescript" is:raw>interface DeduplicatedEvent {
   event: any;
   isNative: boolean;
   proxySource?: ProxyInfo;
@@ -228,7 +232,7 @@ function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
 }</code></pre>
 
   <h3>顯示來源連結</h3>
-  <pre><code class="language-typescript">function getSourceUrl(proxyInfo: ProxyInfo): string | null {
+  <pre><code class="language-typescript" is:raw>function getSourceUrl(proxyInfo: ProxyInfo): string | null {
   switch (proxyInfo.protocol) {
     case 'activitypub':
     case 'web':

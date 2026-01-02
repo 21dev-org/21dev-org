@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-27: 文字引用"
   description="在 Nostr 文字內容中引用其他事件和用戶的標準方法"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-27' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -20,18 +24,18 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </p>
 
   <h3>用戶提及</h3>
-  <pre><code class="language-text">nostr:npub1xxx...
+  <pre><code class="language-text" is:raw>nostr:npub1xxx...
 nostr:nprofile1qqsw3dy8cpu...</code></pre>
 
   <h3>事件引用</h3>
-  <pre><code class="language-text">nostr:note1xxx...
+  <pre><code class="language-text" is:raw>nostr:note1xxx...
 nostr:nevent1qqsxxx...
 nostr:naddr1qqsxxx...</code></pre>
 
   <h2 id="examples">範例</h2>
 
   <h3>提及用戶</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "剛看到 nostr:npub1qqqqqq... 發的精彩文章！",
   "tags": [
@@ -40,7 +44,7 @@ nostr:naddr1qqsxxx...</code></pre>
 }</code></pre>
 
   <h3>引用事件</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "這個討論很有意思：nostr:nevent1qqsxxx...",
   "tags": [
@@ -49,7 +53,7 @@ nostr:naddr1qqsxxx...</code></pre>
 }</code></pre>
 
   <h3>引用長文</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1,
   "content": "推薦這篇教學：nostr:naddr1qqxnzd3exsmxxxx...",
   "tags": [
@@ -68,10 +72,10 @@ nostr:naddr1qqsxxx...</code></pre>
   </ul>
 
   <h3>用戶提及標籤</h3>
-  <pre><code class="language-json">["p", "&lt;pubkey&gt;", "&lt;relay-url&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["p", "&lt;pubkey&gt;", "&lt;relay-url&gt;"]</code></pre>
 
   <h3>事件引用標籤 (q 標籤)</h3>
-  <pre><code class="language-json">// 引用一般事件
+  <pre><code class="language-json" is:raw>// 引用一般事件
 ["q", "&lt;event-id&gt;", "&lt;relay-url&gt;", "&lt;author-pubkey&gt;"]
 
 // 引用可定址事件
@@ -97,7 +101,7 @@ nostr:naddr1qqsxxx...</code></pre>
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立帶引用的事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey, nip19 } from 'nostr-tools';
 
 interface MentionedUser {
   pubkey: string;
@@ -179,7 +183,7 @@ const event = createNoteWithReferences(
 );</code></pre>
 
   <h3>解析內容中的引用</h3>
-  <pre><code class="language-typescript">import { nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { nip19 } from 'nostr-tools';
 
 interface ParsedReference {
   type: 'npub' | 'nprofile' | 'note' | 'nevent' | 'naddr';
@@ -221,7 +225,7 @@ refs.forEach((ref) => {
 });</code></pre>
 
   <h3>渲染豐富內容</h3>
-  <pre><code class="language-typescript">interface RenderOptions {
+  <pre><code class="language-typescript" is:raw>interface RenderOptions {
   onProfileClick?: (pubkey: string) => void;
   onEventClick?: (eventId: string) => void;
 }

@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-78: 應用程式自訂資料"
   description="在 Nostr 中繼器上儲存任意應用程式資料"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-78' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -19,7 +23,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     Kind 30078 是一個可定址的可替換事件，使用 <code>d</code> 標籤作為識別符。
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "tags": [
     ["d", "myapp/user-settings"]
@@ -61,7 +65,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <code>d</code> 標籤可以是任意字串，但建議使用有意義的命名來組織資料：
   </p>
 
-  <pre><code class="language-json">// 應用程式設定
+  <pre><code class="language-json" is:raw>// 應用程式設定
 ["d", "com.example.myapp/settings"]
 
 // 特定功能的資料
@@ -87,7 +91,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3>1. 用戶偏好設定</h3>
   <p>儲存 Nostr 客戶端或其他應用程式的用戶設定：</p>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "tags": [["d", "nostr-client/preferences"]],
   "content": "{\"theme\":\"dark\",\"fontSize\":16,\"autoLoadMedia\":false,\"defaultZapAmount\":1000}"
@@ -95,7 +99,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3>2. 應用程式配置分發</h3>
   <p>開發者可以透過 Nostr 分發配置更新，無需發布軟體更新：</p>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "tags": [
     ["d", "myapp/remote-config"],
@@ -106,14 +110,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3>3. 非 Nostr 應用程式的資料儲存</h3>
   <p>任何應用程式都可以使用 Nostr 作為個人資料儲存：</p>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "tags": [["d", "todo-app/tasks"]],
   "content": "[{\"id\":1,\"text\":\"學習 Nostr\",\"done\":true},{\"id\":2,\"text\":\"建立應用程式\",\"done\":false}]"
 }</code></pre>
 
   <h3>4. 遊戲存檔</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "tags": [
     ["d", "pixel-adventure/save/slot1"],
@@ -123,7 +127,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>5. 跨裝置同步</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "tags": [["d", "password-manager/encrypted-vault"]],
   "content": "&lt;encrypted-base64-data&gt;"
@@ -132,7 +136,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>儲存應用程式資料</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey, SimplePool } from 'nostr-tools';
 
 interface AppDataOptions {
   appId: string;
@@ -192,7 +196,7 @@ const pool = new SimplePool();
 await pool.publish(['wss://relay.damus.io'], settingsEvent);</code></pre>
 
   <h3>讀取應用程式資料</h3>
-  <pre><code class="language-typescript">import { SimplePool, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool, getPublicKey } from 'nostr-tools';
 
 async function getAppData&lt;T&gt;(
   pubkey: string,
@@ -247,7 +251,7 @@ if (settings) {
 }</code></pre>
 
   <h3>完整的應用程式資料管理類別</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, SimplePool, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, SimplePool, getPublicKey } from 'nostr-tools';
 
 class NostrAppStorage {
   private pool: SimplePool;
@@ -361,7 +365,7 @@ const keys = await storage.list();
 console.log('儲存的資料:', keys);</code></pre>
 
   <h3>加密資料儲存</h3>
-  <pre><code class="language-typescript">import { nip44, getPublicKey } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { nip44, getPublicKey } from 'nostr-tools';
 
 class EncryptedNostrStorage extends NostrAppStorage {
   private conversationKey: Uint8Array;
@@ -415,7 +419,7 @@ const passwords = await encryptedStorage.getEncrypted&lt;Array&lt;any&gt;&gt;('p
   <h2 id="query-examples">查詢範例</h2>
 
   <h3>查詢特定應用程式的所有資料</h3>
-  <pre><code class="language-typescript">const pool = new SimplePool();
+  <pre><code class="language-typescript" is:raw>const pool = new SimplePool();
 
 // 查詢所有以特定前綴開頭的資料
 const allAppData = await pool.querySync(relays, {
@@ -430,7 +434,7 @@ const myAppData = allAppData.filter((event) => {
 });</code></pre>
 
   <h3>查詢特定資料</h3>
-  <pre><code class="language-typescript">const settings = await pool.querySync(relays, {
+  <pre><code class="language-typescript" is:raw>const settings = await pool.querySync(relays, {
   kinds: [30078],
   authors: [pubkey],
   '#d': ['com.example.myapp/settings'],

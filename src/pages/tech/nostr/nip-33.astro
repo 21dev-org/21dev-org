@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-33: Parameterized Replaceable Events"
   description="帶參數的可替換事件，允許同一作者發布多個可替換事件"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-33' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -41,7 +45,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <code>d</code> 標籤是區分同一 kind 不同實例的關鍵：
   </p>
 
-  <pre><code class="language-json">["d", "&lt;識別符&gt;"]</code></pre>
+  <pre><code class="language-json" is:raw>["d", "&lt;識別符&gt;"]</code></pre>
 
   <h3>識別規則</h3>
   <ul>
@@ -56,12 +60,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     帶參數的可替換事件使用 <code>naddr</code>（NIP-19）來引用：
   </p>
 
-  <pre><code class="language-text">naddr1...（包含 kind、pubkey、d 值和推薦中繼器）</code></pre>
+  <pre><code class="language-text" is:raw>naddr1...（包含 kind、pubkey、d 值和推薦中繼器）</code></pre>
 
   <h2 id="examples">範例</h2>
 
   <h3>長文文章（kind 30023）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30023,
   "pubkey": "作者公鑰",
   "created_at": 1700000000,
@@ -75,7 +79,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>更新同一篇文章</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30023,
   "pubkey": "同一作者公鑰",
   "created_at": 1700100000,
@@ -89,7 +93,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 }</code></pre>
 
   <h3>用戶個人資料（kind 30078）</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30078,
   "pubkey": "用戶公鑰",
   "created_at": 1700000000,
@@ -182,7 +186,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立帶參數可替換事件</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 interface ParameterizedReplaceableEvent {
   kind: number;
@@ -196,7 +200,7 @@ function createParameterizedReplaceableEvent(
   secretKey: Uint8Array
 ) {
   // 確保 kind 在正確範圍
-  if (event.kind < 30000 || event.kind > 39999) {
+  if (event.kind &lt; 30000 || event.kind &gt; 39999) {
     throw new Error('Kind must be between 30000-39999');
   }
 
@@ -236,7 +240,7 @@ const article = createParameterizedReplaceableEvent(
 );</code></pre>
 
   <h3>查詢帶參數可替換事件</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 interface NaddrPointer {
   kind: number;
@@ -273,7 +277,7 @@ const article = await fetchParameterizedReplaceableEvent(
 );</code></pre>
 
   <h3>NIP-19 naddr 編解碼</h3>
-  <pre><code class="language-typescript">import { nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { nip19 } from 'nostr-tools';
 
 // 編碼為 naddr
 function encodeNaddr(
@@ -322,7 +326,7 @@ console.log(decoded);
 // { kind: 30023, pubkey: '...', identifier: 'bitcoin-basics' }</code></pre>
 
   <h3>列出用戶的所有文章</h3>
-  <pre><code class="language-typescript">interface Article {
+  <pre><code class="language-typescript" is:raw>interface Article {
   id: string;
   pubkey: string;
   identifier: string;
@@ -352,7 +356,7 @@ async function listUserArticles(
     const identifier = dTag?.[1] || '';
 
     const existing = latestByD.get(identifier);
-    if (!existing || event.created_at > existing.created_at) {
+    if (!existing || event.created_at &gt; existing.created_at) {
       latestByD.set(identifier, event);
     }
   }

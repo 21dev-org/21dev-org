@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-39: 外部身份驗證"
   description="在 Nostr 個人資料中連結並驗證外部平台身份"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-39' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -19,7 +23,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     NIP-39 在 kind 0 事件中引入了 <code>i</code> 標籤，每個標籤包含兩個參數：
   </p>
 
-  <pre><code class="language-json">["i", "平台:身份", "證明"]</code></pre>
+  <pre><code class="language-json" is:raw>["i", "平台:身份", "證明"]</code></pre>
 
   <table>
     <thead>
@@ -51,7 +55,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h2 id="profile-example">個人資料範例</h2>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 0,
   "content": "{\"name\":\"satoshi\",\"about\":\"Bitcoin creator\",\"picture\":\"...\"}",
   "tags": [
@@ -83,12 +87,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <p>Gist 內容必須包含驗證 Nostr 公鑰所有權的文字：</p>
-  <pre><code class="language-text">Verifying my Nostr public key: npub1xxx...
+  <pre><code class="language-text" is:raw>Verifying my Nostr public key: npub1xxx...
 
 This gist proves I control both this GitHub account and the Nostr key above.</code></pre>
 
   <p>標籤範例：</p>
-  <pre><code class="language-json">["i", "github:satoshi", "abc123def456789"]</code></pre>
+  <pre><code class="language-json" is:raw>["i", "github:satoshi", "abc123def456789"]</code></pre>
 
   <h3 id="twitter">Twitter / X</h3>
   <table>
@@ -109,10 +113,10 @@ This gist proves I control both this GitHub account and the Nostr key above.</co
   </table>
 
   <p>推文必須包含 npub 編碼的公鑰：</p>
-  <pre><code class="language-text">Verifying my Nostr identity: npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq...</code></pre>
+  <pre><code class="language-text" is:raw>Verifying my Nostr identity: npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq...</code></pre>
 
   <p>標籤範例：</p>
-  <pre><code class="language-json">["i", "twitter:jack", "1234567890123456789"]</code></pre>
+  <pre><code class="language-json" is:raw>["i", "twitter:jack", "1234567890123456789"]</code></pre>
 
   <h3 id="mastodon">Mastodon</h3>
   <table>
@@ -133,7 +137,7 @@ This gist proves I control both this GitHub account and the Nostr key above.</co
   </table>
 
   <p>標籤範例：</p>
-  <pre><code class="language-json">["i", "mastodon:bitcoinhackers.org/@satoshi", "109876543210987654"]</code></pre>
+  <pre><code class="language-json" is:raw>["i", "mastodon:bitcoinhackers.org/@satoshi", "109876543210987654"]</code></pre>
 
   <h3 id="telegram">Telegram</h3>
   <table>
@@ -154,7 +158,7 @@ This gist proves I control both this GitHub account and the Nostr key above.</co
   </table>
 
   <p>證明必須是公開頻道或群組中的訊息，該用戶發布的訊息包含其 npub：</p>
-  <pre><code class="language-json">["i", "telegram:123456789", "bitcoin_channel/42"]</code></pre>
+  <pre><code class="language-json" is:raw>["i", "telegram:123456789", "bitcoin_channel/42"]</code></pre>
 
   <h2 id="verification-flow">驗證流程</h2>
   <ol>
@@ -168,7 +172,7 @@ This gist proves I control both this GitHub account and the Nostr key above.</co
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立帶有外部身份的個人資料</h3>
-  <pre><code class="language-typescript">import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent, generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 
 interface ExternalIdentity {
   platform: 'github' | 'twitter' | 'mastodon' | 'telegram' | string;
@@ -241,7 +245,7 @@ const profileEvent = createProfileEvent(
 console.log(profileEvent);</code></pre>
 
   <h3>解析外部身份</h3>
-  <pre><code class="language-typescript">interface ParsedIdentity {
+  <pre><code class="language-typescript" is:raw>interface ParsedIdentity {
   platform: string;
   identity: string;
   proof: string;
@@ -301,7 +305,7 @@ identities.forEach((id) => {
 });</code></pre>
 
   <h3>驗證外部身份</h3>
-  <pre><code class="language-typescript">import { nip19 } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { nip19 } from 'nostr-tools';
 
 interface VerificationResult {
   platform: string;
@@ -364,7 +368,7 @@ async function verifyAllIdentities(
 }</code></pre>
 
   <h3>客戶端 UI 元件範例</h3>
-  <pre><code class="language-typescript">// React 元件範例
+  <pre><code class="language-typescript" is:raw>// React 元件範例
 interface IdentityBadgeProps {
   identity: ParsedIdentity;
   verified: boolean;
@@ -400,7 +404,7 @@ function IdentityBadge({ identity, verified }: IdentityBadgeProps) {
     NIP-39 允許添加任何平台，只要遵循命名規範。以下是一些可能的自訂平台範例：
   </p>
 
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "tags": [
     ["i", "youtube:@channelname", "video-id"],
     ["i", "linkedin:username", "post-id"],

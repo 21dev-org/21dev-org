@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-34: Git 相關事件"
   description="在 Nostr 上進行 Git 程式碼協作、議題討論和補丁提交"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-34' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -106,7 +110,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </table>
 
   <h3>範例</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 30617,
   "content": "",
   "tags": [
@@ -160,7 +164,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h3>Content 格式</h3>
   <p>Content 包含標準的 Git patch 格式：</p>
-  <pre><code class="language-diff">From abc123 Mon Sep 17 00:00:00 2001
+  <pre><code class="language-diff" is:raw>From abc123 Mon Sep 17 00:00:00 2001
 From: Author &lt;author@example.com&gt;
 Date: Mon, 1 Jan 2024 12:00:00 +0800
 Subject: [PATCH] 修復登入問題
@@ -213,7 +217,7 @@ index abc123..def456 100644
   </table>
 
   <h3>範例</h3>
-  <pre><code class="language-json">{
+  <pre><code class="language-json" is:raw>{
   "kind": 1621,
   "content": "## 問題描述\n\n在 iOS 上無法正常顯示圖片\n\n## 重現步驟\n\n1. 打開應用\n2. 瀏覽到圖片貼文\n3. 圖片無法載入\n\n## 預期行為\n\n圖片應該正常顯示",
   "tags": [
@@ -264,7 +268,7 @@ index abc123..def456 100644
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>建立倉庫公告</h3>
-  <pre><code class="language-typescript">import { finalizeEvent } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { finalizeEvent } from 'nostr-tools';
 
 interface Repository {
   id: string;
@@ -336,7 +340,7 @@ const repoEvent = createRepositoryEvent(
 );</code></pre>
 
   <h3>建立議題</h3>
-  <pre><code class="language-typescript">interface Issue {
+  <pre><code class="language-typescript" is:raw>interface Issue {
   repoCoordinate: string; // "30617:pubkey:repo-id"
   repoRelay?: string;
   maintainerPubkey: string;
@@ -383,7 +387,7 @@ const issueEvent = createIssueEvent(
 );</code></pre>
 
   <h3>建立補丁</h3>
-  <pre><code class="language-typescript">interface Patch {
+  <pre><code class="language-typescript" is:raw>interface Patch {
   repoCoordinate: string;
   repoRelay?: string;
   maintainerPubkey: string;
@@ -425,7 +429,7 @@ function createPatchEvent(
 }</code></pre>
 
   <h3>更新狀態</h3>
-  <pre><code class="language-typescript">type StatusKind = 1630 | 1631 | 1632 | 1633;
+  <pre><code class="language-typescript" is:raw>type StatusKind = 1630 | 1631 | 1632 | 1633;
 
 interface StatusUpdate {
   targetEventId: string;
@@ -462,7 +466,7 @@ const closeStatus = createStatusEvent(
 );</code></pre>
 
   <h3>查詢倉庫相關事件</h3>
-  <pre><code class="language-typescript">import { SimplePool } from 'nostr-tools';
+  <pre><code class="language-typescript" is:raw>import { SimplePool } from 'nostr-tools';
 
 async function getRepositoryActivity(
   pool: SimplePool,

@@ -5,7 +5,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 <ArticleLayout
   title="NIP-06: 助記詞密鑰派生"
   description="從 BIP-39 助記詞派生 Nostr 密鑰對的標準方法"
-  pubDate={new Date()}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: 'NIP-06' },
+  ]}
 >
   <h2 id="overview">概述</h2>
   <p>
@@ -44,7 +48,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     Nostr 使用以下 BIP-32 派生路徑：
   </p>
 
-  <pre><code class="language-text">m/44'/1237'/&lt;account&gt;'/0/0</code></pre>
+  <pre><code class="language-text" is:raw>m/44'/1237'/&lt;account&gt;'/0/0</code></pre>
 
   <table>
     <thead>
@@ -103,7 +107,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 id="test-vectors">測試向量</h2>
 
   <h3>測試向量 1</h3>
-  <pre><code class="language-text">助記詞: leader monkey parrot ring guide accident before fence cannon height naive bean
+  <pre><code class="language-text" is:raw>助記詞: leader monkey parrot ring guide accident before fence cannon height naive bean
 
 派生路徑: m/44'/1237'/0'/0/0
 
@@ -114,7 +118,7 @@ nsec: nsec10allq0gjx7fddtzef0ax00mdps9t2kmtrldkyjfs8l5xruwvh2dq0lhhkp
 npub: npub1zutzeysacnf9rru6zqwmxd54mud0k44tst6l7vaex3s3rr4ppjfs6mq2yp</code></pre>
 
   <h3>測試向量 2</h3>
-  <pre><code class="language-text">助記詞: what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade
+  <pre><code class="language-text" is:raw>助記詞: what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade
 
 派生路徑: m/44'/1237'/0'/0/0
 
@@ -127,10 +131,10 @@ npub: npub16sdj9zv4f8sl85e45vgq3n7vced8zpr5fjkayqh2jtqwxgwqdqys8t4uvx</code></pr
   <h2 id="implementation">TypeScript 實作</h2>
 
   <h3>安裝依賴</h3>
-  <pre><code class="language-bash">npm install @scure/bip39 @scure/bip32 @noble/secp256k1 nostr-tools</code></pre>
+  <pre><code class="language-bash" is:raw>npm install @scure/bip39 @scure/bip32 @noble/secp256k1 nostr-tools</code></pre>
 
   <h3>從助記詞派生密鑰</h3>
-  <pre><code class="language-typescript">import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
+  <pre><code class="language-typescript" is:raw>import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
 import { bytesToHex } from '@noble/hashes/utils';
@@ -211,7 +215,7 @@ console.log('公鑰 (hex):', keys.publicKey);
 console.log('npub:', keys.npub);</code></pre>
 
   <h3>多帳戶派生</h3>
-  <pre><code class="language-typescript">/**
+  <pre><code class="language-typescript" is:raw>/**
  * 從同一組助記詞派生多個帳戶
  */
 function deriveMultipleAccounts(
@@ -242,7 +246,7 @@ accounts.forEach((account) => {
 });</code></pre>
 
   <h3>帶密碼的派生</h3>
-  <pre><code class="language-typescript">// 使用額外的密碼短語增加安全性
+  <pre><code class="language-typescript" is:raw>// 使用額外的密碼短語增加安全性
 // 相同的助記詞配合不同密碼會產生完全不同的密鑰
 const keysWithPassphrase = deriveNostrKeys(
   mnemonic,
@@ -255,7 +259,7 @@ console.log('帶密碼的 npub:', keysWithPassphrase.npub);
 // 注意：忘記密碼將無法恢復密鑰！</code></pre>
 
   <h3>完整的密鑰管理類別</h3>
-  <pre><code class="language-typescript">import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
+  <pre><code class="language-typescript" is:raw>import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
