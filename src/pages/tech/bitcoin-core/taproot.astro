@@ -1,0 +1,813 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot"
+  description="BIP-340/341/342：Schnorr 簽名、MAST 和 Tapscript 的綜合升級"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Taproot' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'SegWit', href: '/tech/bitcoin-core/segwit' }}
+  nextPage={{ title: 'Miniscript', href: '/tech/bitcoin-core/miniscript' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Taproot 是 Bitcoin 在 2021 年 11 月啟用的重大升級，包含三個相關的 BIP：
+    BIP-340（Schnorr 簽名）、BIP-341（Taproot）和 BIP-342（Tapscript）。
+    這次升級提升了隱私性、效率和智能合約能力。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
+    <p class="text-sm text-orange-700 dark:text-orange-400">
+      <strong>啟用區塊：</strong>
+      Taproot 在區塊高度 709,632（2021 年 11 月 14 日）啟用，
+      使用 Speedy Trial 機制達成共識。
+    </p>
+  </div>
+
+  <h2 id="components">三大組件</h2>
+
+  <h3>BIP-340: Schnorr 簽名</h3>
+  <pre><code class="language-text" is:raw>Schnorr 簽名特性:
+- 線性數學特性（可聚合）
+- 64 bytes（vs ECDSA 70-72 bytes）
+- 批量驗證更快
+- 更簡潔的安全證明
+
+簽名結構:
+┌─────────────────────────────────────┐
+│ R (32 bytes) │ s (32 bytes)        │
+└─────────────────────────────────────┘
+
+簽名算法:
+1. 選擇隨機數 k
+2. R = k * G
+3. e = hash(R || P || m)
+4. s = k + e * d
+5. 簽名 = (R, s)</code></pre>
+
+  <h3>BIP-341: Taproot</h3>
+  <pre><code class="language-text" is:raw>Taproot 輸出結構:
+                    ┌──────────────────┐
+                    │   Taproot 輸出    │
+                    │  P = Q + hash * G │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+       ┌──────┴──────┐              ┌───────┴───────┐
+       │  Key Path   │              │  Script Path  │
+       │ 用內部密鑰  │              │  MAST 腳本樹  │
+       │ 直接花費    │              │               │
+       └─────────────┘              └───────────────┘
+
+P = Q + hash(Q || merkle_root) * G
+
+其中:
+- Q: 內部公鑰（可以是多簽聚合密鑰）
+- merkle_root: 腳本樹的 Merkle 根
+- P: Taproot 輸出公鑰</code></pre>
+
+  <h3>BIP-342: Tapscript</h3>
+  <pre><code class="language-text" is:raw>Tapscript 改進:
+- 移除 ECDSA 簽名檢查操作碼
+- 新增 OP_CHECKSIGADD
+- 簽名驗證使用 Schnorr
+- 移除 201 操作碼限制
+- 改進的 OP_SUCCESS 機制
+
+新操作碼:
+- OP_CHECKSIGADD: 多簽計數器
+- OP_SUCCESS: 未來升級預留</code></pre>
+
+  <h2 id="key-path">Key Path 花費</h2>
+  <p>最常見的花費方式，看起來與普通單簽交易相同：</p>
+
+  <pre><code class="language-text" is:raw>Key Path 優勢:
+1. 最小的鏈上足跡（只有簽名）
+2. 所有 Taproot 輸出看起來相同
+3. 多簽可以聚合為單一簽名
+4. 最低手續費
+
+Witness 結構:
+┌─────────────────────────────────────┐
+│ 64-byte Schnorr 簽名                 │
+└─────────────────────────────────────┘
+
+如果使用 SIGHASH 附加:
+┌─────────────────────────────────────┐
+│ 65-byte Schnorr 簽名 + SIGHASH flag │
+└─────────────────────────────────────┘</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>import * as secp256k1 from '@noble/secp256k1';
+import { sha256 } from '@noble/hashes/sha256';
+
+interface TaprootKeyPair {
+  privateKey: Uint8Array;
+  publicKey: Uint8Array;
+  tweakedPrivateKey: Uint8Array;
+  tweakedPublicKey: Uint8Array;
+}
+
+// 計算 Taproot tweaked key
+function taprootTweak(
+  internalPubkey: Uint8Array,
+  merkleRoot?: Uint8Array
+): Uint8Array {
+  // tagged hash: "TapTweak"
+  const tag = sha256('TapTweak');
+  const tagHash = new Uint8Array([...tag, ...tag]);
+
+  const data = merkleRoot
+    ? new Uint8Array([...internalPubkey, ...merkleRoot])
+    : internalPubkey;
+
+  return sha256(new Uint8Array([...tagHash, ...data]));
+}
+
+function createTaprootKeyPair(
+  privateKey: Uint8Array,
+  merkleRoot?: Uint8Array
+): TaprootKeyPair {
+  // 獲取 x-only 公鑰（32 bytes）
+  const fullPubkey = secp256k1.getPublicKey(privateKey, true);
+  const publicKey = fullPubkey.slice(1); // 移除前綴
+
+  // 計算 tweak
+  const tweak = taprootTweak(publicKey, merkleRoot);
+
+  // tweaked private key
+  const tweakedPrivateKey = secp256k1.utils.mod(
+    BigInt('0x' + Buffer.from(privateKey).toString('hex')) +
+    BigInt('0x' + Buffer.from(tweak).toString('hex')),
+    secp256k1.CURVE.n
+  );
+
+  const tweakedPrivKeyBytes = new Uint8Array(
+    Buffer.from(tweakedPrivateKey.toString(16).padStart(64, '0'), 'hex')
+  );
+
+  // tweaked public key
+  const tweakedPubkey = secp256k1.getPublicKey(tweakedPrivKeyBytes, true);
+
+  return {
+    privateKey,
+    publicKey,
+    tweakedPrivateKey: tweakedPrivKeyBytes,
+    tweakedPublicKey: tweakedPubkey.slice(1),
+  };
+}
+
+// 創建 Key Path 簽名
+async function signKeyPath(
+  tweakedPrivateKey: Uint8Array,
+  message: Uint8Array
+): Promise&lt;Uint8Array&gt; {
+  return secp256k1.schnorr.sign(message, tweakedPrivateKey);
+}
+
+// 驗證 Key Path 簽名
+async function verifyKeyPath(
+  signature: Uint8Array,
+  message: Uint8Array,
+  tweakedPublicKey: Uint8Array
+): Promise&lt;boolean&gt; {
+  return secp256k1.schnorr.verify(signature, message, tweakedPublicKey);
+}</code></pre>
+
+  <h2 id="script-path">Script Path 花費</h2>
+  <p>當需要使用預設腳本條件時：</p>
+
+  <pre><code class="language-text" is:raw>Script Path 結構:
+
+MAST (Merkelized Alternative Script Tree):
+                    ┌───────┐
+                    │ Root  │
+                    └───┬───┘
+                        │
+              ┌─────────┴─────────┐
+              │                   │
+          ┌───┴───┐           ┌───┴───┐
+          │  AB   │           │  CD   │
+          └───┬───┘           └───┬───┘
+              │                   │
+        ┌─────┴─────┐       ┌─────┴─────┐
+        │           │       │           │
+     Script A   Script B Script C   Script D
+
+花費時只需揭露:
+- 實際使用的腳本
+- Merkle 路徑（兄弟節點）
+- 內部公鑰
+- Control block</code></pre>
+
+  <h3>Control Block 結構</h3>
+  <pre><code class="language-text" is:raw>Control Block:
+┌──────────────┬─────────────────┬─────────────────┐
+│ Leaf Version │ Internal Pubkey │ Merkle Path     │
+│   (1 byte)   │   (32 bytes)    │ (32 * n bytes)  │
+└──────────────┴─────────────────┴─────────────────┘
+
+Leaf Version:
+- 0xc0: 當前 Tapscript 版本
+- 最低位表示公鑰奇偶性
+
+Witness Stack (Script Path):
+┌─────────────────────────────────────┐
+│ Script inputs (variable)            │
+├─────────────────────────────────────┤
+│ Script (variable)                   │
+├─────────────────────────────────────┤
+│ Control block (33 + 32n bytes)      │
+└─────────────────────────────────────┘</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>interface TapLeaf {
+  version: number;
+  script: Uint8Array;
+}
+
+interface TapTree {
+  left: TapTree | TapLeaf;
+  right: TapTree | TapLeaf;
+}
+
+// Tagged hash for Taproot
+function taggedHash(tag: string, data: Uint8Array): Uint8Array {
+  const tagHash = sha256(new TextEncoder().encode(tag));
+  return sha256(new Uint8Array([...tagHash, ...tagHash, ...data]));
+}
+
+// 計算 TapLeaf hash
+function tapLeafHash(leaf: TapLeaf): Uint8Array {
+  const leafData = new Uint8Array([
+    leaf.version,
+    leaf.script.length,
+    ...leaf.script,
+  ]);
+  return taggedHash('TapLeaf', leafData);
+}
+
+// 計算 TapBranch hash
+function tapBranchHash(left: Uint8Array, right: Uint8Array): Uint8Array {
+  // 字典序排序
+  const [first, second] = Buffer.compare(
+    Buffer.from(left),
+    Buffer.from(right)
+  ) &lt; 0
+    ? [left, right]
+    : [right, left];
+
+  return taggedHash('TapBranch', new Uint8Array([...first, ...second]));
+}
+
+// 構建 MAST
+function buildTapTree(tree: TapTree | TapLeaf): Uint8Array {
+  if ('script' in tree) {
+    return tapLeafHash(tree);
+  }
+
+  const leftHash = buildTapTree(tree.left);
+  const rightHash = buildTapTree(tree.right);
+
+  return tapBranchHash(leftHash, rightHash);
+}
+
+// 生成 Merkle 證明路徑
+function getMerkleProof(
+  tree: TapTree | TapLeaf,
+  targetLeaf: TapLeaf
+): Uint8Array[] {
+  const proof: Uint8Array[] = [];
+
+  function search(
+    node: TapTree | TapLeaf,
+    target: Uint8Array
+  ): boolean {
+    if ('script' in node) {
+      const nodeHash = tapLeafHash(node);
+      return Buffer.compare(
+        Buffer.from(nodeHash),
+        Buffer.from(target)
+      ) === 0;
+    }
+
+    const leftHash = buildTapTree(node.left);
+    const rightHash = buildTapTree(node.right);
+
+    if (search(node.left, target)) {
+      proof.push(rightHash);
+      return true;
+    }
+
+    if (search(node.right, target)) {
+      proof.push(leftHash);
+      return true;
+    }
+
+    return false;
+  }
+
+  search(tree, tapLeafHash(targetLeaf));
+  return proof;
+}
+
+// 構建 Control Block
+function buildControlBlock(
+  leafVersion: number,
+  internalPubkey: Uint8Array,
+  merkleProof: Uint8Array[],
+  outputPubkeyParity: boolean
+): Uint8Array {
+  const versionByte = leafVersion | (outputPubkeyParity ? 0x01 : 0x00);
+
+  const proofBytes = merkleProof.reduce(
+    (acc, hash) =&gt; new Uint8Array([...acc, ...hash]),
+    new Uint8Array()
+  );
+
+  return new Uint8Array([
+    versionByte,
+    ...internalPubkey,
+    ...proofBytes,
+  ]);
+}</code></pre>
+
+  <h2 id="musig2">MuSig2 多簽聚合</h2>
+  <p>Schnorr 簽名支持密鑰聚合，使多簽看起來像單簽：</p>
+
+  <pre><code class="language-text" is:raw>MuSig2 協議流程:
+
+1. 密鑰聚合
+   P_agg = a1*P1 + a2*P2 + ... + an*Pn
+   其中 ai = hash(L || Pi)，L = hash(P1 || P2 || ... || Pn)
+
+2. 第一輪：Nonce 交換
+   每個簽名者:
+   - 生成 (r1, R1) 和 (r2, R2)
+   - 廣播 (R1, R2)
+
+3. 聚合 Nonce
+   R_agg = R1_agg + b*R2_agg
+   其中 b = hash(all R values || P_agg || message)
+
+4. 第二輪：部分簽名
+   每個簽名者:
+   s_i = r1_i + b*r2_i + e*a_i*d_i
+
+5. 聚合簽名
+   s = s1 + s2 + ... + sn
+   最終簽名 = (R_agg, s)
+
+優勢:
+- 鏈上只有 64 字節簽名
+- 驗證者無法區分單簽和多簽
+- 減少交易大小和手續費</code></pre>
+
+  <h3>MuSig2 實作示例</h3>
+  <pre><code class="language-typescript" is:raw>import * as secp256k1 from '@noble/secp256k1';
+
+interface MuSig2Context {
+  publicKeys: Uint8Array[];
+  aggregatedPubkey: Uint8Array;
+  keyAggCoefficients: Uint8Array[];
+}
+
+interface MuSig2Round1 {
+  secretNonces: [Uint8Array, Uint8Array];
+  publicNonces: [Uint8Array, Uint8Array];
+}
+
+interface MuSig2Session {
+  context: MuSig2Context;
+  round1: MuSig2Round1;
+  aggregatedNonce?: Uint8Array;
+  challenge?: Uint8Array;
+}
+
+// 計算密鑰聚合係數
+function computeKeyAggCoeff(
+  publicKeys: Uint8Array[],
+  targetPubkey: Uint8Array
+): Uint8Array {
+  const L = sha256(
+    publicKeys.reduce(
+      (acc, pk) =&gt; new Uint8Array([...acc, ...pk]),
+      new Uint8Array()
+    )
+  );
+
+  return sha256(new Uint8Array([...L, ...targetPubkey]));
+}
+
+// 聚合公鑰
+function aggregatePublicKeys(publicKeys: Uint8Array[]): MuSig2Context {
+  const coefficients = publicKeys.map(pk =&gt;
+    computeKeyAggCoeff(publicKeys, pk)
+  );
+
+  let aggregatedPoint = secp256k1.Point.ZERO;
+
+  for (let i = 0; i &lt; publicKeys.length; i++) {
+    const point = secp256k1.Point.fromHex(
+      Buffer.from(publicKeys[i]).toString('hex')
+    );
+    const coeff = BigInt('0x' + Buffer.from(coefficients[i]).toString('hex'));
+    aggregatedPoint = aggregatedPoint.add(point.multiply(coeff));
+  }
+
+  return {
+    publicKeys,
+    aggregatedPubkey: aggregatedPoint.toRawBytes(true).slice(1),
+    keyAggCoefficients: coefficients,
+  };
+}
+
+// Round 1: 生成 nonces
+function musig2Round1(): MuSig2Round1 {
+  const r1 = secp256k1.utils.randomPrivateKey();
+  const r2 = secp256k1.utils.randomPrivateKey();
+
+  const R1 = secp256k1.getPublicKey(r1, true).slice(1);
+  const R2 = secp256k1.getPublicKey(r2, true).slice(1);
+
+  return {
+    secretNonces: [r1, r2],
+    publicNonces: [R1, R2],
+  };
+}
+
+// 聚合 nonces
+function aggregateNonces(
+  allNonces: [Uint8Array, Uint8Array][],
+  aggregatedPubkey: Uint8Array,
+  message: Uint8Array
+): Uint8Array {
+  // 計算 R1_agg 和 R2_agg
+  let R1_agg = secp256k1.Point.ZERO;
+  let R2_agg = secp256k1.Point.ZERO;
+
+  for (const [R1, R2] of allNonces) {
+    R1_agg = R1_agg.add(
+      secp256k1.Point.fromHex(Buffer.from(R1).toString('hex'))
+    );
+    R2_agg = R2_agg.add(
+      secp256k1.Point.fromHex(Buffer.from(R2).toString('hex'))
+    );
+  }
+
+  // 計算 b = hash(all nonces || P_agg || message)
+  const nonceData = allNonces.reduce(
+    (acc, [R1, R2]) =&gt; new Uint8Array([...acc, ...R1, ...R2]),
+    new Uint8Array()
+  );
+  const b = sha256(
+    new Uint8Array([...nonceData, ...aggregatedPubkey, ...message])
+  );
+  const bScalar = BigInt('0x' + Buffer.from(b).toString('hex'));
+
+  // R_agg = R1_agg + b * R2_agg
+  const R_agg = R1_agg.add(R2_agg.multiply(bScalar));
+
+  return R_agg.toRawBytes(true).slice(1);
+}
+
+// Round 2: 生成部分簽名
+function musig2PartialSign(
+  session: MuSig2Session,
+  privateKey: Uint8Array,
+  message: Uint8Array,
+  allNonces: [Uint8Array, Uint8Array][]
+): Uint8Array {
+  const { context, round1 } = session;
+
+  // 計算聚合 nonce
+  const R_agg = aggregateNonces(
+    allNonces,
+    context.aggregatedPubkey,
+    message
+  );
+
+  // 計算挑戰 e = hash(R_agg || P_agg || message)
+  const e = taggedHash('BIP0340/challenge',
+    new Uint8Array([...R_agg, ...context.aggregatedPubkey, ...message])
+  );
+
+  // 計算 b
+  const nonceData = allNonces.reduce(
+    (acc, [R1, R2]) =&gt; new Uint8Array([...acc, ...R1, ...R2]),
+    new Uint8Array()
+  );
+  const b = sha256(
+    new Uint8Array([...nonceData, ...context.aggregatedPubkey, ...message])
+  );
+
+  // 找到自己的係數
+  const pubkey = secp256k1.getPublicKey(privateKey, true).slice(1);
+  const myIndex = context.publicKeys.findIndex(
+    pk =&gt; Buffer.compare(Buffer.from(pk), Buffer.from(pubkey)) === 0
+  );
+  const a = context.keyAggCoefficients[myIndex];
+
+  // s_i = r1 + b*r2 + e*a*d
+  const r1 = BigInt('0x' + Buffer.from(round1.secretNonces[0]).toString('hex'));
+  const r2 = BigInt('0x' + Buffer.from(round1.secretNonces[1]).toString('hex'));
+  const bVal = BigInt('0x' + Buffer.from(b).toString('hex'));
+  const eVal = BigInt('0x' + Buffer.from(e).toString('hex'));
+  const aVal = BigInt('0x' + Buffer.from(a).toString('hex'));
+  const d = BigInt('0x' + Buffer.from(privateKey).toString('hex'));
+
+  const s_i = secp256k1.utils.mod(
+    r1 + bVal * r2 + eVal * aVal * d,
+    secp256k1.CURVE.n
+  );
+
+  return new Uint8Array(
+    Buffer.from(s_i.toString(16).padStart(64, '0'), 'hex')
+  );
+}</code></pre>
+
+  <h2 id="tapscript">Tapscript 腳本</h2>
+
+  <h3>新操作碼</h3>
+  <pre><code class="language-text" is:raw>OP_CHECKSIGADD (0xba):
+用於多簽，替代 OP_CHECKMULTISIG
+
+傳統多簽 (2-of-3):
+OP_2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; OP_3 OP_CHECKMULTISIG
+
+Tapscript 多簽 (2-of-3):
+&lt;pubkey1&gt; OP_CHECKSIG
+&lt;pubkey2&gt; OP_CHECKSIGADD
+&lt;pubkey3&gt; OP_CHECKSIGADD
+OP_2 OP_NUMEQUAL
+
+執行流程:
+1. OP_CHECKSIG: 驗證第一個簽名，推入 0 或 1
+2. OP_CHECKSIGADD: 驗證並累加計數器
+3. OP_NUMEQUAL: 檢查是否達到閾值
+
+優勢:
+- 批量驗證更高效
+- 無需 dummy 元素
+- 簽名順序不重要（配合 SIGHASH）</code></pre>
+
+  <h3>常見 Tapscript 模式</h3>
+  <pre><code class="language-typescript" is:raw>// 時間鎖腳本
+function createTimelockScript(
+  pubkey: Uint8Array,
+  locktime: number
+): Uint8Array {
+  return new Uint8Array([
+    // &lt;locktime&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP &lt;pubkey&gt; OP_CHECKSIG
+    ...encodeNumber(locktime),
+    0xb1, // OP_CHECKLOCKTIMEVERIFY
+    0x75, // OP_DROP
+    0x20, // push 32 bytes
+    ...pubkey,
+    0xac, // OP_CHECKSIG
+  ]);
+}
+
+// 雜湊鎖腳本 (HTLC)
+function createHashlockScript(
+  pubkey: Uint8Array,
+  hash: Uint8Array
+): Uint8Array {
+  return new Uint8Array([
+    // OP_SHA256 &lt;hash&gt; OP_EQUALVERIFY &lt;pubkey&gt; OP_CHECKSIG
+    0xa8, // OP_SHA256
+    0x20, // push 32 bytes
+    ...hash,
+    0x88, // OP_EQUALVERIFY
+    0x20, // push 32 bytes
+    ...pubkey,
+    0xac, // OP_CHECKSIG
+  ]);
+}
+
+// 多簽腳本 (使用 OP_CHECKSIGADD)
+function createMultisigScript(
+  pubkeys: Uint8Array[],
+  threshold: number
+): Uint8Array {
+  const script: number[] = [];
+
+  // 第一個公鑰使用 OP_CHECKSIG
+  script.push(0x20);
+  script.push(...pubkeys[0]);
+  script.push(0xac); // OP_CHECKSIG
+
+  // 後續公鑰使用 OP_CHECKSIGADD
+  for (let i = 1; i &lt; pubkeys.length; i++) {
+    script.push(0x20);
+    script.push(...pubkeys[i]);
+    script.push(0xba); // OP_CHECKSIGADD
+  }
+
+  // 檢查閾值
+  script.push(...encodeNumber(threshold));
+  script.push(0x9c); // OP_NUMEQUAL
+
+  return new Uint8Array(script);
+}
+
+// 輔助函數：編碼數字
+function encodeNumber(n: number): number[] {
+  if (n === 0) return [0x00];
+  if (n &gt;= 1 && n &lt;= 16) return [0x50 + n]; // OP_1 到 OP_16
+
+  // 更大的數字需要 push
+  const bytes: number[] = [];
+  let value = n;
+  while (value &gt; 0) {
+    bytes.push(value & 0xff);
+    value &gt;&gt;= 8;
+  }
+  if (bytes[bytes.length - 1] & 0x80) {
+    bytes.push(0x00);
+  }
+  return [bytes.length, ...bytes];
+}</code></pre>
+
+  <h2 id="address">Taproot 地址</h2>
+  <pre><code class="language-text" is:raw>地址格式: Bech32m (BIP-350)
+前綴: bc1p (mainnet) / tb1p (testnet)
+
+結構:
+┌──────┬───────────────────────────────────────┐
+│ bc1p │ 32-byte x-only pubkey (Bech32m 編碼)  │
+└──────┴───────────────────────────────────────┘
+
+範例:
+bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297
+
+特點:
+- 使用 Bech32m 而非 Bech32
+- 只包含 x 座標（y 座標隱含為偶數）
+- witness version = 1</code></pre>
+
+  <h3>地址生成</h3>
+  <pre><code class="language-typescript" is:raw>import { bech32m } from 'bech32';
+
+function createTaprootAddress(
+  outputPubkey: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  const prefix = network === 'mainnet' ? 'bc' : 'tb';
+  const version = 1; // witness version for Taproot
+
+  // 將公鑰轉換為 5-bit groups
+  const words = bech32m.toWords(outputPubkey);
+
+  // 加入 version
+  words.unshift(version);
+
+  return bech32m.encode(prefix, words);
+}
+
+function decodeTaprootAddress(address: string): {
+  version: number;
+  pubkey: Uint8Array;
+} {
+  const { prefix, words } = bech32m.decode(address);
+
+  if (prefix !== 'bc' && prefix !== 'tb') {
+    throw new Error('Invalid prefix');
+  }
+
+  const version = words[0];
+  if (version !== 1) {
+    throw new Error('Invalid witness version for Taproot');
+  }
+
+  const pubkey = new Uint8Array(bech32m.fromWords(words.slice(1)));
+
+  return { version, pubkey };
+}</code></pre>
+
+  <h2 id="privacy">隱私優勢</h2>
+  <pre><code class="language-text" is:raw>Taproot 隱私改進:
+
+1. 輸出同質性
+   - 所有 Taproot 輸出看起來相同
+   - 無法區分單簽、多簽、複雜合約
+
+2. Key Path 隱私
+   - 只揭露最終簽名
+   - 隱藏備用腳本路徑的存在
+
+3. Script Path 最小揭露
+   - 只揭露使用的腳本
+   - 其他腳本保持隱藏
+
+對比:
+
+傳統 P2SH 多簽:
+├── 輸出時: 看起來像 P2SH
+├── 花費時: 揭露完整 redeemScript
+└── 暴露: 所有參與者公鑰、閾值
+
+Taproot Key Path:
+├── 輸出時: 看起來像任何 Taproot
+├── 花費時: 只有單一簽名
+└── 暴露: 無（聚合密鑰看起來像單簽）
+
+Taproot Script Path:
+├── 輸出時: 看起來像任何 Taproot
+├── 花費時: 揭露使用的腳本 + Merkle 路徑
+└── 暴露: 部分樹結構（不是全部）</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+
+  <h3>Lightning Network 通道</h3>
+  <pre><code class="language-text" is:raw>Taproot 優化 LN 通道:
+
+Key Path: 協作關閉
+├── 雙方 MuSig2 聚合簽名
+└── 看起來像普通單簽交易
+
+Script Path: 非協作關閉
+├── 時間鎖承諾交易
+├── HTLC 腳本
+└── 懲罰機制
+
+優勢:
+- 協作關閉完全隱私
+- 減少鏈上足跡
+- 降低手續費</code></pre>
+
+  <h3>複雜智能合約</h3>
+  <pre><code class="language-typescript" is:raw>// 遺產規劃合約示例
+interface InheritanceContract {
+  owner: Uint8Array;           // 主要所有者
+  heir: Uint8Array;            // 繼承人
+  lawyer: Uint8Array;          // 律師（見證人）
+  timelock: number;            // 時間鎖（例如 2 年）
+}
+
+function createInheritanceTree(
+  contract: InheritanceContract
+): TapTree {
+  // Key Path: 所有者隨時可以花費（正常使用）
+  // 使用 owner 作為內部密鑰
+
+  // Script Path 1: 繼承人 + 律師 (任何時候)
+  const multisigScript: TapLeaf = {
+    version: 0xc0,
+    script: createMultisigScript(
+      [contract.heir, contract.lawyer],
+      2
+    ),
+  };
+
+  // Script Path 2: 繼承人獨自（時間鎖後）
+  const timelockScript: TapLeaf = {
+    version: 0xc0,
+    script: createTimelockScript(contract.heir, contract.timelock),
+  };
+
+  // Script Path 3: 所有者 + 律師（緊急恢復）
+  const recoveryScript: TapLeaf = {
+    version: 0xc0,
+    script: createMultisigScript(
+      [contract.owner, contract.lawyer],
+      2
+    ),
+  };
+
+  // 構建樹（最常用的腳本靠近根部）
+  return {
+    left: multisigScript,
+    right: {
+      left: timelockScript,
+      right: recoveryScript,
+    },
+  };
+}</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>優先使用 Key Path</strong>：設計合約時確保最常用路徑可通過 Key Path 花費</li>
+    <li><strong>MAST 樹平衡</strong>：將最可能使用的腳本放在樹的較淺位置</li>
+    <li><strong>MuSig2 多簽</strong>：多方合作時使用密鑰聚合而非腳本多簽</li>
+    <li><strong>Nonce 安全</strong>：MuSig2 的 nonce 必須正確生成，重複使用會導致私鑰洩露</li>
+    <li><strong>使用已審計的庫</strong>：Schnorr 和 MuSig2 實作需要謹慎</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki" target="_blank" rel="noopener noreferrer">BIP-340: Schnorr Signatures</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki" target="_blank" rel="noopener noreferrer">BIP-341: Taproot</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki" target="_blank" rel="noopener noreferrer">BIP-342: Tapscript</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki" target="_blank" rel="noopener noreferrer">BIP-327: MuSig2</a></li>
+    <li><a href="/tech/bitcoin-core/segwit">SegWit</a></li>
+    <li><a href="/tech/bitcoin-core/script">Bitcoin Script</a></li>
+  </ul>
+</ArticleLayout>

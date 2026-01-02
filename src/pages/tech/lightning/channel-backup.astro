@@ -1,0 +1,318 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Backup 通道備份"
+  description="了解閃電網路通道備份的機制、風險和最佳實踐，保護你的資金免受硬件故障或數據丟失的影響。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Backup' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Gossip Protocol', href: '/tech/lightning/gossip' }}
+  nextPage={{ title: 'BOLT 規範概覽', href: '/tech/lightning/bolt-overview' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要通道備份？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路的通道狀態存儲在本地，如果丟失這些數據（硬盤故障、軟件錯誤等），
+    你可能無法正確關閉通道並取回資金。更糟的是，使用過時的備份可能導致
+    你被對方懲罰，損失全部通道資金。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>警告：</strong>
+      在 LN-Penalty 機制下，恢復過時的通道狀態等同於嘗試詐騙，會觸發對方的懲罰交易，
+      你可能損失通道中的全部資金。這就是所謂的「有毒備份」問題。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">備份的挑戰</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道狀態的動態性：
+
+問題：通道狀態持續變化
+
+時間線：
+T0: 開通道，狀態 0
+    Alice: 1 BTC, Bob: 0 BTC
+
+T1: 備份狀態 0
+
+T2: 支付 0.3 BTC 給 Bob，狀態 1
+    Alice: 0.7 BTC, Bob: 0.3 BTC
+
+T3: 支付 0.2 BTC 給 Bob，狀態 2
+    Alice: 0.5 BTC, Bob: 0.5 BTC
+
+T4: 硬盤故障！
+
+恢復備份（狀態 0）會發生什麼？
+┌─────────────────────────────────────────────────────────┐
+│ Alice 嘗試廣播 commitment tx 0                          │
+│ → Bob 發現這是舊狀態                                    │
+│ → Bob 廣播懲罰交易                                      │
+│ → Alice 損失全部 1 BTC！                                 │
+└─────────────────────────────────────────────────────────┘
+
+這比完全丟失備份還糟糕！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Static Channel Backup (SCB)</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    LND 引入的靜態通道備份是一種安全的恢復機制：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Static Channel Backup (SCB) 原理：
+
+SCB 不包含通道狀態！
+
+SCB 內容：
+┌─────────────────────────────────────────────────────────┐
+│ version: 備份格式版本                                   │
+│ channels: [                                             │
+│   {                                                     │
+│     channel_point: funding txid:vout                   │
+│     remote_pubkey: 對方節點公鑰                         │
+│     capacity: 通道容量                                  │
+│     addresses: 對方節點地址                             │
+│   },                                                    │
+│   ...                                                   │
+│ ]                                                       │
+└─────────────────────────────────────────────────────────┘
+
+恢復流程：
+1. 使用種子詞恢復錢包
+2. 導入 SCB 文件
+3. 節點連接到每個通道對手
+4. 請求對方發起合作關閉
+5. 對方使用最新狀態關閉
+6. 資金返回鏈上
+
+關鍵：
+- 不嘗試恢復狀態（避免有毒備份）
+- 依賴對方誠實合作
+- 資金會返回，但需要等待鏈上確認`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Data Loss Protection (DLP)</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`option_data_loss_protect (BOLT 功能)：
+
+當節點重連時檢測數據丟失：
+
+正常情況：
+┌─────────┐                    ┌─────────┐
+│  Alice  │──channel_reestablish──>│   Bob   │
+│         │  my_current_per_commitment_point   │
+│         │  your_last_per_commitment_secret   │
+└─────────┘<──────────────────────└─────────┘
+
+如果 Alice 丟失數據：
+┌─────────┐                    ┌─────────┐
+│  Alice  │  發送過時的 commitment point       │
+│ (恢復後) │──────────────────────────────────>│   Bob   │
+│         │                    │ 發現不匹配！   │
+│         │<── 發送最新 per_commitment_secret  │
+│         │    + 建議關閉通道                  │
+└─────────┘                    └─────────┘
+
+Bob 的選項：
+1. 發起合作關閉（友好）
+2. 強制關閉（使用最新狀態）
+
+Alice 可以驗證 Bob 的狀態是否比她的新，
+確保 Bob 沒有惡意使用舊狀態。
+
+功能位: option_data_loss_protect (bit 0/1)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">option_static_remotekey</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    這個功能簡化了資金恢復：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`option_static_remotekey：
+
+傳統模式：
+  to_remote 輸出使用派生密鑰
+  每次狀態更新，密鑰都不同
+  恢復需要知道確切的狀態編號
+
+static_remotekey 模式：
+  to_remote 輸出使用固定的 payment_basepoint
+  無論哪個狀態被廣播，輸出都是同一個地址
+
+好處：
+┌─────────────────────────────────────────────────────────┐
+│ 即使對方單方面關閉通道，                                 │
+│ 你只需要種子詞就能花費 to_remote 輸出！                  │
+│                                                         │
+│ 不需要：                                                │
+│ - 知道當前狀態編號                                       │
+│ - 保存任何通道數據                                       │
+│ - 對方合作                                               │
+└─────────────────────────────────────────────────────────┘
+
+注意：to_local 和 HTLCs 仍然需要額外數據恢復
+
+功能位: option_static_remotekey (bit 12/13)`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">各實現的備份機制</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">LND</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">channel.backup</code> 文件</li>
+        <li>• 每次通道變更自動更新</li>
+        <li>• 支持自動複製到遠程位置</li>
+        <li>• <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">lncli exportchanbackup</code></li>
+      </ul>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Core Lightning</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">hsm_secret</code> 是核心密鑰</li>
+        <li>• 使用 PostgreSQL 後端可實現實時複製</li>
+        <li>• <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">emergency.recover</code> 文件</li>
+        <li>• 依賴 option_static_remotekey</li>
+      </ul>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Eclair / Phoenix</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 自動雲端備份（加密）</li>
+        <li>• 種子詞 + 備份恢復通道</li>
+        <li>• 專門優化的恢復流程</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">備份最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">應該做</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 安全保存種子詞（離線）</li>
+        <li>• 設置 SCB 自動備份</li>
+        <li>• 使用支持 static_remotekey 的通道</li>
+        <li>• 定期測試恢復流程</li>
+        <li>• 使用可靠的存儲（RAID、雲端）</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">不應該做</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 恢復過時的完整數據庫</li>
+        <li>• 在多個節點使用同一個錢包</li>
+        <li>• 忽略備份警告</li>
+        <li>• 將種子詞存在線上</li>
+        <li>• 假設對方會誠實合作</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Watchtower 與備份</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Watchtower 作為備份補充：
+
+場景：你丟失數據，對方惡意廣播舊狀態
+
+沒有 Watchtower：
+  - 你無法懲罰（沒有撤銷密鑰）
+  - 只能接受對方聲稱的狀態
+  - 可能損失資金
+
+有 Watchtower：
+  - Watchtower 存有懲罰交易
+  - 即使你離線/丟失數據
+  - Watchtower 可以保護你
+
+但是：
+  - Watchtower 需要每次更新都上傳新數據
+  - 存儲需求可能很大
+  - 需要信任 Watchtower 在線且可靠`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo 的改進</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Eltoo 將徹底解決備份問題：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">當前（LN-Penalty）</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 舊備份是「有毒」的</li>
+        <li>• 需要存儲所有舊狀態</li>
+        <li>• Watchtower 存儲需求大</li>
+        <li>• 恢復複雜且有風險</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">未來（Eltoo）</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 任何備份都安全</li>
+        <li>• 只需存儲最新狀態</li>
+        <li>• Watchtower 只需一份數據</li>
+        <li>• 恢復簡單可靠</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://docs.lightning.engineering/lightning-network-tools/lnd/recovery-planning-for-failure"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND 恢復規劃</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/watchtowers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Watchtowers</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/eltoo"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Eltoo</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">重要：</strong>
+      閃電網路資金的安全高度依賴正確的備份策略。在運行節點前，請確保你完全理解
+      備份機制和恢復流程。永遠不要在生產環境測試恢復！
+    </p>
+  </div>
+</ArticleLayout>

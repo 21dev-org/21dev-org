@@ -1,0 +1,310 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Hold Invoices 持有發票"
+  description="了解持有發票（HODL Invoices）如何讓接收方延遲結算支付，實現條件支付、託管和非同步接收等功能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Hold Invoices' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'HTLC 詳解', href: '/tech/lightning/htlc' }}
+  nextPage={{ title: 'Onion Messages', href: '/tech/lightning/onion-messages' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Hold Invoice？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Hold Invoice（持有發票，也稱為 HODL Invoice）是一種特殊的閃電網路發票，
+    接收方不會立即揭示 preimage 來結算支付，而是「持有」HTLC 直到滿足某些條件。
+    這讓閃電網路可以實現類似託管、條件支付等更複雜的應用場景。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心概念：</strong>
+      普通發票會立即結算（接收方馬上揭示 preimage）。Hold Invoice 讓接收方可以
+      選擇何時結算、是否結算，或者讓支付超時返還給發送方。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Hold Invoice 流程：
+
+普通發票：
+┌─────────┐    HTLC    ┌─────────┐
+│  Alice  │──────────>│   Bob   │
+└─────────┘            └────┬────┘
+                            │ 立即揭示 preimage
+                            ▼
+                       支付完成
+
+Hold Invoice：
+┌─────────┐    HTLC    ┌─────────┐
+│  Alice  │──────────>│   Bob   │
+└─────────┘            └────┬────┘
+                            │
+                            │ 等待...
+                            │ (HTLC 被「持有」)
+                            │
+                    ┌───────┴───────┐
+                    ▼               ▼
+              揭示 preimage    讓 HTLC 超時
+              (接受支付)       (拒絕支付)
+
+Bob 可以選擇：
+1. 接受：揭示 preimage，完成支付
+2. 拒絕：不揭示，等待 HTLC 超時返還
+3. 取消：主動發送錯誤訊息取消`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現方式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Hold Invoice API：
+
+1. 創建 Hold Invoice（接收方）
+
+// 生成隨機 preimage（接收方保存）
+preimage = random_bytes(32)
+hash = sha256(preimage)
+
+// 創建發票，但不自動結算
+lncli addholdinvoice \\
+  --hash <payment_hash> \\
+  --amt 100000
+
+2. 發送方支付
+
+lncli payinvoice <hold_invoice>
+// 支付會卡住，等待結算
+
+3. 接收方選擇結算或取消
+
+// 結算（接受支付）
+lncli settleinvoice <preimage>
+
+// 或取消（拒絕支付）
+lncli cancelinvoice <payment_hash>
+
+狀態轉換：
+OPEN → ACCEPTED → SETTLED
+          ↓
+       CANCELED`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">1. 交易所即時存款</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        用戶發起存款，交易所在驗證區塊鏈確認或完成 KYC 後才結算發票，
+        確保合規後才接收資金。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">2. 購物車結帳</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        電商網站可以在用戶支付後檢查庫存，有貨才結算，缺貨則取消支付。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">3. 非同步接收</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        離線錢包可以讓 LSP 持有支付，等用戶上線後再結算。
+        用於實現 <a href="/tech/lightning/async-payments" class="text-yellow-600 dark:text-yellow-400 hover:underline">非同步支付</a>。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">4. P2P 交易託管</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        買方先支付 Hold Invoice，賣方發貨後，買方（或仲裁方）決定是否結算。
+        類似傳統託管但無需第三方持有資金。
+      </p>
+    </div>
+
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">5. Submarine Swaps</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        原子交換服務使用 Hold Invoice 確保鏈上和鏈下交易原子性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">風險與注意事項</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">通道堵塞風險</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Hold Invoice 會鎖定整條路徑的流動性。長時間持有會導致
+        <a href="/tech/lightning/channel-jamming" class="underline">通道堵塞</a>，
+        影響網路可用性。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">超時風險</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果接收方持有太久超過 HTLC 時間鎖，支付會自動失敗。
+        接收方必須在超時前做出決定。
+      </p>
+    </div>
+  </div>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Hold Invoice 超時處理：
+
+時間線示例：
+T0: Alice 支付 Hold Invoice
+T1: HTLC 到達 Bob
+    └── Bob 開始「持有」
+
+T0+30min: 路由節點的 HTLC 即將超時
+          ├── 如果 Bob 不結算
+          └── 路由節點被迫強制關閉通道！
+
+T0+1hour: Bob 的入站 HTLC 超時
+          └── 支付自動失敗，資金返還 Alice
+
+最佳實踐：
+- 持有時間不應超過幾分鐘
+- 為上游節點留足超時餘量
+- 考慮使用推送通知快速處理
+- 監控 HTLC 過期時間`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過 <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">AddHoldInvoice</code>、
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">SettleInvoice</code>、
+        <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">CancelInvoice</code> API。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">通過插件支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">hodl</code> 插件實現類似功能。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LDK</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過 <code class="text-xs bg-[var(--bg-secondary)] px-1 rounded">ChannelManager</code> 的事件處理實現。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">代碼示例</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`// LND gRPC 示例 (Node.js)
+
+const lnrpc = require('@lightningnetwork/lnd-grpc');
+
+// 1. 創建 Hold Invoice
+const preimage = crypto.randomBytes(32);
+const hash = crypto.createHash('sha256').update(preimage).digest();
+
+const invoice = await lnd.addHoldInvoice({
+  hash: hash,
+  value: 100000,  // sats
+  expiry: 3600,   // 1 hour
+  memo: "Hold Invoice Demo"
+});
+
+console.log("Invoice:", invoice.payment_request);
+console.log("Save preimage:", preimage.toString('hex'));
+
+// 2. 監聽支付
+const call = lnd.subscribeSingleInvoice({ r_hash: hash });
+call.on('data', (invoice) => {
+  if (invoice.state === 'ACCEPTED') {
+    console.log("Payment received, deciding...");
+
+    // 業務邏輯決定是否接受
+    if (shouldAccept()) {
+      // 3a. 結算
+      lnd.settleInvoice({ preimage: preimage });
+      console.log("Payment settled!");
+    } else {
+      // 3b. 取消
+      lnd.cancelInvoice({ payment_hash: hash });
+      console.log("Payment canceled!");
+    }
+  }
+});`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://docs.lightning.engineering/lightning-network-tools/lnd/hold-invoices"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Hold Invoices 文檔</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/htlc"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 詳解</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/submarine-swaps"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Submarine Swaps</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/onion-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Onion Messages</a
+      >
+      如何實現無需支付的節點間通訊。
+    </p>
+  </div>
+</ArticleLayout>

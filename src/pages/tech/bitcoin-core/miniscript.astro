@@ -1,0 +1,626 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Miniscript"
+  description="結構化的 Bitcoin Script 子集：可組合、可分析的智能合約語言"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Miniscript' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+  nextPage={{ title: 'Descriptors', href: '/tech/bitcoin-core/descriptors' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Miniscript 是一種結構化的 Bitcoin Script 表示方式，
+    它允許軟件自動分析腳本的花費條件、計算見證大小、
+    並安全地組合多個條件。由 Pieter Wuille、Andrew Poelstra 等人開發。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>關鍵特性：</strong>
+      Miniscript 讓錢包可以處理任意複雜的花費條件，而無需為每種條件編寫特定代碼。
+      Bitcoin Core 從 v26.0 開始原生支持 Miniscript。
+    </p>
+  </div>
+
+  <h2 id="motivation">設計動機</h2>
+
+  <h3>傳統 Bitcoin Script 的問題</h3>
+  <pre><code class="language-text" is:raw>問題 1: 難以分析
+給定一個腳本，很難回答：
+- 誰可以花費這筆錢？
+- 需要哪些簽名？
+- 見證數據有多大？
+
+問題 2: 難以組合
+想要「A AND (B OR C)」這樣的條件：
+- 需要手工編寫每種組合
+- 容易出錯
+- 無法自動化
+
+問題 3: 安全性不明確
+- 腳本是否符合共識規則？
+- 腳本是否符合標準規則？
+- 是否存在可塑性問題？
+
+Miniscript 解決方案:
+- 定義嚴格的語法規則
+- 保證可分析性
+- 保證可組合性
+- 保證安全性</code></pre>
+
+  <h2 id="architecture">架構層次</h2>
+  <pre><code class="language-text" is:raw>三層架構:
+
+┌─────────────────────────────────────┐
+│         Policy Language             │  人類可讀
+│  and(pk(A), or(pk(B), after(100))) │
+└───────────────┬─────────────────────┘
+                │ 編譯
+                ▼
+┌─────────────────────────────────────┐
+│           Miniscript                │  結構化表示
+│  and_v(v:pk(A),or_d(pk(B),older... │
+└───────────────┬─────────────────────┘
+                │ 轉換
+                ▼
+┌─────────────────────────────────────┐
+│          Bitcoin Script             │  實際執行
+│  &lt;A&gt; OP_CHECKSIGVERIFY &lt;B&gt; OP_CHE.. │
+└─────────────────────────────────────┘</code></pre>
+
+  <h2 id="policy">Policy 語言</h2>
+  <p>Policy 是人類可讀的花費條件描述：</p>
+
+  <pre><code class="language-text" is:raw>基本構件:
+
+pk(KEY)          - 需要 KEY 的簽名
+after(N)         - 區塊高度達到 N
+older(N)         - 相對時間鎖 N 個區塊
+sha256(H)        - 需要雜湊原像
+hash256(H)       - 需要雙 SHA256 原像
+ripemd160(H)     - 需要 RIPEMD160 原像
+hash160(H)       - 需要 HASH160 原像
+
+組合操作:
+
+and(X, Y)        - X 和 Y 都必須滿足
+or(X, Y)         - X 或 Y 至少一個滿足
+thresh(k, X, Y, Z...)  - 至少 k 個條件滿足
+
+範例:
+
+# 2-of-3 多簽
+thresh(2, pk(A), pk(B), pk(C))
+
+# A 立即可花費，或 B 在 100 區塊後可花費
+or(pk(A), and(pk(B), after(100)))
+
+# 閃電網路 HTLC
+or(
+  and(pk(A), sha256(H)),
+  and(pk(B), older(144))
+)</code></pre>
+
+  <h2 id="miniscript-syntax">Miniscript 語法</h2>
+
+  <h3>類型系統</h3>
+  <pre><code class="language-text" is:raw>表達式類型 (B, V, K, W):
+
+B (Base):
+- 消耗 0 或多個堆疊元素
+- 推入 0 或 1 (nonzero = success)
+- 範例: pk, thresh
+
+V (Verify):
+- 消耗 0 或多個堆疊元素
+- 不推入任何東西（失敗則中止腳本）
+- 範例: v:pk (pk + VERIFY)
+
+K (Key):
+- 消耗 0 或多個堆疊元素
+- 推入公鑰
+- 範例: pk_k
+
+W (Wrapped):
+- 用於表示已經被包裝的表達式
+- 保證堆疊不變
+
+修飾符:
+a:X   - ALT (OP_TOALTSTACK ... OP_FROMALTSTACK)
+s:X   - SWAP (OP_SWAP)
+c:X   - CHECKSIG (X 必須是 K)
+d:X   - DUP IF
+v:X   - VERIFY
+j:X   - SIZE 0NOTEQUAL IF
+n:X   - 0NOTEQUAL
+l:X   - IF 0 ELSE X ENDIF
+u:X   - IF X ELSE 0 ENDIF</code></pre>
+
+  <h3>基本表達式</h3>
+  <pre><code class="language-text" is:raw>pk_k(KEY)        → &lt;KEY&gt;                             [K]
+pk_h(KEY)        → OP_DUP OP_HASH160 &lt;H&gt; OP_EQUALVERIFY [K]
+pk(KEY)          → 等同於 c:pk_k(KEY)                   [B]
+
+older(N)         → &lt;N&gt; OP_CHECKSEQUENCEVERIFY          [B]
+after(N)         → &lt;N&gt; OP_CHECKLOCKTIMEVERIFY          [B]
+
+sha256(H)        → OP_SIZE &lt;32&gt; OP_EQUALVERIFY
+                   OP_SHA256 &lt;H&gt; OP_EQUAL              [B]
+
+組合表達式:
+
+and_v(X, Y)      → X Y                    (X 是 V, Y 是 B/K/V)
+and_b(X, Y)      → X Y OP_BOOLAND         (X, Y 都是 B)
+and_n(X, Y)      → X OP_NOTIF 0 OP_ELSE Y OP_ENDIF
+
+or_b(X, Z)       → X Z OP_BOOLOR          (X, Z 都是 B)
+or_c(X, Z)       → X OP_NOTIF Z OP_ENDIF  (X 是 B, Z 是 V)
+or_d(X, Z)       → X OP_IFDUP OP_NOTIF Z OP_ENDIF
+or_i(X, Z)       → OP_IF X OP_ELSE Z OP_ENDIF
+
+thresh(k, X...)  → X1 X2 OP_ADD X3 OP_ADD ... &lt;k&gt; OP_EQUAL
+
+multi(k, K1...)  → &lt;k&gt; &lt;K1&gt; ... &lt;Kn&gt; &lt;n&gt; OP_CHECKMULTISIG</code></pre>
+
+  <h2 id="compilation">編譯過程</h2>
+
+  <h3>從 Policy 到 Miniscript</h3>
+  <pre><code class="language-typescript" is:raw>// Policy 語法樹
+type Policy =
+  | { type: 'pk'; key: string }
+  | { type: 'after'; blocks: number }
+  | { type: 'older'; blocks: number }
+  | { type: 'sha256'; hash: string }
+  | { type: 'and'; left: Policy; right: Policy }
+  | { type: 'or'; left: Policy; right: Policy; weights?: [number, number] }
+  | { type: 'thresh'; k: number; subs: Policy[] };
+
+// Miniscript 語法樹
+type Miniscript =
+  | { type: 'pk_k'; key: string }
+  | { type: 'pk_h'; key: string }
+  | { type: 'older'; n: number }
+  | { type: 'after'; n: number }
+  | { type: 'sha256'; hash: string }
+  | { type: 'and_v'; left: Miniscript; right: Miniscript }
+  | { type: 'and_b'; left: Miniscript; right: Miniscript }
+  | { type: 'or_b'; left: Miniscript; right: Miniscript }
+  | { type: 'or_d'; left: Miniscript; right: Miniscript }
+  | { type: 'or_i'; left: Miniscript; right: Miniscript }
+  | { type: 'thresh'; k: number; subs: Miniscript[] }
+  | { type: 'multi'; k: number; keys: string[] }
+  | { type: 'wrapper'; w: string; sub: Miniscript };
+
+// 編譯器選擇最優結構
+function compilePolicy(policy: Policy): Miniscript {
+  switch (policy.type) {
+    case 'pk':
+      return { type: 'wrapper', w: 'c', sub: { type: 'pk_k', key: policy.key } };
+
+    case 'and': {
+      // 選擇 and_v 或 and_b 取決於子表達式類型
+      const left = compilePolicy(policy.left);
+      const right = compilePolicy(policy.right);
+      return optimizeAnd(left, right);
+    }
+
+    case 'or': {
+      // 根據概率權重選擇最優 or 結構
+      const [wL, wR] = policy.weights || [1, 1];
+      const left = compilePolicy(policy.left);
+      const right = compilePolicy(policy.right);
+      return optimizeOr(left, right, wL, wR);
+    }
+
+    case 'thresh': {
+      const subs = policy.subs.map(compilePolicy);
+      if (policy.k === policy.subs.length) {
+        // 全部都要滿足 = 連續的 and
+        return chainAnd(subs);
+      }
+      return { type: 'thresh', k: policy.k, subs };
+    }
+
+    // ... 其他情況
+  }
+}
+
+function optimizeOr(
+  left: Miniscript,
+  right: Miniscript,
+  wL: number,
+  wR: number
+): Miniscript {
+  // or_d: 左分支更可能 (左分支放前面)
+  // or_i: 需要選擇分支 (用 OP_IF)
+  // or_b: 兩個都要執行然後 BOOLOR
+
+  if (wL &gt;= wR) {
+    return { type: 'or_d', left, right };
+  }
+  return { type: 'or_d', left: right, right: left };
+}</code></pre>
+
+  <h3>從 Miniscript 到 Script</h3>
+  <pre><code class="language-typescript" is:raw>function miniscriptToScript(ms: Miniscript): Uint8Array {
+  const ops: number[] = [];
+
+  function compile(node: Miniscript): void {
+    switch (node.type) {
+      case 'pk_k':
+        ops.push(0x21); // push 33 bytes
+        ops.push(...hexToBytes(node.key));
+        break;
+
+      case 'wrapper':
+        switch (node.w) {
+          case 'c': // CHECKSIG
+            compile(node.sub);
+            ops.push(0xac); // OP_CHECKSIG
+            break;
+          case 'v': // VERIFY
+            compile(node.sub);
+            ops.push(0x69); // OP_VERIFY
+            break;
+          case 'd': // DUP IF ... ENDIF
+            ops.push(0x76); // OP_DUP
+            ops.push(0x63); // OP_IF
+            compile(node.sub);
+            ops.push(0x68); // OP_ENDIF
+            break;
+          case 's': // SWAP
+            ops.push(0x7c); // OP_SWAP
+            compile(node.sub);
+            break;
+        }
+        break;
+
+      case 'and_v':
+        compile(node.left);
+        compile(node.right);
+        break;
+
+      case 'and_b':
+        compile(node.left);
+        compile(node.right);
+        ops.push(0x9a); // OP_BOOLAND
+        break;
+
+      case 'or_d':
+        compile(node.left);
+        ops.push(0x73); // OP_IFDUP
+        ops.push(0x64); // OP_NOTIF
+        compile(node.right);
+        ops.push(0x68); // OP_ENDIF
+        break;
+
+      case 'or_i':
+        ops.push(0x63); // OP_IF
+        compile(node.left);
+        ops.push(0x67); // OP_ELSE
+        compile(node.right);
+        ops.push(0x68); // OP_ENDIF
+        break;
+
+      case 'older':
+        ops.push(...encodeNumber(node.n));
+        ops.push(0xb2); // OP_CHECKSEQUENCEVERIFY
+        break;
+
+      case 'after':
+        ops.push(...encodeNumber(node.n));
+        ops.push(0xb1); // OP_CHECKLOCKTIMEVERIFY
+        break;
+
+      case 'multi':
+        ops.push(...encodeNumber(node.k));
+        for (const key of node.keys) {
+          ops.push(0x21);
+          ops.push(...hexToBytes(key));
+        }
+        ops.push(...encodeNumber(node.keys.length));
+        ops.push(0xae); // OP_CHECKMULTISIG
+        break;
+    }
+  }
+
+  compile(ms);
+  return new Uint8Array(ops);
+}</code></pre>
+
+  <h2 id="analysis">腳本分析</h2>
+
+  <h3>花費條件分析</h3>
+  <pre><code class="language-typescript" is:raw>interface SpendingCondition {
+  keys: string[];         // 需要的簽名
+  timelocks: number[];    // 時間鎖條件
+  hashlocks: string[];    // 雜湊鎖條件
+}
+
+function analyzeSpendingPaths(
+  ms: Miniscript
+): SpendingCondition[] {
+  const paths: SpendingCondition[] = [];
+
+  function analyze(
+    node: Miniscript,
+    current: SpendingCondition
+  ): void {
+    switch (node.type) {
+      case 'pk_k':
+        current.keys.push(node.key);
+        break;
+
+      case 'wrapper':
+        analyze(node.sub, current);
+        break;
+
+      case 'and_v':
+      case 'and_b':
+        analyze(node.left, current);
+        analyze(node.right, current);
+        break;
+
+      case 'or_d':
+      case 'or_i':
+      case 'or_b':
+        // 分叉：兩條路徑
+        const pathL = { ...current, keys: [...current.keys] };
+        const pathR = { ...current, keys: [...current.keys] };
+        analyze(node.left, pathL);
+        analyze(node.right, pathR);
+        paths.push(pathL);
+        paths.push(pathR);
+        return;
+
+      case 'older':
+      case 'after':
+        current.timelocks.push(node.n);
+        break;
+
+      case 'sha256':
+        current.hashlocks.push(node.hash);
+        break;
+
+      case 'multi':
+        // k-of-n：只需要 k 個簽名
+        // 這裡簡化處理
+        current.keys.push(...node.keys.slice(0, node.k));
+        break;
+    }
+
+    paths.push(current);
+  }
+
+  analyze(ms, { keys: [], timelocks: [], hashlocks: [] });
+  return paths;
+}</code></pre>
+
+  <h3>見證大小計算</h3>
+  <pre><code class="language-typescript" is:raw>interface WitnessSize {
+  max: number;      // 最大見證大小
+  min: number;      // 最小見證大小
+  expected: number; // 預期見證大小（基於概率）
+}
+
+function calculateWitnessSize(ms: Miniscript): WitnessSize {
+  switch (ms.type) {
+    case 'pk_k':
+      // 簽名 = 72 bytes (DER) 或 64 bytes (Schnorr)
+      return { max: 73, min: 71, expected: 72 };
+
+    case 'wrapper':
+      const sub = calculateWitnessSize(ms.sub);
+      switch (ms.w) {
+        case 'c':
+          return sub; // CHECKSIG 不改變見證大小
+        case 's':
+          return sub; // SWAP 也不改變
+        case 'd':
+          // DUP IF：成功時不需額外，失敗時需要 0
+          return {
+            max: sub.max,
+            min: 1, // 空推入
+            expected: sub.expected,
+          };
+      }
+      return sub;
+
+    case 'and_v':
+    case 'and_b':
+      const left = calculateWitnessSize(ms.left);
+      const right = calculateWitnessSize(ms.right);
+      return {
+        max: left.max + right.max,
+        min: left.min + right.min,
+        expected: left.expected + right.expected,
+      };
+
+    case 'or_d':
+    case 'or_i': {
+      const l = calculateWitnessSize(ms.left);
+      const r = calculateWitnessSize(ms.right);
+      // or_i 需要額外的選擇位
+      const extra = ms.type === 'or_i' ? 1 : 0;
+      return {
+        max: Math.max(l.max, r.max) + extra,
+        min: Math.min(l.min, r.min) + extra,
+        expected: (l.expected + r.expected) / 2 + extra,
+      };
+    }
+
+    case 'multi':
+      const sigSize = 72;
+      return {
+        max: ms.k * sigSize + 1, // +1 for dummy (bug compatibility)
+        min: ms.k * sigSize + 1,
+        expected: ms.k * sigSize + 1,
+      };
+
+    case 'sha256':
+      return { max: 32, min: 32, expected: 32 }; // preimage
+
+    default:
+      return { max: 0, min: 0, expected: 0 };
+  }
+}</code></pre>
+
+  <h2 id="descriptors">與 Descriptors 集成</h2>
+  <pre><code class="language-text" is:raw>Miniscript 描述符格式:
+
+# P2WSH Miniscript
+wsh(and_v(v:pk(A),or_d(pk(B),older(100))))
+
+# P2SH-P2WSH Miniscript
+sh(wsh(multi(2,A,B,C)))
+
+# Taproot Script Path
+tr(INTERNAL_KEY,{and_v(v:pk(A),older(100)),pk(B)})
+
+Bitcoin Core 命令:
+
+# 從描述符獲取地址
+bitcoin-cli deriveaddresses "wsh(and_v(v:pk([...]),pk([...])))"
+
+# 導入 Miniscript 錢包
+bitcoin-cli importdescriptors '[{
+  "desc": "wsh(and_v(v:pk(...),or_d(pk(...),older(100))))#checksum",
+  "timestamp": "now"
+}]'
+
+# 分析描述符
+bitcoin-cli getdescriptorinfo "wsh(multi(2,A,B,C))"</code></pre>
+
+  <h2 id="taproot-miniscript">Taproot Miniscript</h2>
+  <pre><code class="language-text" is:raw>Tapscript 變體:
+
+主要區別:
+- 使用 OP_CHECKSIGADD 替代 OP_CHECKMULTISIG
+- 簽名是 Schnorr 而非 ECDSA
+- 移除 201 操作碼限制
+
+multi_a(k, K1, K2, ..., Kn):
+→ K1 OP_CHECKSIG K2 OP_CHECKSIGADD ... &lt;k&gt; OP_NUMEQUAL
+
+範例:
+
+# Taproot 2-of-3
+tr(INTERNAL,{multi_a(2,A,B,C)})
+
+# 帶時間鎖的恢復路徑
+tr(MAIN,{
+  pk(MAIN),
+  {and_v(v:pk(BACKUP),older(52560)),pk(HEIR)}
+})</code></pre>
+
+  <h2 id="examples">實際範例</h2>
+
+  <h3>保險庫合約</h3>
+  <pre><code class="language-typescript" is:raw>// 保險庫：熱錢包可以發起，但需要等待或冷錢包批准
+const vaultPolicy = `
+or(
+  99@and(pk(HOT_KEY), older(144)),
+  1@pk(COLD_KEY)
+)
+`;
+
+// 編譯結果
+const vaultMiniscript = `
+or_d(
+  and_v(v:pk(HOT_KEY), older(144)),
+  pk(COLD_KEY)
+)
+`;
+
+// 花費路徑分析:
+// 1. HOT_KEY 簽名 + 等待 144 區塊 (約 1 天)
+// 2. COLD_KEY 立即簽名 (緊急撤銷)</code></pre>
+
+  <h3>遺產規劃</h3>
+  <pre><code class="language-typescript" is:raw>// 遺產：本人控制，或繼承人+律師，或繼承人等待2年
+const inheritancePolicy = `
+or(
+  pk(OWNER),
+  or(
+    and(pk(HEIR), pk(LAWYER)),
+    and(pk(HEIR), after(105120))
+  )
+)
+`;
+
+// 105120 blocks ≈ 2 years
+
+function createInheritanceDescriptor(
+  owner: string,
+  heir: string,
+  lawyer: string
+): string {
+  return `wsh(or_d(
+    c:pk_k(${owner}),
+    or_i(
+      and_v(v:pk(${heir}),c:pk_k(${lawyer})),
+      and_v(v:pk(${heir}),after(105120))
+    )
+  ))`;
+}</code></pre>
+
+  <h3>多簽 + 時間鎖降級</h3>
+  <pre><code class="language-typescript" is:raw>// 開始需要 3-of-4，隨時間降級到 2-of-4，最終 1-of-4
+const degradingMultisig = `
+or(
+  99@thresh(3, pk(A), pk(B), pk(C), pk(D)),
+  or(
+    9@and(thresh(2, pk(A), pk(B), pk(C), pk(D)), older(4320)),
+    1@and(thresh(1, pk(A), pk(B), pk(C), pk(D)), older(8640))
+  )
+)
+`;
+
+// 4320 blocks ≈ 1 month
+// 8640 blocks ≈ 2 months
+
+// 這解決了密鑰丟失問題：
+// - 正常情況：需要 3 個簽名
+// - 1 個月後：只需 2 個簽名
+// - 2 個月後：只需 1 個簽名</code></pre>
+
+  <h2 id="tools">工具與資源</h2>
+  <pre><code class="language-bash" is:raw># 在線編譯器
+https://bitcoin.sipa.be/miniscript/
+
+# Rust 實現
+cargo add miniscript
+
+# JavaScript 實現
+npm install @aspect/miniscript
+
+# Bitcoin Core (v26.0+)
+bitcoin-cli getdescriptorinfo "wsh(and_v(v:pk(...),pk(...)))"</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用概率權重</strong>：為 or 分支設置權重以優化常見路徑</li>
+    <li><strong>驗證腳本大小</strong>：確保腳本不超過共識限制</li>
+    <li><strong>測試所有路徑</strong>：驗證每條花費路徑都能正確執行</li>
+    <li><strong>使用描述符</strong>：Miniscript 與 Descriptors 結合使用</li>
+    <li><strong>考慮 Taproot</strong>：複雜條件考慮使用 Taproot Script Path</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://bitcoin.sipa.be/miniscript/" target="_blank" rel="noopener noreferrer">Miniscript 官方網站</a></li>
+    <li><a href="https://github.com/rust-bitcoin/rust-miniscript" target="_blank" rel="noopener noreferrer">rust-miniscript</a></li>
+    <li><a href="https://github.com/bitcoindevkit/bdk" target="_blank" rel="noopener noreferrer">Bitcoin Dev Kit (BDK)</a></li>
+    <li><a href="/tech/bitcoin-core/descriptors">Wallet Descriptors</a></li>
+    <li><a href="/tech/bitcoin-core/script">Bitcoin Script</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+  </ul>
+</ArticleLayout>

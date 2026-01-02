@@ -1,0 +1,649 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="SegWit"
+  description="隔離見證：BIP-141/143/144 解決交易可塑性並提升區塊容量"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'SegWit' },
+  ]}
+  difficulty="intermediate"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    隔離見證（Segregated Witness，簡稱 SegWit）是 2017 年 8 月啟用的軟分叉升級。
+    它將簽名數據（witness）從交易結構中分離出來，解決了交易可塑性問題，
+    並有效提升了區塊容量。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>啟用區塊：</strong>
+      SegWit 在區塊高度 481,824（2017 年 8 月 24 日）啟用。
+      目前約 80% 的比特幣交易使用 SegWit。
+    </p>
+  </div>
+
+  <h2 id="problems">解決的問題</h2>
+
+  <h3>交易可塑性</h3>
+  <pre><code class="language-text" is:raw>交易可塑性問題:
+
+傳統交易 TXID 計算:
+TXID = SHA256(SHA256(version + inputs + outputs + locktime))
+
+問題: 簽名也在 inputs 中！
+┌─────────────────────────────────────┐
+│ Input:                              │
+│ ├── prev_txid                       │
+│ ├── prev_vout                       │
+│ ├── scriptSig (包含簽名)  ← 問題所在 │
+│ └── sequence                        │
+└─────────────────────────────────────┘
+
+ECDSA 簽名有多種有效表示:
+- (r, s) 和 (r, -s mod n) 都是有效簽名
+- 可以改變簽名格式而不使其無效
+
+結果:
+1. 第三方可以修改 TXID 而不使交易無效
+2. 破壞依賴 TXID 的鏈式交易
+3. 影響 Lightning Network 等二層協議</code></pre>
+
+  <h3>區塊容量限制</h3>
+  <pre><code class="language-text" is:raw>傳統限制:
+- 區塊大小上限: 1 MB (1,000,000 bytes)
+- 簽名數據佔交易約 60%
+- 實際交易吞吐量受限
+
+SegWit 解決方案:
+- 引入「區塊重量」概念
+- 見證數據享有折扣
+- 有效區塊容量提升至 ~4 MB (理論最大值)
+- 實際平均 ~2 MB</code></pre>
+
+  <h2 id="structure">交易結構變化</h2>
+
+  <h3>傳統交易 vs SegWit 交易</h3>
+  <pre><code class="language-text" is:raw>傳統交易結構:
+┌─────────────────────────────────────┐
+│ version (4 bytes)                   │
+├─────────────────────────────────────┤
+│ input count (varint)                │
+├─────────────────────────────────────┤
+│ inputs[] (包含 scriptSig)           │
+├─────────────────────────────────────┤
+│ output count (varint)               │
+├─────────────────────────────────────┤
+│ outputs[]                           │
+├─────────────────────────────────────┤
+│ locktime (4 bytes)                  │
+└─────────────────────────────────────┘
+
+SegWit 交易結構:
+┌─────────────────────────────────────┐
+│ version (4 bytes)                   │
+├─────────────────────────────────────┤
+│ marker (0x00)   ← 新增              │
+├─────────────────────────────────────┤
+│ flag (0x01)     ← 新增              │
+├─────────────────────────────────────┤
+│ input count (varint)                │
+├─────────────────────────────────────┤
+│ inputs[] (scriptSig 為空)           │
+├─────────────────────────────────────┤
+│ output count (varint)               │
+├─────────────────────────────────────┤
+│ outputs[]                           │
+├─────────────────────────────────────┤
+│ witness[] (簽名數據)  ← 新增        │
+├─────────────────────────────────────┤
+│ locktime (4 bytes)                  │
+└─────────────────────────────────────┘</code></pre>
+
+  <h3>TXID 與 WTXID</h3>
+  <pre><code class="language-text" is:raw>TXID (Transaction ID):
+- 計算時排除 witness 數據
+- 向後兼容舊節點
+- 不受簽名修改影響
+
+WTXID (Witness Transaction ID):
+- 包含完整交易（含 witness）
+- 用於區塊 witness 承諾
+
+計算方式:
+TXID = SHA256(SHA256(
+  version + inputs + outputs + locktime
+))
+
+WTXID = SHA256(SHA256(
+  version + marker + flag + inputs + outputs + witness + locktime
+))</code></pre>
+
+  <h2 id="weight">區塊重量</h2>
+
+  <h3>Weight Units (WU)</h3>
+  <pre><code class="language-text" is:raw>區塊重量計算:
+- 非見證數據: 1 byte = 4 WU
+- 見證數據: 1 byte = 1 WU
+- 區塊重量上限: 4,000,000 WU
+
+Virtual Size (vBytes):
+vsize = weight / 4
+
+手續費計算:
+fee = fee_rate (sat/vB) × vsize
+
+範例 (P2WPKH 交易):
+┌───────────────────────────────────────┐
+│ 組成部分           │ Bytes │ Weight  │
+├───────────────────────────────────────┤
+│ version            │   4   │   16    │
+│ marker + flag      │   2   │    2    │
+│ input count        │   1   │    4    │
+│ input (no sig)     │  41   │  164    │
+│ output count       │   1   │    4    │
+│ output             │  34   │  136    │
+│ witness            │ 107   │  107    │
+│ locktime           │   4   │   16    │
+├───────────────────────────────────────┤
+│ Total              │ 194   │  449    │
+│ vsize              │       │  112.25 │
+└───────────────────────────────────────┘</code></pre>
+
+  <h3>容量提升</h3>
+  <pre><code class="language-text" is:raw>實際容量比較:
+
+傳統交易 (P2PKH):
+- 平均大小: ~225 bytes
+- 區塊可容納: ~4,400 筆
+
+SegWit 交易 (P2WPKH):
+- 實際大小: ~194 bytes
+- vsize: ~112 vBytes
+- 區塊可容納: ~8,000 筆 (80% 提升)
+
+理論最大區塊:
+- 全部是 witness 數據: ~4 MB
+- 實際混合: ~2-2.5 MB</code></pre>
+
+  <h2 id="output-types">輸出類型</h2>
+
+  <h3>P2WPKH (Pay-to-Witness-Public-Key-Hash)</h3>
+  <pre><code class="language-text" is:raw>Native SegWit 單簽地址 (bc1q...)
+
+scriptPubKey:
+OP_0 &lt;20-byte-pubkey-hash&gt;
+
+Witness:
+&lt;signature&gt; &lt;pubkey&gt;
+
+結構:
+┌─────────────────────────────────────┐
+│ scriptPubKey (22 bytes):            │
+│ 00 14 &lt;20-byte hash&gt;                │
+└─────────────────────────────────────┘
+
+範例地址:
+bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4</code></pre>
+
+  <h3>P2WSH (Pay-to-Witness-Script-Hash)</h3>
+  <pre><code class="language-text" is:raw>Native SegWit 腳本地址 (bc1q... 更長)
+
+scriptPubKey:
+OP_0 &lt;32-byte-script-hash&gt;
+
+Witness:
+&lt;script inputs...&gt; &lt;witness script&gt;
+
+結構:
+┌─────────────────────────────────────┐
+│ scriptPubKey (34 bytes):            │
+│ 00 20 &lt;32-byte hash&gt;                │
+└─────────────────────────────────────┘
+
+範例 (2-of-3 多簽):
+bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3</code></pre>
+
+  <h3>P2SH-P2WPKH (Wrapped SegWit)</h3>
+  <pre><code class="language-text" is:raw>兼容舊錢包的 SegWit 地址 (3...)
+
+scriptPubKey (P2SH):
+OP_HASH160 &lt;20-byte-script-hash&gt; OP_EQUAL
+
+scriptSig:
+&lt;redeemScript&gt;
+
+redeemScript:
+OP_0 &lt;20-byte-pubkey-hash&gt;
+
+Witness:
+&lt;signature&gt; &lt;pubkey&gt;
+
+優點:
+- 舊錢包可以發送到此地址
+- 享受 SegWit 折扣（部分）
+
+缺點:
+- 比 native SegWit 大 ~11 bytes
+- 手續費略高</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>地址生成</h3>
+  <pre><code class="language-typescript" is:raw>import { bech32 } from 'bech32';
+import * as crypto from 'crypto';
+
+// P2WPKH 地址
+function createP2WPKHAddress(
+  publicKey: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  // 計算 HASH160 (RIPEMD160(SHA256(pubkey)))
+  const sha256Hash = crypto.createHash('sha256').update(publicKey).digest();
+  const hash160 = crypto.createHash('ripemd160').update(sha256Hash).digest();
+
+  const prefix = network === 'mainnet' ? 'bc' : 'tb';
+  const version = 0; // witness version
+
+  const words = bech32.toWords(hash160);
+  words.unshift(version);
+
+  return bech32.encode(prefix, words);
+}
+
+// P2WSH 地址
+function createP2WSHAddress(
+  witnessScript: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  // 計算 SHA256(script)
+  const scriptHash = crypto.createHash('sha256')
+    .update(witnessScript)
+    .digest();
+
+  const prefix = network === 'mainnet' ? 'bc' : 'tb';
+  const version = 0;
+
+  const words = bech32.toWords(scriptHash);
+  words.unshift(version);
+
+  return bech32.encode(prefix, words);
+}
+
+// 解碼 Bech32 地址
+function decodeSegWitAddress(address: string): {
+  version: number;
+  program: Uint8Array;
+} {
+  const { prefix, words } = bech32.decode(address);
+
+  const version = words[0];
+  const program = new Uint8Array(bech32.fromWords(words.slice(1)));
+
+  return { version, program };
+}</code></pre>
+
+  <h3>交易構建</h3>
+  <pre><code class="language-typescript" is:raw>interface SegWitInput {
+  txid: string;
+  vout: number;
+  sequence: number;
+  witness: Uint8Array[];
+}
+
+interface Output {
+  value: bigint;
+  scriptPubKey: Uint8Array;
+}
+
+interface SegWitTransaction {
+  version: number;
+  inputs: SegWitInput[];
+  outputs: Output[];
+  locktime: number;
+}
+
+function serializeSegWitTx(tx: SegWitTransaction): Uint8Array {
+  const parts: Uint8Array[] = [];
+
+  // Version (4 bytes, little-endian)
+  const versionBuf = new Uint8Array(4);
+  new DataView(versionBuf.buffer).setUint32(0, tx.version, true);
+  parts.push(versionBuf);
+
+  // Marker and flag
+  parts.push(new Uint8Array([0x00, 0x01]));
+
+  // Input count
+  parts.push(encodeVarInt(tx.inputs.length));
+
+  // Inputs (without witness)
+  for (const input of tx.inputs) {
+    // Previous txid (32 bytes, reversed)
+    const txidBytes = hexToBytes(input.txid).reverse();
+    parts.push(new Uint8Array(txidBytes));
+
+    // Previous vout (4 bytes)
+    const voutBuf = new Uint8Array(4);
+    new DataView(voutBuf.buffer).setUint32(0, input.vout, true);
+    parts.push(voutBuf);
+
+    // Empty scriptSig for SegWit
+    parts.push(new Uint8Array([0x00]));
+
+    // Sequence (4 bytes)
+    const seqBuf = new Uint8Array(4);
+    new DataView(seqBuf.buffer).setUint32(0, input.sequence, true);
+    parts.push(seqBuf);
+  }
+
+  // Output count
+  parts.push(encodeVarInt(tx.outputs.length));
+
+  // Outputs
+  for (const output of tx.outputs) {
+    // Value (8 bytes)
+    const valueBuf = new Uint8Array(8);
+    new DataView(valueBuf.buffer).setBigUint64(0, output.value, true);
+    parts.push(valueBuf);
+
+    // scriptPubKey
+    parts.push(encodeVarInt(output.scriptPubKey.length));
+    parts.push(output.scriptPubKey);
+  }
+
+  // Witness data
+  for (const input of tx.inputs) {
+    parts.push(encodeVarInt(input.witness.length));
+    for (const item of input.witness) {
+      parts.push(encodeVarInt(item.length));
+      parts.push(item);
+    }
+  }
+
+  // Locktime (4 bytes)
+  const locktimeBuf = new Uint8Array(4);
+  new DataView(locktimeBuf.buffer).setUint32(0, tx.locktime, true);
+  parts.push(locktimeBuf);
+
+  return concatBytes(parts);
+}
+
+// 計算 TXID（不含 witness）
+function calculateTxid(tx: SegWitTransaction): string {
+  const parts: Uint8Array[] = [];
+
+  // Version
+  const versionBuf = new Uint8Array(4);
+  new DataView(versionBuf.buffer).setUint32(0, tx.version, true);
+  parts.push(versionBuf);
+
+  // Inputs (不含 marker, flag, witness)
+  parts.push(encodeVarInt(tx.inputs.length));
+  for (const input of tx.inputs) {
+    const txidBytes = hexToBytes(input.txid).reverse();
+    parts.push(new Uint8Array(txidBytes));
+
+    const voutBuf = new Uint8Array(4);
+    new DataView(voutBuf.buffer).setUint32(0, input.vout, true);
+    parts.push(voutBuf);
+
+    parts.push(new Uint8Array([0x00])); // empty scriptSig
+
+    const seqBuf = new Uint8Array(4);
+    new DataView(seqBuf.buffer).setUint32(0, input.sequence, true);
+    parts.push(seqBuf);
+  }
+
+  // Outputs
+  parts.push(encodeVarInt(tx.outputs.length));
+  for (const output of tx.outputs) {
+    const valueBuf = new Uint8Array(8);
+    new DataView(valueBuf.buffer).setBigUint64(0, output.value, true);
+    parts.push(valueBuf);
+    parts.push(encodeVarInt(output.scriptPubKey.length));
+    parts.push(output.scriptPubKey);
+  }
+
+  // Locktime
+  const locktimeBuf = new Uint8Array(4);
+  new DataView(locktimeBuf.buffer).setUint32(0, tx.locktime, true);
+  parts.push(locktimeBuf);
+
+  const serialized = concatBytes(parts);
+  const hash1 = crypto.createHash('sha256').update(serialized).digest();
+  const hash2 = crypto.createHash('sha256').update(hash1).digest();
+
+  return Buffer.from(hash2).reverse().toString('hex');
+}</code></pre>
+
+  <h3>BIP-143 簽名雜湊</h3>
+  <pre><code class="language-typescript" is:raw>// BIP-143: SegWit 簽名的新雜湊算法
+interface SignatureHashInput {
+  txid: string;
+  vout: number;
+  scriptCode: Uint8Array;
+  value: bigint;
+  sequence: number;
+}
+
+function bip143SignatureHash(
+  tx: SegWitTransaction,
+  inputIndex: number,
+  input: SignatureHashInput,
+  sigHashType: number
+): Uint8Array {
+  const SIGHASH_ALL = 0x01;
+  const SIGHASH_NONE = 0x02;
+  const SIGHASH_SINGLE = 0x03;
+  const SIGHASH_ANYONECANPAY = 0x80;
+
+  const parts: Uint8Array[] = [];
+
+  // 1. Version
+  const versionBuf = new Uint8Array(4);
+  new DataView(versionBuf.buffer).setUint32(0, tx.version, true);
+  parts.push(versionBuf);
+
+  // 2. hashPrevouts
+  if (!(sigHashType & SIGHASH_ANYONECANPAY)) {
+    const prevouts: Uint8Array[] = [];
+    for (const inp of tx.inputs) {
+      prevouts.push(new Uint8Array(hexToBytes(inp.txid).reverse()));
+      const voutBuf = new Uint8Array(4);
+      new DataView(voutBuf.buffer).setUint32(0, inp.vout, true);
+      prevouts.push(voutBuf);
+    }
+    parts.push(doubleSha256(concatBytes(prevouts)));
+  } else {
+    parts.push(new Uint8Array(32)); // 0x00...00
+  }
+
+  // 3. hashSequence
+  if (!(sigHashType & SIGHASH_ANYONECANPAY) &&
+      (sigHashType & 0x1f) !== SIGHASH_SINGLE &&
+      (sigHashType & 0x1f) !== SIGHASH_NONE) {
+    const sequences: Uint8Array[] = [];
+    for (const inp of tx.inputs) {
+      const seqBuf = new Uint8Array(4);
+      new DataView(seqBuf.buffer).setUint32(0, inp.sequence, true);
+      sequences.push(seqBuf);
+    }
+    parts.push(doubleSha256(concatBytes(sequences)));
+  } else {
+    parts.push(new Uint8Array(32));
+  }
+
+  // 4. outpoint
+  parts.push(new Uint8Array(hexToBytes(input.txid).reverse()));
+  const voutBuf = new Uint8Array(4);
+  new DataView(voutBuf.buffer).setUint32(0, input.vout, true);
+  parts.push(voutBuf);
+
+  // 5. scriptCode
+  parts.push(encodeVarInt(input.scriptCode.length));
+  parts.push(input.scriptCode);
+
+  // 6. value
+  const valueBuf = new Uint8Array(8);
+  new DataView(valueBuf.buffer).setBigUint64(0, input.value, true);
+  parts.push(valueBuf);
+
+  // 7. sequence
+  const seqBuf = new Uint8Array(4);
+  new DataView(seqBuf.buffer).setUint32(0, input.sequence, true);
+  parts.push(seqBuf);
+
+  // 8. hashOutputs
+  if ((sigHashType & 0x1f) !== SIGHASH_SINGLE &&
+      (sigHashType & 0x1f) !== SIGHASH_NONE) {
+    const outputs: Uint8Array[] = [];
+    for (const out of tx.outputs) {
+      const valueBuf = new Uint8Array(8);
+      new DataView(valueBuf.buffer).setBigUint64(0, out.value, true);
+      outputs.push(valueBuf);
+      outputs.push(encodeVarInt(out.scriptPubKey.length));
+      outputs.push(out.scriptPubKey);
+    }
+    parts.push(doubleSha256(concatBytes(outputs)));
+  } else if ((sigHashType & 0x1f) === SIGHASH_SINGLE &&
+             inputIndex &lt; tx.outputs.length) {
+    const out = tx.outputs[inputIndex];
+    const outputParts: Uint8Array[] = [];
+    const valueBuf = new Uint8Array(8);
+    new DataView(valueBuf.buffer).setBigUint64(0, out.value, true);
+    outputParts.push(valueBuf);
+    outputParts.push(encodeVarInt(out.scriptPubKey.length));
+    outputParts.push(out.scriptPubKey);
+    parts.push(doubleSha256(concatBytes(outputParts)));
+  } else {
+    parts.push(new Uint8Array(32));
+  }
+
+  // 9. locktime
+  const locktimeBuf = new Uint8Array(4);
+  new DataView(locktimeBuf.buffer).setUint32(0, tx.locktime, true);
+  parts.push(locktimeBuf);
+
+  // 10. sighash type
+  const sigHashBuf = new Uint8Array(4);
+  new DataView(sigHashBuf.buffer).setUint32(0, sigHashType, true);
+  parts.push(sigHashBuf);
+
+  return doubleSha256(concatBytes(parts));
+}
+
+function doubleSha256(data: Uint8Array): Uint8Array {
+  const hash1 = crypto.createHash('sha256').update(data).digest();
+  return new Uint8Array(crypto.createHash('sha256').update(hash1).digest());
+}</code></pre>
+
+  <h2 id="witness-commitment">Witness 承諾</h2>
+  <pre><code class="language-text" is:raw>區塊中的 Witness 承諾:
+
+Coinbase 交易的 OP_RETURN 輸出:
+┌─────────────────────────────────────┐
+│ 6a (OP_RETURN)                      │
+│ 24 (push 36 bytes)                  │
+│ aa21a9ed (witness commitment prefix)│
+│ &lt;32-byte witness root hash&gt;         │
+└─────────────────────────────────────┘
+
+Witness Root 計算:
+1. 計算所有 WTXID
+2. Coinbase WTXID = 0x00...00
+3. 構建 Merkle 樹
+4. witness_root = Merkle root
+5. commitment = SHA256(SHA256(witness_root || witness_nonce))
+
+Witness Nonce:
+- 存儲在 coinbase 的 witness 中
+- 通常是 0x00...00 (32 bytes)</code></pre>
+
+  <h2 id="activation">啟用歷史</h2>
+  <pre><code class="language-text" is:raw>SegWit 啟用時間線:
+
+2015年12月: BIP-141/142/143/144 提出
+2016年4月: Bitcoin Core 0.12.1 支持
+2016年10月: Bitcoin Core 0.13.1 準備激活
+2017年8月1日: BIP-91 鎖定
+2017年8月24日: SegWit 正式啟用（區塊 481,824）
+
+激活方式: BIP-9 版本位信號
+- 95% 算力支持閾值
+- 經過 UASF (User Activated Soft Fork) 推動
+
+採用率:
+- 2018年: ~35%
+- 2020年: ~65%
+- 2024年: ~80%</code></pre>
+
+  <h2 id="benefits">優勢總結</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>傳統交易</th>
+        <th>SegWit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>交易可塑性</td>
+        <td>存在</td>
+        <td>已解決</td>
+      </tr>
+      <tr>
+        <td>區塊容量</td>
+        <td>~1 MB</td>
+        <td>~2-4 MB</td>
+      </tr>
+      <tr>
+        <td>二層協議</td>
+        <td>不安全</td>
+        <td>安全</td>
+      </tr>
+      <tr>
+        <td>簽名驗證</td>
+        <td>O(n²)</td>
+        <td>O(n)</td>
+      </tr>
+      <tr>
+        <td>腳本升級</td>
+        <td>困難</td>
+        <td>witness version</td>
+      </tr>
+      <tr>
+        <td>手續費</td>
+        <td>基準</td>
+        <td>節省 30-50%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用 Native SegWit</strong>：優先使用 bc1q/bc1p 地址</li>
+    <li><strong>避免 P2SH-wrapped</strong>：除非需要兼容舊錢包</li>
+    <li><strong>正確計算手續費</strong>：使用 vsize 而非實際大小</li>
+    <li><strong>使用 BIP-143</strong>：SegWit 輸入必須使用新的簽名雜湊</li>
+    <li><strong>驗證 witness 格式</strong>：確保 witness 結構正確</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki" target="_blank" rel="noopener noreferrer">BIP-141: Segregated Witness</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki" target="_blank" rel="noopener noreferrer">BIP-143: Signature Hash</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0144.mediawiki" target="_blank" rel="noopener noreferrer">BIP-144: P2P Messages</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki" target="_blank" rel="noopener noreferrer">BIP-173: Bech32</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot (SegWit v1)</a></li>
+    <li><a href="/tech/bitcoin-core/addresses">Address Types</a></li>
+  </ul>
+</ArticleLayout>

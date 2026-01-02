@@ -1,0 +1,511 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="libsecp256k1"
+  description="高效能橢圓曲線密碼學庫：比特幣簽名與驗證的核心引擎"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'libsecp256k1' },
+  ]}
+  difficulty="advanced"
+  readingTime="20 分鐘"
+  prevPage={{ title: 'Consensus', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    libsecp256k1 是比特幣專用的高效能橢圓曲線密碼學庫，
+    由 Pieter Wuille 主導開發。它實現了 secp256k1 曲線上的
+    ECDSA、Schnorr 簽名和各種密碼學原語，是 Bitcoin Core 的核心依賴。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
+    <p class="text-sm text-orange-700 dark:text-orange-400">
+      <strong>安全關鍵：</strong>
+      這個庫處理所有比特幣私鑰和簽名操作。
+      它經過廣泛的安全審計和形式化驗證，是經過實戰檢驗的密碼學實現。
+    </p>
+  </div>
+
+  <h2 id="secp256k1">secp256k1 曲線</h2>
+
+  <h3>曲線參數</h3>
+  <pre><code class="language-text" is:raw>secp256k1 橢圓曲線:
+
+方程式: y² = x³ + 7 (mod p)
+
+參數:
+p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+  = 2²⁵⁶ - 2³² - 977
+
+n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+  (群的階)
+
+G = (0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+     0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8)
+  (生成元)
+
+特性:
+- Koblitz 曲線（係數簡單）
+- 大質數階（安全）
+- 高效能運算
+- 非 NIST 曲線（無後門疑慮）</code></pre>
+
+  <h3>為什麼選擇 secp256k1</h3>
+  <pre><code class="language-text" is:raw>中本聰選擇 secp256k1 的原因（推測）:
+
+1. 非 NIST 標準
+   - 避免潛在的政府後門
+   - 參數來源透明
+
+2. 效能優勢
+   - 特殊曲線形式允許優化
+   - 係數 a=0, b=7 簡化運算
+   - 支持 GLV endomorphism 加速
+
+3. 安全性
+   - 256 位安全等級
+   - 無已知弱點
+   - 經過廣泛密碼學分析</code></pre>
+
+  <h2 id="features">核心功能</h2>
+
+  <h3>模組列表</h3>
+  <pre><code class="language-text" is:raw>libsecp256k1 模組:
+
+┌─────────────────────────────────────┐
+│ 核心模組                            │
+├─────────────────────────────────────┤
+│ ECDSA        - 簽名與驗證           │
+│ Schnorr      - BIP-340 簽名         │
+│ ECDH         - 密鑰交換             │
+│ Recovery     - 公鑰恢復             │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│ 額外模組                            │
+├─────────────────────────────────────┤
+│ MuSig2       - 聚合簽名             │
+│ ElligatorSwift - 公鑰編碼           │
+│ Extrakeys    - x-only 公鑰          │
+│ Generator    - 自定義生成元         │
+│ Bulletproofs - 範圍證明 (實驗性)    │
+└─────────────────────────────────────┘</code></pre>
+
+  <h2 id="ecdsa">ECDSA 簽名</h2>
+
+  <h3>簽名流程</h3>
+  <pre><code class="language-text" is:raw>ECDSA 簽名算法:
+
+輸入: 私鑰 d, 訊息雜湊 z
+
+1. 選擇隨機數 k ∈ [1, n-1]
+2. 計算 (x, y) = k·G
+3. r = x mod n
+4. 如果 r = 0，返回步驟 1
+5. s = k⁻¹(z + r·d) mod n
+6. 如果 s = 0，返回步驟 1
+7. 簽名 = (r, s)
+
+DER 編碼:
+30 [總長度]
+  02 [r 長度] [r 值]
+  02 [s 長度] [s 值]
+
+典型大小: 70-72 bytes</code></pre>
+
+  <h3>C API 使用</h3>
+  <pre><code class="language-c" is:raw>#include &lt;secp256k1.h&gt;
+
+// 創建上下文
+secp256k1_context *ctx = secp256k1_context_create(
+    SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY
+);
+
+// 生成密鑰對
+unsigned char seckey[32];
+// ... 填充隨機數據 ...
+
+secp256k1_pubkey pubkey;
+if (!secp256k1_ec_pubkey_create(ctx, &amp;pubkey, seckey)) {
+    // 處理錯誤
+}
+
+// 序列化公鑰
+unsigned char pubkey_serialized[33];
+size_t pubkey_len = sizeof(pubkey_serialized);
+secp256k1_ec_pubkey_serialize(
+    ctx, pubkey_serialized, &amp;pubkey_len,
+    &amp;pubkey, SECP256K1_EC_COMPRESSED
+);
+
+// ECDSA 簽名
+unsigned char msg_hash[32];
+// ... 計算訊息雜湊 ...
+
+secp256k1_ecdsa_signature sig;
+if (!secp256k1_ecdsa_sign(ctx, &amp;sig, msg_hash, seckey, NULL, NULL)) {
+    // 處理錯誤
+}
+
+// 序列化簽名 (DER)
+unsigned char sig_der[72];
+size_t sig_len = sizeof(sig_der);
+secp256k1_ecdsa_signature_serialize_der(ctx, sig_der, &amp;sig_len, &amp;sig);
+
+// 驗證簽名
+if (secp256k1_ecdsa_verify(ctx, &amp;sig, msg_hash, &amp;pubkey)) {
+    printf("簽名有效\n");
+}
+
+// 清理
+secp256k1_context_destroy(ctx);</code></pre>
+
+  <h2 id="schnorr">Schnorr 簽名</h2>
+
+  <h3>BIP-340 簽名</h3>
+  <pre><code class="language-text" is:raw>Schnorr 簽名算法 (BIP-340):
+
+輸入: 私鑰 d, 訊息 m
+
+1. 如果 d·G 的 y 座標為奇數，d = n - d
+2. k = hash("BIP0340/aux", aux) XOR d
+3. R = k·G
+4. 如果 R 的 y 座標為奇數，k = n - k
+5. e = hash("BIP0340/challenge", R.x || P.x || m)
+6. s = k + e·d mod n
+7. 簽名 = (R.x, s)
+
+大小: 固定 64 bytes
+
+優勢:
+- 線性簽名允許聚合
+- 無可塑性
+- 批量驗證更快</code></pre>
+
+  <h3>Schnorr API</h3>
+  <pre><code class="language-c" is:raw>#include &lt;secp256k1_schnorrsig.h&gt;
+#include &lt;secp256k1_extrakeys.h&gt;
+
+// x-only 公鑰
+secp256k1_xonly_pubkey xonly_pubkey;
+secp256k1_keypair keypair;
+
+// 創建密鑰對
+secp256k1_keypair_create(ctx, &amp;keypair, seckey);
+secp256k1_keypair_xonly_pub(ctx, &amp;xonly_pubkey, NULL, &amp;keypair);
+
+// Schnorr 簽名
+unsigned char sig[64];
+unsigned char msg[32];
+// ... 填充訊息 ...
+
+if (!secp256k1_schnorrsig_sign32(ctx, sig, msg, &amp;keypair, NULL)) {
+    // 處理錯誤
+}
+
+// 驗證
+if (secp256k1_schnorrsig_verify(ctx, sig, msg, 32, &amp;xonly_pubkey)) {
+    printf("Schnorr 簽名有效\n");
+}</code></pre>
+
+  <h2 id="ecdh">ECDH 密鑰交換</h2>
+  <pre><code class="language-c" is:raw>#include &lt;secp256k1_ecdh.h&gt;
+
+// Alice 的密鑰對
+unsigned char alice_seckey[32];
+secp256k1_pubkey alice_pubkey;
+// ... 生成 ...
+
+// Bob 的密鑰對
+unsigned char bob_seckey[32];
+secp256k1_pubkey bob_pubkey;
+// ... 生成 ...
+
+// Alice 計算共享密鑰
+unsigned char shared_secret_alice[32];
+secp256k1_ecdh(ctx, shared_secret_alice, &amp;bob_pubkey, alice_seckey, NULL, NULL);
+
+// Bob 計算共享密鑰
+unsigned char shared_secret_bob[32];
+secp256k1_ecdh(ctx, shared_secret_bob, &amp;alice_pubkey, bob_seckey, NULL, NULL);
+
+// shared_secret_alice == shared_secret_bob</code></pre>
+
+  <h2 id="recovery">公鑰恢復</h2>
+  <pre><code class="language-text" is:raw>從簽名恢復公鑰:
+
+ECDSA 簽名包含足夠信息來恢復公鑰（最多 4 個候選）
+
+恢復 ID (recid):
+- 0-3 的值
+- 指示使用哪個候選公鑰
+
+用途:
+- 以太坊交易簽名
+- 節省交易空間（不需發送公鑰）
+- 訊息簽名驗證</code></pre>
+
+  <pre><code class="language-c" is:raw>#include &lt;secp256k1_recovery.h&gt;
+
+// 可恢復簽名
+secp256k1_ecdsa_recoverable_signature rec_sig;
+secp256k1_ecdsa_sign_recoverable(ctx, &amp;rec_sig, msg_hash, seckey, NULL, NULL);
+
+// 序列化（包含 recovery id）
+unsigned char sig_compact[64];
+int recid;
+secp256k1_ecdsa_recoverable_signature_serialize_compact(
+    ctx, sig_compact, &amp;recid, &amp;rec_sig
+);
+
+// 恢復公鑰
+secp256k1_pubkey recovered_pubkey;
+secp256k1_ecdsa_recover(ctx, &amp;recovered_pubkey, &amp;rec_sig, msg_hash);</code></pre>
+
+  <h2 id="musig2">MuSig2 聚合簽名</h2>
+  <pre><code class="language-c" is:raw>#include &lt;secp256k1_musig.h&gt;
+
+// 參與者公鑰
+secp256k1_pubkey pubkeys[3];
+const secp256k1_pubkey *pubkey_ptrs[3] = {
+    &amp;pubkeys[0], &amp;pubkeys[1], &amp;pubkeys[2]
+};
+
+// 密鑰聚合
+secp256k1_musig_keyagg_cache keyagg_cache;
+secp256k1_xonly_pubkey agg_pubkey;
+secp256k1_musig_pubkey_agg(ctx, NULL, &amp;agg_pubkey, &amp;keyagg_cache, pubkey_ptrs, 3);
+
+// Round 1: 生成 nonces
+secp256k1_musig_secnonce secnonces[3];
+secp256k1_musig_pubnonce pubnonces[3];
+
+for (int i = 0; i &lt; 3; i++) {
+    unsigned char session_id[32];
+    // ... 隨機填充 ...
+    secp256k1_musig_nonce_gen(
+        ctx, &amp;secnonces[i], &amp;pubnonces[i],
+        session_id, seckeys[i], &amp;pubkeys[i],
+        msg, &amp;keyagg_cache, NULL
+    );
+}
+
+// 聚合 nonces
+const secp256k1_musig_pubnonce *pubnonce_ptrs[3] = {
+    &amp;pubnonces[0], &amp;pubnonces[1], &amp;pubnonces[2]
+};
+secp256k1_musig_aggnonce agg_nonce;
+secp256k1_musig_nonce_agg(ctx, &amp;agg_nonce, pubnonce_ptrs, 3);
+
+// Round 2: 部分簽名
+secp256k1_musig_session session;
+secp256k1_musig_nonce_process(ctx, &amp;session, &amp;agg_nonce, msg, &amp;keyagg_cache, NULL);
+
+secp256k1_musig_partial_sig partial_sigs[3];
+for (int i = 0; i &lt; 3; i++) {
+    secp256k1_musig_partial_sign(
+        ctx, &amp;partial_sigs[i], &amp;secnonces[i],
+        &amp;keypairs[i], &amp;keyagg_cache, &amp;session
+    );
+}
+
+// 聚合簽名
+const secp256k1_musig_partial_sig *partial_sig_ptrs[3] = {
+    &amp;partial_sigs[0], &amp;partial_sigs[1], &amp;partial_sigs[2]
+};
+unsigned char final_sig[64];
+secp256k1_musig_partial_sig_agg(ctx, final_sig, &amp;session, partial_sig_ptrs, 3);</code></pre>
+
+  <h2 id="ellswift">ElligatorSwift</h2>
+  <pre><code class="language-c" is:raw>#include &lt;secp256k1_ellswift.h&gt;
+
+// 編碼公鑰為 64 字節
+unsigned char ellswift_encoded[64];
+unsigned char random32[32];
+// ... 填充隨機數據 ...
+
+secp256k1_ellswift_create(ctx, ellswift_encoded, seckey, random32);
+
+// 解碼回公鑰
+secp256k1_pubkey decoded_pubkey;
+secp256k1_ellswift_decode(ctx, &amp;decoded_pubkey, ellswift_encoded);
+
+// ECDH with ElligatorSwift
+unsigned char shared_secret[32];
+secp256k1_ellswift_xdh(
+    ctx, shared_secret,
+    our_ellswift, their_ellswift,
+    seckey, 0,  // 0 = initiator, 1 = responder
+    secp256k1_ellswift_xdh_hash_function_bip324,
+    NULL
+);</code></pre>
+
+  <h2 id="performance">效能優化</h2>
+
+  <h3>優化技術</h3>
+  <pre><code class="language-text" is:raw>libsecp256k1 優化:
+
+1. GLV Endomorphism
+   - 加速標量乘法 ~33%
+   - 利用曲線的特殊結構
+   - 將 256 位乘法拆分為兩個 128 位
+
+2. 預計算表
+   - 生成元 G 的倍數預計算
+   - 加速簽名和驗證
+
+3. 批量驗證
+   - 同時驗證多個簽名
+   - Schnorr: ~2.5x 加速 (n=100)
+   - ECDSA: 有限加速
+
+4. 常數時間運算
+   - 防止時序攻擊
+   - 所有分支無關密鑰
+
+5. 組裝優化
+   - x86_64 專用代碼
+   - ARM NEON 支持</code></pre>
+
+  <h3>基準測試</h3>
+  <pre><code class="language-text" is:raw>典型效能 (Intel i7):
+
+ECDSA 簽名:     ~45,000/秒
+ECDSA 驗證:     ~18,000/秒
+Schnorr 簽名:   ~45,000/秒
+Schnorr 驗證:   ~18,000/秒
+Schnorr 批量驗證 (100): ~45,000/秒
+
+密鑰生成:        ~50,000/秒
+ECDH:           ~25,000/秒
+
+對比 OpenSSL:
+libsecp256k1 快 ~4-10 倍</code></pre>
+
+  <h2 id="security">安全特性</h2>
+  <pre><code class="language-text" is:raw>安全設計:
+
+1. 常數時間
+   - 所有密鑰相關運算
+   - 防止時序側信道攻擊
+
+2. 記憶體清理
+   - 敏感數據使用後清零
+   - 防止記憶體洩露
+
+3. 隨機數安全
+   - RFC 6979 確定性 nonce
+   - 防止 nonce 重用攻擊
+
+4. 驗證
+   - 輸入驗證
+   - 曲線點有效性檢查
+
+5. 測試
+   - 廣泛的單元測試
+   - 模糊測試
+   - 交叉驗證</code></pre>
+
+  <h2 id="bindings">語言綁定</h2>
+
+  <h3>TypeScript/JavaScript</h3>
+  <pre><code class="language-typescript" is:raw>import * as secp256k1 from '@noble/secp256k1';
+
+// 生成密鑰對
+const privateKey = secp256k1.utils.randomPrivateKey();
+const publicKey = secp256k1.getPublicKey(privateKey);
+
+// ECDSA 簽名
+const message = new TextEncoder().encode('Hello Bitcoin');
+const msgHash = await secp256k1.utils.sha256(message);
+const signature = await secp256k1.signAsync(msgHash, privateKey);
+
+// 驗證
+const isValid = secp256k1.verify(signature, msgHash, publicKey);
+
+// Schnorr 簽名
+const schnorrSig = await secp256k1.schnorr.sign(msgHash, privateKey);
+const schnorrValid = await secp256k1.schnorr.verify(
+  schnorrSig, msgHash, publicKey.slice(1)
+);</code></pre>
+
+  <h3>Rust</h3>
+  <pre><code class="language-rust" is:raw>use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
+use secp256k1::rand::rngs::OsRng;
+
+// 創建上下文
+let secp = Secp256k1::new();
+
+// 生成密鑰對
+let (secret_key, public_key) = secp.generate_keypair(&amp;mut OsRng);
+
+// 簽名
+let message = Message::from_digest_slice(&amp;msg_hash)?;
+let signature = secp.sign_ecdsa(&amp;message, &amp;secret_key);
+
+// 驗證
+secp.verify_ecdsa(&amp;message, &amp;signature, &amp;public_key)?;</code></pre>
+
+  <h3>Python</h3>
+  <pre><code class="language-python" is:raw>import secp256k1
+
+# 生成私鑰
+privkey = secp256k1.PrivateKey()
+
+# 獲取公鑰
+pubkey = privkey.pubkey
+
+# 簽名
+msg = b"Hello Bitcoin"
+sig = privkey.ecdsa_sign(msg)
+
+# 驗證
+assert pubkey.ecdsa_verify(msg, sig)</code></pre>
+
+  <h2 id="building">編譯與配置</h2>
+  <pre><code class="language-bash" is:raw># 克隆倉庫
+git clone https://github.com/bitcoin-core/secp256k1
+cd secp256k1
+
+# 配置（啟用所有模組）
+./autogen.sh
+./configure \
+  --enable-module-ecdh \
+  --enable-module-recovery \
+  --enable-module-schnorrsig \
+  --enable-module-musig \
+  --enable-module-ellswift
+
+# 編譯
+make
+
+# 測試
+make check
+
+# 基準測試
+./bench_internal
+./bench_ecmult</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>使用官方綁定</strong>：優先使用經過審計的語言綁定</li>
+    <li><strong>隨機數安全</strong>：確保 PRNG 的高質量</li>
+    <li><strong>記憶體安全</strong>：使用後清零敏感數據</li>
+    <li><strong>版本更新</strong>：及時更新到最新版本</li>
+    <li><strong>測試覆蓋</strong>：對密碼學代碼進行廣泛測試</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin-core/secp256k1" target="_blank" rel="noopener noreferrer">libsecp256k1 GitHub</a></li>
+    <li><a href="https://github.com/paulmillr/noble-secp256k1" target="_blank" rel="noopener noreferrer">noble-secp256k1 (JS)</a></li>
+    <li><a href="https://docs.rs/secp256k1" target="_blank" rel="noopener noreferrer">rust-secp256k1</a></li>
+    <li><a href="https://www.secg.org/sec2-v2.pdf" target="_blank" rel="noopener noreferrer">SEC 2: Recommended Elliptic Curve Parameters</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot (Schnorr)</a></li>
+    <li><a href="/tech/bitcoin-core/bip324">BIP-324 (ECDH)</a></li>
+  </ul>
+</ArticleLayout>

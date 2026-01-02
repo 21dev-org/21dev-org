@@ -1,0 +1,354 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Multi-Path Payments 多路徑支付"
+  description="了解多路徑支付（MPP）如何將大額支付拆分成多個小額部分，通過不同路徑同時發送，提高支付成功率。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Multi-Path Payments' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Eltoo', href: '/tech/lightning/eltoo' }}
+  nextPage={{ title: 'Keysend', href: '/tech/lightning/keysend' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是多路徑支付？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    多路徑支付（Multi-Path Payments, MPP）允許將一筆支付拆分成多個較小的部分（shards），
+    通過不同的路徑同時發送。這解決了單一路徑可能沒有足夠流動性的問題，
+    大幅提高了大額支付的成功率。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>核心價值：</strong>
+      在閃電網路中，單一通道的流動性有限。MPP 讓你可以利用多個通道的流動性
+      來完成大額支付，而不需要找到一條擁有全部流動性的路徑。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">單路徑的限制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`單路徑支付問題：
+
+場景：Alice 想支付 1 BTC 給 Dave
+
+網路狀態：
+Alice ──[0.3]──> Bob ──[0.8]──> Carol ──[0.5]──> Dave
+      │                                           ▲
+      └───[0.4]──> Eve ──[0.6]──> Frank ──[0.3]──┘
+
+路徑 1: Alice → Bob → Carol → Dave
+        瓶頸: 0.3 BTC（Alice-Bob 通道）
+
+路徑 2: Alice → Eve → Frank → Dave
+        瓶頸: 0.3 BTC（Frank-Dave 通道）
+
+問題：
+- 沒有任何單一路徑能支持 1 BTC
+- 支付失敗！
+
+解決方案：
+- 將 1 BTC 拆分
+- 路徑 1 發送 0.3 BTC
+- 路徑 2 發送 0.3 BTC
+- 其他路徑發送剩餘 0.4 BTC`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MPP 類型</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-blue-500/30 bg-blue-500/10">
+      <h4 class="font-semibold text-blue-700 dark:text-blue-400 mb-2">Basic MPP</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        接收方必須在發票中聲明支持，所有分片使用相同的 payment_hash。
+      </p>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 已廣泛部署</li>
+        <li>• 需要發票支持</li>
+        <li>• 使用 payment_secret 保護</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-purple-500/30 bg-purple-500/10">
+      <h4 class="font-semibold text-purple-700 dark:text-purple-400 mb-2">AMP (Atomic Multi-Path)</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-2">
+        由 Lightning Labs 提出，每個分片使用不同的 payment_hash，提供更好的隱私。
+      </p>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 更強的隱私</li>
+        <li>• 可用於自發支付</li>
+        <li>• 無需發票聲明</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Basic MPP 機制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Basic MPP 流程：
+
+1. 接收方生成發票
+   ┌─────────────────────────────────────────┐
+   │ Invoice:                                │
+   │   payment_hash: H = SHA256(preimage)    │
+   │   payment_secret: S (32 bytes random)   │
+   │   amount: 1,000,000 sats                │
+   │   features: basic_mpp                   │
+   └─────────────────────────────────────────┘
+
+2. 發送方拆分支付
+   總額 1,000,000 sats → 3 個分片：
+   - Shard 1: 400,000 sats, 路徑 A
+   - Shard 2: 350,000 sats, 路徑 B
+   - Shard 3: 250,000 sats, 路徑 C
+
+3. 每個分片的 HTLC payload
+   ┌─────────────────────────────────────────┐
+   │ Final hop payload:                      │
+   │   amt_to_forward: 400000                │
+   │   outgoing_cltv_value: ...              │
+   │   payment_secret: S                     │
+   │   total_msat: 1000000000                │
+   └─────────────────────────────────────────┘
+
+4. 接收方處理
+   - 收集所有使用相同 H 和 S 的 HTLCs
+   - 驗證 total_msat 匹配
+   - 等待所有分片到達
+   - 一次性揭示 preimage 結算所有分片
+
+5. 原子性保證
+   - 所有分片成功 → 支付完成
+   - 任何分片失敗 → 所有分片超時返還`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Payment Secret</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Payment Secret 的重要性：
+
+問題：沒有 payment_secret 的 MPP
+
+攻擊場景（Wormhole Attack）：
+1. Alice 發送分片 1 (500k sats) 給 Bob
+2. 惡意路由節點 Eve 攔截
+3. Eve 發送自己的 500k sats 假分片
+4. 接收方收到 1M sats，揭示 preimage
+5. Eve 使用 preimage 結算 Alice 的分片
+6. Eve 偷走了 500k sats！
+
+解決方案：Payment Secret
+┌─────────────────────────────────────────────────────────┐
+│ 只有發票持有者知道 payment_secret                        │
+│                                                         │
+│ 接收方只接受包含正確 secret 的 HTLCs                    │
+│                                                         │
+│ Eve 無法偽造分片（不知道 secret）                        │
+└─────────────────────────────────────────────────────────┘
+
+功能位：
+- var_onion_optin (bit 8/9): 必需
+- payment_secret (bit 14/15): 必需 for MPP`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">AMP (Atomic Multi-Path)</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP 機制：
+
+與 Basic MPP 的差異：
+┌─────────────────────────────────────────────────────────┐
+│ Basic MPP:                                              │
+│   所有分片使用相同的 payment_hash H                      │
+│   可能被路由節點關聯                                     │
+│                                                         │
+│ AMP:                                                    │
+│   每個分片有不同的 payment_hash H_i                      │
+│   但最終 preimage 由共享秘密派生                         │
+│   路由節點無法關聯分片                                   │
+└─────────────────────────────────────────────────────────┘
+
+AMP 秘密派生：
+1. 發送方選擇隨機 root_share
+2. 對於 n 個分片：
+   - share_i = HMAC("share", root_share, i)
+   - preimage_i = share_1 XOR share_2 XOR ... XOR share_i
+   - hash_i = SHA256(preimage_i)
+
+3. 接收方需要所有 share 才能計算最終 preimage
+4. 確保原子性：只有收齊所有分片才能結算
+
+優勢：
+- 每個 HTLC 看起來像獨立支付
+- 更強的隱私保護
+- 支持自發支付（Keysend + AMP）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路徑選擇策略</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">均勻分割</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        將支付均勻分成 N 份，適合當所有路徑流動性相近時。
+      </p>
+      <code class="text-xs text-[var(--text-tertiary)] block mt-2">1M sats → 500k + 500k</code>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">最大流動性優先</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        優先使用流動性最大的路徑，盡量減少分片數量。
+      </p>
+      <code class="text-xs text-[var(--text-tertiary)] block mt-2">1M sats → 800k (路徑A) + 200k (路徑B)</code>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">費用優化</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        綜合考慮流動性和路由費用，找到總費用最低的分割方案。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">可靠性優先</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        選擇歷史成功率高的路徑，可能會多付一些費用。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">超時處理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`MPP 超時場景：
+
+場景 1：部分分片失敗
+  Shard 1: 成功到達接收方
+  Shard 2: 路由失敗
+
+  處理：
+  - 接收方等待合理時間
+  - 超時後讓所有 HTLC 過期
+  - 發送方可以重試（不同路徑或不同分割）
+
+場景 2：接收方離線
+  所有分片到達，但接收方不揭示 preimage
+
+  處理：
+  - 所有 HTLC 超時
+  - 資金返還發送方
+
+接收方的 MPP 超時設置：
+┌─────────────────────────────────────────┐
+│ mpp_timeout: 60 秒（典型值）            │
+│                                         │
+│ 收到第一個分片後開始計時                │
+│ 超時前未收齊 → 放棄，等 HTLC 過期       │
+└─────────────────────────────────────────┘
+
+最佳實踐：
+- 發送方應並行發送所有分片
+- 避免順序發送導致的延遲
+- 監控部分失敗並快速重試`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Basic MPP</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">廣泛支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND、CLN、Eclair、LDK 都支持發送和接收 Basic MPP。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+          >AMP</span
+        >
+        <span class="text-sm font-semibold text-yellow-700 dark:text-yellow-400">部分支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        LND 完整支持 AMP，其他實現支持程度不一。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優勢與權衡</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優勢</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 大幅提高大額支付成功率</li>
+        <li>• 更好地利用網路流動性</li>
+        <li>• 減少對單一大通道的依賴</li>
+        <li>• 可以並行發送加快速度</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">權衡</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 可能支付更多路由費</li>
+        <li>• 增加複雜性</li>
+        <li>• 部分失敗需要重試</li>
+        <li>• 佔用更多 HTLC 槽位</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/643"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Basic MPP BOLT 提案</a>
+    </li>
+    <li>
+      • <a
+        href="https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-February/000993.html"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">AMP 原始提案</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/routing"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路由與尋路</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/keysend"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Keysend</a
+      >
+      如何實現無需發票的自發支付。
+    </p>
+  </div>
+</ArticleLayout>

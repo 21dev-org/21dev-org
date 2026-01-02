@@ -1,0 +1,572 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="BIP-324"
+  description="v2 P2P Transport Protocol：加密的比特幣節點通訊協議"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'BIP-324' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+  nextPage={{ title: 'Message Types', href: '/tech/bitcoin-core/message-types' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    BIP-324 定義了一種新的加密 P2P 傳輸協議（v2），
+    使用橢圓曲線 Diffie-Hellman (ECDH) 密鑰交換和 ChaCha20-Poly1305 加密，
+    保護節點通訊免受被動監聽和主動篡改攻擊。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+    <p class="text-sm text-green-700 dark:text-green-400">
+      <strong>啟用版本：</strong>
+      Bitcoin Core v26.0（2023年12月）開始支援 BIP-324。
+      預設啟用，向後兼容 v1 協議。
+    </p>
+  </div>
+
+  <h2 id="motivation">設計動機</h2>
+
+  <h3>v1 協議的問題</h3>
+  <pre><code class="language-text" is:raw>v1 協議安全問題:
+
+1. 明文傳輸
+   ┌─────────────────────────────────────┐
+   │ 所有 P2P 訊息以明文傳輸             │
+   │ ISP、政府、攻擊者可以：             │
+   │ - 識別比特幣節點                    │
+   │ - 監視交易傳播                      │
+   │ - 追蹤錢包活動                      │
+   └─────────────────────────────────────┘
+
+2. 可識別的協議特徵
+   ┌─────────────────────────────────────┐
+   │ 魔數: 0xF9BEB4D9 (mainnet)          │
+   │ 固定的訊息格式                      │
+   │ 容易被防火牆識別和封鎖              │
+   └─────────────────────────────────────┘
+
+3. 無完整性保護
+   ┌─────────────────────────────────────┐
+   │ 中間人可以:                         │
+   │ - 修改訊息內容                      │
+   │ - 注入假訊息                        │
+   │ - 進行 eclipse 攻擊                 │
+   └─────────────────────────────────────┘</code></pre>
+
+  <h3>v2 協議的改進</h3>
+  <pre><code class="language-text" is:raw>BIP-324 解決方案:
+
+1. 加密通訊
+   - ECDH 密鑰交換
+   - ChaCha20-Poly1305 AEAD 加密
+   - 前向保密性
+
+2. 協議混淆
+   - 沒有可識別的魔數
+   - 隨機化的握手
+   - 可變長度填充
+
+3. 完整性保護
+   - 認證加密防止篡改
+   - 序號防止重放攻擊
+   - 可選的會話 ID 顯示</code></pre>
+
+  <h2 id="handshake">握手協議</h2>
+
+  <h3>握手流程</h3>
+  <pre><code class="language-text" is:raw>v2 握手 (Noise XX-like):
+
+Initiator                          Responder
+    │                                  │
+    │  ElligatorSwift(pubkey_I)        │
+    │ ─────────────────────────────────&gt;│
+    │  (64 bytes)                      │
+    │                                  │
+    │  ElligatorSwift(pubkey_R)        │
+    │  + encrypted(garbage)            │
+    │ &lt;─────────────────────────────────│
+    │  (64+ bytes)                     │
+    │                                  │
+    │  encrypted(garbage)              │
+    │  + encrypted(VERSION)            │
+    │ ─────────────────────────────────&gt;│
+    │                                  │
+    │  encrypted(VERSION)              │
+    │ &lt;─────────────────────────────────│
+    │                                  │
+    │    [加密通訊開始]                 │
+    │                                  │
+
+密鑰派生:
+shared_secret = ECDH(my_privkey, their_pubkey)
+session_keys = HKDF(shared_secret, "bitcoin_v2_shared_secret")</code></pre>
+
+  <h3>ElligatorSwift 編碼</h3>
+  <pre><code class="language-text" is:raw>ElligatorSwift:
+將 secp256k1 公鑰編碼為偽隨機的 64 字節
+
+目的:
+- 公鑰看起來像隨機數據
+- 無法區分握手數據和隨機流量
+- 抵抗 DPI (深度包檢測)
+
+過程:
+1. 取公鑰 (x, y) 座標
+2. 應用 Elligator Swift 變換
+3. 產生 64 字節偽隨機輸出
+
+特性:
+- 雙向映射（可解碼回公鑰）
+- 均勻分佈輸出
+- 計算高效</code></pre>
+
+  <h2 id="encryption">加密方案</h2>
+
+  <h3>ChaCha20-Poly1305</h3>
+  <pre><code class="language-text" is:raw>AEAD 加密:
+
+┌─────────────────────────────────────┐
+│ 密鑰長度: 256 bits                  │
+│ Nonce: 96 bits (12 bytes)           │
+│ 認證標籤: 128 bits (16 bytes)       │
+└─────────────────────────────────────┘
+
+加密結構:
+┌───────────────────┬──────────────────┐
+│  Encrypted Data   │   Auth Tag       │
+│   (variable)      │   (16 bytes)     │
+└───────────────────┴──────────────────┘
+
+Nonce 處理:
+- 每個方向獨立的計數器
+- 從 0 開始遞增
+- 永不重複使用</code></pre>
+
+  <h3>密鑰派生</h3>
+  <pre><code class="language-typescript" is:raw>import { hkdf } from '@noble/hashes/hkdf';
+import { sha256 } from '@noble/hashes/sha256';
+
+interface SessionKeys {
+  initiatorL: Uint8Array;  // 發起者發送密鑰
+  initiatorP: Uint8Array;  // 發起者 MAC 密鑰
+  responderL: Uint8Array;  // 響應者發送密鑰
+  responderP: Uint8Array;  // 響應者 MAC 密鑰
+  sessionId: Uint8Array;   // 會話標識符
+}
+
+function deriveSessionKeys(
+  ecdhSecret: Uint8Array,
+  initiatorPubkey: Uint8Array,
+  responderPubkey: Uint8Array
+): SessionKeys {
+  // 構建輸入材料
+  const salt = new Uint8Array([
+    ...new TextEncoder().encode('bitcoin_v2_shared_secret'),
+    ...initiatorPubkey,
+    ...responderPubkey,
+  ]);
+
+  // HKDF 派生
+  const keyMaterial = hkdf(
+    sha256,
+    ecdhSecret,
+    salt,
+    new TextEncoder().encode(''),
+    32 * 4 + 32  // 4 個 32 字節密鑰 + 會話 ID
+  );
+
+  return {
+    initiatorL: keyMaterial.slice(0, 32),
+    initiatorP: keyMaterial.slice(32, 64),
+    responderL: keyMaterial.slice(64, 96),
+    responderP: keyMaterial.slice(96, 128),
+    sessionId: keyMaterial.slice(128, 160),
+  };
+}</code></pre>
+
+  <h2 id="packet-format">封包格式</h2>
+
+  <h3>加密封包結構</h3>
+  <pre><code class="language-text" is:raw>v2 封包格式:
+
+┌─────────────────────────────────────────────────┐
+│ Header (encrypted, 3+ bytes)                    │
+├─────────────────────────────────────────────────┤
+│ Length (3 bytes, encrypted)                     │
+│ ├── 實際長度 (24 bits little-endian)            │
+├─────────────────────────────────────────────────┤
+│ Header Auth Tag (16 bytes)                      │
+├─────────────────────────────────────────────────┤
+│ Payload (encrypted, variable)                   │
+│ ├── Message Type (1 byte)                       │
+│ ├── Message Data (variable)                     │
+│ ├── Padding (optional)                          │
+├─────────────────────────────────────────────────┤
+│ Payload Auth Tag (16 bytes)                     │
+└─────────────────────────────────────────────────┘
+
+總開銷: 19 + 16 = 35 bytes per packet</code></pre>
+
+  <h3>訊息類型編碼</h3>
+  <pre><code class="language-text" is:raw>短訊息 ID (1 byte):
+
+常用訊息使用短 ID 節省頻寬:
+
+0x00: 保留（忽略）
+0x01: addr
+0x02: block
+0x03: blocktxn
+0x04: cmpctblock
+0x05: feefilter
+0x06: filteradd
+0x07: filterclear
+0x08: filterload
+0x09: getblocks
+0x0a: getblocktxn
+0x0b: getdata
+0x0c: getheaders
+0x0d: headers
+0x0e: inv
+0x0f: mempool
+0x10: merkleblock
+0x11: notfound
+0x12: ping
+0x13: pong
+0x14: sendcmpct
+0x15: tx
+0x16: getcfilters
+0x17: cfilter
+0x18: getcfheaders
+0x19: cfheaders
+0x1a: getcfcheckpt
+0x1b: cfcheckpt
+0x1c: addrv2
+0x1d: sendaddrv2
+0x1e: wtxidrelay
+0x1f: sendtxrcncl
+
+長訊息 ID (13 bytes):
+用於非標準或新訊息類型</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>握手實作</h3>
+  <pre><code class="language-typescript" is:raw>import * as secp256k1 from '@noble/secp256k1';
+import { chacha20poly1305 } from '@noble/ciphers/chacha';
+
+interface V2Handshake {
+  localPrivkey: Uint8Array;
+  localPubkey: Uint8Array;
+  ellswiftLocal: Uint8Array;
+  sessionKeys?: SessionKeys;
+}
+
+// 初始化握手
+function initHandshake(): V2Handshake {
+  const privkey = secp256k1.utils.randomPrivateKey();
+  const pubkey = secp256k1.getPublicKey(privkey, false);
+
+  // ElligatorSwift 編碼
+  const ellswift = elligatorSwiftEncode(pubkey);
+
+  return {
+    localPrivkey: privkey,
+    localPubkey: pubkey,
+    ellswiftLocal: ellswift,
+  };
+}
+
+// ElligatorSwift 編碼（簡化版）
+function elligatorSwiftEncode(pubkey: Uint8Array): Uint8Array {
+  // 實際實作需要完整的 ElligatorSwift 算法
+  // 這裡使用 secp256k1 庫的實作
+  const x = pubkey.slice(1, 33);
+  const y = pubkey.slice(33, 65);
+
+  // 產生 64 字節偽隨機輸出
+  // 實際使用 libsecp256k1 的 ellswift 模組
+  return new Uint8Array(64);
+}
+
+// ElligatorSwift 解碼
+function elligatorSwiftDecode(encoded: Uint8Array): Uint8Array {
+  // 從 64 字節編碼恢復公鑰
+  return new Uint8Array(65);
+}
+
+// 完成握手
+function completeHandshake(
+  handshake: V2Handshake,
+  remotePubkeyEncoded: Uint8Array,
+  isInitiator: boolean
+): V2Handshake {
+  // 解碼遠端公鑰
+  const remotePubkey = elligatorSwiftDecode(remotePubkeyEncoded);
+
+  // ECDH
+  const sharedSecret = secp256k1.getSharedSecret(
+    handshake.localPrivkey,
+    remotePubkey
+  );
+
+  // 派生會話密鑰
+  const [initiatorPub, responderPub] = isInitiator
+    ? [handshake.ellswiftLocal, remotePubkeyEncoded]
+    : [remotePubkeyEncoded, handshake.ellswiftLocal];
+
+  const sessionKeys = deriveSessionKeys(
+    sharedSecret.slice(1),
+    initiatorPub,
+    responderPub
+  );
+
+  return {
+    ...handshake,
+    sessionKeys,
+  };
+}</code></pre>
+
+  <h3>加密封包處理</h3>
+  <pre><code class="language-typescript" is:raw>class V2Transport {
+  private sendKey: Uint8Array;
+  private recvKey: Uint8Array;
+  private sendNonce: bigint = 0n;
+  private recvNonce: bigint = 0n;
+
+  constructor(sessionKeys: SessionKeys, isInitiator: boolean) {
+    if (isInitiator) {
+      this.sendKey = sessionKeys.initiatorL;
+      this.recvKey = sessionKeys.responderL;
+    } else {
+      this.sendKey = sessionKeys.responderL;
+      this.recvKey = sessionKeys.initiatorL;
+    }
+  }
+
+  private getNonce(counter: bigint): Uint8Array {
+    const nonce = new Uint8Array(12);
+    const view = new DataView(nonce.buffer);
+    view.setBigUint64(4, counter, true);
+    return nonce;
+  }
+
+  encryptPacket(
+    messageType: number,
+    payload: Uint8Array,
+    padding: number = 0
+  ): Uint8Array {
+    // 構建明文
+    const plaintext = new Uint8Array(1 + payload.length + padding);
+    plaintext[0] = messageType;
+    plaintext.set(payload, 1);
+    // padding 保持為 0
+
+    // 加密長度（3 bytes）
+    const length = plaintext.length;
+    const lengthBytes = new Uint8Array(3);
+    lengthBytes[0] = length & 0xff;
+    lengthBytes[1] = (length &gt;&gt; 8) & 0xff;
+    lengthBytes[2] = (length &gt;&gt; 16) & 0xff;
+
+    const cipher = chacha20poly1305(this.sendKey, this.getNonce(this.sendNonce));
+    const encryptedHeader = cipher.encrypt(lengthBytes);
+    this.sendNonce++;
+
+    // 加密 payload
+    const payloadCipher = chacha20poly1305(
+      this.sendKey,
+      this.getNonce(this.sendNonce)
+    );
+    const encryptedPayload = payloadCipher.encrypt(plaintext);
+    this.sendNonce++;
+
+    return new Uint8Array([
+      ...encryptedHeader,
+      ...encryptedPayload,
+    ]);
+  }
+
+  decryptPacket(data: Uint8Array): {
+    messageType: number;
+    payload: Uint8Array;
+  } | null {
+    // 解密長度
+    const encryptedHeader = data.slice(0, 3 + 16);
+    const cipher = chacha20poly1305(this.recvKey, this.getNonce(this.recvNonce));
+
+    let lengthBytes: Uint8Array;
+    try {
+      lengthBytes = cipher.decrypt(encryptedHeader);
+    } catch {
+      return null; // 認證失敗
+    }
+    this.recvNonce++;
+
+    const length =
+      lengthBytes[0] |
+      (lengthBytes[1] &lt;&lt; 8) |
+      (lengthBytes[2] &lt;&lt; 16);
+
+    // 解密 payload
+    const encryptedPayload = data.slice(3 + 16, 3 + 16 + length + 16);
+    const payloadCipher = chacha20poly1305(
+      this.recvKey,
+      this.getNonce(this.recvNonce)
+    );
+
+    let plaintext: Uint8Array;
+    try {
+      plaintext = payloadCipher.decrypt(encryptedPayload);
+    } catch {
+      return null;
+    }
+    this.recvNonce++;
+
+    return {
+      messageType: plaintext[0],
+      payload: plaintext.slice(1),
+    };
+  }
+}</code></pre>
+
+  <h2 id="garbage">垃圾數據與混淆</h2>
+  <pre><code class="language-text" is:raw>垃圾數據 (Garbage):
+
+目的:
+- 隱藏協議結構
+- 使流量分析更困難
+- 允許未來協議演進
+
+規則:
+- 握手後發送 0-4095 字節隨機數據
+- 接收方忽略所有垃圾數據
+- 第一個有效的 VERSION 訊息標記垃圾結束
+
+終止符:
+- 使用加密的 garbage_terminator
+- 16 字節，派生自共享密鑰
+- 解決同步問題</code></pre>
+
+  <h2 id="version">版本協商</h2>
+  <pre><code class="language-text" is:raw>VERSION 訊息:
+
+結構:
+┌─────────────────────────────────────┐
+│ garbage_terminator (16 bytes)       │
+├─────────────────────────────────────┤
+│ encrypted(VERSION_CONTENT)          │
+└─────────────────────────────────────┘
+
+VERSION_CONTENT:
+- 空（目前版本）
+- 未來可能包含功能協商
+
+完整握手後:
+1. 發送方加密並發送 VERSION
+2. 接收方解密並驗證
+3. 雙方開始正常加密通訊</code></pre>
+
+  <h2 id="configuration">配置選項</h2>
+  <pre><code class="language-text" is:raw># bitcoin.conf
+
+# 啟用 v2 傳輸（預設啟用）
+v2transport=1
+
+# 只使用 v2 連接（謹慎使用）
+v2transport=1
+-onlyv2=1
+
+# 驗證 v2 連接
+bitcoin-cli getpeerinfo | jq '.[].transport_protocol_type'
+
+# 結果
+# "v2" - BIP-324 加密連接
+# "v1" - 傳統明文連接</code></pre>
+
+  <h2 id="security">安全性分析</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>威脅</th>
+        <th>v1 協議</th>
+        <th>v2 協議</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>被動監聽</td>
+        <td>完全暴露</td>
+        <td>加密保護</td>
+      </tr>
+      <tr>
+        <td>流量分析</td>
+        <td>容易識別</td>
+        <td>混淆處理</td>
+      </tr>
+      <tr>
+        <td>中間人攻擊</td>
+        <td>無保護</td>
+        <td>可檢測*</td>
+      </tr>
+      <tr>
+        <td>訊息篡改</td>
+        <td>無保護</td>
+        <td>AEAD 認證</td>
+      </tr>
+      <tr>
+        <td>重放攻擊</td>
+        <td>可能</td>
+        <td>序號保護</td>
+      </tr>
+      <tr>
+        <td>協議封鎖</td>
+        <td>容易</td>
+        <td>困難</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="text-sm text-[var(--text-secondary)]">
+    *中間人攻擊需要額外機制（如會話 ID 比對）才能完全防止
+  </p>
+
+  <h2 id="session-id">會話 ID 驗證</h2>
+  <pre><code class="language-text" is:raw>可選的中間人檢測:
+
+會話 ID 是從密鑰交換派生的 32 字節值。
+如果雙方通過可信渠道比對會話 ID，可以檢測中間人。
+
+流程:
+1. 完成握手
+2. 雙方獨立計算會話 ID
+3. 通過其他渠道（如語音、已知公鑰）比對
+4. 如果匹配，確認無中間人
+
+適用場景:
+- 運營商之間的長期連接
+- 需要高安全性的節點
+- 初始 peer 驗證</code></pre>
+
+  <h2 id="best-practices">最佳實踐</h2>
+  <ul>
+    <li><strong>啟用 v2</strong>：使用 Bitcoin Core v26.0+ 並確保 v2transport=1</li>
+    <li><strong>混合使用</strong>：同時支持 v1 和 v2 以保持網路連通性</li>
+    <li><strong>監控連接</strong>：檢查 peer 的傳輸協議類型</li>
+    <li><strong>考慮 Tor</strong>：v2 + Tor 提供更強的隱私保護</li>
+    <li><strong>會話 ID</strong>：對於重要連接，驗證會話 ID</li>
+  </ul>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0324.mediawiki" target="_blank" rel="noopener noreferrer">BIP-324 規範</a></li>
+    <li><a href="https://github.com/bitcoin/bitcoin/pull/28331" target="_blank" rel="noopener noreferrer">Bitcoin Core v2 Transport PR</a></li>
+    <li><a href="https://github.com/bitcoin-core/secp256k1/pull/1129" target="_blank" rel="noopener noreferrer">libsecp256k1 ElligatorSwift</a></li>
+    <li><a href="/tech/bitcoin-core/p2p-protocol">P2P Protocol</a></li>
+    <li><a href="/tech/bitcoin-core/node-discovery">Node Discovery</a></li>
+  </ul>
+</ArticleLayout>

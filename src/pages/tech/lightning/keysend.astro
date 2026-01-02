@@ -1,0 +1,323 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Keysend 自發支付"
+  description="了解 Keysend 如何實現無需發票的閃電網路支付，讓發送方可以主動向任何節點發送資金。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Keysend' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Multi-Path Payments', href: '/tech/lightning/mpp' }}
+  nextPage={{ title: 'Gossip Protocol', href: '/tech/lightning/gossip' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Keysend？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Keysend（也稱為 Spontaneous Payments 或 Sphinx Send）允許發送方向任何節點
+    發送支付，而無需接收方提供發票。發送方自己生成 preimage 並通過加密的
+    洋蔥包傳遞給接收方，接收方解密後即可結算支付。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>使用場景：</strong>
+      Keysend 非常適合打賞、捐贈、串流支付（streaming payments）等場景，
+      讓發送方可以主動付款而不需要接收方預先生成發票。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">傳統發票 vs Keysend</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統發票流程：
+
+1. Bob 生成 preimage (32 bytes random)
+2. Bob 計算 payment_hash = SHA256(preimage)
+3. Bob 創建發票，包含 payment_hash
+4. Bob 將發票發送給 Alice
+5. Alice 支付發票（HTLC 鎖定到 payment_hash）
+6. Bob 揭示 preimage 結算
+
+問題：
+- 需要雙向通訊
+- Bob 必須在線生成發票
+- 每次支付需要新發票
+
+────────────────────────────────────────────
+
+Keysend 流程：
+
+1. Alice 生成 preimage (32 bytes random)
+2. Alice 計算 payment_hash = SHA256(preimage)
+3. Alice 將 preimage 加密在洋蔥包中
+4. Alice 發送 HTLC（鎖定到 payment_hash）
+5. Bob 解密洋蔥包，獲得 preimage
+6. Bob 使用 preimage 結算
+
+優勢：
+- 單向通訊
+- 無需事先互動
+- 可以主動付款`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">技術實現</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Keysend 洋蔥 Payload：
+
+使用 TLV（Type-Length-Value）擴展：
+
+最終跳的 payload:
+┌─────────────────────────────────────────────────────────┐
+│ amt_to_forward (type 2): 支付金額                       │
+│ outgoing_cltv_value (type 4): CLTV 時間鎖               │
+│ keysend_preimage (type 5482373484): preimage            │
+│   └── 32 bytes: 發送方生成的 preimage                   │
+└─────────────────────────────────────────────────────────┘
+
+TLV Type 5482373484 的由來：
+- 這是非標準的實驗性類型
+- 奇數類型 = 可選（接收方不認識可以忽略）
+- 已成為事實標準
+
+接收方處理：
+1. 解密洋蔥 payload
+2. 發現 keysend_preimage TLV
+3. 驗證 SHA256(preimage) == payment_hash
+4. 如果匹配，使用 preimage 結算 HTLC`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自定義數據</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    Keysend 還可以攜帶自定義數據，實現更豐富的功能：
+  </p>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`自定義 TLV 記錄：
+
+常用的自定義類型：
+┌─────────────────────────────────────────────────────────┐
+│ Type 34349334: text message (文字訊息)                  │
+│ Type 34349337: sender pubkey (發送方公鑰，用於回覆)     │
+│ Type 34349339: timestamp (時間戳)                       │
+│ Type 34349343: content type (內容類型)                  │
+│ Type 7629169: podcast info (播客資訊)                   │
+└─────────────────────────────────────────────────────────┘
+
+應用示例 - 播客 2.0 價值傳遞：
+{
+  "keysend_preimage": "...",
+  "7629169": {
+    "podcast": "Bitcoin Audible",
+    "episode": "Read 123",
+    "ts": 1234,           // 播放位置（秒）
+    "action": "boost",
+    "value_msat": 5000000,
+    "sender_name": "Alice"
+  }
+}
+
+這讓聽眾可以在收聽時直接打賞創作者！`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Podcasting 2.0</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        聽眾可以在收聽播客時進行即時打賞（streaming sats）或 boost，
+        資金直接流向創作者。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">社交媒體打賞</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        用戶可以直接向內容創作者的節點發送打賞，無需創作者在線生成發票。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">遊戲內支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        遊戲中的即時交易，玩家之間可以快速轉帳而無需複雜的發票交換。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">節點間結算</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        服務提供商可以主動向合作夥伴節點發送結算款項。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">付款證明問題</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        傳統發票由接收方生成 preimage，所以發送方獲得 preimage 就是付款證明。
+        但 Keysend 的 preimage 是發送方自己生成的，無法證明接收方確實收到了款項。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-orange-500/30 bg-orange-500/10">
+      <h4 class="font-semibold text-orange-700 dark:text-orange-400 mb-2">垃圾支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        任何人都可以向節點發送 Keysend 支付，可能被用於垃圾訊息。
+        節點可以選擇設定最低金額或完全禁用 Keysend。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">緩解措施</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 設定最低接受金額</li>
+        <li>• 使用 BOLT 12 Offers 代替純 Keysend</li>
+        <li>• 結合發送方公鑰進行白名單</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Keysend + AMP</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP Keysend（LND）：
+
+結合 AMP 和 Keysend 的優勢：
+
+傳統 Keysend:
+- 單路徑
+- 受限於單一通道流動性
+
+AMP Keysend:
+- 多路徑
+- 可以發送大額 Keysend
+- 更好的隱私（每個分片不同 hash）
+
+使用方式（lncli）：
+lncli sendpayment \\
+  --dest <pubkey> \\
+  --amt 100000 \\
+  --amp \\
+  --data 34349334=$(echo -n "Hello!" | xxd -p)
+
+這會：
+1. 生成 AMP 根密鑰
+2. 拆分成多個分片
+3. 每個分片攜帶 keysend TLV
+4. 接收方收齊後結算`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div class="space-y-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >LND</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        支持發送和接收 Keysend，包括 AMP Keysend。使用 --keysend 或 --amp 標誌。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Core Lightning</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過 keysend 插件支持。需要配置 experimental-accept-extra-tlv-types。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <div class="flex items-center gap-3 mb-2">
+        <span
+          class="px-2 py-1 text-xs font-mono rounded bg-green-500/20 text-green-600 dark:text-green-400"
+          >Eclair</span
+        >
+        <span class="text-sm font-semibold text-green-700 dark:text-green-400">完整支持</span>
+      </div>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Phoenix 錢包使用 Eclair，支持接收 Keysend 打賞。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 12 作為替代</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+    BOLT 12 Offers 提供了更優雅的解決方案：
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Keysend</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 簡單直接</li>
+        <li>• 無付款證明</li>
+        <li>• 可能收到垃圾</li>
+        <li>• 已廣泛部署</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">BOLT 12 Offers</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 有付款證明</li>
+        <li>• 接收方控制</li>
+        <li>• 支持 Route Blinding</li>
+        <li>• 逐步部署中</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://docs.lightning.engineering/lightning-network-tools/lnd/send-messages-with-keysend"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Keysend 文檔</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/Podcastindex-org/podcast-namespace/blob/main/value/value.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Podcasting 2.0 Value Tag</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 12 Offers</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/gossip"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a
+      >
+      如何在閃電網路中傳播網路拓撲資訊。
+    </p>
+  </div>
+</ArticleLayout>
