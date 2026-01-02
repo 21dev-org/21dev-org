@@ -1,0 +1,265 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Ancestor & Descendant Limits"
+  description="了解 Bitcoin Core mempool 中的祖先和後代交易限制，以及它們對交易傳播的影響。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Ancestor Limits' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+  nextPage={{ title: 'CPFP', href: '/tech/bitcoin-core/cpfp' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Bitcoin Core 對 mempool 中交易的依賴關係施加了嚴格限制。這些限制防止了
+        資源耗盡攻擊，但也影響了 CPFP 和複雜交易模式的使用。
+      </p>
+
+      <h2>基本概念</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>祖先（Ancestors）:
+當前交易依賴的所有未確認交易
+
+    TX_A (祖先)
+      ↓
+    TX_B (祖先)
+      ↓
+    TX_C (當前交易)
+
+TX_C 的祖先: TX_A, TX_B
+
+後代（Descendants）:
+依賴當前交易的所有未確認交易
+
+    TX_A (當前交易)
+      ↓
+    TX_B (後代)
+      ↓
+    TX_C (後代)
+
+TX_A 的後代: TX_B, TX_C</code></pre>
+
+      <h2>默認限制</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">參數</th>
+                <th class="text-left py-2">默認值</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-limitancestorcount</td>
+                <td class="py-2">25</td>
+                <td class="py-2">最大祖先數量（含自己）</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-limitancestorsize</td>
+                <td class="py-2">101 KB</td>
+                <td class="py-2">最大祖先總大小</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-limitdescendantcount</td>
+                <td class="py-2">25</td>
+                <td class="py-2">最大後代數量（含自己）</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">-limitdescendantsize</td>
+                <td class="py-2">101 KB</td>
+                <td class="py-2">最大後代總大小</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>限制的計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 接受新交易時的檢查
+
+bool CheckAncestorLimits(const CTxMemPool& pool, const CTransaction& tx)
+{
+    // 收集所有祖先
+    std::set<uint256> ancestors;
+    uint64_t totalSize = tx.GetVirtualSize();
+
+    for (const auto& input : tx.vin) {
+        if (pool.exists(input.prevout.hash)) {
+            // 遞歸收集祖先
+            pool.CalculateAncestors(input.prevout.hash, ancestors);
+            totalSize += pool.GetEntry(input.prevout.hash)->GetSizeWithAncestors();
+        }
+    }
+
+    // 檢查數量限制
+    if (ancestors.size() + 1 > MAX_ANCESTOR_COUNT) {
+        return false;  // "too-long-mempool-chain"
+    }
+
+    // 檢查大小限制
+    if (totalSize > MAX_ANCESTOR_SIZE) {
+        return false;  // "too-long-mempool-chain"
+    }
+
+    return true;
+}
+
+// 同樣檢查後代限制
+// 確保添加新交易不會使任何現有交易違反後代限制</code></pre>
+
+      <h2>實際影響</h2>
+
+      <h3>1. CPFP 鏈長度限制</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 多次 CPFP 提速
+
+TX_1 (低費率) ← 卡住
+  ↓
+TX_2 (CPFP 嘗試 1)
+  ↓
+TX_3 (CPFP 嘗試 2)
+  ↓
+...
+  ↓
+TX_25 (CPFP 嘗試 24)
+  ↓
+TX_26 ← 被拒絕！"too-long-mempool-chain"
+
+解決方案:
+- 等待部分交易確認
+- 使用 RBF 替換原始交易
+- 使用較大的 CPFP 交易（更高費率）</code></pre>
+
+      <h3>2. 批量支付限制</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 交易所批量提款
+
+TX_batch:
+  - output 1: user_1
+  - output 2: user_2
+  - ...
+  - output 100: user_100
+
+問題: 每個用戶的後續交易都是 TX_batch 的後代
+
+如果 26 個用戶同時發送交易:
+TX_batch
+  ├→ user_tx_1 ✓
+  ├→ user_tx_2 ✓
+  ...
+  ├→ user_tx_25 ✓
+  └→ user_tx_26 ✗ (超出後代限制)
+
+解決方案:
+- 拆分批量交易
+- 等待確認後再允許提款使用
+- 使用不同的 UTXO 來源</code></pre>
+
+      <h3>3. 閃電網路影響</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 通道關閉和 HTLC
+
+承諾交易 (1 個)
+  ├→ to_local 輸出的花費
+  ├→ to_remote 輸出的花費
+  ├→ HTLC_1 的解析
+  ├→ HTLC_2 的解析
+  ...
+
+如果有多個待處理的 HTLC，可能達到後代限制
+這限制了同時處理的 HTLC 數量</code></pre>
+
+      <h2>CPFP Carve-out</h2>
+      <p>
+        為了幫助閃電網路，Bitcoin Core 實現了一個例外：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CPFP Carve-out 規則 (BIP-331 部分)
+
+條件:
+1. 父交易只有 2 個輸出（典型的 LN 承諾交易）
+2. 子交易大小 ≤ 1000 vWU
+3. 子交易沒有其他未確認祖先
+
+允許: 即使達到後代限制，仍可添加一個小型 CPFP 交易
+
+目的: 確保雙方都能獨立 CPFP 通道關閉交易
+
+限制:
+- 只允許一個額外子交易
+- Mallory 可以先用掉這個額度（pinning）</code></pre>
+
+      <h2>配置調整</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf
+
+# 增加限制（不推薦，可能導致 DoS）
+limitancestorcount=50
+limitancestorsize=202
+
+# 查詢當前限制
+bitcoin-cli getmempoolinfo
+{
+  ...
+  "maxmempool": 300000000,
+  "mempoolminfee": 0.00001000,
+  "minrelaytxfee": 0.00001000,
+  "incrementalrelayfee": 0.00001000,
+  ...
+}</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 發送交易時可能遇到的錯誤
+
+bitcoin-cli sendrawtransaction &lt;hex&gt;
+
+# 可能的錯誤:
+# "too-long-mempool-chain, too many unconfirmed ancestors"
+# "too-long-mempool-chain, too many unconfirmed descendants"
+
+# 檢查特定交易的祖先/後代
+bitcoin-cli getmempoolentry &lt;txid&gt;
+{
+  ...
+  "ancestorcount": 5,
+  "ancestorsize": 2000,
+  "descendantcount": 3,
+  "descendantsize": 1500,
+  ...
+}</code></pre>
+
+      <h2>未來改進</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <h4 class="text-blue-800 dark:text-blue-200 font-semibold mb-2">Cluster Mempool</h4>
+        <p class="text-blue-800 dark:text-blue-200 mb-0">
+          正在開發的 Cluster Mempool 將用「cluster 限制」替代祖先/後代限制。
+          這提供了更靈活的拓撲，同時保持 DoS 保護。新的限制將基於整個
+          connected component 而不是單個交易的視角。
+        </p>
+      </div>
+
+      <h2>最佳實踐</h2>
+
+      <ul>
+        <li><strong>監控鏈長度：</strong>發送交易前檢查祖先數量</li>
+        <li><strong>使用 RBF：</strong>優先使用 RBF 而非 CPFP 長鏈</li>
+        <li><strong>批量交易：</strong>控制批量大小，考慮後代影響</li>
+        <li><strong>等待確認：</strong>在鏈變長前等待部分確認</li>
+        <li><strong>V3 交易：</strong>新協議應使用 V3 交易（更嚴格但可預測）</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

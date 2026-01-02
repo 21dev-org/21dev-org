@@ -1,0 +1,250 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Cluster Mempool"
+  description="了解 Bitcoin Core 正在開發的新 mempool 架構，提供更好的費率計算和 RBF 處理。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Cluster Mempool' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+  nextPage={{ title: 'Transaction Pinning', href: '/tech/bitcoin-core/transaction-pinning' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Cluster Mempool 是 Bitcoin Core 正在開發的重大 mempool 重構。它將交易組織為
+        「clusters」（集群），提供更準確的費率計算、更好的 RBF 規則和更高效的區塊構建。
+      </p>
+
+      <h2>現有架構的問題</h2>
+      <p>
+        當前的 mempool 實現存在多個問題：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>問題 1: 祖先/後代費率計算不準確
+
+TX_A (1 sat/vB, 100 vB) → TX_B (10 sat/vB, 100 vB)
+                       → TX_C (10 sat/vB, 100 vB)
+
+當前計算:
+TX_B 的祖先費率 = (100 + 1000) / 200 = 5.5 sat/vB
+TX_C 的祖先費率 = (100 + 1000) / 200 = 5.5 sat/vB
+
+問題: TX_A 的費用被重複計算！
+
+問題 2: RBF 規則過於簡單
+- 只看絕對費用，不考慮 mempool 激勵兼容性
+- 容易被 pinning 攻擊利用
+
+問題 3: 區塊模板構建效率低
+- 需要持續重新計算優先級
+- 難以處理複雜的依賴關係</code></pre>
+
+      <h2>Cluster 概念</h2>
+      <p>
+        Cluster 是一組相互連接的交易，形成一個連通的依賴圖：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Cluster 示例:
+
+Cluster 1:          Cluster 2:
+    A                   D
+   / \                  |
+  B   C                 E
+       \
+        F
+
+規則:
+- 每個交易恰好屬於一個 cluster
+- Cluster 內的交易有依賴關係
+- 不同 cluster 之間沒有依賴
+- 新交易可能合併多個 cluster</code></pre>
+
+      <h2>線性化（Linearization）</h2>
+      <p>
+        每個 cluster 都有一個「線性化」順序，定義了最優的挖礦順序：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Cluster: A → B → C (A 是父交易)
+
+可能的線性化:
+1. [A, B, C] - 按依賴順序
+2. [A, C, B] - 也有效
+
+最優線性化: 最大化 "前綴費率"
+
+示例:
+A: 1 sat/vB, 100 vB
+B: 5 sat/vB, 100 vB
+C: 2 sat/vB, 100 vB
+
+線性化 [A, B, C]:
+- 前綴 [A]: 1 sat/vB
+- 前綴 [A,B]: (100+500)/200 = 3 sat/vB
+- 前綴 [A,B,C]: (100+500+200)/300 = 2.67 sat/vB
+
+線性化 [A, C, B]:
+- 前綴 [A]: 1 sat/vB
+- 前綴 [A,C]: (100+200)/200 = 1.5 sat/vB
+- 前綴 [A,C,B]: 2.67 sat/vB
+
+[A, B, C] 更好（更早達到高費率）</code></pre>
+
+      <h2>Chunk 和費率圖</h2>
+      <p>
+        線性化產生的「chunks」定義了交易的實際挖礦優先級：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>費率圖示例:
+
+費率 ↑
+     │    ┌───┐
+ 5   │    │ B │
+     │    └───┘
+ 3   │  ┌─────────┐
+     │  │   A+B   │ ← Chunk (一起挖)
+     │  └─────────┘
+ 1   │┌───┐
+     ││ A │
+     │└───┘
+     └─────────────→ 累積大小
+
+Chunk: 線性化中費率遞減的連續段
+- 同一 chunk 中的交易應一起被挖
+- Chunk 費率 = chunk 總費用 / chunk 總大小</code></pre>
+
+      <h2>新的 RBF 規則</h2>
+      <p>
+        Cluster mempool 啟用了更合理的 RBF 規則：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 舊規則 (BIP-125)
+replacement.fee > sum(replaced_txs.fees)
+replacement.feerate > replaced_tx.feerate
+
+// 新規則 (基於激勵兼容性)
+比較替換前後的 mempool 費率圖
+
+替換有效，當且僅當:
+1. 新費率圖在所有點都 >= 舊費率圖
+   (對礦工永遠不更差)
+
+2. 存在某個區塊大小，新圖嚴格更好
+   (對礦工至少有時更好)
+
+這自動處理:
+- Package 費率考慮
+- 無需固定的 "額外費用" 規則
+- 防止 pinning 攻擊</code></pre>
+
+      <h2>Cluster 大小限制</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 提議的限制
+MAX_CLUSTER_COUNT = 100      // 最大交易數
+MAX_CLUSTER_SIZE = 101 KB    // 最大虛擬大小
+
+// 為什麼需要限制？
+- 線性化算法複雜度
+- 驗證替換的計算成本
+- 防止 DoS 攻擊
+
+// 與舊限制的關係
+舊: MAX_ANCESTORS = 25, MAX_DESCENDANTS = 25
+    → 最壞情況 cluster 可達 625 交易
+
+新: 直接限制 cluster 大小，更可預測</code></pre>
+
+      <h2>實現進度</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <h4 class="text-lg font-semibold mb-4">開發階段</h4>
+        <ul class="space-y-2 mb-0">
+          <li><strong>階段 1：</strong>Cluster 數據結構和線性化算法 ✓</li>
+          <li><strong>階段 2：</strong>Cluster 限制替換祖先/後代限制</li>
+          <li><strong>階段 3：</strong>基於費率圖的 RBF</li>
+          <li><strong>階段 4：</strong>基於 chunk 的區塊模板構建</li>
+          <li><strong>階段 5：</strong>完全移除舊的祖先/後代追蹤</li>
+        </ul>
+      </div>
+
+      <h2>對開發者的影響</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 行為變化
+
+1. Package 限制變化
+   舊: 25 祖先 + 25 後代
+   新: 單個 cluster 限制
+
+2. RBF 更容易成功
+   - 只要對礦工更好就會被接受
+   - 不再需要滿足任意的費用增量
+
+3. 更準確的費率估算
+   - getmempoolentry 將返回 chunk 費率
+   - 更好地反映實際挖礦優先級
+
+4. V3 交易
+   - 仍然有效，提供額外保證
+   - 與 cluster mempool 協同工作</code></pre>
+
+      <h2>API 變化</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 提議的新 RPC 字段
+
+bitcoin-cli getmempoolentry &lt;txid&gt;
+{
+  ...
+  "cluster_id": "abc123...",
+  "cluster_size": 5,
+  "chunk_feerate": 15.5,      // sat/vB
+  "linearization_index": 2,   // 在 cluster 中的位置
+  ...
+}
+
+bitcoin-cli getmempoolinfo
+{
+  ...
+  "cluster_count": 1234,
+  "max_cluster_size": 100,
+  ...
+}</code></pre>
+
+      <h2>與其他改進的關係</h2>
+
+      <ul>
+        <li><strong>Package Relay：</strong>Cluster mempool 使 package 評估更準確</li>
+        <li><strong>V3 Transactions：</strong>提供額外的拓撲保證</li>
+        <li><strong>Ephemeral Anchors：</strong>依賴 cluster mempool 的 package 處理</li>
+        <li><strong>TRUC：</strong>受益於更好的 RBF 規則</li>
+      </ul>
+
+      <h2>參考資源</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><a href="https://github.com/bitcoin/bitcoin/issues/27677">GitHub: Cluster Mempool Tracking Issue</a></li>
+          <li><a href="https://delvingbitcoin.org/c/implementation/wg-cluster-mempool">Delving Bitcoin: Cluster Mempool Working Group</a></li>
+          <li>Bitcoin Core PR #28676, #29242 等</li>
+        </ul>
+      </div>
+
+      <h2>未來展望</h2>
+      <p>
+        Cluster mempool 是 Bitcoin Core mempool 的根本性改進。完成後，它將：
+      </p>
+
+      <ul>
+        <li>使 RBF 更加公平和可預測</li>
+        <li>減少 pinning 攻擊的可能性</li>
+        <li>提高區塊構建效率</li>
+        <li>為未來的 mempool 功能鋪平道路</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

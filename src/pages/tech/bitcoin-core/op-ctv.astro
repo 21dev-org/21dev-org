@@ -1,0 +1,319 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="OP_CHECKTEMPLATEVERIFY"
+  description="了解 BIP-119 提出的 OP_CTV 操作碼，實現簡單的比特幣 covenant 功能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'OP_CTV' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'Miniscript', href: '/tech/bitcoin-core/miniscript' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        OP_CHECKTEMPLATEVERIFY（CTV）是 BIP-119 提出的新操作碼，它允許創建
+        「covenant」（契約），限制比特幣只能以預定義的方式被花費。這為比特幣帶來了
+        新的可編程性，同時保持了簡潔和安全。
+      </p>
+
+      <h2>什麼是 Covenant？</h2>
+      <p>
+        Covenant 是對比特幣花費方式的限制。傳統上，比特幣腳本只驗證「誰」可以花費，
+        而 covenant 可以限制「如何」花費：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統腳本:
+"只有持有這個私鑰的人可以花費"
+
+Covenant:
+"只有持有這個私鑰的人可以花費，
+ 而且必須發送到這些特定的地址"</code></pre>
+
+      <h2>CTV 工作原理</h2>
+      <p>
+        CTV 通過驗證花費交易的「模板雜湊」來工作：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CTV 腳本
+&lt;template_hash&gt; OP_CHECKTEMPLATEVERIFY
+
+// 驗證邏輯
+template_hash = SHA256(
+    version ||
+    locktime ||
+    scriptsigs_hash ||      // 空的 scriptsigs
+    num_inputs ||
+    sequences_hash ||
+    num_outputs ||
+    outputs_hash ||
+    input_index             // 當前輸入的索引
+)
+
+如果花費交易的 template_hash 匹配，驗證通過</code></pre>
+
+      <h2>承諾的內容</h2>
+      <p>
+        CTV 雜湊承諾了交易的大部分內容，但有一些例外：
+      </p>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">字段</th>
+                <th class="text-left py-2">是否承諾</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">version</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">交易版本</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">locktime</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">時間鎖</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">outputs</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">所有輸出</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">sequences</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">所有輸入序列號</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">input_index</td>
+                <td class="py-2">✓</td>
+                <td class="py-2">當前輸入索引</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">input txids</td>
+                <td class="py-2">✗</td>
+                <td class="py-2">輸入 TXID（可變）</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">signatures</td>
+                <td class="py-2">✗</td>
+                <td class="py-2">見證數據（可變）</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>應用場景</h2>
+
+      <h3>1. 擁塞控制（Congestion Control）</h3>
+      <p>
+        允許交易所在高手續費時批量發送，低手續費時展開：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 階段 1: 高手續費時期
+交易所創建單個 CTV 輸出，承諾未來的展開交易
+
+TX_commit:
+  input: exchange_utxo
+  output: &lt;ctv_hash&gt; OP_CTV  (包含 100 個用戶的提款)
+
+// 階段 2: 低手續費時期
+展開為多個實際輸出
+
+TX_expand:
+  input: TX_commit 的 CTV 輸出
+  outputs:
+    - user_1: 0.1 BTC
+    - user_2: 0.2 BTC
+    - ...
+    - user_100: 0.5 BTC
+
+優勢: 節省鏈上空間，用戶確認無需等待</code></pre>
+
+      <h3>2. 金庫（Vaults）</h3>
+      <p>
+        實現帶有時間延遲的安全存儲：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 金庫結構
+vault_script:
+  IF
+    &lt;hot_key&gt; CHECKSIG              // 立即取消
+  ELSE
+    &lt;ctv_to_delayed&gt; OP_CTV         // 觸發延遲提款
+  ENDIF
+
+delayed_script:
+  &lt;144 blocks&gt; CSV                   // 等待 ~24 小時
+  &lt;cold_key&gt; CHECKSIG                // 冷鑰匙簽名
+
+使用流程:
+1. 發起提款 → 進入延遲狀態
+2. 24 小時內可用熱鑰匙取消
+3. 24 小時後用冷鑰匙完成提款</code></pre>
+
+      <h3>3. 支付池（Payment Pools）</h3>
+      <p>
+        多方共享 UTXO，可獨立退出：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡化的 4 人支付池
+pool_output:
+  A+B+C+D 多簽 OR
+  &lt;ctv_split_AB_CD&gt; OP_CTV
+
+// CTV 允許任何人觸發分割
+split_tx:
+  input: pool_output
+  outputs:
+    - AB_subpool (A+B 多簽 OR CTV)
+    - CD_subpool (C+D 多簽 OR CTV)
+
+// 繼續分割直到個人輸出</code></pre>
+
+      <h3>4. 非交互式通道</h3>
+      <p>
+        無需在線即可接收閃電網路支付：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Alice 離線，Bob 想支付給她
+// Alice 預先發布 CTV 地址
+
+alice_ctv_address:
+  &lt;ctv_hash&gt; OP_CTV
+
+// ctv_hash 承諾打開的通道狀態
+// Bob 可以單方面資助通道
+// Alice 上線後可以使用通道</code></pre>
+
+      <h2>計算 CTV 雜湊</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+
+def compute_ctv_hash(tx, input_index):
+    """計算 CTV 模板雜湊"""
+    data = b''
+
+    # version (4 bytes, little endian)
+    data += tx.version.to_bytes(4, 'little')
+
+    # locktime (4 bytes, little endian)
+    data += tx.locktime.to_bytes(4, 'little')
+
+    # scriptsigs hash (對於標準 CTV，全為空)
+    scriptsigs = b''.join(b'' for _ in tx.inputs)
+    data += hashlib.sha256(scriptsigs).digest()
+
+    # number of inputs (4 bytes)
+    data += len(tx.inputs).to_bytes(4, 'little')
+
+    # sequences hash
+    sequences = b''.join(
+        inp.sequence.to_bytes(4, 'little')
+        for inp in tx.inputs
+    )
+    data += hashlib.sha256(sequences).digest()
+
+    # number of outputs (4 bytes)
+    data += len(tx.outputs).to_bytes(4, 'little')
+
+    # outputs hash
+    outputs = b''.join(
+        out.serialize() for out in tx.outputs
+    )
+    data += hashlib.sha256(outputs).digest()
+
+    # input index (4 bytes)
+    data += input_index.to_bytes(4, 'little')
+
+    return hashlib.sha256(data).digest()</code></pre>
+
+      <h2>與其他提案的比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">提案</th>
+                <th class="text-left py-2">功能</th>
+                <th class="text-left py-2">複雜度</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">OP_CTV (BIP-119)</td>
+                <td class="py-2">固定模板</td>
+                <td class="py-2">低</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">OP_VAULT (BIP-345)</td>
+                <td class="py-2">專用金庫</td>
+                <td class="py-2">中</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">OP_CAT</td>
+                <td class="py-2">通用連接</td>
+                <td class="py-2">高</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">SIGHASH_ANYPREVOUT</td>
+                <td class="py-2">彈性輸入</td>
+                <td class="py-2">中</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>爭議與討論</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <p class="text-orange-800 dark:text-orange-200 mb-2">
+          <strong>支持觀點：</strong>
+        </p>
+        <ul class="text-orange-800 dark:text-orange-200 mb-4">
+          <li>簡單且功能明確</li>
+          <li>經過多年審查</li>
+          <li>啟用重要用例（金庫、擁塞控制）</li>
+        </ul>
+        <p class="text-orange-800 dark:text-orange-200 mb-2">
+          <strong>反對觀點：</strong>
+        </p>
+        <ul class="text-orange-800 dark:text-orange-200 mb-0">
+          <li>可能啟用不可逆的限制性 covenant</li>
+          <li>審計困難（遞歸 covenant）</li>
+          <li>可能等待更通用的解決方案</li>
+        </ul>
+      </div>
+
+      <h2>測試網實驗</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 在 Signet 上測試 CTV（如果啟用）
+# 使用 bitcoin-inquisition 客戶端
+
+# 創建 CTV 輸出
+bitcoin-cli -signet createrawtransaction \
+  '[{"txid":"...","vout":0}]' \
+  '[{"bc1...":0.001},{"data":"&lt;ctv_script_hex&gt;":0}]'</code></pre>
+
+      <h2>當前狀態</h2>
+      <p>
+        截至目前，BIP-119 尚未被 Bitcoin Core 採納。社區對是否以及何時啟用
+        仍在討論中。開發者可以在 Bitcoin Inquisition（Signet 軟分叉測試環境）
+        中進行實驗。
+      </p>
+    </div>
+  </section>
+</ArticleLayout>

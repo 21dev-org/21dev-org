@@ -1,0 +1,241 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Stratum V2"
+  description="了解下一代挖礦協議 Stratum V2 的架構、安全性改進和去中心化特性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Stratum V2' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'GetBlockTemplate', href: '/tech/bitcoin-core/getblocktemplate' }}
+  nextPage={{ title: 'Mining', href: '/tech/bitcoin-core/mining' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Stratum V2 是下一代比特幣挖礦協議，相比 Stratum V1 提供了加密通訊、
+        更高效率和更好的去中心化特性。它允許礦工自行選擇交易，減少礦池對區塊內容的控制。
+      </p>
+
+      <h2>Stratum V1 的問題</h2>
+      <p>
+        2012 年發布的 Stratum V1 存在多個問題：
+      </p>
+
+      <ul>
+        <li><strong>無加密：</strong>通訊以明文傳輸，易受中間人攻擊</li>
+        <li><strong>中心化：</strong>礦池完全控制區塊模板（交易選擇）</li>
+        <li><strong>效率低：</strong>JSON 格式開銷大，頻寬浪費</li>
+        <li><strong>hash 劫持：</strong>可能被截獲並重定向到其他礦池</li>
+      </ul>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Stratum V1 訊息示例（明文 JSON）
+{"id": 1, "method": "mining.subscribe", "params": []}
+{"id": 2, "method": "mining.authorize", "params": ["worker", "pass"]}
+{"method": "mining.notify", "params": ["job_id", "prevhash", ...]}
+
+問題:
+- ISP 可以看到所有挖礦數據
+- 可以注入惡意訊息
+- JSON 解析開銷大</code></pre>
+
+      <h2>Stratum V2 架構</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <h4 class="text-lg font-semibold mb-4">協議組成</h4>
+        <pre class="text-sm overflow-x-auto"><code is:raw>Stratum V2 由多個子協議組成:
+
+1. Mining Protocol
+   └── 礦機 ↔ 礦池通訊
+
+2. Job Declaration Protocol
+   └── 礦工聲明自己的區塊模板
+
+3. Template Distribution Protocol
+   └── 獲取區塊模板（從 Bitcoin Core）
+
+4. Job Distribution Protocol
+   └── 代理分發工作給多個礦機</code></pre>
+      </div>
+
+      <h2>加密通訊</h2>
+      <p>
+        Stratum V2 使用 Noise Protocol Framework 提供端到端加密：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Noise_NX 握手模式
+Initiator (礦工)              Responder (礦池)
+     |                              |
+     |-----> e ---------------------->|  // 發送臨時公鑰
+     |<----- e, ee, s, es -----------|  // 返回臨時公鑰 + 靜態公鑰
+     |                              |
+     |====== 加密通道建立 ============|
+
+特性:
+- 前向保密 (Forward Secrecy)
+- 服務器身份驗證
+- 防止中間人攻擊</code></pre>
+
+      <h2>二進制協議</h2>
+      <p>
+        相比 JSON，二進制格式大幅減少頻寬使用：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 訊息格式
++-------------------+------------------+
+| Extension Type    | 2 bytes          |
+| Message Type      | 1 byte           |
+| Message Length    | 3 bytes          |
+| Payload           | variable         |
++-------------------+------------------+
+
+// 數據類型
+U8, U16, U32, U64     - 無符號整數
+B0_255, B0_64K        - 可變長度字節
+STR0_255              - 可變長度字符串
+PUBKEY                - 32 bytes 公鑰
+
+頻寬節省: ~50% 相比 Stratum V1</code></pre>
+
+      <h2>Job Declaration</h2>
+      <p>
+        最重要的改進是允許礦工選擇交易：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統模式 (V1):
+礦池 → 選擇交易 → 創建區塊模板 → 發送給礦工
+礦工只能接受礦池的選擇
+
+Job Declaration 模式 (V2):
+礦工 → 連接 Bitcoin Core → 選擇交易
+礦工 → 向礦池聲明區塊模板
+礦池 → 驗證並接受（或拒絕）
+礦工 → 使用自己選擇的交易挖礦
+
+去中心化優勢:
+- 礦工可以運行自己的節點
+- 礦池無法審查交易
+- 分散區塊構建權力</code></pre>
+
+      <h2>部署配置</h2>
+
+      <h3>基本配置（無 Job Declaration）</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>┌─────────┐      SV2 Mining      ┌─────────┐
+│  Miner  │ ←------------------→ │  Pool   │
+└─────────┘      Protocol        └─────────┘
+
+礦工使用礦池提供的區塊模板
+仍有加密和效率優勢</code></pre>
+
+      <h3>完整配置（含 Job Declaration）</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>                    ┌──────────────┐
+                    │ Bitcoin Core │
+                    └──────┬───────┘
+                           │ Template Distribution
+                           ▼
+┌─────────┐    SV2    ┌─────────┐    Job Declaration    ┌─────────┐
+│  Miner  │ ←-------→ │  Proxy  │ ←------------------→  │  Pool   │
+└─────────┘  Mining   └─────────┘                       └─────────┘
+             Protocol
+
+Proxy 運行在礦工側:
+- 從 Bitcoin Core 獲取區塊模板
+- 向礦池聲明 Job
+- 轉發礦機的 shares</code></pre>
+
+      <h2>與 Bitcoin Core 集成</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf 配置
+sv2=1
+sv2port=8442
+sv2bind=0.0.0.0
+
+# 或使用獨立的 Template Provider
+# https://github.com/stratum-mining/stratum
+
+# Template Distribution Protocol 端口
+# 默認: 8442</code></pre>
+
+      <h2>協議訊息類型</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <h4 class="text-lg font-semibold mb-4">Mining Protocol 訊息</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">訊息</th>
+                <th class="text-left py-2">方向</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">SetupConnection</td>
+                <td class="py-2">Client → Server</td>
+                <td class="py-2">初始化連接</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">OpenChannel</td>
+                <td class="py-2">Client → Server</td>
+                <td class="py-2">打開挖礦通道</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">NewMiningJob</td>
+                <td class="py-2">Server → Client</td>
+                <td class="py-2">新的挖礦工作</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">SubmitShares</td>
+                <td class="py-2">Client → Server</td>
+                <td class="py-2">提交工作量證明</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">SetNewPrevHash</td>
+                <td class="py-2">Server → Client</td>
+                <td class="py-2">新區塊通知</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>安全考慮</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>憑證驗證：</strong>礦池應提供簽名憑證供礦工驗證</li>
+          <li><strong>噪音協議：</strong>使用經過審計的 Noise 實現</li>
+          <li><strong>Job 驗證：</strong>礦池會驗證礦工聲明的區塊模板有效性</li>
+          <li><strong>DoS 保護：</strong>限制連接數和訊息速率</li>
+        </ul>
+      </div>
+
+      <h2>採用狀態</h2>
+      <p>
+        Stratum V2 正在逐步被採用：
+      </p>
+
+      <ul>
+        <li><strong>礦池：</strong>Braiins Pool、DEMAND 等已支持</li>
+        <li><strong>礦機固件：</strong>Braiins OS+ 原生支持</li>
+        <li><strong>代理軟件：</strong>stratum-mining/stratum 參考實現</li>
+        <li><strong>Bitcoin Core：</strong>SV2 模板提供者整合中</li>
+      </ul>
+
+      <h2>參考資源</h2>
+      <ul>
+        <li><a href="https://stratumprotocol.org/">Stratum V2 官方規範</a></li>
+        <li><a href="https://github.com/stratum-mining/stratum">參考實現</a></li>
+        <li><a href="https://github.com/stratum-mining/sv2-spec">協議規範</a></li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
