@@ -1,0 +1,257 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Header"
+  description="深入了解比特幣區塊頭的 80 位元組結構，包括各欄位的用途和驗證規則。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Header' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Block Structure', href: '/tech/bitcoin-core/block-structure' }}
+  nextPage={{ title: 'Merkle Tree', href: '/tech/bitcoin-core/merkle-tree' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        區塊頭是比特幣區塊中最重要的 80 位元組數據。它包含了區塊的所有元數據，
+        是工作量證明（PoW）計算的目標，也是區塊雜湊值的來源。
+      </p>
+
+      <h2>區塊頭結構</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">欄位</th>
+                <th class="text-left py-2">大小</th>
+                <th class="text-left py-2">位移</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">version</td>
+                <td class="py-2">4 bytes</td>
+                <td class="py-2">0</td>
+                <td class="py-2">區塊版本號</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">prev_block</td>
+                <td class="py-2">32 bytes</td>
+                <td class="py-2">4</td>
+                <td class="py-2">前一區塊雜湊</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">merkle_root</td>
+                <td class="py-2">32 bytes</td>
+                <td class="py-2">36</td>
+                <td class="py-2">Merkle 樹根</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">timestamp</td>
+                <td class="py-2">4 bytes</td>
+                <td class="py-2">68</td>
+                <td class="py-2">Unix 時間戳</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">bits</td>
+                <td class="py-2">4 bytes</td>
+                <td class="py-2">72</td>
+                <td class="py-2">難度目標</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">nonce</td>
+                <td class="py-2">4 bytes</td>
+                <td class="py-2">76</td>
+                <td class="py-2">隨機數</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-sm text-[var(--text-secondary)] mt-4 mb-0">總計: 80 bytes（固定大小）</p>
+      </div>
+
+      <h2>各欄位詳解</h2>
+
+      <h3>Version（版本）</h3>
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, little-endian
+版本歷史:
+- 1: 原始版本
+- 2: BIP-34（區塊高度在 coinbase）
+- 3: BIP-66（嚴格 DER 簽名）
+- 4: BIP-65（CHECKLOCKTIMEVERIFY）
+
+// BIP-9 版本位信號（version bits）
+// 高位用於軟分叉信號
+0x20000000 | signal_bits
+
+示例: 0x20000002 表示版本 2 + 某個信號位</code></pre>
+
+      <h3>Previous Block Hash（前區塊雜湊）</h3>
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 32 bytes, 內部存儲為 little-endian
+// 顯示時通常反轉為 big-endian
+
+創世區塊的 prev_block:
+0x0000000000000000000000000000000000000000000000000000000000000000
+
+這個欄位將區塊連接成鏈
+每個區塊都引用其父區塊的雜湊值</code></pre>
+
+      <h3>Merkle Root（Merkle 根）</h3>
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 32 bytes
+// 區塊中所有交易 TXID 的 Merkle 樹根
+
+計算過程:
+1. 收集所有交易的 TXID
+2. 兩兩配對並雜湊
+3. 重複直到只剩一個雜湊值
+
+用途:
+- 驗證交易是否在區塊中（SPV 證明）
+- 確保交易集合的完整性</code></pre>
+
+      <h3>Timestamp（時間戳）</h3>
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, Unix 時間戳（秒）
+
+驗證規則:
+1. 必須 > 前 11 個區塊的中位數時間（MTP）
+2. 必須 < 節點時間 + 2 小時
+
+用途:
+- 難度調整計算
+- 時間鎖（nLockTime, CSV）
+- 大約表示區塊產生時間
+
+注意: 時間戳不保證精確，礦工可在一定範圍內調整</code></pre>
+
+      <h3>Bits（難度目標）</h3>
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, 緊湊格式的難度目標
+
+格式: [exponent (1 byte)][coefficient (3 bytes)]
+
+target = coefficient × 256^(exponent - 3)
+
+示例: 0x1d00ffff（創世區塊）
+exponent = 0x1d = 29
+coefficient = 0x00ffff
+target = 0x00ffff × 256^26
+      = 0x00000000ffff0000...0000 (很大的數)
+
+區塊雜湊必須 &lt; target 才有效</code></pre>
+
+      <h3>Nonce（隨機數）</h3>
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, 礦工可自由調整
+
+挖礦過程:
+1. 組裝區塊頭
+2. 嘗試不同的 nonce 值
+3. 計算 SHA256(SHA256(header))
+4. 檢查結果是否 &lt; target
+5. 如果不是，改變 nonce 重試
+
+範圍: 0 到 4,294,967,295 (2^32 - 1)
+
+當 nonce 空間耗盡，礦工會改變:
+- coinbase 的 extraNonce
+- 時間戳（在允許範圍內）</code></pre>
+
+      <h2>區塊雜湊計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+
+def calculate_block_hash(header_bytes):
+    """計算區塊雜湊（雙 SHA-256）"""
+    first_hash = hashlib.sha256(header_bytes).digest()
+    second_hash = hashlib.sha256(first_hash).digest()
+    # 反轉為 big-endian 顯示
+    return second_hash[::-1].hex()
+
+# 區塊頭序列化
+def serialize_header(version, prev_block, merkle_root,
+                     timestamp, bits, nonce):
+    header = b''
+    header += version.to_bytes(4, 'little')
+    header += bytes.fromhex(prev_block)[::-1]  # 反轉
+    header += bytes.fromhex(merkle_root)[::-1]  # 反轉
+    header += timestamp.to_bytes(4, 'little')
+    header += bits.to_bytes(4, 'little')
+    header += nonce.to_bytes(4, 'little')
+    return header  # 80 bytes</code></pre>
+
+      <h2>RPC 查詢</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取區塊頭
+bitcoin-cli getblockheader &lt;blockhash&gt;
+{
+  "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+  "confirmations": 850000,
+  "height": 0,
+  "version": 1,
+  "versionHex": "00000001",
+  "merkleroot": "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+  "time": 1231006505,
+  "mediantime": 1231006505,
+  "nonce": 2083236893,
+  "bits": "1d00ffff",
+  "difficulty": 1,
+  "chainwork": "0000000000000000000000000000000000000000000000000000000100010001",
+  "nTx": 1,
+  "previousblockhash": null,
+  "nextblockhash": "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"
+}
+
+# 獲取原始區塊頭（hex）
+bitcoin-cli getblockheader &lt;blockhash&gt; false</code></pre>
+
+      <h2>創世區塊頭</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>創世區塊頭（hex）:
+01000000  // version = 1
+00000000000000000000000000000000
+00000000000000000000000000000000  // prev_block (全零)
+3ba3edfd7a7b12b27ac72c3e67768f61
+7fc81bc3888a51323a9fb8aa4b1e5e4a  // merkle_root
+29ab5f49  // timestamp = 1231006505 (2009-01-03 18:15:05)
+ffff001d  // bits = 0x1d00ffff
+1dac2b7c  // nonce = 2083236893
+
+區塊雜湊:
+000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f</code></pre>
+
+      <h2>驗證規則</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>PoW 驗證：</strong>block_hash &lt; target（從 bits 計算）</li>
+          <li><strong>時間戳：</strong>必須在 MTP 和當前時間+2h 之間</li>
+          <li><strong>版本：</strong>必須符合當前啟用的 BIP 要求</li>
+          <li><strong>Merkle Root：</strong>必須與區塊交易匹配</li>
+          <li><strong>Previous Block：</strong>必須引用有效的已知區塊</li>
+        </ul>
+      </div>
+
+      <h2>區塊頭在 SPV 中的應用</h2>
+      <p>
+        輕客戶端只需下載區塊頭（80 bytes/block）即可驗證最長鏈。
+        完整區塊鏈的所有區塊頭約需 60 MB（截至 2024 年）。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// SPV 驗證流程
+1. 下載所有區塊頭
+2. 驗證每個區塊頭的 PoW
+3. 驗證區塊頭形成連續的鏈
+4. 選擇累積工作量最大的鏈
+5. 驗證交易時，使用 Merkle 證明
+
+存儲需求:
+850,000 區塊 × 80 bytes ≈ 68 MB</code></pre>
+    </div>
+  </section>
+</ArticleLayout>

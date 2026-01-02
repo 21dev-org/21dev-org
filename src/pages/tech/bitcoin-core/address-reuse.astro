@@ -1,0 +1,222 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Address Reuse"
+  description="了解比特幣地址重用的隱私和安全風險，以及避免重用的最佳實踐。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Address Reuse' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Address Types', href: '/tech/bitcoin-core/addresses' }}
+  nextPage={{ title: 'Coinjoin', href: '/tech/bitcoin-core/coinjoin' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        地址重用是指多次使用同一個比特幣地址接收資金。這是一個常見但有害的做法，
+        會損害隱私並可能帶來安全風險。現代錢包應該為每筆交易生成新地址。
+      </p>
+
+      <h2>為什麼地址重用有害？</h2>
+
+      <h3>1. 隱私損害</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: Alice 公開捐款地址 bc1q...alice
+
+問題:
+- 任何人都可以查看該地址的所有交易
+- 可以追蹤 Alice 的總收入
+- 可以看到 Alice 何時花費資金
+- 可以關聯 Alice 的其他地址（通過找零）
+
+公開信息:
+├── 所有收到的捐款金額和時間
+├── 所有支出交易
+├── 當前餘額
+└── 關聯的找零地址</code></pre>
+
+      <h3>2. 交易圖分析</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>重用地址使鏈分析變得容易:
+
+交易 1: A → bc1q...reused → B
+交易 2: C → bc1q...reused → D
+交易 3: E → bc1q...reused → F
+
+分析者知道:
+- A, C, E 都是 "支付者"
+- B, D, F 都是 "收款者"
+- 所有交易屬於同一實體
+
+使用唯一地址:
+交易 1: A → bc1q...addr1 → B
+交易 2: C → bc1q...addr2 → D
+交易 3: E → bc1q...addr3 → F
+
+更難關聯這些交易</code></pre>
+
+      <h3>3. 理論安全風險</h3>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <p class="text-orange-800 dark:text-orange-200 mb-2">
+          <strong>公鑰暴露：</strong>
+        </p>
+        <ul class="text-orange-800 dark:text-orange-200 mb-0">
+          <li>首次花費時，公鑰會被暴露在區塊鏈上</li>
+          <li>未來量子計算機可能從公鑰推導私鑰</li>
+          <li>如果地址有剩餘資金，這些資金可能面臨風險</li>
+          <li>使用新地址意味著公鑰只在最後花費時暴露</li>
+        </ul>
+      </div>
+
+      <h2>HD 錢包如何幫助</h2>
+      <p>
+        階層確定性（HD）錢包可以從單個種子生成無限個地址：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>HD 錢包地址生成 (BIP-44/84/86):
+
+m/84'/0'/0'/0/0 → bc1q...addr0  (第 1 個接收地址)
+m/84'/0'/0'/0/1 → bc1q...addr1  (第 2 個接收地址)
+m/84'/0'/0'/0/2 → bc1q...addr2  (第 3 個接收地址)
+...
+
+找零地址:
+m/84'/0'/0'/1/0 → bc1q...change0
+m/84'/0'/0'/1/1 → bc1q...change1
+...
+
+優勢:
+- 只需備份一個種子短語
+- 可以生成任意多個地址
+- 每次交易使用新地址</code></pre>
+
+      <h2>Bitcoin Core 的行為</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># Bitcoin Core 默認避免地址重用
+
+# 獲取新的接收地址（每次調用返回不同地址）
+bitcoin-cli getnewaddress
+
+# 錢包自動:
+# 1. 追蹤已使用的地址
+# 2. 為找零生成新地址
+# 3. 從 keypool 分配新地址
+
+# 地址間隙限制（gap limit）
+# 默認向前查看 20 個未使用地址
+# 用於錢包恢復時發現所有資金
+
+# 查看地址使用情況
+bitcoin-cli listreceivedbyaddress 0 true</code></pre>
+
+      <h2>無法避免重用的情況</h2>
+      <p>
+        某些情況下地址重用難以避免：
+      </p>
+
+      <ul>
+        <li><strong>靜態捐款地址：</strong>網站上公開的固定地址</li>
+        <li><strong>交易所存款：</strong>某些交易所分配固定存款地址</li>
+        <li><strong>舊錢包：</strong>不支持 HD 的遺留錢包</li>
+        <li><strong>支付協議限制：</strong>某些商家系統的限制</li>
+      </ul>
+
+      <h3>替代方案</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 1. BIP-47 支付碼
+支付碼: PM8TJS2JxQ5ztXUpBBRnpTbcUXbUHy2T1tmP...
+
+- 公開發布支付碼
+- 發送者從支付碼派生唯一地址
+- 每次支付使用不同地址
+- 保護接收者隱私
+
+// 2. Silent Payments (BIP-352)
+靜默支付地址: sp1q...
+
+- 發送者計算唯一輸出地址
+- 接收者掃描區塊鏈找到支付
+- 無鏈上關聯
+
+// 3. LNURL
+使用閃電網路發票:
+- 每次支付生成新發票
+- 鏈上無隱私洩露</code></pre>
+
+      <h2>檢測地址重用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查地址是否被多次使用
+
+# 使用 Bitcoin Core
+bitcoin-cli listreceivedbyaddress 0 true | \
+  jq '.[] | select(.txids | length > 1)'
+
+# 返回被多次使用的地址列表
+
+# 使用區塊瀏覽器 API
+curl "https://blockstream.info/api/address/bc1q.../txs" | \
+  jq 'length'
+
+# 如果 > 1，表示地址被重用</code></pre>
+
+      <h2>找零地址管理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正確的找零處理:
+
+交易前:
+UTXO: bc1q...input (1.0 BTC)
+
+交易:
+輸入: bc1q...input (1.0 BTC)
+輸出:
+  - bc1q...recipient: 0.3 BTC (支付)
+  - bc1q...change: 0.6999 BTC (找零 - 新地址!)
+
+錯誤做法（重用發送地址作為找零）:
+輸出:
+  - bc1q...recipient: 0.3 BTC
+  - bc1q...input: 0.6999 BTC  ← 不要這樣做！
+
+問題:
+- 暴露了更多交易歷史
+- 觀察者可以追蹤資金流動</code></pre>
+
+      <h2>最佳實踐</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>使用 HD 錢包：</strong>確保錢包支持 BIP-32/44/84/86</li>
+          <li><strong>每次新地址：</strong>每筆收款使用新地址</li>
+          <li><strong>自動找零：</strong>讓錢包自動處理找零地址</li>
+          <li><strong>考慮 Silent Payments：</strong>靜態地址場景的解決方案</li>
+          <li><strong>使用閃電網路：</strong>小額支付更好的隱私</li>
+          <li><strong>定期整理 UTXO：</strong>使用 coin control 管理資金</li>
+        </ul>
+      </div>
+
+      <h2>企業和交易所</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易所存款地址處理:
+
+推薦做法:
+- 為每個用戶生成唯一存款地址
+- 使用 HD 派生為每次存款生成新地址
+- 定期輪換熱錢包地址
+
+實現:
+user_deposit_path = f"m/84'/0'/0'/0/{user_id}"
+或使用 xpub 派生
+
+提款處理:
+- 不要暴露提款來源地址
+- 使用 coin selection 優化隱私
+- 考慮 coinjoin 或支付批處理</code></pre>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,249 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Virtual Bytes"
+  description="了解比特幣的虛擬位元組（vbytes）和權重單位（weight units），以及 SegWit 折扣機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Virtual Bytes' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Block Weight', href: '/tech/bitcoin-core/block-weight' }}
+  nextPage={{ title: 'Transaction Fees', href: '/tech/bitcoin-core/fees' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Virtual Bytes（虛擬位元組，簡稱 vbytes 或 vB）是 SegWit 升級後用於計算
+        交易大小和手續費的單位。它提供了一種統一的方式來比較 SegWit 和傳統交易的「成本」。
+      </p>
+
+      <h2>為什麼需要 vbytes？</h2>
+      <p>
+        SegWit 引入了「見證折扣」，見證數據的權重只有非見證數據的 1/4。
+        這意味著相同的實際位元組數可能有不同的「有效大小」。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 之前:
+- 交易大小 = 實際位元組數
+- 區塊限制 = 1 MB (1,000,000 bytes)
+- 手續費率 = sat/byte
+
+SegWit 之後:
+- 權重 = 非見證數據 × 4 + 見證數據 × 1
+- 區塊限制 = 4 MWU (4,000,000 weight units)
+- vbytes = weight / 4
+- 手續費率 = sat/vB</code></pre>
+
+      <h2>Weight Units (WU)</h2>
+      <p>
+        Weight Units 是 SegWit 定義的基本計量單位：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 權重計算公式
+weight = (non_witness_size × 4) + (witness_size × 1)
+
+// 區塊權重限制
+MAX_BLOCK_WEIGHT = 4,000,000 WU
+
+// 示例: P2WPKH 交易
+non_witness_data:
+  - version: 4 bytes
+  - input count: 1 byte
+  - input (outpoint + scriptSig): 41 bytes
+  - output count: 1 byte
+  - output: 34 bytes
+  - locktime: 4 bytes
+  總計: 85 bytes → 340 WU
+
+witness_data:
+  - signature: ~72 bytes
+  - pubkey: 33 bytes
+  總計: ~107 bytes → 107 WU
+
+總權重: 340 + 107 = 447 WU</code></pre>
+
+      <h2>Virtual Bytes 計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// vbytes = ceiling(weight / 4)
+vbytes = (weight + 3) / 4  // 向上取整
+
+// 使用上面的例子
+vbytes = ceiling(447 / 4) = 112 vB
+
+// 對比實際大小
+actual_size = 85 + 107 = 192 bytes
+vbytes = 112 vB
+
+// SegWit 節省了 ~42% 的「有效大小」！</code></pre>
+
+      <h2>不同交易類型的比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">類型</th>
+                <th class="text-left py-2">實際大小</th>
+                <th class="text-left py-2">vbytes</th>
+                <th class="text-left py-2">節省</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2PKH (1-in, 2-out)</td>
+                <td class="py-2">~226 B</td>
+                <td class="py-2">~226 vB</td>
+                <td class="py-2">0%</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2SH-P2WPKH</td>
+                <td class="py-2">~167 B</td>
+                <td class="py-2">~134 vB</td>
+                <td class="py-2">~41%</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2WPKH (native)</td>
+                <td class="py-2">~141 B</td>
+                <td class="py-2">~110 vB</td>
+                <td class="py-2">~51%</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2TR (Taproot)</td>
+                <td class="py-2">~154 B</td>
+                <td class="py-2">~111 vB</td>
+                <td class="py-2">~51%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>手續費計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 手續費 = vbytes × fee_rate (sat/vB)
+
+示例:
+P2WPKH 交易: 110 vB
+費率: 10 sat/vB
+
+手續費 = 110 × 10 = 1,100 satoshis = 0.00001100 BTC
+
+// 與傳統交易比較
+P2PKH 交易: 226 vB
+手續費 = 226 × 10 = 2,260 satoshis
+
+// 使用 SegWit 節省: 1,160 satoshis (~51%)</code></pre>
+
+      <h2>為什麼見證數據有折扣？</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <p class="text-blue-800 dark:text-blue-200 mb-2">
+          <strong>設計理由：</strong>
+        </p>
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>UTXO 集成本：</strong>非見證數據創建 UTXO，需要永久存儲</li>
+          <li><strong>見證數據短暫：</strong>驗證後可以修剪，存儲成本較低</li>
+          <li><strong>激勵升級：</strong>鼓勵使用 SegWit 以獲得更低手續費</li>
+          <li><strong>容量增加：</strong>在保持兼容性的同時增加有效區塊容量</li>
+        </ul>
+      </div>
+
+      <h2>RPC 查詢</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取交易的大小信息
+bitcoin-cli getrawtransaction &lt;txid&gt; true
+{
+  ...
+  "size": 192,          // 實際位元組數
+  "vsize": 112,         // 虛擬位元組
+  "weight": 447,        // 權重單位
+  ...
+}
+
+# 解碼原始交易
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+
+# 獲取區塊的權重
+bitcoin-cli getblock &lt;blockhash&gt;
+{
+  ...
+  "size": 1234567,
+  "weight": 3998765,    // 接近 4M 限制
+  "strippedsize": 987654,  // 不含見證的大小
+  ...
+}</code></pre>
+
+      <h2>編程計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def calculate_vsize(tx_bytes, is_segwit=True):
+    """計算交易的 vsize"""
+    if not is_segwit:
+        # 傳統交易: vsize = size
+        return len(tx_bytes)
+
+    # 解析 SegWit 交易
+    # 找到見證數據的位置
+    non_witness_size = get_non_witness_size(tx_bytes)
+    witness_size = len(tx_bytes) - non_witness_size
+
+    # 計算權重
+    weight = (non_witness_size * 4) + witness_size
+
+    # 向上取整
+    vsize = (weight + 3) // 4
+    return vsize
+
+def estimate_fee(vsize, fee_rate):
+    """估算手續費（satoshis）"""
+    return vsize * fee_rate</code></pre>
+
+      <h2>常見誤解</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li>
+            <strong>誤：</strong>SegWit 區塊最大 4 MB<br/>
+            <strong>正：</strong>4 MWU ≈ 1-2 MB 實際數據（取決於見證比例）
+          </li>
+          <li>
+            <strong>誤：</strong>vbytes = bytes / 4<br/>
+            <strong>正：</strong>只有見證數據有折扣，非見證數據沒有
+          </li>
+          <li>
+            <strong>誤：</strong>傳統交易和 SegWit 交易大小相同<br/>
+            <strong>正：</strong>傳統交易的 vsize = size，無折扣
+          </li>
+        </ul>
+      </div>
+
+      <h2>區塊容量分析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 理論極限
+
+純非見證數據區塊（不可能）:
+max_size = 4,000,000 / 4 = 1,000,000 bytes = 1 MB
+
+純見證數據區塊（不可能）:
+max_size = 4,000,000 / 1 = 4,000,000 bytes = 4 MB
+
+實際混合區塊:
+典型 SegWit 區塊: 1.2 - 2.0 MB
+見證數據比例: 30-50%</code></pre>
+
+      <h2>最佳實踐</h2>
+
+      <ul>
+        <li><strong>使用原生 SegWit：</strong>P2WPKH/P2WSH 獲得最大折扣</li>
+        <li><strong>使用 Taproot：</strong>P2TR 提供類似的效率加上隱私優勢</li>
+        <li><strong>避免 P2SH-wrapped：</strong>嵌套 SegWit 折扣較低</li>
+        <li><strong>批量交易：</strong>合併多個支付以攤薄固定開銷</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

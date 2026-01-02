@@ -1,0 +1,268 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="TestMempoolAccept"
+  description="學習使用 testmempoolaccept RPC 在廣播前驗證交易是否會被 mempool 接受。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'TestMempoolAccept' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+  nextPage={{ title: 'Transaction Broadcast', href: '/tech/bitcoin-core/transaction-broadcast' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        testmempoolaccept 是 Bitcoin Core 提供的 RPC 命令，用於在不實際廣播交易的情況下
+        測試交易是否會被本地 mempool 接受。這對於交易驗證和調試非常有用。
+      </p>
+
+      <h2>基本用法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 測試單個交易
+bitcoin-cli testmempoolaccept '["&lt;raw_tx_hex&gt;"]'
+
+# 返回結果
+[
+  {
+    "txid": "abc123...",
+    "wtxid": "def456...",
+    "allowed": true,
+    "vsize": 141,
+    "fees": {
+      "base": 0.00001410
+    }
+  }
+]
+
+# 如果交易被拒絕
+[
+  {
+    "txid": "abc123...",
+    "wtxid": "def456...",
+    "allowed": false,
+    "reject-reason": "insufficient fee"
+  }
+]</code></pre>
+
+      <h2>測試交易包（Package）</h2>
+      <p>
+        從 Bitcoin Core 24.0 開始，支持測試交易包：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 測試 CPFP 交易包
+bitcoin-cli testmempoolaccept '[
+  "&lt;parent_tx_hex&gt;",
+  "&lt;child_tx_hex&gt;"
+]'
+
+# 返回結果包含 package 信息
+[
+  {
+    "txid": "parent_txid...",
+    "wtxid": "parent_wtxid...",
+    "allowed": true,
+    "vsize": 110,
+    "fees": {
+      "base": 0.00000110
+    }
+  },
+  {
+    "txid": "child_txid...",
+    "wtxid": "child_wtxid...",
+    "allowed": true,
+    "vsize": 141,
+    "fees": {
+      "base": 0.00002820,
+      "effective-feerate": 0.00011678,      // sat/vB
+      "effective-includes": ["parent_wtxid", "child_wtxid"]
+    }
+  }
+]</code></pre>
+
+      <h2>常見拒絕原因</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">reject-reason</th>
+                <th class="text-left py-2">說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">insufficient fee</td>
+                <td class="py-2">手續費低於 minrelaytxfee</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">mempool min fee not met</td>
+                <td class="py-2">mempool 已滿，費率不夠</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">txn-mempool-conflict</td>
+                <td class="py-2">與 mempool 中交易衝突</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">missing-inputs</td>
+                <td class="py-2">找不到輸入 UTXO</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">bad-txns-inputs-missingorspent</td>
+                <td class="py-2">輸入已被花費</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">too-long-mempool-chain</td>
+                <td class="py-2">超出祖先/後代限制</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">non-BIP68-final</td>
+                <td class="py-2">相對時間鎖未滿足</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">dust</td>
+                <td class="py-2">輸出低於灰塵限制</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">scriptpubkey</td>
+                <td class="py-2">非標準腳本類型</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>參數詳解</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>testmempoolaccept ["rawtx",...] ( maxfeerate )
+
+參數:
+1. rawtxs (array, required)
+   - 原始交易的 hex 字符串數組
+   - 可以是單個交易或交易包
+
+2. maxfeerate (numeric, optional, default=0.10)
+   - 最大可接受的費率 (BTC/kvB)
+   - 用於防止意外的高手續費
+   - 設為 0 表示不檢查
+
+# 示例: 限制費率為 0.001 BTC/kvB
+bitcoin-cli testmempoolaccept '["&lt;hex&gt;"]' 0.001</code></pre>
+
+      <h2>實際應用場景</h2>
+
+      <h3>1. 錢包交易驗證</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import requests
+import json
+
+def validate_transaction(raw_tx):
+    """在廣播前驗證交易"""
+    rpc_data = {
+        "jsonrpc": "1.0",
+        "method": "testmempoolaccept",
+        "params": [[raw_tx]],
+    }
+
+    response = requests.post(
+        "http://127.0.0.1:8332",
+        auth=("user", "password"),
+        json=rpc_data
+    )
+
+    result = response.json()["result"][0]
+
+    if result["allowed"]:
+        print(f"交易有效! vsize: {result['vsize']}")
+        print(f"手續費: {result['fees']['base']} BTC")
+        return True
+    else:
+        print(f"交易被拒絕: {result['reject-reason']}")
+        return False</code></pre>
+
+      <h3>2. 費率檢查</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查交易是否會因費率問題被拒絕
+
+# 獲取當前 mempool 最低費率
+bitcoin-cli getmempoolinfo
+{
+  ...
+  "mempoolminfee": 0.00001000,
+  "minrelaytxfee": 0.00001000,
+  ...
+}
+
+# 測試交易
+result=$(bitcoin-cli testmempoolaccept '["&lt;hex&gt;"]')
+
+# 檢查結果
+if echo "$result" | jq -e '.[0].allowed' > /dev/null; then
+    echo "交易會被接受"
+    echo "費率: $(echo "$result" | jq '.[0].fees.base / .[0].vsize * 100000000') sat/vB"
+else
+    echo "交易被拒絕: $(echo "$result" | jq -r '.[0]["reject-reason"]')"
+fi</code></pre>
+
+      <h3>3. RBF 測試</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 測試 RBF 替換交易
+
+# 原始交易已在 mempool 中
+# 創建替換交易（更高費率）
+
+# 測試替換交易
+bitcoin-cli testmempoolaccept '["&lt;replacement_tx_hex&gt;"]'
+
+# 如果返回 "txn-mempool-conflict"，
+# 需要確保:
+# 1. 原交易有 RBF 信號 (nSequence &lt; 0xfffffffe)
+# 2. 新交易費用足夠高
+# 3. 滿足 BIP-125 規則</code></pre>
+
+      <h2>與 submitpackage 的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># testmempoolaccept 是只讀的
+# submitpackage 會實際提交到 mempool
+
+# 工作流程
+1. testmempoolaccept 驗證
+2. 如果通過，使用 submitpackage 提交
+3. submitpackage 返回更詳細的結果
+
+# submitpackage 示例
+bitcoin-cli submitpackage '["&lt;parent&gt;", "&lt;child&gt;"]'</code></pre>
+
+      <h2>注意事項</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li><strong>時效性：</strong>mempool 狀態隨時變化，測試結果可能很快失效</li>
+          <li><strong>節點差異：</strong>不同節點可能有不同的 mempool 策略</li>
+          <li><strong>非共識：</strong>通過 testmempoolaccept 不保證被礦工打包</li>
+          <li><strong>費率波動：</strong>網路擁塞時最低費率會提高</li>
+        </ul>
+      </div>
+
+      <h2>調試技巧</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 啟用詳細日誌
+bitcoin-cli logging '["mempool"]'
+
+# 查看詳細的拒絕原因
+tail -f ~/.bitcoin/debug.log | grep -i "reject\|accept"
+
+# 檢查交易的具體問題
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+
+# 驗證輸入 UTXO 是否存在
+bitcoin-cli gettxout &lt;txid&gt; &lt;vout&gt;</code></pre>
+    </div>
+  </section>
+</ArticleLayout>

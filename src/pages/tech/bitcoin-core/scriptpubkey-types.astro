@@ -1,0 +1,320 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="ScriptPubKey Types"
+  description="了解比特幣中不同的 scriptPubKey 類型，從 P2PKH 到 P2TR 的演進。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'ScriptPubKey Types' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Script', href: '/tech/bitcoin-core/script' }}
+  nextPage={{ title: 'Witness Program', href: '/tech/bitcoin-core/witness-program' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        ScriptPubKey 定義了花費比特幣輸出所需的條件。隨著比特幣的發展，
+        出現了多種標準的 scriptPubKey 類型，每種都有其特點和用途。
+      </p>
+
+      <h2>標準類型概覽</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">類型</th>
+                <th class="text-left py-2">地址前綴</th>
+                <th class="text-left py-2">引入</th>
+                <th class="text-left py-2">狀態</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2PK</td>
+                <td class="py-2">無</td>
+                <td class="py-2">創世</td>
+                <td class="py-2">已棄用</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2PKH</td>
+                <td class="py-2">1...</td>
+                <td class="py-2">創世</td>
+                <td class="py-2">遺留</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2SH</td>
+                <td class="py-2">3...</td>
+                <td class="py-2">BIP-16</td>
+                <td class="py-2">遺留</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2WPKH</td>
+                <td class="py-2">bc1q...</td>
+                <td class="py-2">BIP-141</td>
+                <td class="py-2">推薦</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2WSH</td>
+                <td class="py-2">bc1q...</td>
+                <td class="py-2">BIP-141</td>
+                <td class="py-2">推薦</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2TR</td>
+                <td class="py-2">bc1p...</td>
+                <td class="py-2">BIP-341</td>
+                <td class="py-2">最新</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>P2PK (Pay to Public Key)</h2>
+      <p>
+        最早的輸出類型，直接使用公鑰：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+&lt;pubkey&gt; OP_CHECKSIG
+
+scriptSig:
+&lt;signature&gt;
+
+特點:
+- 創世區塊使用此類型
+- 公鑰直接暴露在輸出中
+- 沒有地址格式
+- 已不推薦使用
+
+大小: 35 或 67 bytes (壓縮/非壓縮公鑰)</code></pre>
+
+      <h2>P2PKH (Pay to Public Key Hash)</h2>
+      <p>
+        使用公鑰雜湊，提高隱私和安全性：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_DUP OP_HASH160 &lt;pubkey_hash&gt; OP_EQUALVERIFY OP_CHECKSIG
+
+scriptSig:
+&lt;signature&gt; &lt;pubkey&gt;
+
+地址格式: Base58Check
+前綴: 1 (mainnet), m/n (testnet)
+示例: 1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2
+
+特點:
+- 公鑰只在花費時暴露
+- 25 bytes scriptPubKey
+- 遺留格式，仍被廣泛支持</code></pre>
+
+      <h2>P2SH (Pay to Script Hash)</h2>
+      <p>
+        支持任意腳本，由 BIP-16 引入：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_HASH160 &lt;script_hash&gt; OP_EQUAL
+
+scriptSig:
+&lt;...script_args&gt; &lt;redeem_script&gt;
+
+地址格式: Base58Check
+前綴: 3 (mainnet), 2 (testnet)
+示例: 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy
+
+用途:
+- 多重簽名 (P2SH-Multisig)
+- 嵌套 SegWit (P2SH-P2WPKH, P2SH-P2WSH)
+- 任意複雜條件
+
+特點:
+- 23 bytes scriptPubKey
+- 複雜腳本的成本由花費者承擔</code></pre>
+
+      <h3>P2SH 多簽示例</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 2-of-3 多重簽名
+
+redeemScript:
+OP_2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; OP_3 OP_CHECKMULTISIG
+
+scriptPubKey:
+OP_HASH160 &lt;HASH160(redeemScript)&gt; OP_EQUAL
+
+scriptSig:
+OP_0 &lt;sig1&gt; &lt;sig2&gt; &lt;redeemScript&gt;</code></pre>
+
+      <h2>P2WPKH (Pay to Witness Public Key Hash)</h2>
+      <p>
+        原生 SegWit 單簽地址：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_0 &lt;20-byte pubkey_hash&gt;
+
+witness:
+&lt;signature&gt; &lt;pubkey&gt;
+
+地址格式: Bech32
+前綴: bc1q (mainnet), tb1q (testnet)
+示例: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+
+特點:
+- 22 bytes scriptPubKey
+- 簽名在 witness 中（有折扣）
+- 比 P2PKH 便宜約 40%
+- 原生 SegWit，最高效率</code></pre>
+
+      <h2>P2WSH (Pay to Witness Script Hash)</h2>
+      <p>
+        原生 SegWit 腳本雜湊：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_0 &lt;32-byte script_hash&gt;
+
+witness:
+&lt;...script_args&gt; &lt;witness_script&gt;
+
+地址格式: Bech32
+前綴: bc1q (mainnet，但更長)
+示例: bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3
+
+特點:
+- 34 bytes scriptPubKey
+- 使用 SHA256 (不是 HASH160)
+- 支持更複雜的腳本
+- 比 P2SH 更便宜（見證折扣）</code></pre>
+
+      <h2>P2TR (Pay to Taproot)</h2>
+      <p>
+        Taproot 輸出，支持 key path 和 script path：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_1 &lt;32-byte tweaked_pubkey&gt;
+
+// Key path spend (最常見)
+witness:
+&lt;schnorr_signature&gt;
+
+// Script path spend
+witness:
+&lt;...script_args&gt; &lt;script&gt; &lt;control_block&gt;
+
+地址格式: Bech32m
+前綴: bc1p (mainnet), tb1p (testnet)
+示例: bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr
+
+特點:
+- 34 bytes scriptPubKey
+- 單簽和多簽看起來相同
+- 最佳隱私和效率
+- 使用 Schnorr 簽名</code></pre>
+
+      <h2>嵌套 SegWit</h2>
+      <p>
+        為了向後兼容，SegWit 可以嵌套在 P2SH 中：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// P2SH-P2WPKH
+
+scriptPubKey:
+OP_HASH160 &lt;script_hash&gt; OP_EQUAL
+
+redeemScript (in scriptSig):
+OP_0 &lt;pubkey_hash&gt;
+
+witness:
+&lt;signature&gt; &lt;pubkey&gt;
+
+地址: 3... (看起來像普通 P2SH)
+
+// P2SH-P2WSH
+
+scriptPubKey:
+OP_HASH160 &lt;script_hash&gt; OP_EQUAL
+
+redeemScript:
+OP_0 &lt;witness_script_hash&gt;
+
+witness:
+&lt;...args&gt; &lt;witness_script&gt;
+
+注意: 嵌套 SegWit 折扣較低，不推薦新應用使用</code></pre>
+
+      <h2>識別 scriptPubKey 類型</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def identify_scriptpubkey(script_hex):
+    """識別 scriptPubKey 類型"""
+    script = bytes.fromhex(script_hex)
+
+    # P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
+    if len(script) == 25 and script[0:3] == b'\x76\xa9\x14' and script[23:25] == b'\x88\xac':
+        return "P2PKH"
+
+    # P2SH: OP_HASH160 <20 bytes> OP_EQUAL
+    if len(script) == 23 and script[0:2] == b'\xa9\x14' and script[22] == 0x87:
+        return "P2SH"
+
+    # P2WPKH: OP_0 <20 bytes>
+    if len(script) == 22 and script[0:2] == b'\x00\x14':
+        return "P2WPKH"
+
+    # P2WSH: OP_0 <32 bytes>
+    if len(script) == 34 and script[0:2] == b'\x00\x20':
+        return "P2WSH"
+
+    # P2TR: OP_1 <32 bytes>
+    if len(script) == 34 and script[0:2] == b'\x51\x20':
+        return "P2TR"
+
+    # P2PK: <pubkey> OP_CHECKSIG
+    if script[-1] == 0xac and len(script) in [35, 67]:
+        return "P2PK"
+
+    return "Unknown"</code></pre>
+
+      <h2>RPC 查詢</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 解碼交易查看 scriptPubKey 類型
+bitcoin-cli decoderawtransaction &lt;hex&gt; | jq '.vout[].scriptPubKey'
+{
+  "asm": "0 751e76e8199196d454941c45d1b3a323f1433bd6",
+  "desc": "addr(bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4)#8d3c7xwn",
+  "hex": "0014751e76e8199196d454941c45d1b3a323f1433bd6",
+  "address": "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
+  "type": "witness_v0_keyhash"
+}
+
+# 類型標識
+# - "pubkey": P2PK
+# - "pubkeyhash": P2PKH
+# - "scripthash": P2SH
+# - "witness_v0_keyhash": P2WPKH
+# - "witness_v0_scripthash": P2WSH
+# - "witness_v1_taproot": P2TR</code></pre>
+
+      <h2>選擇建議</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>新應用：</strong>使用 P2TR (Taproot) 獲得最佳隱私和效率</li>
+          <li><strong>廣泛兼容：</strong>使用 P2WPKH 原生 SegWit</li>
+          <li><strong>多簽錢包：</strong>使用 P2WSH 或 P2TR</li>
+          <li><strong>避免：</strong>P2PKH、P2SH（除非需要兼容舊系統）</li>
+          <li><strong>絕不使用：</strong>P2PK</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>
