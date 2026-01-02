@@ -1,0 +1,332 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="OP_CHECKLOCKTIMEVERIFY"
+  description="了解 OP_CLTV 絕對時間鎖操作碼，實現基於區塊高度或時間戳的交易鎖定。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'OP_CLTV' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'OP_CSV', href: '/tech/bitcoin-core/op-csv' }}
+  nextPage={{ title: 'Witness Commitment', href: '/tech/bitcoin-core/witness-commitment' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        OP_CHECKLOCKTIMEVERIFY (OP_CLTV) 是 BIP-65 引入的絕對時間鎖操作碼，
+        允許在腳本中強制執行 nLockTime，確保輸出在特定時間或區塊高度之前無法花費。
+      </p>
+
+      <h2>基本概念</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CLTV 功能:
+- 驗證交易的 nLockTime >= 腳本指定值
+- 確保交易在指定時間/高度之前無效
+- 與 nLockTime 協同工作
+
+使用場景:
+- 定時釋放資金
+- HTLC 超時機制
+- 繼承計劃
+- 支付通道超時
+
+// 操作碼編號: 0xb1 (177)
+// 原本是 OP_NOP2，軟分叉升級為 CLTV</code></pre>
+
+      <h2>時間類型</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nLockTime 有兩種模式:
+
+區塊高度模式 (值 < 500000000):
+- 值表示區塊高度
+- 交易在該高度之前無效
+- 例: 850000 表示區塊 850000
+
+Unix 時間戳模式 (值 >= 500000000):
+- 值表示 Unix 時間戳
+- 交易在該時間之前無效
+- 例: 1704067200 表示 2024-01-01 00:00:00 UTC
+
+// 分界值 500000000 大約對應 1985 年
+// 比特幣創始區塊是 2009 年，所以不會混淆
+
+重要: 腳本值和 nLockTime 必須使用相同類型</code></pre>
+
+      <h2>腳本示例</h2>
+
+      <h3>簡單時間鎖</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 在區塊 850000 之後才能花費
+&lt;850000&gt;
+OP_CHECKLOCKTIMEVERIFY
+OP_DROP
+&lt;pubkey&gt;
+OP_CHECKSIG
+
+// 執行流程:
+1. 推入 850000 到堆疊
+2. CLTV 檢查 nLockTime >= 850000
+3. 如果 nLockTime < 850000，交易無效
+4. DROP 移除堆疊頂部的 850000
+5. 正常簽名驗證
+
+// 花費此輸出的交易必須設置:
+// nLockTime >= 850000
+// nSequence < 0xFFFFFFFF (啟用 nLockTime)</code></pre>
+
+      <h3>Unix 時間戳鎖</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 2025-01-01 之後才能花費
+// Unix timestamp: 1735689600
+
+&lt;1735689600&gt;
+OP_CHECKLOCKTIMEVERIFY
+OP_DROP
+&lt;pubkey&gt;
+OP_CHECKSIG
+
+// 注意: 時間使用區塊的 MTP (Median Time Past)
+// 不是實際當前時間
+// MTP 是過去 11 個區塊時間戳的中位數</code></pre>
+
+      <h3>帶備用路徑的時間鎖</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 雙路徑: 立即多簽或延遲單簽
+OP_IF
+    // 路徑 A: 2-of-3 多簽可立即花費
+    2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; 3 OP_CHECKMULTISIG
+OP_ELSE
+    // 路徑 B: 單簽需要等待
+    &lt;850000&gt;
+    OP_CHECKLOCKTIMEVERIFY
+    OP_DROP
+    &lt;backup_pubkey&gt;
+    OP_CHECKSIG
+OP_ENDIF
+
+使用場景:
+- 正常情況使用多簽（公司支付）
+- 緊急情況等待後使用備用密鑰（繼承）</code></pre>
+
+      <h2>HTLC 中的應用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Hash Time Locked Contract
+
+OP_IF
+    // Hash 路徑: 知道原像可領取
+    OP_HASH160
+    &lt;payment_hash&gt;
+    OP_EQUALVERIFY
+    &lt;receiver_pubkey&gt;
+OP_ELSE
+    // 超時路徑: 超時後退款
+    &lt;timeout_block&gt;
+    OP_CHECKLOCKTIMEVERIFY
+    OP_DROP
+    &lt;sender_pubkey&gt;
+OP_ENDIF
+OP_CHECKSIG
+
+工作原理:
+1. 接收者知道 preimage 可以立即領取
+2. 如果接收者不領取，發送者超時後可退款
+3. 這是閃電網路跨鏈支付的基礎</code></pre>
+
+      <h2>驗證規則</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CLTV 驗證邏輯:
+
+1. 堆疊檢查
+   - 堆疊不能為空
+   - 頂部值不能為負數
+
+2. 類型一致性
+   - 腳本值 < 500000000 且 nLockTime < 500000000 (都是區塊)
+   - 腳本值 >= 500000000 且 nLockTime >= 500000000 (都是時間)
+   - 類型不匹配則失敗
+
+3. 值比較
+   - nLockTime >= 腳本值
+
+4. nSequence 檢查
+   - 輸入的 nSequence 不能是 0xFFFFFFFF
+   - 否則 nLockTime 被忽略
+
+// 偽代碼
+def verify_cltv(stack_top, tx):
+    if stack_top < 0:
+        return False
+
+    lock_time = tx.nLockTime
+
+    # 類型檢查
+    if (stack_top < 500000000) != (lock_time < 500000000):
+        return False
+
+    # 值檢查
+    if lock_time < stack_top:
+        return False
+
+    # 序列檢查
+    if tx.inputs[current_input].nSequence == 0xFFFFFFFF:
+        return False
+
+    return True</code></pre>
+
+      <h2>與 nLockTime 的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nLockTime 和 OP_CLTV 的區別:
+
+nLockTime (交易級別):
+- 交易字段
+- 可以被發送者任意設置
+- 對接收者沒有保證
+
+OP_CLTV (腳本級別):
+- 鎖定在輸出腳本中
+- 強制花費交易必須設置足夠的 nLockTime
+- 對接收者有密碼學保證
+
+示例:
+1. Alice 創建輸出: CLTV 850000 後才能花費
+2. Bob 想花費此輸出
+3. Bob 必須創建 nLockTime >= 850000 的交易
+4. 該交易在區塊 850000 之前無法被礦工確認
+5. Alice 獲得時間鎖保證</code></pre>
+
+      <h2>實際應用案例</h2>
+
+      <h3>支付通道超時</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡單支付通道退款機制
+
+資金鎖定腳本:
+OP_IF
+    // 雙方同意: 立即結算
+    2 &lt;alice_key&gt; &lt;bob_key&gt; 2 OP_CHECKMULTISIG
+OP_ELSE
+    // 超時: Alice 可以取回資金
+    &lt;timeout&gt;
+    OP_CHECKLOCKTIMEVERIFY
+    OP_DROP
+    &lt;alice_key&gt;
+    OP_CHECKSIG
+OP_ENDIF
+
+使用流程:
+1. Alice 鎖定 1 BTC 到通道
+2. Alice 和 Bob 可以隨時雙簽結算
+3. 如果 Bob 消失，Alice 等待超時後取回資金</code></pre>
+
+      <h3>繼承計劃</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 數字遺產規劃
+
+繼承腳本:
+OP_IF
+    // 所有者隨時可用
+    &lt;owner_pubkey&gt;
+    OP_CHECKSIG
+OP_ELSE
+    // 繼承人在 2 年後可用
+    &lt;two_years_later&gt;
+    OP_CHECKLOCKTIMEVERIFY
+    OP_DROP
+    &lt;heir_pubkey&gt;
+    OP_CHECKSIG
+OP_ENDIF
+
+運作方式:
+1. 所有者正常使用自己的密鑰
+2. 定期將資金移動到新的類似腳本（重置計時器）
+3. 如果所有者失能，繼承人等待 2 年後可取回
+4. "心跳機制" 證明所有者仍活躍</code></pre>
+
+      <h2>編程示例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python: 創建 CLTV 腳本
+
+from bitcoin.core.script import *
+import struct
+
+def create_cltv_script(locktime, pubkey):
+    """創建簡單 CLTV 腳本"""
+    return CScript([
+        locktime,
+        OP_CHECKLOCKTIMEVERIFY,
+        OP_DROP,
+        pubkey,
+        OP_CHECKSIG
+    ])
+
+def create_htlc_script(payment_hash, receiver_key, sender_key, timeout):
+    """創建 HTLC 腳本"""
+    return CScript([
+        OP_IF,
+            OP_HASH160,
+            payment_hash,
+            OP_EQUALVERIFY,
+            receiver_key,
+        OP_ELSE,
+            timeout,
+            OP_CHECKLOCKTIMEVERIFY,
+            OP_DROP,
+            sender_key,
+        OP_ENDIF,
+        OP_CHECKSIG
+    ])
+
+# 使用
+locktime = 850000
+script = create_cltv_script(locktime, pubkey)
+
+# 花費時設置交易
+tx.nLockTime = 850000
+tx.vin[0].nSequence = 0xFFFFFFFE  # 啟用 nLockTime</code></pre>
+
+      <h2>安全考量</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>類型一致：</strong>確保腳本和 nLockTime 使用相同類型</li>
+          <li><strong>MTP 延遲：</strong>時間模式使用 MTP，比實際時間晚約 1 小時</li>
+          <li><strong>nSequence：</strong>必須 &lt; 0xFFFFFFFF 才能啟用 nLockTime</li>
+          <li><strong>重放攻擊：</strong>時間鎖過後，舊簽名仍然有效</li>
+          <li><strong>區塊重組：</strong>高度可能因重組而改變</li>
+        </ul>
+      </div>
+
+      <h2>歷史背景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-65 歷史:
+
+2014 年: Peter Todd 提出 BIP-65
+2015 年 12 月: 軟分叉啟用 (區塊 388381)
+
+OP_NOP2 → OP_CHECKLOCKTIMEVERIFY:
+- 舊節點: 視為 NOP，不做任何事
+- 新節點: 強制執行時間鎖驗證
+- 向後兼容的軟分叉升級
+
+意義:
+- 首次在腳本層面支持時間鎖
+- 為閃電網路和智能合約奠定基礎
+- 證明了軟分叉升級 Script 的可行性</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>BIP-65：</strong>OP_CHECKLOCKTIMEVERIFY 規範</li>
+        <li><strong>nLockTime：</strong>交易級別的時間鎖</li>
+        <li><strong>OP_CSV：</strong>相對時間鎖（BIP-112）</li>
+        <li><strong>MTP：</strong>中位時間過去（BIP-113）</li>
+        <li><strong>HTLC：</strong>哈希時間鎖合約</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

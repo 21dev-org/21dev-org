@@ -1,0 +1,320 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Network Magic"
+  description="了解比特幣網路魔數（Magic Bytes）如何識別不同網路和消息。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Network Magic' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Witness Commitment', href: '/tech/bitcoin-core/witness-commitment' }}
+  nextPage={{ title: 'Chain Params', href: '/tech/bitcoin-core/chainparams' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        網路魔數（Network Magic）是比特幣 P2P 協議中的特殊字節序列，用於識別網路類型
+        和標記消息邊界。不同的比特幣網路使用不同的魔數以防止跨網路混淆。
+      </p>
+
+      <h2>魔數的作用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>網路魔數的用途:
+
+1. 網路識別
+   - 區分 Mainnet、Testnet、Signet 等
+   - 防止節點連接到錯誤網路
+   - 避免交易被發送到錯誤網路
+
+2. 消息分隔
+   - 標記 P2P 消息的開始
+   - 幫助解析數據流
+   - 從損壞的連接中恢復
+
+3. 協議版本
+   - 不同版本可能使用不同魔數
+   - 軟分叉兼容性
+
+// 魔數出現在每個 P2P 消息的開頭</code></pre>
+
+      <h2>各網路的魔數</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">網路</th>
+                <th class="text-left py-2">魔數 (Hex)</th>
+                <th class="text-left py-2">魔數 (Little Endian)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">Mainnet</td>
+                <td class="py-2 font-mono">0xF9BEB4D9</td>
+                <td class="py-2 font-mono">D9 B4 BE F9</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">Testnet3</td>
+                <td class="py-2 font-mono">0x0709110B</td>
+                <td class="py-2 font-mono">0B 11 09 07</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">Testnet4</td>
+                <td class="py-2 font-mono">0x1C163F28</td>
+                <td class="py-2 font-mono">28 3F 16 1C</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">Signet</td>
+                <td class="py-2 font-mono">0x0A03CF40</td>
+                <td class="py-2 font-mono">40 CF 03 0A</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">Regtest</td>
+                <td class="py-2 font-mono">0xFABFB5DA</td>
+                <td class="py-2 font-mono">DA B5 BF FA</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>P2P 消息結構</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>每個 P2P 消息的結構:
+
+┌─────────────────────────────────────────────────────────┐
+│ Header (24 bytes)                                       │
+├──────────────┬──────────┬──────────┬──────────────────┬┤
+│ magic (4)    │command(12)│size (4) │checksum (4)      │
+│ F9 BE B4 D9  │"version\0"│00 00 00 │ xx xx xx xx      │
+└──────────────┴──────────┴──────────┴──────────────────┴┘
+│ Payload (variable length)                              │
+│ ...                                                    │
+└────────────────────────────────────────────────────────┘
+
+Magic (4 bytes):
+- 網路識別符
+- Little Endian 格式
+
+Command (12 bytes):
+- ASCII 命令名稱
+- 用 \0 填充到 12 字節
+- 例: "version", "verack", "tx", "block"
+
+Size (4 bytes):
+- Payload 長度
+- Little Endian
+
+Checksum (4 bytes):
+- SHA256(SHA256(payload)) 的前 4 字節</code></pre>
+
+      <h2>消息示例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Mainnet 上的 "verack" 消息
+
+原始字節:
+F9 BE B4 D9  // Magic (Mainnet)
+76 65 72 61 63 6B 00 00 00 00 00 00  // "verack\0\0\0\0\0\0"
+00 00 00 00  // Size = 0 (無 payload)
+5D F6 E0 E2  // Checksum
+
+解析:
+- Magic: 0xD9B4BEF9 → Mainnet
+- Command: "verack"
+- Size: 0 bytes
+- Checksum: 0xE2E0F65D
+- Payload: (空)
+
+// "ping" 消息
+F9 BE B4 D9  // Magic
+70 69 6E 67 00 00 00 00 00 00 00 00  // "ping"
+08 00 00 00  // Size = 8
+xx xx xx xx  // Checksum
+yy yy yy yy yy yy yy yy  // 8 字節 nonce</code></pre>
+
+      <h2>魔數選擇的設計</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Mainnet 魔數 0xF9BEB4D9 的特點:
+
+1. 不太可能隨機出現
+   - 4 字節有 2^32 種可能
+   - 在隨機數據中出現概率 ~1/40億
+
+2. 與常見模式不同
+   - 不是 ASCII 可打印字符
+   - 不是常見文件頭
+
+3. 識別度高
+   - 在 hex dump 中容易看到
+   - 幫助調試網路問題
+
+// 為什麼不同網路用不同魔數？
+- 防止跨網路誤連
+- 主網節點不會連到測試網
+- 測試網交易不會影響主網</code></pre>
+
+      <h2>在代碼中的定義</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core chainparams.cpp
+
+// Mainnet
+pchMessageStart[0] = 0xf9;
+pchMessageStart[1] = 0xbe;
+pchMessageStart[2] = 0xb4;
+pchMessageStart[3] = 0xd9;
+
+// Testnet3
+pchMessageStart[0] = 0x0b;
+pchMessageStart[1] = 0x11;
+pchMessageStart[2] = 0x09;
+pchMessageStart[3] = 0x07;
+
+// Regtest
+pchMessageStart[0] = 0xfa;
+pchMessageStart[1] = 0xbf;
+pchMessageStart[2] = 0xb5;
+pchMessageStart[3] = 0xda;
+
+// 注意: 定義順序是發送順序 (Little Endian)
+// 所以 Mainnet 發送: F9 BE B4 D9</code></pre>
+
+      <h2>檢測與解析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 使用 Wireshark 抓取比特幣流量
+
+過濾器: tcp.port == 8333
+
+觀察:
+- 每個消息以 F9 BE B4 D9 開頭
+- 可以看到 version、verack、getaddr 等消息
+- 方便調試連接問題
+
+# 使用 Python 解析
+
+import struct
+
+MAINNET_MAGIC = b'\xf9\xbe\xb4\xd9'
+TESTNET_MAGIC = b'\x0b\x11\x09\x07'
+
+def parse_message(data):
+    if len(data) < 24:
+        return None
+
+    magic = data[:4]
+    command = data[4:16].rstrip(b'\x00').decode()
+    size = struct.unpack('<I', data[16:20])[0]
+    checksum = data[20:24]
+    payload = data[24:24+size]
+
+    return {
+        'magic': magic.hex(),
+        'command': command,
+        'size': size,
+        'checksum': checksum.hex(),
+        'payload': payload
+    }
+
+def identify_network(magic):
+    if magic == MAINNET_MAGIC:
+        return "Mainnet"
+    elif magic == TESTNET_MAGIC:
+        return "Testnet3"
+    else:
+        return "Unknown"</code></pre>
+
+      <h2>區塊文件中的魔數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊文件 (blk*.dat) 也使用魔數:
+
+文件結構:
+┌──────────────────┐
+│ Magic (4 bytes)  │  F9 BE B4 D9
+│ Size (4 bytes)   │  區塊大小
+│ Block Data       │  完整區塊
+├──────────────────┤
+│ Magic (4 bytes)  │  F9 BE B4 D9
+│ Size (4 bytes)   │  區塊大小
+│ Block Data       │  完整區塊
+├──────────────────┤
+│ ...              │
+└──────────────────┘
+
+用途:
+- 識別區塊邊界
+- 允許跳過損壞的區塊
+- 驗證文件完整性
+
+# 檢查區塊文件
+hexdump -C ~/.bitcoin/blocks/blk00000.dat | head
+# 應該看到 f9 be b4 d9 開頭</code></pre>
+
+      <h2>安全考量</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>網路隔離：</strong>不同網路的魔數不同，防止跨網路混淆</li>
+          <li><strong>消息驗證：</strong>配合 checksum 確保消息完整性</li>
+          <li><strong>協議識別：</strong>幫助防火牆識別比特幣流量</li>
+          <li><strong>錯誤恢復：</strong>從損壞的數據流中重新同步</li>
+        </ul>
+      </div>
+
+      <h2>其他加密貨幣的魔數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>一些分叉幣的網路魔數:
+
+Bitcoin Cash: 0xE3E1F3E8
+Litecoin:     0xFBC0B6DB
+Dogecoin:     0xC0C0C0C0
+Zcash:        0x24E92764
+
+設計要點:
+- 與比特幣不同以防止混淆
+- 分叉幣通常選擇新的魔數
+- 幫助錢包和節點區分網路
+
+// 如果魔數相同會發生什麼？
+- 節點可能連接到錯誤網路
+- 交易可能被發送到錯誤鏈
+- 造成資金損失風險</code></pre>
+
+      <h2>實用命令</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看當前網路
+bitcoin-cli getblockchaininfo | jq '.chain'
+
+# 不同網路的默認端口
+Mainnet:  8333
+Testnet:  18333
+Signet:   38333
+Regtest:  18444
+
+# 手動連接時指定網路
+bitcoin-cli -testnet getblockchaininfo
+bitcoin-cli -signet getblockchaininfo
+bitcoin-cli -regtest getblockchaininfo
+
+# 配置文件指定
+# bitcoin.conf
+testnet=1
+# 或
+signet=1</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>P2P Protocol：</strong>比特幣節點間的通訊協議</li>
+        <li><strong>Chain Params：</strong>網路參數配置</li>
+        <li><strong>Test Networks：</strong>測試網路環境</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

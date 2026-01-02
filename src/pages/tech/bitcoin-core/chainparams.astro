@@ -1,0 +1,389 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Chain Params"
+  description="了解比特幣的鏈參數配置，包括共識規則、網路設置和創世區塊定義。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Chain Params' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Network Magic', href: '/tech/bitcoin-core/network-magic' }}
+  nextPage={{ title: 'Test Networks', href: '/tech/bitcoin-core/test-networks' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        鏈參數（Chain Parameters）定義了比特幣網路的核心配置，包括共識規則、
+        地址格式、創世區塊、軟分叉啟用高度等。不同網路（Mainnet、Testnet、Regtest）
+        有不同的參數配置。
+      </p>
+
+      <h2>參數類別</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>鏈參數主要分類:
+
+1. 共識參數 (Consensus)
+   - 區塊大小限制
+   - 難度調整週期
+   - 區塊獎勵減半間隔
+   - 軟分叉啟用高度
+
+2. 網路參數 (Network)
+   - P2P 端口
+   - 網路魔數
+   - DNS Seeds
+   - 協議版本
+
+3. 地址參數 (Address)
+   - 地址前綴
+   - Bech32 HRP
+   - 私鑰版本號
+
+4. 創世區塊 (Genesis)
+   - 區塊雜湊
+   - Merkle Root
+   - 時間戳
+   - nBits / nNonce</code></pre>
+
+      <h2>Mainnet 參數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 主網核心參數
+
+共識參數:
+nSubsidyHalvingInterval = 210000    // 減半週期（區塊）
+powLimit = 0x00000000ffffffff...    // 最小難度
+nPowTargetTimespan = 14 * 24 * 60 * 60  // 2 週
+nPowTargetSpacing = 10 * 60         // 10 分鐘目標間隔
+fPowAllowMinDifficultyBlocks = false
+fPowNoRetargeting = false
+
+軟分叉啟用高度:
+BIP34Height = 227931    // Coinbase 高度
+BIP65Height = 388381    // OP_CLTV
+BIP66Height = 363725    // 嚴格 DER 簽名
+CSVHeight = 419328      // OP_CSV + BIP-68
+SegwitHeight = 481824   // SegWit
+TaprootHeight = 709632  // Taproot
+
+網路參數:
+pchMessageStart = {0xf9, 0xbe, 0xb4, 0xd9}
+nDefaultPort = 8333
+nPruneAfterHeight = 100000
+
+地址前綴:
+base58Prefixes[PUBKEY_ADDRESS] = 0     // 1...
+base58Prefixes[SCRIPT_ADDRESS] = 5     // 3...
+base58Prefixes[SECRET_KEY] = 128       // 5, K, L
+bech32_hrp = "bc"                      // bc1...</code></pre>
+
+      <h2>Testnet 參數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Testnet3 參數（與主網的差異）
+
+共識差異:
+fPowAllowMinDifficultyBlocks = true   // 允許最小難度區塊
+// 20 分鐘無區塊後可使用最小難度
+
+軟分叉啟用高度:
+BIP34Height = 21111
+BIP65Height = 581885
+BIP66Height = 330776
+CSVHeight = 770112
+SegwitHeight = 834624
+
+網路參數:
+pchMessageStart = {0x0b, 0x11, 0x09, 0x07}
+nDefaultPort = 18333
+
+地址前綴:
+base58Prefixes[PUBKEY_ADDRESS] = 111  // m 或 n
+base58Prefixes[SCRIPT_ADDRESS] = 196  // 2...
+base58Prefixes[SECRET_KEY] = 239      // 9 或 c
+bech32_hrp = "tb"                     // tb1...
+
+創世區塊:
+hashGenesisBlock = 000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943</code></pre>
+
+      <h2>Signet 參數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Signet 特殊設計
+
+Signet 特點:
+- 需要授權簽名才能出塊
+- 可預測的區塊生產
+- 適合測試閃電網路等應用
+
+共識參數:
+fPowAllowMinDifficultyBlocks = false
+// 使用簽名而非 PoW
+
+簽名驗證:
+challenge = OP_TRUE  // 默認 Signet
+// 自定義 Signet 可設置不同的 challenge
+
+網路參數:
+pchMessageStart = {0x0a, 0x03, 0xcf, 0x40}
+nDefaultPort = 38333
+bech32_hrp = "tb"  // 與 Testnet 相同
+
+啟動 Signet:
+bitcoin-cli -signet getblockchaininfo
+
+自定義 Signet:
+signetchallenge=5121...  # 自定義 challenge 腳本</code></pre>
+
+      <h2>Regtest 參數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Regtest (Regression Test) 參數
+
+特點:
+- 本地測試網路
+- 可以即時生成區塊
+- 難度始終最低
+- 完全本地控制
+
+共識參數:
+nSubsidyHalvingInterval = 150        // 快速減半（測試用）
+powLimit = 0x7fffffff...             // 極低難度
+fPowAllowMinDifficultyBlocks = true
+fPowNoRetargeting = true             // 不調整難度
+
+軟分叉:
+// Regtest 中所有軟分叉從創世區塊啟用
+BIP34Height = 1
+SegwitHeight = 0
+// 這允許立即測試所有功能
+
+網路參數:
+pchMessageStart = {0xfa, 0xbf, 0xb5, 0xda}
+nDefaultPort = 18444
+bech32_hrp = "bcrt"  // bcrt1...
+
+使用:
+bitcoin-cli -regtest generatetoaddress 101 &lt;address&gt;</code></pre>
+
+      <h2>創世區塊</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 主網創世區塊
+
+區塊頭:
+Version: 1
+hashPrevBlock: 0000000000000000000000000000000000000000000000000000000000000000
+hashMerkleRoot: 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+Time: 1231006505 (2009-01-03 18:15:05 UTC)
+Bits: 0x1d00ffff
+Nonce: 2083236893
+
+區塊雜湊:
+000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+
+Coinbase 消息:
+"The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+
+特點:
+- 第一個區塊，沒有父區塊
+- Coinbase 輸出無法花費（特殊情況）
+- 包含著名的報紙標題
+- 時間戳證明創建時間</code></pre>
+
+      <h2>難度調整參數</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 難度調整算法參數
+
+主網:
+nPowTargetTimespan = 14 * 24 * 60 * 60  // 2 週 = 1209600 秒
+nPowTargetSpacing = 10 * 60             // 10 分鐘 = 600 秒
+
+計算:
+調整週期 = nPowTargetTimespan / nPowTargetSpacing
+         = 1209600 / 600
+         = 2016 區塊
+
+難度調整公式:
+new_target = old_target * actual_time / nPowTargetTimespan
+
+限制:
+- 最大增加 4 倍
+- 最大減少 4 倍
+- 防止難度劇烈波動
+
+// Testnet 特殊規則
+如果 20 分鐘沒有新區塊:
+- 允許使用最小難度
+- 下一個正常區塊恢復難度</code></pre>
+
+      <h2>地址版本字節</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">類型</th>
+                <th class="text-left py-2">Mainnet</th>
+                <th class="text-left py-2">Testnet</th>
+                <th class="text-left py-2">前綴</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2PKH</td>
+                <td class="py-2 font-mono">0x00</td>
+                <td class="py-2 font-mono">0x6F</td>
+                <td class="py-2">1... / m,n...</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2SH</td>
+                <td class="py-2 font-mono">0x05</td>
+                <td class="py-2 font-mono">0xC4</td>
+                <td class="py-2">3... / 2...</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">WIF</td>
+                <td class="py-2 font-mono">0x80</td>
+                <td class="py-2 font-mono">0xEF</td>
+                <td class="py-2">5,K,L / 9,c</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">BIP32 xpub</td>
+                <td class="py-2 font-mono">0x0488B21E</td>
+                <td class="py-2 font-mono">0x043587CF</td>
+                <td class="py-2">xpub / tpub</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">BIP32 xprv</td>
+                <td class="py-2 font-mono">0x0488ADE4</td>
+                <td class="py-2 font-mono">0x04358394</td>
+                <td class="py-2">xprv / tprv</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">Bech32</td>
+                <td class="py-2 font-mono">bc</td>
+                <td class="py-2 font-mono">tb</td>
+                <td class="py-2">bc1... / tb1...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>DNS Seeds</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 節點發現的 DNS Seeds
+
+主網 DNS Seeds:
+seed.bitcoin.sipa.be          // Pieter Wuille
+dnsseed.bluematt.me           // Matt Corallo
+dnsseed.bitcoin.dashjr.org    // Luke-Jr
+seed.bitcoinstats.com         // Christian Decker
+seed.bitcoin.jonasschnelli.ch // Jonas Schnelli
+seed.btc.petertodd.org        // Peter Todd
+seed.bitcoin.sprovoost.nl     // Sjors Provoost
+dnsseed.emzy.de               // Emzy
+seed.bitcoin.wiz.biz          // Jason Maurice
+
+工作原理:
+1. 新節點查詢 DNS Seeds
+2. 獲取活躍節點的 IP 地址列表
+3. 連接到這些節點
+4. 通過 addr 消息發現更多節點
+
+# 測試 DNS Seed
+nslookup seed.bitcoin.sipa.be</code></pre>
+
+      <h2>在代碼中訪問</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core C++ 代碼
+
+#include "chainparams.h"
+
+// 獲取當前鏈參數
+const CChainParams& params = Params();
+
+// 訪問共識參數
+int halving = params.GetConsensus().nSubsidyHalvingInterval;
+int64_t spacing = params.GetConsensus().nPowTargetSpacing;
+
+// 訪問網路參數
+uint16_t port = params.GetDefaultPort();
+CMessageHeader::MessageStartChars magic = params.MessageStart();
+
+// 訪問地址參數
+std::string hrp = params.Bech32HRP();
+std::vector<unsigned char> prefix = params.Base58Prefix(PUBKEY_ADDRESS);
+
+// 選擇網路
+SelectParams(CBaseChainParams::MAIN);      // 主網
+SelectParams(CBaseChainParams::TESTNET);   // 測試網
+SelectParams(CBaseChainParams::SIGNET);    // Signet
+SelectParams(CBaseChainParams::REGTEST);   // Regtest</code></pre>
+
+      <h2>自定義參數（Signet/Regtest）</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 創建自定義 Signet
+
+# 1. 生成簽名密鑰
+bitcoin-cli -regtest getnewaddress
+
+# 2. 創建 challenge 腳本
+# OP_1 <pubkey>
+signetchallenge=5121...
+
+# 3. 啟動自定義 Signet
+bitcoind -signet -signetchallenge=5121...
+
+# Regtest 自定義區塊獎勵
+# 在 chainparams.cpp 中修改
+
+# 自定義難度
+# 修改 powLimit 和相關參數
+
+// 自定義鏈的使用場景:
+// - 私有測試環境
+// - 企業內部鏈
+// - 特定研究目的</code></pre>
+
+      <h2>參數檢查</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看當前網路參數
+bitcoin-cli getblockchaininfo
+
+{
+  "chain": "main",
+  "blocks": 850000,
+  "headers": 850000,
+  "bestblockhash": "...",
+  "difficulty": 83148355189239.77,
+  "time": 1719360000,
+  "mediantime": 1719356789,
+  "softforks": {
+    "bip34": {"type": "buried", "active": true, "height": 227931},
+    "bip66": {"type": "buried", "active": true, "height": 363725},
+    "bip65": {"type": "buried", "active": true, "height": 388381},
+    "csv": {"type": "buried", "active": true, "height": 419328},
+    "segwit": {"type": "buried", "active": true, "height": 481824},
+    "taproot": {"type": "buried", "active": true, "height": 709632}
+  }
+}
+
+# 驗證地址屬於哪個網路
+bitcoin-cli validateaddress bc1q...  # 主網
+bitcoin-cli -testnet validateaddress tb1q...  # 測試網</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Network Magic：</strong>網路識別魔數</li>
+        <li><strong>Genesis Block：</strong>創世區塊</li>
+        <li><strong>Test Networks：</strong>測試網路</li>
+        <li><strong>Soft Fork Activation：</strong>軟分叉啟用</li>
+        <li><strong>Difficulty Adjustment：</strong>難度調整</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

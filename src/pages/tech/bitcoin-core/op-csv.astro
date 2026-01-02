@@ -1,0 +1,359 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="OP_CHECKSEQUENCEVERIFY"
+  description="了解 OP_CSV 相對時間鎖操作碼，實現基於區塊數或時間的交易延遲。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'OP_CSV' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'nSequence', href: '/tech/bitcoin-core/nsequence' }}
+  nextPage={{ title: 'OP_CLTV', href: '/tech/bitcoin-core/op-cltv' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        OP_CHECKSEQUENCEVERIFY (OP_CSV) 是 BIP-112 引入的相對時間鎖操作碼，
+        允許腳本驗證輸入的 nSequence 值，實現相對於交易確認時間的延遲機制。
+        這是閃電網路等二層協議的關鍵基礎設施。
+      </p>
+
+      <h2>基本概念</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CSV vs OP_CLTV:
+
+OP_CHECKLOCKTIMEVERIFY (CLTV):
+- 絕對時間鎖
+- "這筆交易在區塊 850000 之後才能花費"
+- "這筆交易在 2025-01-01 之後才能花費"
+
+OP_CHECKSEQUENCEVERIFY (CSV):
+- 相對時間鎖
+- "這筆交易在輸入被確認後 144 個區塊才能花費"
+- "這筆交易在輸入被確認後 1 天才能花費"
+
+關鍵區別:
+- CLTV: 基於絕對時間/高度
+- CSV: 基於輸入 UTXO 確認後的相對時間</code></pre>
+
+      <h2>BIP-68 和 BIP-112</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-68: nSequence 的相對時間鎖語義
+- 定義 nSequence 如何編碼相對時間鎖
+- 共識層面的強制執行
+
+BIP-112: OP_CHECKSEQUENCEVERIFY
+- 腳本層面的相對時間鎖驗證
+- 允許在腳本中檢查 nSequence
+
+BIP-113: 中位時間過去 (MTP)
+- 使用過去 11 個區塊的中位時間
+- 防止礦工操縱時間戳
+
+// 三個 BIP 共同啟用於 2016 年 7 月
+// 軟分叉高度: 419328</code></pre>
+
+      <h2>nSequence 編碼</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nSequence 是 32 位整數:
+
+位元 31 (禁用標誌):
+  0 = 啟用相對時間鎖
+  1 = 禁用相對時間鎖
+
+位元 22 (類型標誌):
+  0 = 區塊數
+  1 = 時間（512 秒為單位）
+
+位元 0-15 (值):
+  區塊數: 0 - 65535 區塊
+  時間: 0 - 65535 × 512 秒 ≈ 388 天
+
+// 編碼格式
+┌────┬────────────┬────┬────────────────┐
+│ 31 │ 30-23      │ 22 │ 21-16 │ 15-0  │
+│禁用│ 保留(必須0)│類型│ 保留  │ 值    │
+└────┴────────────┴────┴────────────────┘
+
+// 範例
+0x00000090 = 144 區塊 (約 1 天)
+0x00400090 = 144 × 512 秒 = 73728 秒 ≈ 20.5 小時</code></pre>
+
+      <h2>腳本示例</h2>
+
+      <h3>基本相對時間鎖</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 144 區塊（約 1 天）後才能花費
+OP_144
+OP_CHECKSEQUENCEVERIFY
+OP_DROP
+&lt;pubkey&gt;
+OP_CHECKSIG
+
+// 執行流程:
+1. 推入 144 到堆疊
+2. CSV 檢查 nSequence >= 144
+3. 如果檢查失敗，交易無效
+4. DROP 移除堆疊頂部的 144
+5. 正常的簽名驗證</code></pre>
+
+      <h3>閃電網路承諾交易</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 本地輸出（to_local）腳本
+OP_IF
+    // 撤銷路徑：對方可以使用撤銷密鑰立即花費
+    &lt;revocationpubkey&gt;
+OP_ELSE
+    // 延遲路徑：自己需要等待後才能花費
+    &lt;to_self_delay&gt;
+    OP_CHECKSEQUENCEVERIFY
+    OP_DROP
+    &lt;local_delayedpubkey&gt;
+OP_ENDIF
+OP_CHECKSIG
+
+// to_self_delay 典型值: 144 區塊（1 天）
+// 這給對方時間來廣播撤銷交易</code></pre>
+
+      <h3>HTLC (Hash Time Locked Contract)</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// HTLC 腳本示例
+OP_IF
+    // Hash 路徑：知道 preimage 可以立即領取
+    OP_HASH160 &lt;payment_hash&gt; OP_EQUALVERIFY
+    &lt;remote_htlcpubkey&gt;
+OP_ELSE
+    // 超時路徑：超時後退款
+    &lt;cltv_expiry&gt;
+    OP_CHECKLOCKTIMEVERIFY
+    OP_DROP
+    &lt;local_htlcpubkey&gt;
+OP_ENDIF
+OP_CHECKSIG
+
+// 結合 CSV 的二階段 HTLC
+// 第一階段使用 CLTV
+// 第二階段使用 CSV</code></pre>
+
+      <h2>時間類型比較</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 區塊數 vs 時間
+
+區塊數模式 (位元 22 = 0):
+優點:
+- 更可預測
+- 不受時間戳操縱影響
+- 適合需要精確區塊數的場景
+
+缺點:
+- 區塊時間可能變化
+- 144 區塊可能是 20-30 小時
+
+時間模式 (位元 22 = 1):
+優點:
+- 更接近實際時間
+- 適合需要特定時間延遲的場景
+
+缺點:
+- 精度只有 512 秒
+- 受 MTP 規則影響
+
+// 閃電網路使用區塊數模式</code></pre>
+
+      <h2>驗證規則</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CSV 驗證邏輯:
+
+1. 檢查堆疊頂部值
+   - 如果 < 0，失敗
+   - 如果 > 0x80000000，視為禁用
+
+2. 檢查類型匹配
+   - 腳本值和 nSequence 必須使用相同類型
+   - 都是區塊數，或都是時間
+
+3. 檢查值
+   - nSequence 的值必須 >= 腳本值
+
+4. 檢查 nSequence 禁用位
+   - 如果 nSequence 禁用相對鎖，失敗
+
+// 偽代碼
+def verify_csv(stack_value, nSequence):
+    if stack_value < 0:
+        return False
+    if stack_value & 0x80000000:  # 禁用位設置
+        return True  # 跳過檢查
+
+    # 類型必須匹配
+    stack_type = stack_value & 0x00400000
+    seq_type = nSequence & 0x00400000
+    if stack_type != seq_type:
+        return False
+
+    # 值比較
+    stack_masked = stack_value & 0x0000FFFF
+    seq_masked = nSequence & 0x0000FFFF
+    return seq_masked >= stack_masked</code></pre>
+
+      <h2>與交易版本的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 交易版本要求
+
+BIP-68 相對時間鎖只在交易版本 >= 2 時啟用
+
+版本 1 交易:
+- nSequence 不強制執行相對時間鎖
+- 仍可用於 RBF 信號
+
+版本 2 交易:
+- nSequence 強制執行相對時間鎖
+- 這是現代錢包的默認版本
+
+// 檢查
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+{
+  "version": 2,  // 必須 >= 2
+  "vin": [{
+    "sequence": 144  // 相對時間鎖生效
+  }]
+}</code></pre>
+
+      <h2>實際應用</h2>
+
+      <h3>閃電網路通道</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>閃電網路使用 CSV 的場景:
+
+1. 承諾交易 to_local 輸出
+   - 防止單方面關閉後立即提款
+   - 給對方時間廣播懲罰交易
+
+2. HTLC 超時路徑
+   - 二階段超時機制
+   - 先 CLTV 再 CSV
+
+3. 錨點輸出
+   - 允許手續費調整
+   - 使用 CSV 延遲
+
+典型延遲值:
+- to_self_delay: 144-2016 區塊
+- 由通道參數協商決定</code></pre>
+
+      <h3>保管庫 (Vault)</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡單保管庫設計
+// 提款需要兩步，中間有延遲
+
+解鎖腳本:
+OP_IF
+    // 緊急恢復路徑（需要多簽）
+    2 &lt;key1&gt; &lt;key2&gt; &lt;key3&gt; 3 OP_CHECKMULTISIG
+OP_ELSE
+    // 正常提款路徑（需要延遲）
+    &lt;144&gt;
+    OP_CHECKSEQUENCEVERIFY
+    OP_DROP
+    &lt;hot_key&gt;
+    OP_CHECKSIG
+OP_ENDIF
+
+使用流程:
+1. 發起提款交易（廣播到網路）
+2. 等待 144 區塊確認
+3. 如果發現異常，使用緊急路徑取消
+4. 正常情況下，延遲後完成提款</code></pre>
+
+      <h2>程式實現</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python: 編碼相對時間鎖
+
+def encode_sequence_blocks(blocks):
+    """編碼區塊數相對時間鎖"""
+    if blocks < 0 or blocks > 0xFFFF:
+        raise ValueError("Invalid block count")
+    return blocks  # 類型位為 0
+
+def encode_sequence_time(seconds):
+    """編碼時間相對時間鎖"""
+    if seconds < 0:
+        raise ValueError("Invalid time")
+    # 轉換為 512 秒單位
+    units = (seconds + 511) // 512  # 向上取整
+    if units > 0xFFFF:
+        raise ValueError("Time too large")
+    return 0x00400000 | units  # 設置類型位
+
+def decode_sequence(seq):
+    """解碼 nSequence"""
+    if seq & 0x80000000:
+        return {"disabled": True}
+
+    is_time = bool(seq & 0x00400000)
+    value = seq & 0x0000FFFF
+
+    if is_time:
+        return {
+            "type": "time",
+            "seconds": value * 512,
+            "human": f"{value * 512 / 3600:.1f} hours"
+        }
+    else:
+        return {
+            "type": "blocks",
+            "blocks": value,
+            "human": f"~{value * 10 / 60:.1f} hours"
+        }
+
+# 使用示例
+print(encode_sequence_blocks(144))  # 144
+print(encode_sequence_time(86400))  # 0x004000A8 (1天)</code></pre>
+
+      <h2>安全考量</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>類型混淆：</strong>確保腳本和 nSequence 使用相同類型</li>
+          <li><strong>版本檢查：</strong>交易版本必須 >= 2</li>
+          <li><strong>禁用位：</strong>注意 nSequence 禁用位的處理</li>
+          <li><strong>最大值：</strong>相對鎖最大約 388 天</li>
+          <li><strong>MTP：</strong>時間模式使用中位時間，非實際時間</li>
+        </ul>
+      </div>
+
+      <h2>與 RBF 的互動</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nSequence 的多重用途
+
+nSequence < 0xFFFFFFFE:
+- 啟用 RBF（可替換）
+- 如果版本 >= 2，也啟用相對時間鎖
+
+nSequence = 0xFFFFFFFE:
+- 禁用 RBF
+- 但仍啟用 nLockTime
+
+nSequence = 0xFFFFFFFF:
+- 禁用 RBF
+- 禁用 nLockTime
+
+// 相對時間鎖值通常遠小於這些值
+// 所以同時啟用 RBF 和相對鎖</code></pre>
+
+      <h2>相關 BIP</h2>
+
+      <ul>
+        <li><strong>BIP-68：</strong>nSequence 相對時間鎖共識規則</li>
+        <li><strong>BIP-112：</strong>OP_CHECKSEQUENCEVERIFY 操作碼</li>
+        <li><strong>BIP-113：</strong>中位時間過去 (MTP) 用於時間鎖</li>
+        <li><strong>BIP-65：</strong>OP_CHECKLOCKTIMEVERIFY（絕對時間鎖）</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
