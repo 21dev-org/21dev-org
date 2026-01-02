@@ -1,0 +1,271 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Witness Program"
+  description="深入了解 SegWit 見證程式的結構、版本和執行規則。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Witness Program' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'SegWit', href: '/tech/bitcoin-core/segwit' }}
+  nextPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Witness Program（見證程式）是 SegWit 輸出的核心組成部分。它定義了如何驗證
+        花費該輸出的見證數據。不同版本的見證程式支持不同的功能。
+      </p>
+
+      <h2>見證程式結構</h2>
+      <p>
+        見證程式由版本號和數據組成：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey 格式:
+[version] [witness_program]
+
+version: OP_0 到 OP_16 (0-16)
+witness_program: 2-40 bytes
+
+示例:
+v0 P2WPKH: OP_0 [20-byte pubkey_hash]
+v0 P2WSH:  OP_0 [32-byte script_hash]
+v1 Taproot: OP_1 [32-byte tweaked_pubkey]</code></pre>
+
+      <h2>版本 0：P2WPKH 和 P2WSH</h2>
+
+      <h3>P2WPKH（Pay to Witness Public Key Hash）</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_0 [20-byte hash160(pubkey)]
+
+witness:
+[signature] [pubkey]
+
+驗證過程:
+1. 檢查 witness 有 2 個元素
+2. 構建隱式腳本: OP_DUP OP_HASH160 &lt;hash&gt; OP_EQUALVERIFY OP_CHECKSIG
+3. 用 witness 數據執行腳本
+
+地址格式: bc1q... (bech32)</code></pre>
+
+      <h3>P2WSH（Pay to Witness Script Hash）</h3>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_0 [32-byte sha256(script)]
+
+witness:
+[...script_args] [script]
+
+驗證過程:
+1. 取 witness 最後一個元素作為 script
+2. 檢查 SHA256(script) == witness_program
+3. 用其他 witness 元素執行 script
+
+地址格式: bc1q... (bech32, 更長)</code></pre>
+
+      <h2>版本 1：Taproot</h2>
+      <p>
+        Taproot（BIP-341）引入了版本 1 見證程式：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+OP_1 [32-byte tweaked_pubkey]
+
+// Key path spend (僅簽名)
+witness:
+[schnorr_signature]
+
+// Script path spend
+witness:
+[...script_args] [script] [control_block]
+
+control_block:
+[leaf_version | parity] [internal_pubkey] [merkle_path...]
+
+地址格式: bc1p... (bech32m)</code></pre>
+
+      <h2>見證程式驗證規則</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>bool VerifyWitnessProgram(
+    const CScriptWitness& witness,
+    int witversion,
+    const std::vector<unsigned char>& program,
+    unsigned int flags,
+    const BaseSignatureChecker& checker,
+    ScriptError* serror
+) {
+    if (witversion == 0) {
+        if (program.size() == 20) {
+            // P2WPKH
+            if (witness.stack.size() != 2) {
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+            }
+            // 構建並執行 P2PKH 腳本
+            CScript scriptPubKey;
+            scriptPubKey << OP_DUP << OP_HASH160 << program
+                         << OP_EQUALVERIFY << OP_CHECKSIG;
+            return ExecuteWitnessScript(witness.stack, scriptPubKey, ...);
+        }
+        else if (program.size() == 32) {
+            // P2WSH
+            if (witness.stack.empty()) {
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_EMPTY);
+            }
+            // 驗證腳本雜湊
+            const std::vector<unsigned char>& script = witness.stack.back();
+            if (SHA256(script) != program) {
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+            }
+            return ExecuteWitnessScript(witness.stack, CScript(script), ...);
+        }
+        return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WRONG_LENGTH);
+    }
+    else if (witversion == 1) {
+        // Taproot (BIP-341)
+        if (program.size() == 32) {
+            return VerifyTaprootCommitment(witness, program, ...);
+        }
+        return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WRONG_LENGTH);
+    }
+    else if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM) {
+        // 拒絕未知版本（可升級性）
+        return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM);
+    }
+
+    // 未知版本，任何人可花費（軟分叉升級空間）
+    return true;
+}</code></pre>
+
+      <h2>嵌套 SegWit（P2SH-Wrapped）</h2>
+      <p>
+        為了向後兼容，見證程式可以嵌套在 P2SH 中：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// P2SH-P2WPKH
+scriptPubKey: OP_HASH160 [20-byte hash] OP_EQUAL
+redeemScript: OP_0 [20-byte pubkey_hash]
+witness: [signature] [pubkey]
+
+// 地址格式: 3... (傳統 P2SH 格式)
+
+// 驗證過程:
+1. P2SH 驗證: HASH160(redeemScript) == hash
+2. redeemScript 是見證程式，觸發 SegWit 驗證
+3. 按 v0 P2WPKH 規則驗證 witness</code></pre>
+
+      <h2>見證版本升級</h2>
+      <p>
+        見證程式設計支持軟分叉升級：
+      </p>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">版本</th>
+                <th class="text-left py-2">狀態</th>
+                <th class="text-left py-2">用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">v0</td>
+                <td class="py-2">已啟用</td>
+                <td class="py-2">P2WPKH, P2WSH</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">v1</td>
+                <td class="py-2">已啟用</td>
+                <td class="py-2">Taproot</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">v2-v16</td>
+                <td class="py-2">保留</td>
+                <td class="py-2">未來升級</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <p class="text-blue-800 dark:text-blue-200 mb-0">
+          <strong>軟分叉機制：</strong>舊節點將未知版本視為「任何人可花費」，
+          因此新規則可以通過軟分叉添加，無需所有節點升級。
+        </p>
+      </div>
+
+      <h2>創建見證輸出</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+
+def create_p2wpkh_script(pubkey_bytes):
+    """創建 P2WPKH 輸出腳本"""
+    pubkey_hash = hash160(pubkey_bytes)
+    return bytes([0x00, 0x14]) + pubkey_hash  # OP_0 PUSH20
+
+def create_p2wsh_script(witness_script):
+    """創建 P2WSH 輸出腳本"""
+    script_hash = hashlib.sha256(witness_script).digest()
+    return bytes([0x00, 0x20]) + script_hash  # OP_0 PUSH32
+
+def create_p2tr_script(tweaked_pubkey):
+    """創建 Taproot 輸出腳本"""
+    return bytes([0x51, 0x20]) + tweaked_pubkey  # OP_1 PUSH32
+
+def hash160(data):
+    """RIPEMD160(SHA256(data))"""
+    sha = hashlib.sha256(data).digest()
+    ripemd = hashlib.new('ripemd160', sha).digest()
+    return ripemd</code></pre>
+
+      <h2>RPC 查詢</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 解碼地址
+bitcoin-cli validateaddress bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+# 返回 witness_version 和 witness_program
+
+# 獲取交易詳情
+bitcoin-cli getrawtransaction &lt;txid&gt; true | jq '.vout[].scriptPubKey'
+
+# 創建 SegWit 地址
+bitcoin-cli getnewaddress "" bech32    # v0
+bitcoin-cli getnewaddress "" bech32m   # v1 (Taproot)</code></pre>
+
+      <h2>腳本執行環境</h2>
+      <p>
+        不同見證版本有不同的腳本執行規則：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// v0 見證程式
+- 使用 BIP-143 簽名雜湊
+- 腳本大小限制: 10,000 bytes
+- 堆棧元素限制: 520 bytes
+- SigOps 按見證規則計算
+
+// v1 Taproot
+- 使用 BIP-341 簽名雜湊 (tagged hash)
+- Schnorr 簽名 (64 bytes，無 sighash 標誌時)
+- 腳本路徑使用 Tapscript (BIP-342)
+- OP_SUCCESS 操作碼 (未來升級)
+- 更高效的批量驗證</code></pre>
+
+      <h2>安全考慮</h2>
+
+      <ul>
+        <li><strong>程式長度：</strong>v0 必須是 20 或 32 bytes，否則無效</li>
+        <li><strong>P2WPKH 驗證：</strong>必須恰好提供 2 個 witness 元素</li>
+        <li><strong>腳本雜湊：</strong>P2WSH 使用 SHA256（不是 HASH160）以防止長度擴展攻擊</li>
+        <li><strong>壓縮公鑰：</strong>v0 要求使用壓縮格式的公鑰</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

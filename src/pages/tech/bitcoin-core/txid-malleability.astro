@@ -1,0 +1,214 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Transaction Malleability"
+  description="了解交易可延展性問題，它如何影響比特幣應用，以及 SegWit 如何解決這個問題。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'TX Malleability' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'WTXID', href: '/tech/bitcoin-core/wtxid' }}
+  nextPage={{ title: 'SegWit', href: '/tech/bitcoin-core/segwit' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Transaction Malleability（交易可延展性）是指第三方可以在不使交易無效的情況下
+        修改交易的 TXID。這個問題曾經困擾比特幣多年，直到 SegWit 才徹底解決。
+      </p>
+
+      <h2>什麼是可延展性？</h2>
+      <p>
+        在 SegWit 之前，TXID 是對整個交易（包括簽名）進行雜湊計算得出的。
+        由於 ECDSA 簽名有多種有效表示形式，任何人都可以修改簽名的格式而不改變其有效性。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>原始交易
+├── inputs
+│   └── scriptSig: [signature] [pubkey]  ← 可被修改
+├── outputs
+└── TXID = hash(整個交易) ← 因此改變
+
+修改後的交易
+├── inputs
+│   └── scriptSig: [modified_signature] [pubkey]
+├── outputs（相同）
+└── TXID = 不同的雜湊值</code></pre>
+
+      <h2>可延展性的來源</h2>
+
+      <h3>1. ECDSA 簽名的 S 值</h3>
+      <p>
+        ECDSA 簽名包含 (r, s) 兩個值。對於每個有效的 s，(n - s) 也是有效的
+        （其中 n 是曲線的階）。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// ECDSA 簽名的兩種形式
+signature = (r, s)
+signature' = (r, n - s)  // 同樣有效！
+
+// BIP-146 要求低 S 值
+if (s > order / 2) {
+    s = order - s;
+}
+
+// secp256k1 曲線的階
+n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141</code></pre>
+
+      <h3>2. DER 編碼變異</h3>
+      <p>
+        簽名使用 DER 編碼，而 DER 允許一些不同的表示方式：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 標準 DER 編碼
+30 44  // SEQUENCE, length
+  02 20 [32 bytes r]
+  02 20 [32 bytes s]
+
+// 可能的變異
+// - 前導零的添加/移除
+// - 長度欄位的不同編碼
+// - 負數表示的處理</code></pre>
+
+      <h3>3. scriptSig 的額外數據</h3>
+      <p>
+        可以在 scriptSig 中添加額外的操作碼而不影響驗證：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 原始
+scriptSig: [sig] [pubkey]
+
+// 添加 OP_NOP 不影響結果
+scriptSig: OP_NOP [sig] [pubkey]
+
+// 或添加 OP_DROP
+scriptSig: &lt;junk_data&gt; OP_DROP [sig] [pubkey]</code></pre>
+
+      <h2>實際影響</h2>
+
+      <h3>Mt. Gox 事件</h3>
+      <p>
+        2014 年，Mt. Gox 交易所聲稱由於交易可延展性攻擊損失了大量比特幣。
+        攻擊者修改了提款交易的 TXID，使交易所的系統認為交易失敗，從而重複發送。
+      </p>
+
+      <h3>閃電網路的挑戰</h3>
+      <p>
+        在 SegWit 之前，建立可靠的支付通道非常困難：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 開通通道的理想流程
+1. Alice 和 Bob 創建資金交易 (funding_tx)
+2. 在廣播前，創建退款交易，引用 funding_tx 的 TXID
+3. 廣播 funding_tx
+
+// 可延展性問題
+如果第三方修改了 funding_tx 的簽名：
+- funding_tx 的 TXID 改變
+- 退款交易變得無效（引用了錯誤的 TXID）
+- Alice 和 Bob 可能永久失去資金</code></pre>
+
+      <h2>SegWit 的解決方案</h2>
+      <p>
+        SegWit（隔離見證）將簽名數據從 TXID 計算中移除：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 傳統交易
+TXID = hash(version + inputs + outputs + locktime)
+       ↑ inputs 包含 scriptSig（簽名）
+
+// SegWit 交易
+TXID = hash(version + inputs + outputs + locktime)
+       ↑ inputs 的 scriptSig 為空，簽名在 witness 中
+
+witness 數據不參與 TXID 計算</code></pre>
+
+      <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg my-6">
+        <p class="text-green-800 dark:text-green-200 mb-0">
+          <strong>第三方不可延展：</strong>由於簽名不在 TXID 計算範圍內，第三方無法
+          通過修改簽名來改變 TXID。這使得支付通道和其他依賴 TXID 的應用成為可能。
+        </p>
+      </div>
+
+      <h2>相關 BIP</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <ul class="space-y-2 mb-0">
+          <li><strong>BIP-62：</strong>處理可延展性（已撤回，被 SegWit 取代）</li>
+          <li><strong>BIP-66：</strong>嚴格 DER 簽名</li>
+          <li><strong>BIP-141：</strong>隔離見證（共識層）</li>
+          <li><strong>BIP-143：</strong>交易簽名驗證的 v0 見證程式</li>
+          <li><strong>BIP-146：</strong>低 S 值和 NULLDUMMY</li>
+          <li><strong>BIP-147：</strong>NULLDUMMY 軟分叉</li>
+        </ul>
+      </div>
+
+      <h2>軟分叉修復</h2>
+      <p>
+        在 SegWit 之前，Bitcoin Core 通過軟分叉逐步解決了部分可延展性問題：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// BIP-66: 嚴格 DER 簽名（2015 年 7 月啟用）
+// 強制使用標準 DER 編碼
+
+// BIP-146: 低 S 值
+// 要求 S 值小於 order/2
+SCRIPT_VERIFY_LOW_S
+
+// BIP-147: NULLDUMMY
+// CHECKMULTISIG 的虛擬元素必須為空
+SCRIPT_VERIFY_NULLDUMMY</code></pre>
+
+      <h2>剩餘的可延展性</h2>
+      <p>
+        即使在 SegWit 之後，交易創建者仍然可以修改自己的交易：
+      </p>
+
+      <ul>
+        <li><strong>自身可延展：</strong>簽名者可以重新簽名，產生不同的 WTXID</li>
+        <li><strong>腳本可延展：</strong>某些腳本條件允許不同的滿足方式</li>
+      </ul>
+
+      <p>
+        但這些不構成安全問題，因為只有交易創建者能做這些修改。
+      </p>
+
+      <h2>驗證規則</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core 的驗證標誌
+enum {
+    SCRIPT_VERIFY_STRICTENC = (1U << 1),      // 嚴格編碼
+    SCRIPT_VERIFY_DERSIG = (1U << 2),         // 嚴格 DER
+    SCRIPT_VERIFY_LOW_S = (1U << 3),          // 低 S 值
+    SCRIPT_VERIFY_NULLDUMMY = (1U << 4),      // 空虛擬元素
+    SCRIPT_VERIFY_WITNESS = (1U << 11),       // 驗證見證
+    SCRIPT_VERIFY_WITNESS_PUBKEYTYPE = (1U << 15), // 壓縮公鑰
+};
+
+// 標準交易必須通過所有檢查
+unsigned int STANDARD_SCRIPT_VERIFY_FLAGS =
+    SCRIPT_VERIFY_STRICTENC |
+    SCRIPT_VERIFY_DERSIG |
+    SCRIPT_VERIFY_LOW_S |
+    SCRIPT_VERIFY_NULLDUMMY |
+    SCRIPT_VERIFY_WITNESS;</code></pre>
+
+      <h2>歷史意義</h2>
+      <p>
+        交易可延展性問題的解決是比特幣發展史上的重要里程碑：
+      </p>
+
+      <ul>
+        <li>使閃電網路成為可能</li>
+        <li>提高了交易追蹤的可靠性</li>
+        <li>為更複雜的智能合約鋪平道路</li>
+        <li>展示了軟分叉升級的可行性</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

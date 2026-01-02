@@ -1,0 +1,302 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Compact Serialization"
+  description="深入了解比特幣的緊湊序列化格式，包括 CompactSize、VarInt 和其他編碼方式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Compact Serialization' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Transaction', href: '/tech/bitcoin-core/transaction' }}
+  nextPage={{ title: 'Block Structure', href: '/tech/bitcoin-core/block-structure' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        比特幣使用多種緊湊序列化格式來減少數據大小。理解這些格式對於解析原始交易
+        和區塊數據至關重要。
+      </p>
+
+      <h2>CompactSize (VarInt)</h2>
+      <p>
+        CompactSize 是比特幣中最常見的可變長度整數編碼。它用於表示交易中的
+        輸入/輸出數量、腳本長度等。
+      </p>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <h4 class="text-lg font-semibold mb-4">編碼規則</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">值範圍</th>
+                <th class="text-left py-2">格式</th>
+                <th class="text-left py-2">位元組數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">0 - 252</td>
+                <td class="py-2">[value]</td>
+                <td class="py-2">1</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">253 - 0xFFFF</td>
+                <td class="py-2">[0xFD][value LE16]</td>
+                <td class="py-2">3</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">0x10000 - 0xFFFFFFFF</td>
+                <td class="py-2">[0xFE][value LE32]</td>
+                <td class="py-2">5</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">0x100000000 - 0xFFFFFFFFFFFFFFFF</td>
+                <td class="py-2">[0xFF][value LE64]</td>
+                <td class="py-2">9</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 編碼示例
+100      -> [0x64]                           // 1 byte
+255      -> [0xFD][0xFF][0x00]               // 3 bytes
+65535    -> [0xFD][0xFF][0xFF]               // 3 bytes
+70000    -> [0xFE][0x70][0x11][0x01][0x00]   // 5 bytes
+
+// C++ 實現
+void WriteCompactSize(std::vector<unsigned char>& data, uint64_t nSize)
+{
+    if (nSize < 253) {
+        data.push_back(nSize);
+    } else if (nSize <= 0xFFFF) {
+        data.push_back(0xFD);
+        WriteLE16(data, nSize);
+    } else if (nSize <= 0xFFFFFFFF) {
+        data.push_back(0xFE);
+        WriteLE32(data, nSize);
+    } else {
+        data.push_back(0xFF);
+        WriteLE64(data, nSize);
+    }
+}</code></pre>
+
+      <h2>Python 解碼範例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def read_compact_size(stream):
+    """從位元組流讀取 CompactSize"""
+    first = stream.read(1)[0]
+
+    if first < 253:
+        return first
+    elif first == 253:
+        return int.from_bytes(stream.read(2), 'little')
+    elif first == 254:
+        return int.from_bytes(stream.read(4), 'little')
+    else:  # 255
+        return int.from_bytes(stream.read(8), 'little')
+
+def write_compact_size(value):
+    """將整數編碼為 CompactSize"""
+    if value < 253:
+        return bytes([value])
+    elif value <= 0xFFFF:
+        return bytes([0xFD]) + value.to_bytes(2, 'little')
+    elif value <= 0xFFFFFFFF:
+        return bytes([0xFE]) + value.to_bytes(4, 'little')
+    else:
+        return bytes([0xFF]) + value.to_bytes(8, 'little')</code></pre>
+
+      <h2>交易序列化</h2>
+      <p>
+        交易使用 CompactSize 來表示可變長度欄位：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Transaction 序列化:
+├── version (4 bytes, LE)
+├── [marker=0x00, flag=0x01]  // SegWit only
+├── input_count (CompactSize)
+├── inputs[]
+│   ├── prev_txid (32 bytes)
+│   ├── prev_vout (4 bytes, LE)
+│   ├── script_length (CompactSize)
+│   ├── scriptSig (variable)
+│   └── sequence (4 bytes, LE)
+├── output_count (CompactSize)
+├── outputs[]
+│   ├── value (8 bytes, LE)
+│   ├── script_length (CompactSize)
+│   └── scriptPubKey (variable)
+├── witness[] (SegWit only)
+│   └── per input:
+│       ├── item_count (CompactSize)
+│       └── items[]
+│           ├── item_length (CompactSize)
+│           └── item_data (variable)
+└── locktime (4 bytes, LE)</code></pre>
+
+      <h2>nBits (Compact Target)</h2>
+      <p>
+        區塊頭中的難度目標使用特殊的緊湊格式：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nBits 格式
+// [exponent (1 byte)][coefficient (3 bytes)]
+
+// 轉換公式
+target = coefficient × 256^(exponent - 3)
+
+// 示例: nBits = 0x1d00ffff (創世區塊)
+exponent = 0x1d = 29
+coefficient = 0x00ffff
+target = 0x00ffff × 256^(29-3)
+       = 0x00000000ffff0000000000000000000000000000000000000000000000000000
+
+// Python 實現
+def nbits_to_target(nbits):
+    exponent = nbits >> 24
+    coefficient = nbits & 0x007fffff
+
+    if exponent <= 3:
+        target = coefficient >> (8 * (3 - exponent))
+    else:
+        target = coefficient << (8 * (exponent - 3))
+
+    # 處理負數標誌
+    if nbits & 0x00800000:
+        target = -target
+
+    return target</code></pre>
+
+      <h2>Compact Block Short IDs</h2>
+      <p>
+        BIP-152 使用 6 位元組的短 ID 來表示交易：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 短 ID 計算
+short_id = SipHash-2-4(k0, k1, wtxid) & 0xffffffffffff
+
+// k0, k1 來自區塊頭和 nonce
+key = SHA256(block_header || nonce)
+k0 = key[0:8]
+k1 = key[8:16]
+
+// 這允許用 6 bytes 代替 32 bytes 的 txid
+// 在大多數情況下不會發生碰撞</code></pre>
+
+      <h2>Script 數字編碼</h2>
+      <p>
+        比特幣腳本使用特殊的數字表示法：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 小整數優化
+OP_0         -> 0
+OP_1..OP_16  -> 1..16
+OP_1NEGATE   -> -1
+
+// 一般整數 (Script Number)
+// 最小編碼，小端序，符號位在最高位
+
+0      -> []            // 空
+1      -> [0x01]
+127    -> [0x7f]
+128    -> [0x80, 0x00]  // 需要額外字節避免負數解釋
+255    -> [0xff, 0x00]
+256    -> [0x00, 0x01]
+-1     -> [0x81]
+-127   -> [0xff]
+-128   -> [0x80, 0x80]
+
+// Python 實現
+def encode_script_number(n):
+    if n == 0:
+        return b''
+
+    negative = n < 0
+    n = abs(n)
+    result = []
+
+    while n:
+        result.append(n & 0xff)
+        n >>= 8
+
+    if result[-1] & 0x80:
+        result.append(0x80 if negative else 0x00)
+    elif negative:
+        result[-1] |= 0x80
+
+    return bytes(result)</code></pre>
+
+      <h2>Bech32 五位元編碼</h2>
+      <p>
+        Bech32 地址使用 5-bit 分組：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 8-bit 到 5-bit 轉換
+// 每 8 個 bytes 變成 13 個 5-bit 值
+
+def convertbits(data, frombits, tobits):
+    acc = 0
+    bits = 0
+    result = []
+    maxv = (1 << tobits) - 1
+
+    for value in data:
+        acc = (acc << frombits) | value
+        bits += frombits
+        while bits >= tobits:
+            bits -= tobits
+            result.append((acc >> bits) & maxv)
+
+    if bits:
+        result.append((acc << (tobits - bits)) & maxv)
+
+    return result
+
+// 示例
+witness_program = bytes.fromhex("751e76e8...")
+five_bit = convertbits(witness_program, 8, 5)</code></pre>
+
+      <h2>PSBT 鍵值編碼</h2>
+      <p>
+        PSBT（BIP-174）使用鍵值對格式：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>PSBT 結構:
+├── magic: "psbt" + 0xff
+├── global_map
+│   └── key-value pairs
+├── per_input_maps[]
+│   └── key-value pairs
+└── per_output_maps[]
+    └── key-value pairs
+
+每個 key-value pair:
+├── key_length (CompactSize)
+├── key_type (1 byte)
+├── key_data (variable)
+├── value_length (CompactSize)
+└── value_data (variable)
+
+map 結束符: 0x00</code></pre>
+
+      <h2>常見陷阱</h2>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
+          <li><strong>位元組序：</strong>大多數值是小端序（Little Endian），但雜湊值顯示為大端序</li>
+          <li><strong>非規範編碼：</strong>CompactSize 應使用最小編碼，否則可能被拒絕</li>
+          <li><strong>符號處理：</strong>Script 數字使用符號-量值表示法</li>
+          <li><strong>長度限制：</strong>某些欄位有最大長度限制（如腳本 10,000 bytes）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</ArticleLayout>

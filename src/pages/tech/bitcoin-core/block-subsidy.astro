@@ -1,0 +1,193 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Subsidy"
+  description="深入了解 Bitcoin 區塊獎勵機制，包括減半時程、獎勵計算和總供應量。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Subsidy' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Coinbase Transaction', href: '/tech/bitcoin-core/coinbase-transaction' }}
+  nextPage={{ title: 'Difficulty Adjustment', href: '/tech/bitcoin-core/difficulty' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Block Subsidy（區塊補貼）是礦工挖出新區塊時獲得的比特幣獎勵。這個機制確保了比特幣的
+        發行是可預測的，並且總量永遠不會超過 2100 萬枚。
+      </p>
+
+      <h2>發行機制</h2>
+      <p>
+        比特幣的區塊獎勵遵循一個簡單而優雅的規則：每 210,000 個區塊（約 4 年），獎勵減半。
+        這個機制被稱為「減半」（Halving）。
+      </p>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <h4 class="text-lg font-semibold mb-4">減半時程</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">區塊高度</th>
+                <th class="text-left py-2">日期</th>
+                <th class="text-left py-2">獎勵</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">0</td>
+                <td class="py-2">2009-01-03</td>
+                <td class="py-2">50 BTC</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">210,000</td>
+                <td class="py-2">2012-11-28</td>
+                <td class="py-2">25 BTC</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">420,000</td>
+                <td class="py-2">2016-07-09</td>
+                <td class="py-2">12.5 BTC</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">630,000</td>
+                <td class="py-2">2020-05-11</td>
+                <td class="py-2">6.25 BTC</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">840,000</td>
+                <td class="py-2">2024-04-20</td>
+                <td class="py-2">3.125 BTC</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">1,050,000</td>
+                <td class="py-2">~2028</td>
+                <td class="py-2">1.5625 BTC</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>獎勵計算</h2>
+      <p>
+        區塊獎勵的計算非常直接：初始獎勵除以 2 的 n 次方，其中 n 是已經發生的減半次數。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core 中的獎勵計算
+CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
+{
+    int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+
+    // 超過 64 次減半後獎勵為 0
+    if (halvings >= 64)
+        return 0;
+
+    CAmount nSubsidy = 50 * COIN;
+    // 右移運算等同於除以 2 的 n 次方
+    nSubsidy >>= halvings;
+
+    return nSubsidy;
+}</code></pre>
+
+      <h2>總供應量計算</h2>
+      <p>
+        由於減半機制，比特幣的總供應量是一個收斂的幾何級數：
+      </p>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <pre class="text-sm overflow-x-auto"><code is:raw>總量 = 210,000 × (50 + 25 + 12.5 + 6.25 + ...)
+     = 210,000 × 50 × (1 + 1/2 + 1/4 + 1/8 + ...)
+     = 210,000 × 50 × 2
+     = 21,000,000 BTC</code></pre>
+      </div>
+
+      <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
+        <p class="text-orange-800 dark:text-orange-200 mb-0">
+          <strong>精確數字：</strong>由於比特幣使用整數運算（聰，1 BTC = 100,000,000 聰），
+          實際總量會略少於 2100 萬：20,999,999.9769 BTC。
+        </p>
+      </div>
+
+      <h2>礦工總收入</h2>
+      <p>
+        礦工的總收入由兩部分組成：
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>礦工收入 = Block Subsidy + Transaction Fees
+
+// 驗證規則
+if (block.coinbase_output_value > subsidy + total_fees) {
+    return REJECT;  // 礦工不能多拿
+}</code></pre>
+
+      <p>
+        隨著區塊獎勵逐漸減少，交易手續費將成為礦工的主要收入來源。
+        預計到 2140 年左右，區塊獎勵將變得微不足道。
+      </p>
+
+      <h2>成熟期要求</h2>
+      <p>
+        Coinbase 交易的輸出需要等待 100 個區塊確認後才能被花費。這個規則防止了
+        因區塊鏈重組而導致的問題。
+      </p>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 共識參數
+static const int COINBASE_MATURITY = 100;
+
+// 驗證邏輯
+bool CheckInputs(const CTransaction& tx, TxValidationState& state)
+{
+    for (const auto& input : tx.vin) {
+        if (input.prevout.IsCoinBase()) {
+            if (nSpendHeight - input.prevout.nHeight < COINBASE_MATURITY) {
+                return state.Invalid(TxValidationResult::TX_PREMATURE_SPEND);
+            }
+        }
+    }
+    return true;
+}</code></pre>
+
+      <h2>經濟影響</h2>
+      <p>
+        區塊獎勵減半對比特幣經濟有深遠影響：
+      </p>
+
+      <ul>
+        <li><strong>通縮性質：</strong>供應量增長率持續下降，趨近於零</li>
+        <li><strong>礦工收入：</strong>每次減半都會影響礦工的盈利能力</li>
+        <li><strong>安全預算：</strong>長期依賴手續費維持網路安全</li>
+        <li><strong>市場預期：</strong>減半事件通常伴隨著市場波動</li>
+      </ul>
+
+      <h2>查詢當前獎勵</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取當前區塊高度
+bitcoin-cli getblockcount
+
+# 獲取特定區塊的 coinbase 交易
+bitcoin-cli getblock $(bitcoin-cli getblockhash 840000) 2 | jq '.tx[0].vout[0].value'
+
+# 計算當前區塊獎勵
+bitcoin-cli getblockstats 840000 '["subsidy"]'</code></pre>
+
+      <h2>未來展望</h2>
+      <p>
+        隨著區塊獎勵趨近於零，比特幣網路的長期安全性將完全依賴於交易手續費。
+        這引發了關於「費用市場」（fee market）的討論：
+      </p>
+
+      <ul>
+        <li>區塊空間需求是否足以維持礦工收入？</li>
+        <li>Layer 2 解決方案（如閃電網路）會減少鏈上交易嗎？</li>
+        <li>是否需要調整區塊大小或其他參數？</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
