@@ -1,0 +1,330 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Types 通道類型"
+  description="了解閃電網路中不同的通道類型，從傳統通道到 Anchor Outputs 和 Taproot 通道的演進。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Types' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Feature Bits', href: '/tech/lightning/feature-bits' }}
+  nextPage={{ title: 'Anchor Outputs', href: '/tech/lightning/anchor-outputs' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道類型概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路的通道類型經歷了多次演進，每個版本都解決了前一代的問題。
+    通道類型通過功能位協商，決定了承諾交易的格式和特性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>向前相容：</strong>
+      新版本節點通常支援舊版通道類型。在通道開設時通過 init 訊息
+      協商雙方支援的最佳通道類型。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道類型演進</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道類型歷史：
+
+時間線：
+┌──────────────────────────────────────────────────────────────┐
+│ 2017 ──► Legacy Channels                                     │
+│          原始設計，固定費用                                  │
+│                                                              │
+│ 2019 ──► Static Remote Key                                   │
+│          簡化備份恢復                                        │
+│                                                              │
+│ 2020 ──► Anchor Outputs                                      │
+│          動態費用，CPFP 支援                                 │
+│                                                              │
+│ 2021 ──► Zero-Fee Anchor                                     │
+│          移除 HTLC 錨定                                      │
+│                                                              │
+│ 2023 ──► Simple Taproot Channels                             │
+│          Schnorr 簽名，MuSig2                                │
+└──────────────────────────────────────────────────────────────┘
+
+功能位對應：
+┌──────────────────────────────────────────────────────────────┐
+│ 通道類型                  │ 功能位                           │
+│───────────────────────────┼──────────────────────────────────│
+│ Legacy                    │ 無（預設）                       │
+│ Static Remote Key         │ option_static_remotekey (12/13)  │
+│ Anchor Outputs            │ option_anchor_outputs (20/21)    │
+│ Zero-Fee Anchor           │ option_anchors_zero_fee (22/23)  │
+│ Simple Taproot            │ option_taproot (80/81)           │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Legacy Channels</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統通道（已廢棄）：
+
+特點：
+┌──────────────────────────────────────────────────────────────┐
+│ 承諾交易費用：                                               │
+│ ├── 開設時協商固定費率                                       │
+│ ├── 費用由資金提供者支付                                     │
+│ └── 無法動態調整                                             │
+│                                                              │
+│ 輸出腳本：                                                   │
+│ ├── to_local：使用每次更新的金鑰                             │
+│ └── to_remote：使用每次更新的金鑰                            │
+└──────────────────────────────────────────────────────────────┘
+
+問題：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 費用僵化：                                                │
+│    鏈上費用波動時，預設費率可能過高或過低                    │
+│    過低 → 交易長時間不確認                                   │
+│    過高 → 浪費資金                                           │
+│                                                              │
+│ 2. 備份困難：                                                │
+│    每次狀態更新都用新金鑰                                    │
+│    靜態備份無法恢復最新狀態的資金                            │
+│                                                              │
+│ 3. 無法加速：                                                │
+│    承諾交易廣播後無法用 CPFP 加速                            │
+└──────────────────────────────────────────────────────────────┘
+
+⚠️ 已不建議使用，大多數節點不再支援`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Static Remote Key</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`靜態遠端金鑰：
+
+改進：
+┌──────────────────────────────────────────────────────────────┐
+│ to_remote 輸出使用固定公鑰：                                 │
+│                                                              │
+│ 傳統：to_remote = revocation_pubkey（每次不同）              │
+│ 新版：to_remote = static_remote_key（固定）                  │
+│                                                              │
+│ 優點：                                                       │
+│ ├── 只需備份種子詞即可恢復 to_remote 資金                    │
+│ ├── 對方強制關閉時，你的資金直接發送到固定地址               │
+│ └── 大幅簡化災難恢復                                         │
+└──────────────────────────────────────────────────────────────┘
+
+功能位：
+┌──────────────────────────────────────────────────────────────┐
+│ option_static_remotekey:                                     │
+│ ├── 位 12（偶數）：要求支援                                  │
+│ └── 位 13（奇數）：可選支援                                  │
+│                                                              │
+│ 現在是預設要求的功能                                         │
+└──────────────────────────────────────────────────────────────┘
+
+腳本對比：
+# 傳統 to_remote
+<remote_revocation_pubkey> OP_CHECKSIG
+
+# Static Remote Key 的 to_remote
+<static_remote_pubkey> OP_CHECKSIG`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor Outputs</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錨定輸出通道：
+
+核心改進：
+┌──────────────────────────────────────────────────────────────┐
+│ 在承諾交易中添加兩個小額「錨定」輸出：                       │
+│                                                              │
+│ 承諾交易輸出：                                               │
+│ ├── to_local（你的餘額）                                     │
+│ ├── to_remote（對方餘額）                                    │
+│ ├── local_anchor（330 sats）  ← 新增                         │
+│ ├── remote_anchor（330 sats） ← 新增                         │
+│ └── HTLC 輸出（如有）                                        │
+│                                                              │
+│ 錨定輸出用途：                                               │
+│ └── 任一方可以通過 CPFP 加速承諾交易                         │
+└──────────────────────────────────────────────────────────────┘
+
+CPFP（Child-Pays-For-Parent）：
+┌──────────────────────────────────────────────────────────────┐
+│ 場景：需要強制關閉，但承諾交易費率太低                       │
+│                                                              │
+│ 解決方案：                                                   │
+│ 1. 廣播低費率承諾交易                                        │
+│ 2. 創建子交易花費錨定輸出                                    │
+│ 3. 子交易設置高費率                                          │
+│ 4. 礦工為了子交易的費用，會一起打包父交易                    │
+│                                                              │
+│ ┌─────────────────┐      ┌─────────────────┐                 │
+│ │ 承諾交易        │ ──── │ CPFP 交易       │                 │
+│ │ (低費率)        │      │ (高費率)        │                 │
+│ │ anchor_output ─────────► input           │                 │
+│ └─────────────────┘      └─────────────────┘                 │
+└──────────────────────────────────────────────────────────────┘
+
+功能位：
+├── option_anchor_outputs (20/21)：原始版本
+└── option_anchors_zero_fee_htlc_tx (22/23)：改進版本`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Simple Taproot Channels</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Taproot 通道：
+
+核心改進：
+┌──────────────────────────────────────────────────────────────┐
+│ 注資輸出：                                                   │
+│ ├── 傳統：P2WSH 2-of-2 多簽                                  │
+│ └── Taproot：P2TR MuSig2 聚合公鑰                            │
+│                                                              │
+│ 優點：                                                       │
+│ ├── 鏈上佔用更小                                             │
+│ ├── 協商關閉時看起來像普通交易                               │
+│ ├── 更好的隱私                                               │
+│ └── Schnorr 簽名效率更高                                     │
+└──────────────────────────────────────────────────────────────┘
+
+MuSig2 簽名：
+┌──────────────────────────────────────────────────────────────┐
+│ 兩個公鑰聚合成一個：                                         │
+│                                                              │
+│ P_agg = MuSig2_KeyAgg(P_A, P_B)                              │
+│                                                              │
+│ 簽名需要兩方協作：                                           │
+│ 1. 交換 nonce                                                │
+│ 2. 各自生成部分簽名                                          │
+│ 3. 聚合成最終簽名                                            │
+│                                                              │
+│ 結果：看起來像單簽交易                                       │
+└──────────────────────────────────────────────────────────────┘
+
+承諾交易腳本：
+┌──────────────────────────────────────────────────────────────┐
+│ Taproot 結構：                                               │
+│                                                              │
+│ 內部金鑰：MuSig2(local, remote)                              │
+│                                                              │
+│ 腳本樹：                                                     │
+│ ├── 撤銷路徑                                                 │
+│ ├── 延遲本地路徑                                             │
+│ └── 遠端路徑                                                 │
+│                                                              │
+│ 協商關閉：使用 key path（最小佔用）                          │
+│ 強制關閉：使用 script path                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">類型協商</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道類型協商過程：
+
+open_channel2 訊息：
+┌──────────────────────────────────────────────────────────────┐
+│ channel_type (TLV)：                                         │
+│   明確指定想要的通道類型                                     │
+│                                                              │
+│ 範例：                                                       │
+│ ├── 0x2020：Anchor Outputs + Static Remote Key               │
+│ └── 0x2080：Taproot Channel                                  │
+└──────────────────────────────────────────────────────────────┘
+
+協商邏輯：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 發起者在 init 中公告支援的功能                            │
+│ 2. 回應者在 init 中公告支援的功能                            │
+│ 3. 發起者選擇雙方都支援的最佳類型                            │
+│ 4. 在 open_channel2 中指定 channel_type                      │
+│ 5. 回應者在 accept_channel2 中確認或拒絕                     │
+└──────────────────────────────────────────────────────────────┘
+
+類型不匹配：
+├── 如果回應者不支援請求的類型 → 發送 error 訊息
+├── 如果沒有共同支援的類型 → 無法開通道
+└── 可以降級到較舊但雙方都支援的類型`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">推薦類型</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        目前推薦 Anchor Outputs（zero-fee 版本）。
+        Taproot 通道正在推廣中。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">升級現有通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通道類型在開設時固定。升級需要關閉舊通道
+        並開設新類型的通道。Splicing 可能改變這點。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>檢查你的通道：</strong>
+      使用 lncli listchannels 或 lightning-cli listpeerchannels
+      查看現有通道的類型。舊通道可能需要升級以獲得更好的安全性。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="/tech/lightning/anchor-outputs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Anchor Outputs 詳解</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/taproot-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Taproot Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/feature-bits"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">功能位</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/anchor-outputs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Anchor Outputs</a
+      >
+      如何解決費用問題。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,412 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Blocks Only Mode"
+  description="深入了解 Bitcoin Core 的 blocksonly 模式，透過只同步區塊來節省頻寬。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Blocks Only' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Banlist', href: '/tech/bitcoin-core/banlist' }}
+  nextPage={{ title: 'CoinStatsIndex', href: '/tech/bitcoin-core/coinstatsindex' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Blocks Only 模式？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Blocks Only 模式讓 Bitcoin Core 只接收和驗證區塊，不參與未確認交易的中繼。
+      這大幅減少頻寬使用，適合網路連線受限或只需要驗證區塊鏈的場景。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">頻寬節省</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">正常模式</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 接收所有交易廣播</li>
+            <li>• 中繼交易給其他節點</li>
+            <li>• 每天約 10-50 GB</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">Blocks Only</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 只接收區塊</li>
+            <li>• 不參與交易中繼</li>
+            <li>• 每天約 150-200 MB</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置方式</h2>
+
+    <h3 id="enable" class="text-xl font-semibold text-[var(--text-primary)]">啟用 Blocks Only</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
+bitcoind -blocksonly
+
+# 配置文件
+echo "blocksonly=1" >> ~/.bitcoin/bitcoin.conf
+
+# 運行時切換（需要重啟）
+# 沒有 RPC 命令可以動態切換</code></pre>
+    </div>
+
+    <h3 id="related-options" class="text-xl font-semibold text-[var(--text-primary)]">相關選項</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 啟用 blocks only 模式
+blocksonly=1
+
+# 額外的頻寬節省選項
+# 限制上傳流量（MB/天，0 = 無限制）
+maxuploadtarget=500
+
+# 減少出站連接（預設 10，blocks only 時可減少）
+maxconnections=20
+
+# 不監聽入站連接（進一步減少頻寬）
+listen=0</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        Blocks only 模式仍然會驗證區塊中的所有交易，確保完整的安全性。
+        只是不參與未確認交易的傳播。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="behavior" class="text-2xl font-bold text-[var(--text-primary)]">行為變化</h2>
+
+    <h3 id="what-changes" class="text-xl font-semibold text-[var(--text-primary)]">啟用後的變化</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">功能</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">正常模式</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Blocks Only</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">接收區塊</td>
+              <td class="py-2 text-green-400">✓</td>
+              <td class="py-2 text-green-400">✓</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">驗證區塊</td>
+              <td class="py-2 text-green-400">✓</td>
+              <td class="py-2 text-green-400">✓</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">接收交易廣播</td>
+              <td class="py-2 text-green-400">✓</td>
+              <td class="py-2 text-red-400">✗</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">中繼交易</td>
+              <td class="py-2 text-green-400">✓</td>
+              <td class="py-2 text-red-400">✗</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Mempool</td>
+              <td class="py-2 text-green-400">維護</td>
+              <td class="py-2 text-yellow-400">基本空</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">發送交易（RPC）</td>
+              <td class="py-2 text-green-400">✓</td>
+              <td class="py-2 text-green-400">✓</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">手續費估算</td>
+              <td class="py-2 text-green-400">準確</td>
+              <td class="py-2 text-red-400">不可用</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="mempool" class="text-xl font-semibold text-[var(--text-primary)]">Mempool 行為</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Blocks only 模式下的 mempool 行為
+class MempoolBlocksOnly {
+  // 不接收來自 P2P 的交易
+  onTxMessage(peer: Peer, tx: Transaction): void {
+    // 忽略，不處理
+    return;
+  }
+
+  // 但仍然接受本地提交的交易
+  submitTransaction(tx: Transaction): Result {
+    // 驗證交易
+    if (!this.validateTransaction(tx)) {
+      return { error: 'Invalid transaction' };
+    }
+
+    // 添加到 mempool
+    this.mempool.add(tx);
+
+    // 不廣播（沒有連接支持 tx relay）
+    // 但白名單連接可以接收
+    for (const peer of this.whitelistedPeers) {
+      peer.send('tx', tx);
+    }
+
+    return { success: true };
+  }
+
+  // 區塊到達時，從 mempool 移除確認的交易
+  onNewBlock(block: Block): void {
+    for (const tx of block.transactions) {
+      this.mempool.remove(tx.txid);
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="use-cases" class="text-2xl font-bold text-[var(--text-primary)]">使用場景</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 適合使用</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 頻寬有限的環境</li>
+          <li>• 衛星網路連接</li>
+          <li>• 只需要區塊鏈驗證</li>
+          <li>• 備份節點</li>
+          <li>• 歷史數據分析</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 不適合使用</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 需要手續費估算</li>
+          <li>• 即時交易監控</li>
+          <li>• 交易廣播服務</li>
+          <li>• 礦池/礦工節點</li>
+          <li>• 閃電網路節點</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 id="satellite" class="text-xl font-semibold text-[var(--text-primary)]">衛星節點</h3>
+    <p class="text-[var(--text-secondary)]">
+      Blockstream Satellite 用戶特別適合使用 blocks only 模式，
+      因為衛星連接是單向的且頻寬受限。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 衛星節點配置示例
+blocksonly=1
+listen=0
+maxconnections=4
+maxuploadtarget=100
+
+# 如果有雙向網路連接用於發送交易
+# 可以添加白名單節點
+whitelist=192.168.1.100</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="limitations" class="text-2xl font-bold text-[var(--text-primary)]">限制與影響</h2>
+
+    <h3 id="fee-estimation" class="text-xl font-semibold text-[var(--text-primary)]">手續費估算</h3>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">手續費估算不可用</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-4">
+        由於沒有 mempool 數據，estimatesmartfee 命令將返回錯誤或不準確的結果。
+      </p>
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 在 blocks only 模式下
+bitcoin-cli estimatesmartfee 6
+{
+  "errors": ["Insufficient data or no feerate found"]
+}</code></pre>
+    </div>
+
+    <h3 id="wallet-impact" class="text-xl font-semibold text-[var(--text-primary)]">錢包影響</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-green-500">✓</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">餘額查詢</strong>
+            <p class="text-sm">正常工作，基於已確認交易</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">發送交易</strong>
+            <p class="text-sm">可以創建交易，但廣播受限</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">接收未確認交易通知</strong>
+            <p class="text-sm">不會收到，只在區塊確認後才能看到</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">自動手續費</strong>
+            <p class="text-sm">需要手動指定手續費</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="p2p-changes" class="text-xl font-semibold text-[var(--text-primary)]">P2P 協議變化</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class P2PNodeBlocksOnly {
+  private blocksOnly: boolean;
+
+  // 發送 version 消息時設定
+  sendVersion(peer: Peer): void {
+    const version = {
+      version: 70016,
+      services: this.getServices(),
+      // blocks only 節點不設定 NODE_BLOOM 標誌
+      // 並且在 fRelay 字段設為 false
+      relay: !this.blocksOnly,
+    };
+
+    peer.send('version', version);
+  }
+
+  // 處理 inv 消息
+  onInv(peer: Peer, inv: Inventory[]): void {
+    for (const item of inv) {
+      switch (item.type) {
+        case INV_TYPE.BLOCK:
+        case INV_TYPE.COMPACT_BLOCK:
+          // 區塊相關的 inv 正常處理
+          this.requestBlock(peer, item.hash);
+          break;
+
+        case INV_TYPE.TX:
+        case INV_TYPE.WITNESS_TX:
+          if (this.blocksOnly) {
+            // 忽略交易 inv
+            continue;
+          }
+          this.requestTx(peer, item.hash);
+          break;
+      }
+    }
+  }
+
+  // Blocks only 模式不發送 mempool 請求
+  // 不響應 mempool 消息
+  // 不廣播本地交易（除非是白名單連接）
+}</code></pre>
+    </div>
+
+    <h3 id="bandwidth-savings" class="text-xl font-semibold text-[var(--text-primary)]">頻寬計算</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>正常模式的日均流量：
+- 交易廣播：~20-40 GB（雙向）
+- 區塊傳輸：~150 MB
+- 其他協議開銷：~500 MB
+總計：~20-40 GB/天
+
+Blocks Only 模式的日均流量：
+- 區塊傳輸：~150 MB
+- 區塊頭和其他：~50 MB
+總計：~200 MB/天
+
+節省比例：約 99%</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="alternatives" class="text-2xl font-bold text-[var(--text-primary)]">替代方案</h2>
+
+    <h3 id="maxuploadtarget" class="text-xl font-semibold text-[var(--text-primary)]">maxuploadtarget</h3>
+    <p class="text-[var(--text-secondary)]">
+      如果只想限制上傳流量而不完全禁用交易中繼，可以使用 maxuploadtarget。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 限制每天上傳 1 GB
+bitcoind -maxuploadtarget=1024
+
+# 達到限制後：
+# - 停止服務歷史區塊
+# - 繼續服務新區塊
+# - 繼續正常交易中繼</code></pre>
+    </div>
+
+    <h3 id="pruning-combo" class="text-xl font-semibold text-[var(--text-primary)]">與 Pruning 結合</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 最小資源配置
+blocksonly=1
+prune=550         # 最小 550 MB
+maxconnections=10
+listen=0
+
+# 這個配置：
+# - 磁碟使用約 550 MB
+# - 每天流量約 200 MB
+# - 仍然完全驗證所有區塊</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">頻寬節省：</strong>減少約 99% 的網路流量</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">安全性：</strong>仍然完整驗證所有區塊</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">適用場景：</strong>頻寬受限、備份節點、區塊鏈分析</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">限制：</strong>無手續費估算、無未確認交易通知</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

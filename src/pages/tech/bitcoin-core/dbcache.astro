@@ -1,0 +1,466 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="DbCache"
+  description="深入了解 Bitcoin Core 的 dbcache 配置，優化 UTXO 資料庫快取以提升同步和驗證效能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'DbCache' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Reindex', href: '/tech/bitcoin-core/reindex' }}
+  nextPage={{ title: 'Banlist', href: '/tech/bitcoin-core/banlist' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 DbCache？</h2>
+    <p class="text-[var(--text-secondary)]">
+      DbCache 是 Bitcoin Core 用於快取 UTXO 集（Unspent Transaction Output Set）的記憶體緩衝區。
+      增加 dbcache 可以顯著提升初始區塊下載（IBD）和區塊驗證的效能，
+      因為更多的 UTXO 查詢可以在記憶體中完成，而不需要讀取磁碟。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">DbCache 的作用</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">提升讀取效能</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 快取常用的 UTXO</li>
+            <li>• 減少磁碟 I/O 操作</li>
+            <li>• 加速交易驗證</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">批次寫入</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 累積多個更新</li>
+            <li>• 減少 LevelDB 寫入次數</li>
+            <li>• 降低磁碟損耗</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <h3 id="dbcache-option" class="text-xl font-semibold text-[var(--text-primary)]">-dbcache 參數</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行設定（單位：MB）
+bitcoind -dbcache=4096  # 4GB
+bitcoind -dbcache=8192  # 8GB
+
+# 配置文件設定
+echo "dbcache=4096" >> ~/.bitcoin/bitcoin.conf
+
+# 查看當前設定
+bitcoin-cli getmemoryinfo | jq '.locked.used'</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">預設值與範圍</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">參數</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">值</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">預設值</td>
+              <td class="py-2">450 MB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最小值</td>
+              <td class="py-2">4 MB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最大值（32位系統）</td>
+              <td class="py-2">約 1.5 GB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">最大值（64位系統）</td>
+              <td class="py-2">16384 MB（16 GB）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="recommended" class="text-xl font-semibold text-[var(--text-primary)]">建議配置</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">系統記憶體</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">建議 dbcache</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">用途</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">4 GB</td>
+              <td class="py-2">450 MB（預設）</td>
+              <td class="py-2">日常運行</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">8 GB</td>
+              <td class="py-2">2048-4096 MB</td>
+              <td class="py-2">IBD / Reindex</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">16 GB</td>
+              <td class="py-2">4096-8192 MB</td>
+              <td class="py-2">IBD / Reindex</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">32 GB+</td>
+              <td class="py-2">8192-16384 MB</td>
+              <td class="py-2">最佳效能</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        dbcache 值應該根據可用記憶體設定，留出足夠空間給作業系統和其他應用程式。
+        IBD 完成後可以降低 dbcache 以釋放記憶體。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現原理</h2>
+
+    <h3 id="utxo-cache" class="text-xl font-semibold text-[var(--text-primary)]">UTXO 快取結構</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CachedCoin {
+  txid: string;
+  vout: number;
+  coin: {
+    value: number;
+    scriptPubKey: Buffer;
+    height: number;
+    coinbase: boolean;
+  };
+  flags: CoinFlags;
+}
+
+enum CoinFlags {
+  DIRTY = 0x01,  // 已修改，需要寫入磁碟
+  FRESH = 0x02,  // 新創建，不在磁碟上
+}
+
+class CoinsCache {
+  private cache: Map<string, CachedCoin>;
+  private memoryUsed: number;
+  private maxMemory: number;
+  private parent: CoinsView;  // LevelDB 或父快取
+
+  constructor(maxMemory: number, parent: CoinsView) {
+    this.cache = new Map();
+    this.memoryUsed = 0;
+    this.maxMemory = maxMemory;
+    this.parent = parent;
+  }
+
+  // 獲取 UTXO
+  async getCoin(txid: string, vout: number): Promise<Coin | null> {
+    const key = `${txid}:${vout}`;
+
+    // 1. 檢查快取
+    const cached = this.cache.get(key);
+    if (cached) {
+      return cached.coin;
+    }
+
+    // 2. 從父層（磁碟）讀取
+    const coin = await this.parent.getCoin(txid, vout);
+    if (coin) {
+      // 添加到快取（不標記為 DIRTY）
+      this.addToCache(txid, vout, coin, 0);
+    }
+
+    return coin;
+  }
+
+  // 添加新的 UTXO
+  addCoin(txid: string, vout: number, coin: Coin): void {
+    this.addToCache(txid, vout, coin, CoinFlags.DIRTY | CoinFlags.FRESH);
+  }
+
+  // 花費 UTXO
+  spendCoin(txid: string, vout: number): Coin | null {
+    const key = `${txid}:${vout}`;
+    const cached = this.cache.get(key);
+
+    if (cached) {
+      const coin = cached.coin;
+
+      if (cached.flags & CoinFlags.FRESH) {
+        // 新創建的 UTXO，直接從快取移除
+        this.cache.delete(key);
+        this.memoryUsed -= this.estimateSize(cached);
+      } else {
+        // 標記為已花費（值設為 null，DIRTY）
+        cached.coin = null;
+        cached.flags |= CoinFlags.DIRTY;
+      }
+
+      return coin;
+    }
+
+    return null;
+  }
+
+  // 刷新到磁碟
+  async flush(): Promise<void> {
+    const batch: WriteBatch = [];
+
+    for (const [key, cached] of this.cache) {
+      if (cached.flags & CoinFlags.DIRTY) {
+        if (cached.coin === null) {
+          // 已花費，刪除
+          batch.push({ type: 'delete', key });
+        } else {
+          // 新建或修改，寫入
+          batch.push({ type: 'put', key, value: cached.coin });
+        }
+      }
+    }
+
+    await this.parent.writeBatch(batch);
+    this.cache.clear();
+    this.memoryUsed = 0;
+  }
+}</code></pre>
+    </div>
+
+    <h3 id="memory-management" class="text-xl font-semibold text-[var(--text-primary)]">記憶體管理</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CoinsCacheManager {
+  private cache: CoinsCache;
+  private flushThreshold: number;
+
+  constructor(maxMemory: number) {
+    // 當使用量達到 90% 時觸發刷新
+    this.flushThreshold = maxMemory * 0.9;
+    this.cache = new CoinsCache(maxMemory);
+  }
+
+  async processBlock(block: Block): Promise<void> {
+    // 處理區塊中的所有交易...
+
+    // 檢查是否需要刷新
+    if (this.cache.memoryUsed >= this.flushThreshold) {
+      console.log(`Cache flush triggered: ${this.cache.memoryUsed} bytes`);
+      await this.cache.flush();
+    }
+  }
+
+  // 估算 UTXO 集大小（用於決定 dbcache）
+  static estimateUtxoSetSize(): number {
+    // 2024 年的 UTXO 集約有 1.5 億個條目
+    // 平均每個條目約 50 字節
+    const utxoCount = 150_000_000;
+    const avgSize = 50;
+    return utxoCount * avgSize;  // 約 7.5 GB
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="performance" class="text-2xl font-bold text-[var(--text-primary)]">效能影響</h2>
+
+    <h3 id="ibd-performance" class="text-xl font-semibold text-[var(--text-primary)]">初始區塊下載（IBD）</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">不同 dbcache 的 IBD 時間</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">dbcache</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">HDD</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">SSD</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">NVMe</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">450 MB</td>
+              <td class="py-2">數週</td>
+              <td class="py-2">2-3 天</td>
+              <td class="py-2">1-2 天</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">2048 MB</td>
+              <td class="py-2">數天</td>
+              <td class="py-2">12-24 小時</td>
+              <td class="py-2">8-12 小時</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">4096 MB</td>
+              <td class="py-2">2-3 天</td>
+              <td class="py-2">8-12 小時</td>
+              <td class="py-2">4-8 小時</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">8192 MB</td>
+              <td class="py-2">1-2 天</td>
+              <td class="py-2">4-8 小時</td>
+              <td class="py-2">2-4 小時</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-[var(--text-secondary)] mt-2">
+        * 時間因 CPU、網路和具體磁碟型號而異
+      </p>
+    </div>
+
+    <h3 id="flush-frequency" class="text-xl font-semibold text-[var(--text-primary)]">刷新頻率</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>dbcache 大小與刷新頻率的關係：
+
+450 MB（預設）：
+  - 約每 1,000-2,000 個區塊刷新一次
+  - IBD 期間頻繁的磁碟寫入
+  - 對 HDD 影響最大
+
+4096 MB：
+  - 約每 10,000-20,000 個區塊刷新一次
+  - 大幅減少磁碟 I/O
+  - IBD 效能提升 2-3 倍
+
+8192 MB+：
+  - 可能整個 IBD 只刷新幾次
+  - 幾乎所有 UTXO 都在記憶體中
+  - 最佳效能，但需要更多記憶體</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控與診斷</h2>
+
+    <h3 id="memory-info" class="text-xl font-semibold text-[var(--text-primary)]">記憶體資訊</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看記憶體使用情況
+bitcoin-cli getmemoryinfo
+
+# 輸出示例
+{
+  "locked": {
+    "used": 4294967296,    # 實際使用
+    "free": 0,
+    "total": 4294967296,   # dbcache 大小
+    "locked": 4294967296,
+    "chunks_used": 12345,
+    "chunks_free": 0
+  }
+}
+
+# 查看 UTXO 集統計
+bitcoin-cli gettxoutsetinfo
+
+# 查看區塊鏈資訊（包含快取狀態）
+bitcoin-cli getblockchaininfo</code></pre>
+    </div>
+
+    <h3 id="debug-log" class="text-xl font-semibold text-[var(--text-primary)]">調試日誌</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 監控快取刷新
+tail -f ~/.bitcoin/debug.log | grep -E "(cache|flush|Flushing)"
+
+# 典型的刷新日誌
+# Flushing chainstate to disk
+# Leaving InitialBlockDownload (Flushing chainstate)
+# Committed XXXX changed UTXO records to disk</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 建議</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• IBD 時使用較大的 dbcache</li>
+          <li>• 完成後可降低 dbcache</li>
+          <li>• 根據可用記憶體調整</li>
+          <li>• 使用 SSD 配合大 dbcache</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 設定超過可用記憶體</li>
+          <li>• 在 HDD 上使用小 dbcache</li>
+          <li>• 頻繁更改 dbcache 設定</li>
+          <li>• 忽略系統記憶體需求</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">IBD 優化配置示例</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - IBD 優化配置
+# 根據可用記憶體調整
+dbcache=4096
+
+# 使用所有 CPU 核心
+par=0
+
+# 增加連接數以加快下載
+maxconnections=125
+
+# 優先連接到快速節點
+maxuploadtarget=0</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">作用：</strong>快取 UTXO 集，減少磁碟 I/O</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">預設值：</strong>450 MB，可增加到 16 GB</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">IBD 優化：</strong>增加 dbcache 可顯著加快同步</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>需根據系統記憶體合理設定</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

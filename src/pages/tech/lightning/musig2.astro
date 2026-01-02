@@ -1,0 +1,319 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="MuSig2 多方簽名"
+  description="了解 MuSig2 多方 Schnorr 簽名協議，以及在 Taproot 閃電通道中的應用。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'MuSig2' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Taproot Channels', href: '/tech/lightning/taproot-channels' }}
+  nextPage={{ title: 'PTLCs', href: '/tech/lightning/ptlcs' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 MuSig2？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    MuSig2 是一個多方 Schnorr 簽名協議，允許多個參與者共同創建一個看起來
+    像普通單簽的簽名。這對閃電網路的隱私和效率都有重大意義。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>兩輪協議：</strong>
+      MuSig2 只需要兩輪通訊即可完成簽名，相比 MuSig（三輪）更高效，
+      同時保持相同的安全性。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Schnorr vs ECDSA</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`簽名方案比較：
+
+ECDSA（傳統閃電通道）：
+┌──────────────────────────────────────────────────────────────┐
+│ 2-of-2 多簽：OP_CHECKMULTISIG                                │
+│                                                              │
+│ 輸入腳本需要：                                               │
+│ ├── 兩個完整簽名                                             │
+│ ├── 兩個公鑰                                                 │
+│ └── 可見是 2-of-2 多簽                                       │
+│                                                              │
+│ 問題：                                                       │
+│ ├── 較大的交易大小                                           │
+│ ├── 隱私較差（明顯是多簽）                                   │
+│ └── 無法進行公鑰聚合                                         │
+└──────────────────────────────────────────────────────────────┘
+
+Schnorr + MuSig2（Taproot 通道）：
+┌──────────────────────────────────────────────────────────────┐
+│ 聚合公鑰：看起來像單個公鑰                                   │
+│ 聚合簽名：看起來像單個簽名                                   │
+│                                                              │
+│ 優點：                                                       │
+│ ├── 較小的交易大小                                           │
+│ ├── 更好的隱私（與單簽無法區分）                             │
+│ ├── 更低的費用                                               │
+│ └── 支援批量驗證                                             │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MuSig2 協議流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`MuSig2 簽名流程（兩輪）：
+
+設置階段（一次性）：
+┌──────────────────────────────────────────────────────────────┐
+│ 參與者 A：公鑰 P_A                                           │
+│ 參與者 B：公鑰 P_B                                           │
+│                                                              │
+│ 金鑰聚合：                                                   │
+│ P_agg = KeyAgg(P_A, P_B)                                     │
+│       = a_A * P_A + a_B * P_B                                │
+│                                                              │
+│ 其中 a_i = H(L || P_i)                                       │
+│ L = H(P_1 || P_2 || ...)                                     │
+│                                                              │
+│ 結果：單個聚合公鑰，用於 Taproot 地址                        │
+└──────────────────────────────────────────────────────────────┘
+
+第一輪：Nonce 交換
+┌──────────────────────────────────────────────────────────────┐
+│ 參與者 A                      參與者 B                       │
+│     │                              │                         │
+│     │ 生成 nonce：                 │ 生成 nonce：            │
+│     │ (r_A1, r_A2, R_A1, R_A2)     │ (r_B1, r_B2, R_B1, R_B2)│
+│     │                              │                         │
+│     │──── R_A1, R_A2 ─────────────>│                         │
+│     │<─── R_B1, R_B2 ──────────────│                         │
+│     │                              │                         │
+│     │ 計算聚合 nonce：             │ 計算聚合 nonce：        │
+│     │ R = R_1 + b * R_2            │ R = R_1 + b * R_2       │
+│     │ 其中 R_i = R_Ai + R_Bi       │                         │
+│     │ b = H(R_1 || R_2 || P || m)  │                         │
+└──────────────────────────────────────────────────────────────┘
+
+第二輪：部分簽名
+┌──────────────────────────────────────────────────────────────┐
+│ 參與者 A                      參與者 B                       │
+│     │                              │                         │
+│     │ 計算挑戰：                   │                         │
+│     │ e = H(R || P_agg || m)       │                         │
+│     │                              │                         │
+│     │ 生成部分簽名：               │ 生成部分簽名：          │
+│     │ s_A = r_A + b*r_A2           │ s_B = r_B + b*r_B2      │
+│     │     + e * a_A * x_A          │     + e * a_B * x_B     │
+│     │                              │                         │
+│     │──── s_A ────────────────────>│                         │
+│     │<─── s_B ─────────────────────│                         │
+│     │                              │                         │
+│     │ 聚合簽名：                   │                         │
+│     │ s = s_A + s_B                │                         │
+│     │ 最終簽名：(R, s)             │                         │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">在閃電通道中的應用</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Taproot 通道使用 MuSig2：
+
+注資輸出：
+┌──────────────────────────────────────────────────────────────┐
+│ 傳統：P2WSH 2-of-2 多簽                                      │
+│ OP_2 <pubkey_A> <pubkey_B> OP_2 OP_CHECKMULTISIG             │
+│                                                              │
+│ Taproot：P2TR 聚合公鑰                                       │
+│ 內部公鑰：MuSig2(P_A, P_B)                                   │
+│ Taptweak：H(P_agg || script_root)                            │
+│                                                              │
+│ 結果：看起來完全像普通 P2TR 地址                             │
+└──────────────────────────────────────────────────────────────┘
+
+協商關閉：
+┌──────────────────────────────────────────────────────────────┐
+│ 使用 key path 花費：                                         │
+│ ├── 雙方交換 nonce                                           │
+│ ├── 雙方生成部分簽名                                         │
+│ ├── 聚合成最終簽名                                           │
+│ └── 廣播交易                                                 │
+│                                                              │
+│ 鏈上看起來：普通的單簽 P2TR 花費                             │
+│ 無法區分是通道關閉還是普通轉帳                               │
+└──────────────────────────────────────────────────────────────┘
+
+強制關閉：
+┌──────────────────────────────────────────────────────────────┐
+│ 使用 script path 花費：                                      │
+│ ├── 揭露 Tapscript                                           │
+│ ├── 提供滿足條件的見證                                       │
+│ └── 這時才暴露是閃電通道                                     │
+│                                                              │
+│ 但仍比傳統 2-of-2 更隱私                                     │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Nonce 安全性</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Nonce 處理的關鍵安全考量：
+
+為什麼使用兩個 nonce（MuSig2 改進）：
+┌──────────────────────────────────────────────────────────────┐
+│ MuSig（原版）問題：                                          │
+│ ├── 需要三輪通訊                                             │
+│ ├── 第一輪提交 nonce 哈希                                    │
+│ ├── 第二輪揭露 nonce                                         │
+│ └── 第三輪簽名                                               │
+│                                                              │
+│ MuSig2 解決方案：                                            │
+│ ├── 使用兩個隨機 nonce（R_1, R_2）                           │
+│ ├── 綁定係數 b 由所有 nonce 計算                             │
+│ ├── 有效 nonce：R = R_1 + b * R_2                            │
+│ └── 防止 rogue-key 攻擊                                      │
+└──────────────────────────────────────────────────────────────┘
+
+Nonce 重用危險：
+┌──────────────────────────────────────────────────────────────┐
+│ ⚠️ 永遠不要重用 nonce！                                      │
+│                                                              │
+│ 如果 nonce 重用：                                            │
+│ s_1 = r + e_1 * x                                            │
+│ s_2 = r + e_2 * x                                            │
+│                                                              │
+│ 攻擊者可以計算：                                             │
+│ x = (s_1 - s_2) / (e_1 - e_2)                                │
+│                                                              │
+│ → 私鑰完全暴露！                                             │
+└──────────────────────────────────────────────────────────────┘
+
+安全實現：
+├── 使用密碼學安全隨機數生成器
+├── 每次簽名生成新的 nonce 對
+├── 考慮使用確定性 nonce 生成（RFC 6979 變體）
+└── 永不持久化未使用的 nonce`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現挑戰</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">狀態管理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        需要在兩輪之間保存 nonce 狀態。
+        必須確保狀態正確清理，避免 nonce 重用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">通訊協調</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        雙方必須同步交換 nonce 和部分簽名。
+        需要處理通訊失敗和重試。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">備份複雜性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        MuSig2 簽名需要雙方合作。
+        單方無法獨立重建簽名。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">適配器簽名</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        PTLCs 需要 MuSig2 與適配器簽名結合，
+        增加了實現複雜度。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`各實現的 MuSig2 支援：
+
+LND：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ Simple Taproot Channels 已實現                             │
+│ ✓ 使用 btcd/btcec 的 MuSig2 實現                             │
+│ ✓ 主網已啟用                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+LDK：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ MuSig2 庫支援                                              │
+│ ◐ Taproot 通道開發中                                         │
+└──────────────────────────────────────────────────────────────┘
+
+Core Lightning：
+┌──────────────────────────────────────────────────────────────┐
+│ ◐ 開發中                                                     │
+│ ○ 尚未發布                                                   │
+└──────────────────────────────────────────────────────────────┘
+
+庫支援：
+├── libsecp256k1-zkp：參考實現
+├── btcd/btcec：Go 實現
+├── rust-secp256k1：Rust 綁定
+└── secp256k1-py：Python 綁定`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>升級路徑：</strong>
+      現有通道無法直接升級到 MuSig2。需要關閉舊通道並開設新的 Taproot 通道。
+      Splicing 可能在未來提供更平滑的升級路徑。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://eprint.iacr.org/2020/1261"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">MuSig2 論文</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/taproot-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Taproot Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/ptlcs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">PTLCs</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/ptlcs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">PTLCs</a
+      >
+      如何結合 MuSig2 和適配器簽名。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,335 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Neutrino 輕客戶端"
+  description="了解 Neutrino 輕客戶端協議，如何在有限資源設備上運行閃電網路節點。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Neutrino' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'AMP', href: '/tech/lightning/amp' }}
+  nextPage={{ title: 'WebLN', href: '/tech/lightning/webln' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Neutrino？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Neutrino 是比特幣的輕客戶端協議（BIP 157/158），允許節點在不下載完整區塊鏈的情況下
+    驗證交易。對於閃電網路，這意味著可以在手機或低資源設備上運行完整的閃電節點，
+    而不需要數百 GB 的儲存空間。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>BIP 157/158：</strong>
+      Compact Block Filters（緊湊區塊過濾器）是 Neutrino 的核心技術，
+      提供隱私友好的輕客戶端驗證方式。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要輕客戶端？</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`閃電網路節點的需求：
+
+全節點模式：
+┌──────────────────────────────────────────────────────────┐
+│ 比特幣全節點要求：                                       │
+│ ├── 儲存空間：~600 GB（並持續增長）                      │
+│ ├── 初始同步：數小時到數天                               │
+│ ├── 記憶體：至少 2-4 GB                                  │
+│ └── 網路：持續下載新區塊                                 │
+│                                                          │
+│ 問題：                                                   │
+│ ├── 手機無法運行                                         │
+│ ├── 低端設備無法運行                                     │
+│ └── 進入門檻太高                                         │
+└──────────────────────────────────────────────────────────┘
+
+Neutrino 輕客戶端：
+┌──────────────────────────────────────────────────────────┐
+│ 要求：                                                   │
+│ ├── 儲存空間：~100 MB（過濾器）+ 通道資料                │
+│ ├── 初始同步：幾分鐘                                     │
+│ ├── 記憶體：幾百 MB                                      │
+│ └── 網路：按需下載                                       │
+│                                                          │
+│ 優勢：                                                   │
+│ ├── 手機可運行                                           │
+│ ├── 快速啟動                                             │
+│ └── 保持閃電節點的非託管特性                             │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Compact Block Filters</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BIP 157/158 工作原理：
+
+區塊過濾器（Block Filter）：
+┌──────────────────────────────────────────────────────────┐
+│ 每個區塊生成一個小型過濾器（~20KB）                      │
+│ 過濾器使用 Golomb-Rice 編碼壓縮                          │
+│ 包含區塊中所有輸出腳本和輸入 outpoint                    │
+│                                                          │
+│ 結構：                                                   │
+│ ├── 區塊高度對應的過濾器                                 │
+│ ├── 過濾器是確定性生成的                                 │
+│ └── 任何全節點都能生成相同的過濾器                       │
+└──────────────────────────────────────────────────────────┘
+
+輕客戶端流程：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 下載區塊頭（每個 80 bytes）                           │
+│ 2. 下載對應的區塊過濾器                                  │
+│ 3. 用本地地址/腳本查詢過濾器                             │
+│ 4. 如果過濾器匹配，下載完整區塊                          │
+│ 5. 驗證區塊中的相關交易                                  │
+└──────────────────────────────────────────────────────────┘
+
+隱私優勢（vs SPV/Bloom）：
+┌──────────────────────────────────────────────────────────┐
+│ Bloom Filter（舊方法）：                                 │
+│ ├── 客戶端告訴服務器自己關心哪些地址                     │
+│ ├── 服務器知道客戶端的地址                               │
+│ └── 隱私洩露嚴重                                         │
+│                                                          │
+│ Compact Block Filter（Neutrino）：                       │
+│ ├── 客戶端下載所有過濾器                                 │
+│ ├── 本地查詢，服務器不知道客戶端關心什麼                 │
+│ └── 隱私保護良好                                         │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Neutrino 與閃電網路</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`閃電節點使用 Neutrino：
+
+需要監控的事件：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 通道注資交易確認                                      │
+│    監控 funding_txid 是否進入區塊                        │
+│                                                          │
+│ 2. 通道關閉交易                                          │
+│    監控承諾交易或關閉交易                                │
+│                                                          │
+│ 3. HTLC 鏈上結算                                         │
+│    監控 HTLC-Success/Timeout 交易                        │
+│                                                          │
+│ 4. 對手方作弊檢測                                        │
+│    監控舊承諾交易是否被發布                              │
+│                                                          │
+│ 5. 懲罰交易確認                                          │
+│    確保懲罰交易成功                                      │
+└──────────────────────────────────────────────────────────┘
+
+工作流程：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 閃電節點啟動                                          │
+│ 2. Neutrino 同步區塊頭和過濾器                           │
+│ 3. 查詢與通道相關的腳本                                  │
+│ 4. 發現匹配時下載完整區塊                                │
+│ 5. 驗證交易並更新通道狀態                                │
+│ 6. 持續監控新區塊                                        │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考慮</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">信任假設</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Neutrino 依賴至少一個誠實的全節點提供正確的過濾器。
+        惡意節點可能隱藏交易，但無法偽造不存在的交易。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">過濾器驗證</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以從多個來源獲取過濾器並比較。不一致的過濾器表示可能有惡意節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">瞭望塔輔助</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        配合瞭望塔使用可以彌補輕客戶端可能錯過的欺詐嘗試。
+        瞭望塔運行全節點監控。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">連接多節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        連接多個 Neutrino 服務節點減少單點依賴風險。
+        交叉驗證增加安全性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置 Neutrino</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Neutrino 配置：
+
+lnd.conf：
+[Bitcoin]
+bitcoin.active=true
+bitcoin.mainnet=true
+
+# 使用 Neutrino 模式
+bitcoin.node=neutrino
+
+[Neutrino]
+# 連接的 Neutrino 服務節點
+neutrino.addpeer=btcd-mainnet.lightning.computer
+neutrino.addpeer=mainnet1-btcd.zaphq.io
+neutrino.addpeer=mainnet2-btcd.zaphq.io
+
+# 費率估算來源
+neutrino.feeurl=https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json
+
+# 同步模式
+neutrino.validatechannels=true
+
+啟動命令：
+lnd --bitcoin.node=neutrino
+
+查看同步狀態：
+lncli getinfo
+# recovery_mode: false
+# synced_to_chain: true
+# synced_to_graph: true`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 Neutrino 的錢包</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`支援 Neutrino 的閃電錢包：
+
+移動端錢包：
+┌──────────────────────────────────────────────────────────┐
+│ Blixt Wallet                                             │
+│ ├── 平台：Android、iOS                                   │
+│ ├── 類型：完整 LND 節點 + Neutrino                       │
+│ ├── 特點：真正的非託管移動閃電錢包                       │
+│ └── 首次同步：約 5-10 分鐘                               │
+│                                                          │
+│ Breez                                                    │
+│ ├── 平台：Android、iOS                                   │
+│ ├── 類型：Neutrino 後端                                  │
+│ └── 特點：用戶友好的界面                                 │
+│                                                          │
+│ Zeus                                                     │
+│ ├── 平台：Android、iOS                                   │
+│ ├── 類型：支援內建 LND + Neutrino                        │
+│ └── 特點：也可連接遠端節點                               │
+└──────────────────────────────────────────────────────────┘
+
+桌面應用：
+┌──────────────────────────────────────────────────────────┐
+│ Zap Desktop                                              │
+│ ├── 可選 Neutrino 模式                                   │
+│ └── 快速啟動不需要全節點                                 │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">限制與權衡</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Neutrino 的限制：
+
+功能限制：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 無法驗證所有交易                                      │
+│    只能驗證與自己相關的交易                              │
+│                                                          │
+│ 2. 歷史交易查詢                                          │
+│    需要下載並掃描舊區塊                                  │
+│    恢復錢包時可能較慢                                    │
+│                                                          │
+│ 3. 費率估算                                              │
+│    需要依賴外部來源                                      │
+│    全節點可以本地估算                                    │
+│                                                          │
+│ 4. 網路依賴                                              │
+│    需要連接到 Neutrino 服務節點                          │
+│    節點可用性影響錢包功能                                │
+└──────────────────────────────────────────────────────────┘
+
+權衡考慮：
+┌──────────────────────────────────────────────────────────┐
+│ 使用 Neutrino 的情況：                                   │
+│ ├── 移動設備                                             │
+│ ├── 儲存空間有限                                         │
+│ ├── 需要快速啟動                                         │
+│ └── 小額資金管理                                         │
+│                                                          │
+│ 使用全節點的情況：                                       │
+│ ├── 大額資金                                             │
+│ ├── 路由節點運營                                         │
+│ ├── 最高安全要求                                         │
+│ └── 支援比特幣網路                                       │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>建議：</strong>
+      對於大額資金或路由節點，建議使用全節點。
+      Neutrino 非常適合個人使用和移動錢包場景。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0157.mediawiki"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BIP 157 - Client Side Block Filtering</a>
+    </li>
+    <li>
+      • <a
+        href="https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BIP 158 - Compact Block Filters</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/watchtowers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">瞭望塔</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/webln"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">WebLN</a
+      >
+      如何在瀏覽器中整合閃電支付。
+    </p>
+  </div>
+</ArticleLayout>

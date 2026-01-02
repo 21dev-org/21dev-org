@@ -1,0 +1,282 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Capacity 通道容量"
+  description="了解閃電網路通道容量的概念、限制因素，以及如何規劃通道大小。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Capacity' },
+  ]}
+  difficulty="beginner"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Payment Channels', href: '/tech/lightning/payment-channels' }}
+  nextPage={{ title: 'Liquidity', href: '/tech/lightning/liquidity' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是通道容量？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    通道容量是指閃電通道中鎖定的比特幣總量。它決定了通道能夠處理的
+    最大支付金額，是通道的基本屬性之一。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>鏈上資金：</strong>
+      通道容量由開設時鎖定在 2-of-2 多簽中的比特幣決定。
+      這些資金在通道開啟期間無法在鏈上使用。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量分配</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道容量結構：
+
+容量分配示例（1,000,000 sats 通道）：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │        本地餘額              │        遠端餘額           │ │
+│ │        600,000 sats          │        400,000 sats       │ │
+│ │        (出站容量)            │        (入站容量)         │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                                                              │
+│ 總容量：1,000,000 sats                                       │
+│                                                              │
+│ 你可以發送：最多 600,000 sats（減去儲備金和費用）            │
+│ 你可以接收：最多 400,000 sats（減去儲備金）                  │
+└──────────────────────────────────────────────────────────────┘
+
+容量是固定的，餘額是動態的：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│ 發送 200,000 sats 後：                                       │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │        本地餘額              │        遠端餘額           │ │
+│ │        400,000 sats          │        600,000 sats       │ │
+│ │        (出站容量減少)        │        (入站容量增加)     │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                                                              │
+│ 總容量仍然是 1,000,000 sats                                  │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量限制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道容量限制：
+
+默認限制：
+┌──────────────────────────────────────────────────────────────┐
+│ 最小容量：~20,000 sats                                       │
+│   原因：太小的通道不實用（費用可能超過容量）                 │
+│                                                              │
+│ 標準最大容量：16,777,215 sats (~0.168 BTC)                   │
+│   原因：原始協議限制（2^24 - 1 satoshis）                    │
+│                                                              │
+│ Wumbo 最大容量：~10 BTC（視實現而定）                        │
+│   需要：option_support_large_channel 功能位                  │
+└──────────────────────────────────────────────────────────────┘
+
+實際限制因素：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 可用資金                                                  │
+│    └── 你有多少 BTC 可以鎖定                                 │
+│                                                              │
+│ 2. 鏈上費用                                                  │
+│    └── 開設和關閉通道需要礦工費                              │
+│                                                              │
+│ 3. 儲備金要求                                                │
+│    └── 雙方必須保留最小餘額                                  │
+│                                                              │
+│ 4. 對手節點限制                                              │
+│    └── 對方可能設置不同的限制                                │
+│                                                              │
+│ 5. 風險考量                                                  │
+│    └── 大通道意味著更大的風險暴露                            │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">容量規劃</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`選擇合適的通道容量：
+
+根據使用場景：
+┌──────────────────────────────────────────────────────────────┐
+│ 個人日常使用：                                               │
+│ ├── 建議容量：100,000 - 500,000 sats                         │
+│ ├── 通道數量：2-5 個                                         │
+│ └── 考量：覆蓋日常小額支付                                   │
+│                                                              │
+│ 小型商家：                                                   │
+│ ├── 建議容量：500,000 - 2,000,000 sats                       │
+│ ├── 通道數量：3-10 個                                        │
+│ └── 考量：足夠的入站容量接收支付                             │
+│                                                              │
+│ 路由節點：                                                   │
+│ ├── 建議容量：2,000,000 - 16,777,215 sats                    │
+│ ├── 通道數量：10-100+ 個                                     │
+│ └── 考量：大額路由、雙向流動性                               │
+│                                                              │
+│ 大型企業：                                                   │
+│ ├── 建議容量：使用 Wumbo 通道                                │
+│ ├── 考量：專業節點運營、多重備份                             │
+│ └── 需要：Wumbo 支援的對手方                                 │
+└──────────────────────────────────────────────────────────────┘
+
+容量效率考量：
+┌──────────────────────────────────────────────────────────────┐
+│ 鏈上成本比：                                                 │
+│                                                              │
+│ 開設 100,000 sats 通道，費用 2,000 sats = 2% 成本            │
+│ 開設 1,000,000 sats 通道，費用 2,000 sats = 0.2% 成本        │
+│                                                              │
+│ → 較大通道的費用效率更高                                     │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">有效容量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`影響有效容量的因素：
+
+通道儲備金：
+┌──────────────────────────────────────────────────────────────┐
+│ 每方必須保留的最小餘額（防止作弊激勵）                       │
+│                                                              │
+│ 計算：reserve = max(dust_limit, capacity * 1%)               │
+│                                                              │
+│ 例如：1,000,000 sats 通道                                    │
+│ ├── 儲備金：10,000 sats 每方                                 │
+│ └── 有效可用：980,000 sats                                   │
+└──────────────────────────────────────────────────────────────┘
+
+HTLC 相關限制：
+┌──────────────────────────────────────────────────────────────┐
+│ 同時進行的 HTLC：                                            │
+│ ├── 數量限制：通常 483 個                                    │
+│ └── 金額限制：通常是容量的 99%                               │
+│                                                              │
+│ 最小 HTLC 金額：                                             │
+│ └── 低於此值的支付無法發送                                   │
+│                                                              │
+│ 塵埃限制：                                                   │
+│ └── 低於此值的輸出不會創建                                   │
+└──────────────────────────────────────────────────────────────┘
+
+承諾交易費用：
+┌──────────────────────────────────────────────────────────────┐
+│ Anchor Outputs 之前：                                        │
+│ ├── 費用從通道資金支付                                       │
+│ └── 減少有效容量                                             │
+│                                                              │
+│ Anchor Outputs 之後：                                        │
+│ ├── 費用可以 CPFP 補充                                       │
+│ └── 對有效容量影響更小                                       │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Splicing</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        未來技術允許動態調整通道容量，
+        無需關閉並重新開設通道。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">MPP 克服限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        多路徑支付可以跨多個通道拆分，
+        有效突破單一通道容量限制。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看容量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`查看通道容量命令：
+
+LND：
+# 列出所有通道及容量
+lncli listchannels
+
+# 查看特定通道
+lncli getchaninfo <channel_id>
+
+# 查看總容量
+lncli getinfo | jq '.num_active_channels, .num_peers'
+
+Core Lightning：
+# 列出通道
+lightning-cli listpeerchannels
+
+# 查看資金狀況
+lightning-cli listfunds
+
+輸出欄位：
+├── capacity：總容量
+├── local_balance：本地餘額（出站）
+├── remote_balance：遠端餘額（入站）
+├── commit_fee：承諾交易費用
+└── unsettled_balance：待結算 HTLC`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>容量 ≠ 流動性：</strong>
+      大容量通道如果餘額完全在一側，可能無法發送或接收支付。
+      平衡的流動性比純粹的大容量更重要。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="/tech/lightning/liquidity"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/wumbo-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Wumbo 通道</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/channel-reserve"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道儲備金</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/liquidity"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a
+      >
+      如何優化通道使用效率。
+    </p>
+  </div>
+</ArticleLayout>

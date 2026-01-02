@@ -1,0 +1,312 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Autopilot 自動導航"
+  description="了解閃電網路節點的自動通道管理功能，如何使用演算法自動選擇和開設通道。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Autopilot' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Channel Management', href: '/tech/lightning/channel-management' }}
+  nextPage={{ title: 'Node Operation', href: '/tech/lightning/node-operation' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Autopilot？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Autopilot 是閃電網路節點的自動通道管理功能。它根據網路拓撲和節點指標
+    自動選擇對手方並開設通道，減少手動管理的複雜性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>自動化管理：</strong>
+      Autopilot 適合不想深入研究網路拓撲的用戶，
+      但經驗豐富的節點運營者通常偏好手動選擇通道對手。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Autopilot 決策流程：
+
+輸入因素：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 可用資金：                                                │
+│    └── 錢包中可用於開通道的比特幣                            │
+│                                                              │
+│ 2. 目標分配：                                                │
+│    └── 希望分配到閃電通道的資金比例                          │
+│                                                              │
+│ 3. 網路拓撲：                                                │
+│    └── 從 gossip 獲取的節點和通道資訊                        │
+│                                                              │
+│ 4. 節點指標：                                                │
+│    └── 連接數、容量、中心性等                                │
+└──────────────────────────────────────────────────────────────┘
+
+決策邏輯：
+┌──────────────────────────────────────────────────────────────┐
+│                    ┌─────────────────┐                       │
+│                    │   評估錢包餘額   │                       │
+│                    └────────┬────────┘                       │
+│                             │                                │
+│              ┌──────────────┴──────────────┐                 │
+│              │  餘額 > 目標 * 當前通道總額？ │                 │
+│              └──────────────┬──────────────┘                 │
+│                             │ 是                             │
+│                    ┌────────┴────────┐                       │
+│                    │  計算節點評分    │                       │
+│                    └────────┬────────┘                       │
+│                             │                                │
+│                    ┌────────┴────────┐                       │
+│                    │  選擇最佳候選    │                       │
+│                    └────────┬────────┘                       │
+│                             │                                │
+│                    ┌────────┴────────┐                       │
+│                    │  開設通道        │                       │
+│                    └─────────────────┘                       │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">節點選擇演算法</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`常見的節點選擇策略：
+
+1. Preferential Attachment（優先連接）：
+┌──────────────────────────────────────────────────────────────┐
+│ 原理：連接數越多的節點，越可能被選中                         │
+│                                                              │
+│ 公式：                                                       │
+│ P(選擇節點 i) ∝ (節點 i 的通道數)^α                         │
+│                                                              │
+│ α > 1：傾向超級節點（更中心化）                              │
+│ α = 1：線性偏好                                              │
+│ α < 1：減少對大節點的偏好                                    │
+│                                                              │
+│ 優點：短路徑、高可達性                                       │
+│ 缺點：增加網路中心化                                         │
+└──────────────────────────────────────────────────────────────┘
+
+2. Betweenness Centrality（介數中心性）：
+┌──────────────────────────────────────────────────────────────┐
+│ 原理：選擇位於多條最短路徑上的節點                           │
+│                                                              │
+│ 高介數節點 = 更多支付會經過                                  │
+│ 連接到這些節點 = 更好的網路連通性                            │
+│                                                              │
+│ 優點：提高路由成功率                                         │
+│ 缺點：計算開銷大                                             │
+└──────────────────────────────────────────────────────────────┘
+
+3. 隨機選擇 + 加權：
+┌──────────────────────────────────────────────────────────────┐
+│ 結合多個因素：                                               │
+│ ├── 通道數量                                                 │
+│ ├── 總容量                                                   │
+│ ├── 正常運行時間                                             │
+│ ├── 費用結構                                                 │
+│ └── 地理多樣性                                               │
+│                                                              │
+│ 加權隨機選擇避免過度集中                                     │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">LND Autopilot</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND Autopilot 配置：
+
+lnd.conf 設置：
+┌──────────────────────────────────────────────────────────────┐
+│ [autopilot]                                                  │
+│ autopilot.active=true        # 啟用 autopilot                │
+│ autopilot.maxchannels=5      # 最大通道數                    │
+│ autopilot.allocation=0.6     # 資金分配比例（60%）           │
+│ autopilot.minchansize=20000  # 最小通道大小                  │
+│ autopilot.maxchansize=16777215 # 最大通道大小                │
+│ autopilot.private=false      # 是否開設私有通道              │
+│ autopilot.minconfs=1         # 最小確認數                    │
+│ autopilot.conftarget=3       # 確認目標區塊數                │
+└──────────────────────────────────────────────────────────────┘
+
+啟發式策略（heuristics）：
+┌──────────────────────────────────────────────────────────────┐
+│ LND 支援可插拔的啟發式：                                     │
+│                                                              │
+│ preferential：                                               │
+│   優先連接（預設）                                           │
+│                                                              │
+│ externalscore：                                              │
+│   使用外部評分（如 BOS score）                               │
+│                                                              │
+│ 設置：                                                       │
+│ autopilot.heuristic=externalscore:0.5,preferential:0.5       │
+└──────────────────────────────────────────────────────────────┘
+
+CLI 控制：
+# 查看 autopilot 狀態
+lncli autopilot status
+
+# 啟用/禁用
+lncli autopilot enable
+lncli autopilot disable
+
+# 查詢推薦的節點
+lncli autopilot query`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Core Lightning (CLN)</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`CLN 自動化選項：
+
+內建功能：
+┌──────────────────────────────────────────────────────────────┐
+│ CLN 沒有內建 autopilot，但提供：                             │
+│                                                              │
+│ 1. clboss 插件：                                             │
+│    ├── 自動通道管理                                          │
+│    ├── 自動費用調整                                          │
+│    ├── 自動再平衡                                            │
+│    └── 流動性管理                                            │
+│                                                              │
+│ 2. 其他社群插件：                                            │
+│    ├── autopilot-plugin                                      │
+│    └── 各種自定義解決方案                                    │
+└──────────────────────────────────────────────────────────────┘
+
+clboss 安裝：
+# 編譯安裝
+git clone https://github.com/ZmnSCPxj/clboss.git
+cd clboss
+autoreconf -i
+./configure
+make
+sudo make install
+
+# 配置
+lightning-cli plugin start /path/to/clboss
+
+# 或在 config 中
+plugin=/path/to/clboss`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">優缺點分析</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
+      <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">優點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 減少手動管理工作</li>
+        <li>• 適合新手入門</li>
+        <li>• 自動維持通道數量</li>
+        <li>• 無需研究網路拓撲</li>
+      </ul>
+    </div>
+    <div class="p-4 rounded-lg border border-red-500/30 bg-red-500/10">
+      <h4 class="font-semibold text-red-700 dark:text-red-400 mb-2">缺點</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+        <li>• 可能選擇次優節點</li>
+        <li>• 不考慮特定需求</li>
+        <li>• 無法保證入站容量</li>
+        <li>• 費用可能不優化</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Autopilot 使用建議：
+
+適合使用 Autopilot：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 剛開始運行節點的新手                                       │
+│ ✓ 不想花時間研究網路的用戶                                   │
+│ ✓ 主要用於發送支付（不做路由）                               │
+│ ✓ 小額資金測試                                               │
+└──────────────────────────────────────────────────────────────┘
+
+不建議使用 Autopilot：
+┌──────────────────────────────────────────────────────────────┐
+│ ✗ 認真的路由節點運營者                                       │
+│ ✗ 需要特定入站容量的商家                                     │
+│ ✗ 大額資金部署                                               │
+│ ✗ 追求最優費用結構                                           │
+└──────────────────────────────────────────────────────────────┘
+
+混合策略：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 使用 autopilot 建立基礎連接                               │
+│ 2. 手動添加關鍵節點（高質量、低費用）                        │
+│ 3. 定期審查並關閉低效通道                                    │
+│ 4. 隨著經驗增長逐步轉向手動管理                              │
+└──────────────────────────────────────────────────────────────┘
+
+監控指標：
+├── 路由成功率
+├── 平均路徑長度
+├── 支付費用
+└── 通道利用率`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>謹慎使用：</strong>
+      Autopilot 只管理出站通道。入站容量需要其他方式獲取
+      （Loop In、Pool、請求他人開通道等）。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightningnetwork/lnd/blob/master/docs/autopilot.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Autopilot 文檔</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/channel-management"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道管理</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/network-topology"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">網路拓撲</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/node-operation"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">節點運營</a
+      >
+      的完整指南。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,334 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Blinded Paths 盲化路徑"
+  description="了解閃電網路的盲化路徑機制，如何保護收款人隱私並防止支付路徑暴露。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Blinded Paths' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Route Blinding', href: '/tech/lightning/route-blinding' }}
+  nextPage={{ title: 'BOLT12 Offers', href: '/tech/lightning/bolt12-offers' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是盲化路徑？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    盲化路徑（Blinded Paths）是一種隱私技術，允許收款人隱藏其節點身份和
+    最後幾跳的路徑資訊。付款人只能看到路徑的起點（引入點），
+    無法知道實際的收款人位置。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>收款人隱私：</strong>
+      傳統發票暴露收款人節點 ID，盲化路徑則完全隱藏。
+      即使付款人也無法確定誰是最終收款人。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`盲化路徑機制：
+
+傳統路由 vs 盲化路徑：
+┌──────────────────────────────────────────────────────────────┐
+│ 傳統路由：                                                   │
+│                                                              │
+│ 付款人 → A → B → C → 收款人                                 │
+│                       ↑                                      │
+│                       暴露在發票中                           │
+│                                                              │
+│ 盲化路徑：                                                   │
+│                                                              │
+│ 付款人 → A → B → [盲化區域]                                  │
+│              ↑    ╔═══════════════════╗                      │
+│         引入點    ║ C → 收款人        ║                      │
+│                   ║ （加密，不可見）   ║                      │
+│                   ╚═══════════════════╝                      │
+└──────────────────────────────────────────────────────────────┘
+
+盲化過程：
+┌──────────────────────────────────────────────────────────────┐
+│ 收款人創建盲化路徑：                                         │
+│                                                              │
+│ 1. 選擇引入點（introduction point）                          │
+│    └── 這是付款人可見的最後一個節點                          │
+│                                                              │
+│ 2. 為每個後續節點生成盲化資料：                              │
+│    ├── blinded_node_id = node_id * blinding_factor           │
+│    └── encrypted_data = 加密的路由資訊                       │
+│                                                              │
+│ 3. 將盲化路徑包含在 Offer/Invoice 中                         │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密碼學基礎</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`盲化密碼學：
+
+ECDH 金鑰衍生：
+┌──────────────────────────────────────────────────────────────┐
+│ 對於路徑中的每個節點 i：                                     │
+│                                                              │
+│ 1. 盲化因子衍生：                                            │
+│    e_i = SHA256(e_{i-1} || blinded_node_id_{i-1})           │
+│                                                              │
+│ 2. 盲化節點 ID：                                             │
+│    blinded_node_id_i = node_id_i * e_i                      │
+│                                                              │
+│ 3. 共享密鑰（ECDH）：                                        │
+│    ss_i = SHA256(e_i * node_id_i)                           │
+│         = SHA256(e_i * k_i * G)                              │
+│         = SHA256(k_i * blinded_node_id_i)  ← 節點可計算      │
+└──────────────────────────────────────────────────────────────┘
+
+加密資料：
+┌──────────────────────────────────────────────────────────────┐
+│ encrypted_data_i 使用 ChaCha20-Poly1305 加密：               │
+│                                                              │
+│ 內容：                                                       │
+│ ├── padding: 可選填充                                        │
+│ ├── short_channel_id: 下一跳通道                             │
+│ ├── payment_relay: 費用和時間鎖資訊                          │
+│ ├── payment_constraints: 支付限制                            │
+│ └── next_blinding_override: 可選的盲化因子覆蓋               │
+│                                                              │
+│ 密鑰：HKDF(ss_i, "blinded_path")                             │
+│ Nonce：0                                                     │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">路徑結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`盲化路徑 TLV 格式：
+
+blinded_path：
+┌──────────────────────────────────────────────────────────────┐
+│ introduction_node_id: 33 bytes                               │
+│   引入點的真實節點 ID                                        │
+│                                                              │
+│ blinding_point: 33 bytes                                     │
+│   初始盲化點（用於 ECDH）                                    │
+│                                                              │
+│ blinded_hops: 陣列                                           │
+│   ├── [0] blinded_node_id: 33 bytes                         │
+│   │       encrypted_data: variable                           │
+│   ├── [1] blinded_node_id: 33 bytes                         │
+│   │       encrypted_data: variable                           │
+│   └── [n] 最後一個是收款人                                   │
+└──────────────────────────────────────────────────────────────┘
+
+付款人視角：
+┌──────────────────────────────────────────────────────────────┐
+│ 可見資訊：                                                   │
+│ ├── introduction_node_id（可路由到這裡）                     │
+│ ├── 盲化跳數數量                                             │
+│ └── 總費用和時間鎖需求                                       │
+│                                                              │
+│ 不可見資訊：                                                 │
+│ ├── 實際節點 ID                                              │
+│ ├── 通道 ID                                                  │
+│ └── 收款人身份                                               │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中繼節點處理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`節點如何處理盲化支付：
+
+接收盲化洋蔥：
+┌──────────────────────────────────────────────────────────────┐
+│ 洋蔥包含：                                                   │
+│ ├── current_blinding_point: 當前盲化點                       │
+│ └── encrypted_data: 加密的路由資訊                           │
+│                                                              │
+│ 節點處理：                                                   │
+│                                                              │
+│ 1. 計算共享密鑰：                                            │
+│    ss = SHA256(私鑰 * current_blinding_point)                │
+│                                                              │
+│ 2. 解密 encrypted_data：                                     │
+│    key = HKDF(ss, "blinded_path")                            │
+│    data = ChaCha20-Poly1305_Decrypt(encrypted_data, key)     │
+│                                                              │
+│ 3. 從解密資料獲取：                                          │
+│    ├── 下一跳通道 ID                                         │
+│    ├── 費用和時間鎖                                          │
+│    └── 下一個盲化點（如果有覆蓋）                            │
+│                                                              │
+│ 4. 計算下一個盲化點（預設）：                                │
+│    next_blinding = SHA256(ss || current_blinding) * current  │
+│                                                              │
+│ 5. 轉發支付到指定通道                                        │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT12 整合</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`盲化路徑在 BOLT12 中的使用：
+
+Offer 中的盲化路徑：
+┌──────────────────────────────────────────────────────────────┐
+│ offer_paths: 一個或多個盲化路徑                              │
+│                                                              │
+│ 買家：                                                       │
+│ 1. 收到 Offer                                                │
+│ 2. 選擇一個盲化路徑                                          │
+│ 3. 透過該路徑發送 invoice_request                            │
+│                                                              │
+│ 賣家：                                                       │
+│ 1. 透過盲化路徑收到請求                                      │
+│ 2. 生成 Invoice（也可包含盲化路徑）                          │
+│ 3. 透過洋蔥訊息回覆                                          │
+└──────────────────────────────────────────────────────────────┘
+
+多重盲化路徑：
+┌──────────────────────────────────────────────────────────────┐
+│ 使用多個盲化路徑增加：                                       │
+│ ├── 冗餘性：一個路徑失敗可用其他                             │
+│ ├── 隱私：更難關聯不同請求                                   │
+│ └── 可用性：分散負載                                         │
+│                                                              │
+│ 範例：                                                       │
+│ offer_paths:                                                 │
+│   - path_1: A → [blinded] → 收款人                          │
+│   - path_2: B → [blinded] → 收款人                          │
+│   - path_3: C → [blinded] → 收款人                          │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">付款人隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        收款人只看到引入點，不知道付款人的真實位置或路徑。
+        洋蔥路由保護付款人身份。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">收款人隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        盲化路徑隱藏收款人節點和最後幾跳。
+        付款人無法知道誰是最終收款人。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">中繼節點隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        盲化區域的節點 ID 被隱藏，中繼節點無法識別彼此。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">抗關聯性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        每次使用不同盲化因子，相同路徑看起來不同，
+        防止跨支付關聯。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現狀態</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`各實現支援狀態：
+
+Core Lightning：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 完整支援盲化路徑                                           │
+│ ✓ BOLT12 Offers 整合                                         │
+│ ✓ 洋蔥訊息支援                                               │
+│                                                              │
+│ # 創建帶盲化路徑的 Offer                                     │
+│ lightning-cli offer any "my offer"                           │
+└──────────────────────────────────────────────────────────────┘
+
+LND：
+┌──────────────────────────────────────────────────────────────┐
+│ ◐ 部分支援（開發中）                                         │
+│ ◐ Route blinding 作為轉發節點                                │
+│ ○ BOLT12 尚未完全支援                                        │
+└──────────────────────────────────────────────────────────────┘
+
+Eclair：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 盲化路徑支援                                               │
+│ ✓ BOLT12 部分支援                                            │
+│ ✓ Phoenix 錢包中使用                                         │
+└──────────────────────────────────────────────────────────────┘
+
+LDK：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 盲化路徑構建                                               │
+│ ✓ 盲化路徑解析                                               │
+│ ✓ BOLT12 支援                                                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>路徑長度：</strong>
+      盲化路徑增加 payload 大小。建議限制盲化跳數在 2-3 跳，
+      平衡隱私和效率。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/04-onion-routing.md#route-blinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 4 Route Blinding</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/route-blinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑盲化概覽</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a
+      >
+      如何使用盲化路徑提供隱私支付請求。
+    </p>
+  </div>
+</ArticleLayout>

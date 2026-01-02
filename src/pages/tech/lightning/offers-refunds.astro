@@ -1,0 +1,315 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Offers Refunds BOLT12 退款"
+  description="了解 BOLT12 的退款機制，如何實現可退款的閃電支付和商家退款流程。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Offers Refunds' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'BOLT12 Offers', href: '/tech/lightning/bolt12-offers' }}
+  nextPage={{ title: 'Invoice Request', href: '/tech/lightning/invoice-request' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 BOLT12 退款？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BOLT12 引入了原生的退款機制，允許商家向買家發起支付。
+    這解決了傳統閃電支付「發送後無法退回」的限制。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>雙向互動：</strong>
+      退款利用 BOLT12 的互動式協議，商家可以向買家請求發票，
+      然後支付該發票完成退款。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">退款流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT12 退款流程：
+
+完整流程（購買 → 退款）：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  買家                                      商家              │
+│    │                                        │                │
+│    │  ═══════ 正常購買流程 ═══════          │                │
+│    │                                        │                │
+│    │──── invoice_request ──────────────────>│                │
+│    │     (含 payer_key)                     │                │
+│    │                                        │                │
+│    │<─── invoice ───────────────────────────│                │
+│    │     (記錄 payer_key)                   │                │
+│    │                                        │                │
+│    │════ HTLC 支付 ════════════════════════>│                │
+│    │                                        │ [儲存訂單資訊] │
+│    │                                        │                │
+│    │  ═══════ 退款流程 ═══════              │                │
+│    │                                        │                │
+│    │<─── invoice_request ───────────────────│                │
+│    │     (商家請求買家的發票)               │ [發起退款]     │
+│    │                                        │                │
+│    │──── invoice ──────────────────────────>│                │
+│    │     (買家提供收款發票)                 │                │
+│    │                                        │                │
+│    │<═══ HTLC 支付（退款）═════════════════│                │
+│    │                                        │                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">退款 Offer 結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`send_invoice Offer（退款用）：
+
+Offer 類型對比：
+┌──────────────────────────────────────────────────────────────┐
+│ 普通 Offer（收款）：                                         │
+│ ├── 商家發布，買家掃描                                       │
+│ ├── 買家請求發票 → 商家提供發票 → 買家支付                   │
+│ └── send_invoice = false（默認）                             │
+│                                                              │
+│ 退款 Offer（付款）：                                         │
+│ ├── 商家發送給特定買家                                       │
+│ ├── 買家提供發票 → 商家支付                                  │
+│ └── send_invoice = true                                      │
+└──────────────────────────────────────────────────────────────┘
+
+退款 Offer TLV 欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ send_invoice (54): 存在表示這是退款 Offer                    │
+│                                                              │
+│ amount (8): 退款金額（固定）                                 │
+│                                                              │
+│ description (10): "Refund for order #12345"                  │
+│                                                              │
+│ paths (16): 商家的盲化路徑                                   │
+│   商家需要能接收買家的發票                                   │
+│                                                              │
+│ refund_for (38): 32 bytes                                    │
+│   原始支付的 payment_hash                                    │
+│   用於關聯退款與原始訂單                                     │
+└──────────────────────────────────────────────────────────────┘
+
+範例編碼：
+lno1...（包含 send_invoice 標記的 Offer）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">payer_key 的重要性</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`payer_key 實現可退款支付：
+
+原始購買時：
+┌──────────────────────────────────────────────────────────────┐
+│ 買家發送 invoice_request：                                   │
+│ {                                                            │
+│   offer_id: <商家的 Offer ID>,                               │
+│   payer_key: 0x02abc...def,  ← 買家的公鑰                    │
+│   payer_signature: <簽名>                                    │
+│ }                                                            │
+│                                                              │
+│ 商家儲存：                                                   │
+│ order_12345 = {                                              │
+│   payment_hash: 0x123...abc,                                 │
+│   payer_key: 0x02abc...def,  ← 記住買家的公鑰                │
+│   amount: 100000 msat,                                       │
+│   timestamp: 1699999999                                      │
+│ }                                                            │
+└──────────────────────────────────────────────────────────────┘
+
+退款時使用 payer_key：
+┌──────────────────────────────────────────────────────────────┐
+│ 商家創建退款 Offer：                                         │
+│ {                                                            │
+│   send_invoice: true,                                        │
+│   amount: 100000 msat,                                       │
+│   refund_for: 0x123...abc,                                   │
+│   payer_key: 0x02abc...def  ← 指定收款人                     │
+│ }                                                            │
+│                                                              │
+│ 只有擁有對應私鑰的買家才能：                                 │
+│ ├── 解密發送到該 payer_key 的消息                            │
+│ ├── 證明自己是原始買家                                       │
+│ └── 提供有效的收款發票                                       │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">實現細節</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`商家端退款實現：
+
+發起退款：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 查詢原始訂單                                              │
+│    order = database.get_order(order_id)                      │
+│                                                              │
+│ 2. 創建退款 Offer                                            │
+│    refund_offer = {                                          │
+│      send_invoice: true,                                     │
+│      amount: order.amount,                                   │
+│      description: f"Refund for {order_id}",                  │
+│      refund_for: order.payment_hash,                         │
+│      paths: generate_blinded_paths()                         │
+│    }                                                         │
+│                                                              │
+│ 3. 發送給買家                                                │
+│    send_onion_message(                                       │
+│      destination: order.payer_key,                           │
+│      content: refund_offer                                   │
+│    )                                                         │
+│                                                              │
+│ 4. 等待買家發票                                              │
+│    invoice = await receive_invoice()                         │
+│                                                              │
+│ 5. 驗證發票                                                  │
+│    verify(invoice.payer_key == order.payer_key)              │
+│    verify(invoice.amount == refund_offer.amount)             │
+│                                                              │
+│ 6. 支付發票                                                  │
+│    pay(invoice)                                              │
+└──────────────────────────────────────────────────────────────┘
+
+買家端處理：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 接收退款 Offer                                            │
+│    offer = receive_onion_message()                           │
+│    verify(offer.send_invoice == true)                        │
+│                                                              │
+│ 2. 驗證退款有效性                                            │
+│    original_payment = database.get_payment(offer.refund_for) │
+│    verify(original_payment exists)                           │
+│                                                              │
+│ 3. 創建收款發票                                              │
+│    invoice = create_invoice(                                 │
+│      amount: offer.amount,                                   │
+│      payment_paths: generate_paths()                         │
+│    )                                                         │
+│                                                              │
+│ 4. 發送發票                                                  │
+│    send_onion_message(                                       │
+│      destination: offer.paths[0],                            │
+│      content: invoice                                        │
+│    )                                                         │
+│                                                              │
+│ 5. 等待收款                                                  │
+│    await receive_payment()                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`退款安全機制：
+
+防止詐騙退款：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. payer_key 綁定                                            │
+│    ├── 退款只能發給原始買家                                  │
+│    ├── 無法冒充買家請求退款                                  │
+│    └── 需要擁有對應的私鑰                                    │
+│                                                              │
+│ 2. refund_for 關聯                                           │
+│    ├── 明確關聯到原始支付                                    │
+│    ├── 可審計的退款記錄                                      │
+│    └── 防止重複退款                                          │
+│                                                              │
+│ 3. 商家控制                                                  │
+│    ├── 商家決定是否退款                                      │
+│    ├── 商家設定退款金額                                      │
+│    └── 商家驗證買家身份                                      │
+└──────────────────────────────────────────────────────────────┘
+
+買家保護：
+┌──────────────────────────────────────────────────────────────┐
+│ 驗證退款 Offer：                                             │
+│ ├── 確認 send_invoice = true                                 │
+│ ├── 確認 refund_for 對應真實的支付                           │
+│ ├── 確認金額合理                                             │
+│ └── 確認來源可信（通過 paths）                               │
+│                                                              │
+│ 注意事項：                                                   │
+│ ├── 不要給陌生 Offer 提供發票                                │
+│ ├── 驗證商家身份                                             │
+│ └── 保留支付記錄                                             │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">應用場景</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        電商退貨、服務取消、超額支付退回、
+        獎勵發放等商業場景。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">vs LNURL-withdraw</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        BOLT12 退款是原生協議，不需要 HTTP 服務。
+        更好的隱私和可靠性。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>在線需求：</strong>
+      買家需要在線才能接收退款 Offer 並提供發票。
+      離線買家可能錯過退款窗口。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/12-offer-encoding.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 12 規範</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/invoice-request"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Invoice Request</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/invoice-request"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Invoice Request</a
+      >
+      的詳細協議流程。
+    </p>
+  </div>
+</ArticleLayout>

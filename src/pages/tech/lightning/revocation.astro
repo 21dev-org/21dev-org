@@ -1,0 +1,352 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Revocation 撤銷機制"
+  description="深入了解閃電網路的撤銷機制，如何通過密碼學確保舊狀態無法被發布，防止通道欺詐。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Revocation' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Timelocks', href: '/tech/lightning/timelocks' }}
+  nextPage={{ title: 'SCID Alias', href: '/tech/lightning/scid-alias' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是撤銷機制？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    撤銷機制（Revocation）是閃電網路防止欺詐的核心安全機制。
+    當通道狀態更新時，雙方交換「撤銷密鑰」來使舊的承諾交易失效。
+    如果任何一方嘗試發布已撤銷的舊狀態，對方可以使用撤銷密鑰沒收其全部資金。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+    <p class="text-sm text-red-700 dark:text-red-400">
+      <strong>懲罰機制：</strong>
+      發布已撤銷的承諾交易會導致所有通道資金被對方沒收。
+      這種嚴厲懲罰是閃電網路安全的基礎。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">撤銷密鑰的生成</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`撤銷密鑰派生結構：
+
+每方維護兩個基點：
+┌─────────────────────────────────────────────────────────┐
+│ revocation_basepoint：自己的撤銷基點                    │
+│ per_commitment_point：每個承諾交易的唯一點              │
+└─────────────────────────────────────────────────────────┘
+
+撤銷公鑰計算：
+┌─────────────────────────────────────────────────────────┐
+│ revocation_pubkey =                                     │
+│   revocation_basepoint * SHA256(                        │
+│     revocation_basepoint || per_commitment_point        │
+│   )                                                     │
+│   +                                                     │
+│   per_commitment_point * SHA256(                        │
+│     per_commitment_point || revocation_basepoint        │
+│   )                                                     │
+│                                                         │
+│ 這樣設計的原因：                                         │
+│ ├── 需要兩個密鑰才能生成撤銷私鑰                        │
+│ ├── revocation_basepoint_secret（對方持有）             │
+│ └── per_commitment_secret（自己持有，之後給對方）       │
+└─────────────────────────────────────────────────────────┘
+
+撤銷私鑰（只有在撤銷後才能計算）：
+┌─────────────────────────────────────────────────────────┐
+│ revocation_privkey =                                    │
+│   revocation_basepoint_secret * SHA256(                 │
+│     revocation_basepoint || per_commitment_point        │
+│   )                                                     │
+│   +                                                     │
+│   per_commitment_secret * SHA256(                       │
+│     per_commitment_point || revocation_basepoint        │
+│   )                                                     │
+│                                                         │
+│ 關鍵：                                                   │
+│ ├── 在撤銷之前，雙方都無法計算撤銷私鑰                  │
+│ ├── 撤銷時，發送 per_commitment_secret 給對方           │
+│ └── 對方收到後就能計算撤銷私鑰                          │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">撤銷流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`狀態更新與撤銷：
+
+狀態 N → 狀態 N+1 的更新流程：
+
+Alice                                 Bob
+  │                                    │
+  │ [當前：承諾交易 N]                 │
+  │                                    │
+  │──── commitment_signed ────────────>│  Alice 簽署新承諾 N+1
+  │     (signature for N+1)            │
+  │                                    │
+  │<─── revoke_and_ack ────────────────│  Bob 撤銷舊承諾 N
+  │     (per_commitment_secret_N)      │  並確認收到 N+1
+  │     (next_per_commitment_point)    │
+  │                                    │
+  │<─── commitment_signed ─────────────│  Bob 簽署新承諾 N+1
+  │     (signature for N+1)            │
+  │                                    │
+  │──── revoke_and_ack ───────────────>│  Alice 撤銷舊承諾 N
+  │     (per_commitment_secret_N)      │  並確認收到 N+1
+  │     (next_per_commitment_point)    │
+  │                                    │
+  │ [當前：承諾交易 N+1]               │
+  │ [承諾交易 N 已被雙方撤銷]          │
+  │                                    │
+
+revoke_and_ack 訊息內容：
+┌─────────────────────────────────────────────────────────┐
+│ channel_id: 32 bytes                                    │
+│ per_commitment_secret: 32 bytes（撤銷的密鑰）           │
+│ next_per_commitment_point: 33 bytes（下次使用的點）     │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">承諾交易中的撤銷</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`to_local 輸出腳本（可被撤銷）：
+
+OP_IF
+    # 撤銷路徑：對方可以立即花費
+    <revocation_pubkey>
+OP_ELSE
+    # 正常路徑：自己需要等待 to_self_delay
+    <to_self_delay>
+    OP_CHECKSEQUENCEVERIFY
+    OP_DROP
+    <local_delayed_pubkey>
+OP_ENDIF
+OP_CHECKSIG
+
+使用場景：
+
+情況 1：正常關閉（發布最新狀態）
+┌─────────────────────────────────────────────────────────┐
+│ Alice 發布最新的承諾交易                                │
+│ ├── to_local 輸出需要等待 to_self_delay                 │
+│ ├── Bob 沒有撤銷密鑰（這是最新狀態）                    │
+│ └── 等待後 Alice 正常取回資金                           │
+└─────────────────────────────────────────────────────────┘
+
+情況 2：欺詐嘗試（發布舊狀態）
+┌─────────────────────────────────────────────────────────┐
+│ Alice 發布已撤銷的舊承諾交易                            │
+│ ├── Bob 檢測到舊交易                                    │
+│ ├── Bob 有這筆交易的 per_commitment_secret              │
+│ ├── Bob 計算出 revocation_privkey                       │
+│ ├── Bob 用撤銷密鑰立即花費 to_local（Alice 的錢）       │
+│ └── Alice 損失所有資金                                  │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">密鑰儲存</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Shachain：高效的密鑰儲存結構
+
+問題：
+├── 一個長期通道可能有數百萬次狀態更新
+├── 每次更新產生一個 per_commitment_secret
+└── 需要儲存所有舊密鑰以備懲罰
+
+解決方案：Shachain
+┌─────────────────────────────────────────────────────────┐
+│ 使用哈希鏈結構，只需儲存 O(log n) 個種子                │
+│ 可以派生出所有 n 個密鑰                                 │
+│                                                         │
+│ 結構示意：                                               │
+│                                                         │
+│            seed                                         │
+│           /    \\                                        │
+│      H(0||s)  H(1||s)                                   │
+│       / \\      / \\                                      │
+│      ...      ...                                       │
+│                                                         │
+│ 派生規則：                                               │
+│ 從 index 的二進位表示決定派生路徑                       │
+│                                                         │
+│ 儲存效率：                                               │
+│ ├── 2^48 個密鑰只需要 48 個種子                         │
+│ ├── 每個種子 32 bytes                                   │
+│ └── 總共只需 1.5 KB                                     │
+└─────────────────────────────────────────────────────────┘
+
+接收密鑰時的驗證：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 收到 per_commitment_secret                           │
+│ 2. 驗證可以派生出之前的密鑰                             │
+│ 3. 如果驗證失敗，對方可能在作弊                         │
+│ 4. 將新密鑰插入 Shachain 結構                           │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 的撤銷</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 輸出也有撤銷路徑：
+
+Offered HTLC（我發出的 HTLC）：
+┌─────────────────────────────────────────────────────────┐
+│ # 撤銷路徑                                              │
+│ OP_DUP OP_HASH160 <revocation_hash> OP_EQUAL            │
+│ OP_IF                                                   │
+│     OP_CHECKSIG                                         │
+│ OP_ELSE                                                 │
+│     # 正常路徑...                                       │
+│ OP_ENDIF                                                │
+│                                                         │
+│ 如果發布舊狀態，對方可以用撤銷密鑰領取 HTLC            │
+└─────────────────────────────────────────────────────────┘
+
+Received HTLC（我收到的 HTLC）：
+┌─────────────────────────────────────────────────────────┐
+│ 同樣包含撤銷路徑                                        │
+│ 防止發布舊狀態後嘗試領取已結算的 HTLC                   │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">瞭望塔與撤銷</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">瞭望塔的角色</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        瞭望塔代替你監控區塊鏈。當你離線時，它可以檢測欺詐並發布懲罰交易，
+        保護你的資金。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">資料格式</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        你將加密的懲罰交易發送給瞭望塔。瞭望塔只能在看到對應的舊承諾交易時才能解密和使用。
+      </p>
+    </div>
+  </div>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`瞭望塔如何使用撤銷資料：
+
+準備階段：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 你撤銷舊狀態 N                                       │
+│ 2. 計算舊承諾交易的 txid 前綴作為 hint                  │
+│ 3. 構建懲罰交易（使用撤銷密鑰）                         │
+│ 4. 用承諾交易 txid 加密懲罰交易                         │
+│ 5. 發送 (hint, encrypted_blob) 給瞭望塔                 │
+└─────────────────────────────────────────────────────────┘
+
+監控階段：
+┌─────────────────────────────────────────────────────────┐
+│ 1. 瞭望塔監控區塊鏈                                     │
+│ 2. 看到交易時，用 txid 匹配 hint                        │
+│ 3. 如果匹配，用 txid 解密 blob                          │
+│ 4. 廣播懲罰交易                                         │
+│ 5. 你的資金被保護                                       │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Eltoo：替代方案</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Eltoo 的不同方法：
+
+當前 LN-Penalty 機制：
+├── 發布舊狀態 = 損失所有資金
+├── 需要儲存所有舊密鑰
+└── 懲罰可能過於嚴厲
+
+Eltoo（需要 SIGHASH_ANYPREVOUT）：
+┌─────────────────────────────────────────────────────────┐
+│ 不使用撤銷機制                                          │
+│ 新狀態可以「替換」舊狀態                                │
+│                                                         │
+│ 優點：                                                   │
+│ ├── 無需儲存舊密鑰                                      │
+│ ├── 發布舊狀態只會被更新，不會被懲罰                    │
+│ ├── 更適合多方通道（Channel Factories）                 │
+│ └── 實現更簡單                                          │
+│                                                         │
+│ 缺點：                                                   │
+│ ├── 需要比特幣軟分叉（ANYPREVOUT）                      │
+│ ├── 沒有懲罰可能減少威懾力                              │
+│ └── 目前尚未啟用                                        │
+└─────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>重要提醒：</strong>
+      永遠不要故意發布舊的承諾交易。即使忘記了最新狀態，
+      也應該嘗試與對方協商關閉，而不是發布可能過時的狀態。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/03-transactions.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 3 - Transactions</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/penalty-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">懲罰交易</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/eltoo"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Eltoo</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/watchtowers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">瞭望塔</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/scid-alias"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">SCID 別名</a
+      >
+      如何增強隱私。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,440 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Lightning Wallets 錢包指南"
+  description="了解不同類型的閃電錢包，從託管到自託管，從手機到節點，選擇適合你需求的錢包。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Lightning Wallets' },
+  ]}
+  difficulty="beginner"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Network Topology', href: '/tech/lightning/network-topology' }}
+  nextPage={{ title: 'WebLN', href: '/tech/lightning/webln' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錢包類型概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電錢包的選擇取決於你的技術能力、安全需求和使用場景。
+    從完全託管到運行自己的節點，有多種選項可供選擇。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>權衡取捨：</strong>
+      更多的自主權意味著更多的責任。託管簡單但需要信任；
+      自託管安全但需要技術能力。選擇適合你的平衡點。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錢包分類</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錢包類型譜系：
+
+┌──────────────────────────────────────────────────────────────┐
+│ 託管程度：低 ◄─────────────────────────────────► 高          │
+│                                                              │
+│ ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
+│ │ 全節點  │  │ LSP     │  │ 半託管  │  │ 全託管  │          │
+│ │         │  │ 錢包    │  │         │  │         │          │
+│ └─────────┘  └─────────┘  └─────────┘  └─────────┘          │
+│                                                              │
+│ 自己運行節點  自己持有鍵   鍵分割/    服務商持有             │
+│ 完全控制     LSP 提供     共同託管   你的資金               │
+│              流動性                                          │
+└──────────────────────────────────────────────────────────────┘
+
+安全性 vs 便利性：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│ 安全性高 ──────────────────────────────────────► 便利性高   │
+│                                                              │
+│ 全節點 > LSP 錢包 > 半託管 > 全託管                         │
+│                                                              │
+│ 便利性高 ──────────────────────────────────────► 安全性高   │
+│                                                              │
+│ 全託管 > 半託管 > LSP 錢包 > 全節點                         │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">託管錢包</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`託管錢包特性：
+
+運作方式：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   用戶 ────────► 服務商節點 ────────► 閃電網路              │
+│          帳戶餘額      實際通道                              │
+│                                                              │
+│ 用戶只有帳戶，不持有私鑰                                     │
+│ 服務商運行節點，管理所有通道                                 │
+└──────────────────────────────────────────────────────────────┘
+
+優點：
+├── 即時可用，無需等待通道開設
+├── 無需理解技術細節
+├── 手續費通常較低（批量處理）
+├── 小額使用方便
+└── 支援社交功能
+
+缺點：
+├── 需要信任服務商
+├── 服務商可以凍結資金
+├── 隱私較差（服務商知道所有交易）
+├── 服務商倒閉風險
+└── 可能有 KYC 要求
+
+適合場景：
+├── 初學者入門
+├── 小額日常消費
+├── 社交支付
+└── 不想管理技術的用戶`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">自託管 LSP 錢包</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LSP（Lightning Service Provider）錢包：
+
+運作方式：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   用戶錢包 ◄──────通道──────► LSP ────► 閃電網路            │
+│   (持有私鑰)                                                 │
+│                                                              │
+│ 用戶持有私鑰，LSP 提供：                                     │
+│ ├── 入站流動性                                               │
+│ ├── 路由服務                                                 │
+│ ├── 通道管理                                                 │
+│ └── 備份服務                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+主要功能：
+┌──────────────────────────────────────────────────────────────┐
+│ 自動通道管理：                                               │
+│ ├── 自動開設通道                                             │
+│ ├── 自動增加入站容量                                         │
+│ └── 自動再平衡                                               │
+│                                                              │
+│ 簡化用戶體驗：                                               │
+│ ├── 接收首筆支付即可使用                                     │
+│ ├── 無需理解通道概念                                         │
+│ └── 類似鏈上錢包體驗                                         │
+└──────────────────────────────────────────────────────────────┘
+
+優點：
+├── 自己持有私鑰
+├── 資金在自己控制下
+├── 更好的隱私
+├── 無需 KYC
+└── 用戶體驗良好
+
+缺點：
+├── 依賴 LSP 可用性
+├── LSP 可能收取服務費
+├── 需要管理備份
+└── 首次接收可能需要鏈上交易`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">全節點錢包</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`運行自己的閃電節點：
+
+架構：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │                    用戶硬體                              │ │
+│ │  ┌──────────┐    ┌──────────┐    ┌──────────┐          │ │
+│ │  │ Bitcoin  │◄───│ Lightning│◄───│  錢包    │          │ │
+│ │  │ Core     │    │ 節點     │    │  介面    │          │ │
+│ │  └──────────┘    └──────────┘    └──────────┘          │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                         │                                    │
+│                         ▼                                    │
+│                    閃電網路                                  │
+└──────────────────────────────────────────────────────────────┘
+
+節點軟體選擇：
+┌──────────────────────────────────────────────────────────────┐
+│ LND (Lightning Labs)：                                       │
+│ ├── Go 語言編寫                                              │
+│ ├── 最廣泛使用                                               │
+│ ├── 豐富的 API                                               │
+│ └── 活躍的開發社群                                           │
+│                                                              │
+│ Core Lightning (Blockstream)：                               │
+│ ├── C 語言編寫                                               │
+│ ├── 插件系統靈活                                             │
+│ ├── 原生支援 Liquidity Ads                                   │
+│ └── 輕量級                                                   │
+│                                                              │
+│ Eclair (ACINQ)：                                             │
+│ ├── Scala 語言編寫                                           │
+│ ├── 企業級穩定性                                             │
+│ ├── Phoenix 錢包後端                                         │
+│ └── 支援 Trampoline                                          │
+│                                                              │
+│ LDK (Spiral)：                                               │
+│ ├── Rust 語言庫                                              │
+│ ├── 嵌入式使用                                               │
+│ ├── 高度可定制                                               │
+│ └── 適合開發者整合                                           │
+└──────────────────────────────────────────────────────────────┘
+
+硬體選項：
+├── 專用硬體：Umbrel, Start9, RaspiBlitz, myNode
+├── 雲端 VPS：需要可靠的網路和存儲
+├── 家用電腦：需要持續運行
+└── 企業伺服器：高可用性配置`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">熱門錢包比較</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Phoenix (自託管)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        ACINQ 開發。自動通道管理，支援 Trampoline，
+        極佳的用戶體驗。使用 Eclair 後端。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Breez (自託管)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        全功能閃電錢包，內建 POS 和 Podcast 功能。
+        使用 LND 作為後端，開源。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Muun (混合)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        鏈上和閃電整合。使用 Submarine Swap 實現閃電支付。
+        2-of-2 多簽保護。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Zeus (自託管)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        連接到自己節點的遠端控制器。
+        支援 LND、Core Lightning、Eclair。內嵌 LND 選項。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Wallet of Satoshi (託管)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        極簡託管錢包。安裝即用，無需設置。
+        適合小額和新手。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Alby (瀏覽器)</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        瀏覽器擴展，支援 WebLN。可連接自己節點
+        或使用託管帳戶。適合網頁支付。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">選擇考量因素</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`選擇錢包的決策樹：
+
+使用金額：
+┌──────────────────────────────────────────────────────────────┐
+│ 小額（< $100）：                                             │
+│ └── 託管錢包足夠，方便快速                                   │
+│                                                              │
+│ 中等（$100 - $1000）：                                       │
+│ └── LSP 錢包較好，保持控制權                                 │
+│                                                              │
+│ 大額（> $1000）：                                            │
+│ └── 考慮運行自己的節點                                       │
+└──────────────────────────────────────────────────────────────┘
+
+使用頻率：
+┌──────────────────────────────────────────────────────────────┐
+│ 偶爾使用：                                                   │
+│ └── 託管或 LSP 錢包，低維護                                  │
+│                                                              │
+│ 日常使用：                                                   │
+│ └── LSP 錢包，平衡便利和控制                                 │
+│                                                              │
+│ 商業用途：                                                   │
+│ └── 自己的節點，完全控制                                     │
+└──────────────────────────────────────────────────────────────┘
+
+技術能力：
+┌──────────────────────────────────────────────────────────────┐
+│ 初學者：                                                     │
+│ └── 從託管開始，逐步學習                                     │
+│                                                              │
+│ 中級：                                                       │
+│ └── LSP 錢包，理解基本概念                                   │
+│                                                              │
+│ 進階：                                                       │
+│ └── 運行節點，完全控制                                       │
+└──────────────────────────────────────────────────────────────┘
+
+隱私需求：
+├── 低：託管可接受
+├── 中：LSP 錢包（LSP 仍可見交易）
+├── 高：自己的節點 + Tor
+└── 極高：自己的節點 + 私有通道`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">備份和恢復</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`不同錢包的備份策略：
+
+託管錢包：
+┌──────────────────────────────────────────────────────────────┐
+│ 通常只需記住帳號密碼                                         │
+│ 服務商負責所有備份                                           │
+│ 如果服務商消失，資金可能無法恢復                             │
+└──────────────────────────────────────────────────────────────┘
+
+LSP 錢包：
+┌──────────────────────────────────────────────────────────────┐
+│ 種子詞備份（12-24 詞）：                                     │
+│ ├── 恢復鏈上資金                                             │
+│ └── 可能需要 LSP 協助恢復通道                                │
+│                                                              │
+│ 靜態通道備份（SCB）：                                        │
+│ ├── 記錄通道對手資訊                                         │
+│ └── 強制關閉恢復資金                                         │
+│                                                              │
+│ 雲端備份：                                                   │
+│ └── 許多錢包自動備份到雲端                                   │
+└──────────────────────────────────────────────────────────────┘
+
+全節點：
+┌──────────────────────────────────────────────────────────────┐
+│ 必須備份：                                                   │
+│ ├── 種子詞 / HD 種子                                         │
+│ ├── channel.backup / SCB                                     │
+│ └── 錢包資料庫（可選但推薦）                                 │
+│                                                              │
+│ 自動備份策略：                                               │
+│ ├── 每次通道變更自動備份 SCB                                 │
+│ ├── 備份到多個位置                                           │
+│ └── 定期測試恢復流程                                         │
+└──────────────────────────────────────────────────────────────┘
+
+⚠️ 重要提醒：
+├── 種子詞只能恢復鏈上資金
+├── 通道資金需要 SCB 或完整備份
+├── 舊備份可能導致懲罰交易
+└── 永遠不要在線上儲存種子詞`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>備份警告：</strong>
+      閃電通道資金無法僅靠種子詞恢復。必須定期備份通道狀態，
+      並且永遠不要使用舊備份，否則可能觸發懲罰機制損失所有資金。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全最佳實踐</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錢包安全建議：
+
+基本安全：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 使用官方來源下載錢包                                       │
+│ ✓ 驗證應用簽名/雜湊                                          │
+│ ✓ 啟用裝置加密                                               │
+│ ✓ 使用強密碼/PIN                                             │
+│ ✓ 啟用生物識別（如可用）                                     │
+│ ✓ 保持軟體更新                                               │
+└──────────────────────────────────────────────────────────────┘
+
+種子詞保護：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 離線記錄（紙或金屬）                                       │
+│ ✓ 多個安全位置存放                                           │
+│ ✗ 不要截圖                                                   │
+│ ✗ 不要存在雲端                                               │
+│ ✗ 不要用電子郵件發送                                         │
+│ ✗ 不要輸入到任何網站                                         │
+└──────────────────────────────────────────────────────────────┘
+
+節點安全：
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ 使用 Tor 隱藏 IP                                           │
+│ ✓ 定期更新軟體                                               │
+│ ✓ 監控通道活動                                               │
+│ ✓ 設置瞭望塔                                                 │
+│ ✓ 限制遠端存取                                               │
+│ ✓ 使用防火牆                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+資金分散：
+├── 不要把所有資金放在一個錢包
+├── 熱錢包只放日常使用金額
+├── 大額使用冷儲存 + 閃電通道組合
+└── 定期將閃電餘額轉回鏈上`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lightningnetwork.plus/wallets"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LN+ 錢包比較</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lsp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LSP 服務</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/node-operation"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">節點運營指南</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/webln"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">WebLN</a
+      >
+      如何在網頁中整合閃電支付。
+    </p>
+  </div>
+</ArticleLayout>

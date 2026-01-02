@@ -1,0 +1,330 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Lightning Pool 流動性市場"
+  description="了解 Lightning Pool 流動性拍賣市場，如何買賣閃電網路通道租賃和入站容量。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Lightning Pool' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Inbound Liquidity', href: '/tech/lightning/inbound-liquidity' }}
+  nextPage={{ title: 'Liquidity Ads', href: '/tech/lightning/liquidity-ads' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Lightning Pool？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Lightning Pool 是 Lightning Labs 開發的非託管流動性市場，
+    允許節點運營者買賣通道租賃。需要入站容量的節點可以購買，
+    有閒置資金的節點可以出租獲取收益。通過拍賣機制實現價格發現。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>非託管設計：</strong>
+      Pool 使用鏈上多簽交易和時間鎖確保安全，
+      資金始終在用戶控制之下。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">市場參與者</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Pool 市場角色：
+
+買方（需要入站容量）：
+┌──────────────────────────────────────────────────────────┐
+│ 類型：                                                   │
+│ ├── 商家：需要接收客戶支付                               │
+│ ├── 交易所：需要處理用戶提款                             │
+│ ├── 新節點：需要建立路由能力                             │
+│ └── LSP：需要為用戶提供通道                              │
+│                                                          │
+│ 目標：                                                   │
+│ ├── 獲得穩定的入站容量                                   │
+│ ├── 確保通道對方是可靠節點                               │
+│ └── 以合理價格購買流動性                                 │
+└──────────────────────────────────────────────────────────┘
+
+賣方（提供流動性）：
+┌──────────────────────────────────────────────────────────┐
+│ 類型：                                                   │
+│ ├── 路由節點：有閒置資金                                 │
+│ ├── 流動性提供商：專業運營                               │
+│ └── HODLer：想要賺取收益                                 │
+│                                                          │
+│ 收益來源：                                               │
+│ ├── 通道租賃費（主要收入）                               │
+│ ├── 路由費用（額外收入）                                 │
+│ └── 資金時間價值                                         │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">拍賣機制</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`批次拍賣（Batch Auction）：
+
+拍賣週期：
+┌──────────────────────────────────────────────────────────┐
+│ 每 ~10 分鐘進行一次批次清算                              │
+│                                                          │
+│ 時間線：                                                 │
+│ ├── 提交階段：參與者提交訂單                             │
+│ ├── 清算階段：匹配買賣訂單                               │
+│ ├── 執行階段：開設匹配的通道                             │
+│ └── 結算階段：鏈上交易確認                               │
+└──────────────────────────────────────────────────────────┘
+
+價格發現：
+┌──────────────────────────────────────────────────────────┐
+│ 統一清算價格                                             │
+│                                                          │
+│ 買方出價：願意支付的最高費率                             │
+│ 賣方要價：願意接受的最低費率                             │
+│                                                          │
+│ 清算規則：                                               │
+│ 1. 按價格排序買賣訂單                                    │
+│ 2. 找到供需平衡點                                        │
+│ 3. 所有成交訂單使用統一價格                              │
+│ 4. 買方不會支付超過出價                                  │
+│ 5. 賣方不會收到低於要價                                  │
+│                                                          │
+│ 示例：                                                   │
+│ 買方 A 出價：500 ppm（成交，付 400）                     │
+│ 買方 B 出價：450 ppm（成交，付 400）                     │
+│ 買方 C 出價：350 ppm（未成交）                           │
+│ ─────── 清算價格 400 ppm ───────                         │
+│ 賣方 X 要價：300 ppm（成交，收 400）                     │
+│ 賣方 Y 要價：380 ppm（成交，收 400）                     │
+│ 賣方 Z 要價：450 ppm（未成交）                           │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道租賃</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`租賃期限與費率：
+
+租賃期限選項：
+┌──────────────────────────────────────────────────────────┐
+│ 期限          區塊數        約等於                       │
+├──────────────────────────────────────────────────────────┤
+│ 2016 blocks   2016          ~2 週                        │
+│ 4032 blocks   4032          ~4 週                        │
+│ 8064 blocks   8064          ~8 週                        │
+└──────────────────────────────────────────────────────────┘
+
+費率計算：
+┌──────────────────────────────────────────────────────────┐
+│ 費率單位：每百萬 satoshi 每區塊（ppm/block）             │
+│                                                          │
+│ 計算公式：                                               │
+│ 總費用 = 容量(sats) × 費率(ppm) × 區塊數 / 1,000,000     │
+│                                                          │
+│ 示例：                                                   │
+│ ├── 容量：10,000,000 sats（0.1 BTC）                     │
+│ ├── 費率：500 ppm/block                                  │
+│ ├── 期限：2016 blocks                                    │
+│ └── 總費用：10,000,000 × 500 × 2016 / 1,000,000          │
+│           = 10,080,000 sats（~0.1 BTC）                  │
+│                                                          │
+│ 年化收益率（APY）：                                      │
+│ APY ≈ 費率 × 52560（每年區塊數）/ 1,000,000              │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">帳戶系統</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Pool 帳戶</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        鏈上多簽地址，資金由用戶和 Pool 協調者共同控制。
+        用於支付拍賣費用和結算交易。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">帳戶過期</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        帳戶有過期時間，過期後用戶可以單方面取回資金。
+        確保資金不會被永久鎖定。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">批次執行</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        多個通道開設可以在一筆交易中完成。
+        減少鏈上費用，提高效率。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Sidecar 通道</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        為第三方購買通道。適合 LSP 為用戶購買入站容量。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 Pool</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Pool CLI 命令：
+
+# 初始化 Pool
+pool accounts new --amt 1000000 --expiry_blocks 4032
+
+# 查看帳戶餘額
+pool accounts list
+
+# 提交買單（購買入站容量）
+pool orders submit bid \\
+  --amt 5000000 \\           # 需要的容量
+  --rate_fixed 500 \\        # 願意支付的費率
+  --lease_duration_blocks 2016
+
+# 提交賣單（出租流動性）
+pool orders submit ask \\
+  --amt 10000000 \\          # 提供的容量
+  --rate_fixed 400 \\        # 要求的最低費率
+  --lease_duration_blocks 2016
+
+# 查看訂單狀態
+pool orders list
+
+# 查看租賃
+pool leases list
+
+# 取消訂單
+pool orders cancel <order_nonce>
+
+# 查看市場統計
+pool auction snapshot`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">節點評級</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Pool 節點評級系統：
+
+評級因素：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 歷史 uptime（正常運行時間）                           │
+│ 2. 通道穩定性                                            │
+│ 3. 路由成功率                                            │
+│ 4. 連接性                                                │
+│ 5. 社群評價                                              │
+└──────────────────────────────────────────────────────────┘
+
+等級：
+┌──────────────────────────────────────────────────────────┐
+│ Tier 1：最高質量節點                                     │
+│ ├── 高 uptime                                            │
+│ ├── 穩定的路由歷史                                       │
+│ └── 費率可能較高                                         │
+│                                                          │
+│ Tier 2：良好節點                                         │
+│ ├── 可接受的 uptime                                      │
+│ └── 性價比選擇                                           │
+│                                                          │
+│ 無評級：新節點或評價不足                                 │
+│ └── 買方可選擇是否接受                                   │
+└──────────────────────────────────────────────────────────┘
+
+買方可以指定：
+├── 只接受特定評級以上的節點
+├── 指定偏好的節點公鑰
+└── 或接受任何節點`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Pool 費用：
+
+拍賣費用：
+┌──────────────────────────────────────────────────────────┐
+│ 執行費：成交金額的 0.1%（買賣雙方各付）                  │
+│ 鏈上費用：根據交易大小分攤                               │
+└──────────────────────────────────────────────────────────┘
+
+帳戶操作費用：
+├── 開設帳戶：鏈上交易費
+├── 存入資金：鏈上交易費
+├── 提取資金：鏈上交易費
+└── 續期帳戶：鏈上交易費
+
+示例總成本計算：
+┌──────────────────────────────────────────────────────────┐
+│ 購買 0.1 BTC 入站容量，2016 區塊租期                     │
+│                                                          │
+│ 租賃費：~0.01 BTC（假設 500 ppm）                        │
+│ 執行費：~0.00001 BTC                                     │
+│ 鏈上費：~0.0001 BTC                                      │
+│ ────────────────────                                     │
+│ 總成本：~0.0101 BTC                                      │
+│                                                          │
+│ 獲得：0.1 BTC 入站容量 × 2 週                            │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong>
+      租賃到期後，通道不會自動關閉。雙方可以繼續使用通道，
+      但賣方不再有義務維持在線。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lightning.engineering/pool/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Pool 官網</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/inbound-liquidity"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">入站容量</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lsp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Service Provider</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/liquidity-ads"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性廣告</a
+      >
+      ——Core Lightning 的去中心化流動性市場。
+    </p>
+  </div>
+</ArticleLayout>

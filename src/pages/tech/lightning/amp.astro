@@ -1,0 +1,338 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="AMP 原子多路徑支付"
+  description="了解閃電網路的原子多路徑支付（AMP），如何實現無需發票的多路徑自發支付。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'AMP' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'SCID Alias', href: '/tech/lightning/scid-alias' }}
+  nextPage={{ title: 'Neutrino', href: '/tech/lightning/neutrino' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 AMP？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    原子多路徑支付（Atomic Multi-Path Payments，AMP）是閃電網路的一種多路徑支付機制，
+    由發送者生成支付密鑰，無需接收者預先提供發票。與基礎 MPP 不同，AMP 使用
+    密鑰分割技術確保所有部分同時結算，提供更強的原子性保證。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>功能位 30/31：</strong>
+      option_amp 啟用原子多路徑支付功能。
+      這是一種「自發支付」的多路徑版本。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">AMP vs 基礎 MPP</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`兩種多路徑支付比較：
+
+基礎 MPP（Basic Multi-Path Payments）：
+┌──────────────────────────────────────────────────────────┐
+│ 需要發票：是                                             │
+│ 原像來源：接收者生成                                     │
+│ 所有部分使用：相同的 payment_hash                        │
+│ 結算方式：接收者揭露原像給所有部分                       │
+│                                                          │
+│ 問題：                                                   │
+│ ├── 中間節點可以看到相同的 payment_hash                  │
+│ ├── 可以識別出屬於同一筆支付的不同部分                   │
+│ └── 隱私較差                                             │
+└──────────────────────────────────────────────────────────┘
+
+AMP（Atomic Multi-Path Payments）：
+┌──────────────────────────────────────────────────────────┐
+│ 需要發票：否（自發支付）                                 │
+│ 原像來源：發送者生成並分割                               │
+│ 每個部分使用：不同的 payment_hash                        │
+│ 結算方式：接收者重組原像後結算所有部分                   │
+│                                                          │
+│ 優點：                                                   │
+│ ├── 每個部分有不同的 payment_hash                        │
+│ ├── 中間節點無法關聯不同部分                             │
+│ ├── 更強的隱私保護                                       │
+│ └── 無需預先請求發票                                     │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">AMP 工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP 密鑰分割機制：
+
+發送者（Alice）生成：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 生成根密鑰（root_share）                              │
+│    root_share = random_bytes(32)                         │
+│                                                          │
+│ 2. 為每個部分生成子密鑰                                  │
+│    child_share[i] = HMAC(root_share, i)                  │
+│                                                          │
+│ 3. 計算每個部分的 payment_hash                           │
+│    preimage[i] = child_share[i] XOR (Σ child_share[j])   │
+│    payment_hash[i] = SHA256(preimage[i])                 │
+│                                                          │
+│ 4. 通過洋蔥傳遞 child_share 給接收者                     │
+└──────────────────────────────────────────────────────────┘
+
+三部分支付示例：
+┌──────────────────────────────────────────────────────────┐
+│ root_share = R                                           │
+│                                                          │
+│ 部分 1: child_share[1] = HMAC(R, 1) = S1                │
+│ 部分 2: child_share[2] = HMAC(R, 2) = S2                │
+│ 部分 3: child_share[3] = HMAC(R, 3) = S3                │
+│                                                          │
+│ 接收者收到所有部分後：                                   │
+│ ├── 重組：root = S1 XOR S2 XOR S3                        │
+│ ├── 驗證所有 child_share 來自同一 root                  │
+│ ├── 計算所有 preimage                                    │
+│ └── 結算所有 HTLC                                        │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 載荷</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP 洋蔥 TLV 欄位：
+
+最終跳的 TLV 載荷：
+┌──────────────────────────────────────────────────────────┐
+│ TLV Type 8: amp_record                                   │
+│ ├── root_share: 32 bytes（子密鑰分片）                   │
+│ ├── set_id: 32 bytes（識別這組支付）                     │
+│ └── child_index: 4 bytes（這是第幾個部分）               │
+│                                                          │
+│ TLV Type 16: payment_metadata（可選）                    │
+│ └── 額外的支付資料                                       │
+└──────────────────────────────────────────────────────────┘
+
+set_id 的作用：
+├── 識別屬於同一筆 AMP 支付的所有部分
+├── 接收者用它來收集和匹配所有部分
+├── 由發送者隨機生成
+└── 對中間節點不可見（在洋蔥加密層內）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">原子性保證</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP 的原子性：
+
+為什麼是原子的？
+┌──────────────────────────────────────────────────────────┐
+│ 接收者只有收到所有部分才能計算原像                       │
+│                                                          │
+│ 假設 3 部分支付，只收到 2 部分：                         │
+│ ├── 有 S1, S2                                            │
+│ ├── 無法計算 root = S1 XOR S2 XOR S3                     │
+│ ├── 無法計算任何 preimage                                │
+│ └── 無法領取任何部分                                     │
+│                                                          │
+│ 收到所有 3 部分：                                        │
+│ ├── 有 S1, S2, S3                                        │
+│ ├── 計算 root = S1 XOR S2 XOR S3                         │
+│ ├── 計算所有 preimage                                    │
+│ └── 同時領取所有部分                                     │
+└──────────────────────────────────────────────────────────┘
+
+失敗處理：
+┌──────────────────────────────────────────────────────────┐
+│ 如果某個部分路由失敗：                                   │
+│ ├── 發送者可以重試該部分                                 │
+│ ├── 或放棄整筆支付                                       │
+│ ├── 接收者無法部分領取                                   │
+│ └── 所有未領取的 HTLC 最終超時退回                       │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用場景</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">自發支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        無需向接收者請求發票。適合打賞、捐款等場景，
+        發送者主動發起支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私增強</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        每個部分有不同的 payment_hash，路由節點無法識別
+        哪些 HTLC 屬於同一筆支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">流式支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        可以持續發送小額支付給同一接收者，
+        無需每次請求新發票。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">大額支付</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        拆分大額支付通過多條路徑，比單路徑更容易成功。
+        不同部分可以使用完全不同的路由。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發送 AMP 支付</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發送 AMP 支付命令：
+
+LND：
+# 發送 AMP 支付（自發支付到節點）
+lncli sendpayment --dest <pubkey> \\
+  --amt 100000 \\           # 金額（satoshis）
+  --amp                     # 啟用 AMP
+
+# 指定分割數量
+lncli sendpayment --dest <pubkey> \\
+  --amt 100000 \\
+  --amp \\
+  --max_parts 5             # 最多分成 5 個部分
+
+# 帶消息的 AMP 支付（keysend 風格）
+lncli sendpayment --dest <pubkey> \\
+  --amt 100000 \\
+  --amp \\
+  --data 7629168=<hex_message>
+
+接收 AMP 支付：
+# 查看收到的 AMP 支付
+lncli listinvoices
+
+# AMP 支付會顯示多個 HTLC
+# 但屬於同一個 set_id`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">AMP 發票</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP 發票（可選）：
+
+雖然 AMP 不需要發票，但也可以創建 AMP 發票：
+┌──────────────────────────────────────────────────────────┐
+│ # 創建 AMP 發票                                          │
+│ lncli addinvoice --amt 100000 --amp                      │
+│                                                          │
+│ 特點：                                                   │
+│ ├── 發票不包含 payment_hash（接收者不預先生成）          │
+│ ├── 包含 AMP 功能標記                                    │
+│ ├── 發送者生成 payment_hash                              │
+│ └── 可以被多次支付（可重複使用）                         │
+└──────────────────────────────────────────────────────────┘
+
+AMP 發票的功能位：
+┌──────────────────────────────────────────────────────────┐
+│ BOLT 11 發票中的 '9' 標籤包含 AMP 功能位                 │
+│ 發送者看到後使用 AMP 協議                                │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考慮</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`AMP 安全性：
+
+優勢：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 不可關聯性                                            │
+│    每個部分有不同的 payment_hash                         │
+│    路由節點無法識別同一筆支付的不同部分                  │
+│                                                          │
+│ 2. 無需互動                                              │
+│    發送者無需等待接收者生成發票                          │
+│    減少隱私洩露機會                                      │
+│                                                          │
+│ 3. 原子性                                                │
+│    數學上保證所有部分同時結算                            │
+│    不存在部分支付成功的情況                              │
+└──────────────────────────────────────────────────────────┘
+
+注意事項：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 接收者必須支援 AMP（功能位 30/31）                    │
+│                                                          │
+│ 2. 沒有傳統的支付證明                                    │
+│    發送者生成原像，無法證明接收者已收到                  │
+│    適合不需要收據的場景                                  │
+│                                                          │
+│ 3. 超時處理                                              │
+│    如果部分未到達，需要等待所有 HTLC 超時                │
+│    可能鎖定資金較長時間                                  │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>與 Keysend 比較：</strong>
+      Keysend 是單路徑自發支付，AMP 是多路徑自發支付。
+      AMP 適合大額支付，Keysend 適合小額即時支付。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/04-onion-routing.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 4 - Onion Routing</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/mpp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">多路徑支付</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/keysend"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Keysend</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/neutrino"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Neutrino 輕客戶端</a
+      >
+      如何實現輕量級節點。
+    </p>
+  </div>
+</ArticleLayout>

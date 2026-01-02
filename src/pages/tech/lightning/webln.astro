@@ -1,0 +1,372 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="WebLN 協議"
+  description="了解 WebLN 標準，如何在網頁應用中整合閃電網路支付功能。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'WebLN' },
+  ]}
+  difficulty="beginner"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Neutrino', href: '/tech/lightning/neutrino' }}
+  nextPage={{ title: 'LNURL', href: '/tech/lightning/lnurl' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 WebLN？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    WebLN 是一個瀏覽器標準，允許網頁應用與用戶的閃電網路錢包互動。
+    類似於 Web3 錢包（如 MetaMask）用於以太坊，WebLN 提供者（如 Alby）
+    將閃電網路功能帶到網頁中，使網站可以請求支付、創建發票等。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>window.webln：</strong>
+      WebLN 提供者在瀏覽器中注入 window.webln 對象，
+      網頁通過這個對象與閃電錢包互動。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">WebLN 提供者</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Alby</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        最流行的 WebLN 瀏覽器擴展。支援多種後端：託管、LND、Core Lightning、
+        Umbrel 等。Chrome、Firefox、Safari 都可用。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Joule</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        連接到自己的 LND 節點的擴展。
+        完全非託管，需要自己運行節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">BlueWallet</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        移動端錢包也支援 WebLN，
+        通過掃描 QR 碼與網頁互動。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Zeus</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        移動端節點管理器，
+        支援 WebLN 連接。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">基本 API</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`WebLN API 方法：
+
+// 檢測 WebLN 是否可用
+if (typeof window.webln !== 'undefined') {
+  // WebLN 提供者已安裝
+}
+
+// 啟用 WebLN（請求用戶授權）
+await window.webln.enable();
+
+// 獲取節點資訊
+const info = await window.webln.getInfo();
+console.log(info.node.pubkey);
+
+// 發送支付
+const response = await window.webln.sendPayment(bolt11Invoice);
+console.log(response.preimage); // 支付證明
+
+// 創建發票
+const invoice = await window.webln.makeInvoice({
+  amount: 1000,           // satoshis
+  defaultMemo: 'Coffee'
+});
+console.log(invoice.paymentRequest); // BOLT11 發票
+
+// 簽名訊息
+const signature = await window.webln.signMessage('Hello');
+
+// 驗證訊息
+const verified = await window.webln.verifyMessage(
+  signature.signature,
+  'Hello'
+);`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">支付按鈕實現</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`完整的支付按鈕示例：
+
+<button id="pay-button">Pay 1000 sats</button>
+
+<script>
+document.getElementById('pay-button').addEventListener('click', async () => {
+  // 檢查 WebLN 是否可用
+  if (typeof window.webln === 'undefined') {
+    alert('請安裝 WebLN 擴展（如 Alby）');
+    return;
+  }
+
+  try {
+    // 啟用 WebLN
+    await window.webln.enable();
+
+    // 從後端獲取發票（或使用 LNURL）
+    const response = await fetch('/api/create-invoice', {
+      method: 'POST',
+      body: JSON.stringify({ amount: 1000 })
+    });
+    const { invoice } = await response.json();
+
+    // 請求用戶支付
+    const payment = await window.webln.sendPayment(invoice);
+
+    // 支付成功
+    console.log('支付成功！Preimage:', payment.preimage);
+    alert('謝謝你的支付！');
+
+  } catch (error) {
+    if (error.message === 'User rejected') {
+      console.log('用戶取消了支付');
+    } else {
+      console.error('支付失敗:', error);
+    }
+  }
+});
+</script>`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">進階功能</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`進階 WebLN 功能：
+
+// Keysend（自發支付）
+await window.webln.keysend({
+  destination: 'node_pubkey...',
+  amount: 1000,
+  customRecords: {
+    // TLV 自訂資料
+    7629168: 'Hello!'  // Keysend 預留類型
+  }
+});
+
+// LNURL 支援
+await window.webln.lnurl('lnurl1...');
+
+// 請求發票（讓用戶創建發票給你）
+const invoice = await window.webln.makeInvoice({
+  amount: 5000,
+  defaultMemo: 'Refund'
+});
+
+// 使用 webln-js 庫簡化開發
+import { requestProvider } from 'webln';
+
+async function pay() {
+  const webln = await requestProvider();
+  await webln.sendPayment(invoice);
+}
+
+// 監聽 WebLN 事件
+window.addEventListener('webln:enabled', () => {
+  console.log('WebLN 已啟用');
+});`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 LNURL 配合</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`WebLN + LNURL 工作流程：
+
+LNURL-pay 示例：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 網站顯示 LNURL QR 碼或按鈕                            │
+│ 2. 用戶點擊，WebLN 處理 LNURL                            │
+│ 3. WebLN 請求服務端獲取發票                              │
+│ 4. 用戶確認支付                                          │
+│ 5. WebLN 發送支付                                        │
+└──────────────────────────────────────────────────────────┘
+
+代碼示例：
+// 使用 LNURL
+const lnurl = 'lnurl1dp68gurn8ghj7...';
+
+try {
+  await window.webln.enable();
+  const result = await window.webln.lnurl(lnurl);
+  console.log('LNURL 結果:', result);
+} catch (error) {
+  console.error('LNURL 失敗:', error);
+}
+
+Lightning Address 支援：
+// 解析 Lightning Address 到 LNURL
+const address = 'user@domain.com';
+const lnurlPayUrl = \`https://\${domain}/.well-known/lnurlp/\${user}\`;
+// 然後使用 webln.lnurl()`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">最佳實踐</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">優雅降級</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        不要假設用戶有 WebLN。提供備選方案如 QR 碼掃描、
+        複製發票等傳統方式。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">用戶授權</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        只在需要時調用 enable()。不要在頁面載入時就請求授權，
+        等用戶主動點擊付款按鈕。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">錯誤處理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        處理用戶拒絕、餘額不足、網路錯誤等情況。
+        提供清晰的錯誤訊息。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">支付確認</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        驗證 preimage 確認支付成功。
+        不要只依賴前端回調。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用 WebLN 的網站</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`支援 WebLN 的應用：
+
+內容平台：
+├── Stacker News：比特幣討論論壇
+├── Fountain：播客應用
+├── Nostr 客戶端：Snort、Iris 等
+└── Y'alls：付費文章平台
+
+遊戲：
+├── Lightning Crush：消消樂遊戲
+├── Satoshi's Games：多種小遊戲
+└── Lightning Spin：輪盤遊戲
+
+工具：
+├── LN.Tips：小費工具
+├── Amboss：節點分析
+├── LightningNetwork+：節點排名
+└── 1ML：網路瀏覽器
+
+商家：
+├── Bitrefill：禮品卡
+├── Fold：購物返現
+└── 其他整合閃電支付的商家`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開發資源</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`開發工具：
+
+npm 套件：
+npm install webln
+npm install @webbtc/webln-types  # TypeScript 類型
+
+React Hook：
+npm install @alby/bitcoin-connect
+
+import { BitcoinConnectProvider, useLnProvider } from '@alby/bitcoin-connect';
+
+function PayButton() {
+  const { provider, connect, isConnected } = useLnProvider();
+
+  const pay = async () => {
+    if (!isConnected) await connect();
+    await provider.sendPayment(invoice);
+  };
+
+  return <button onClick={pay}>Pay</button>;
+}
+
+測試環境：
+├── 使用 Polar 建立本地測試網路
+├── Alby 擴展支援 regtest/testnet
+└── 或使用 MockWebLN 進行單元測試`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>安全提醒：</strong>
+      WebLN 擴展可以存取你的閃電錢包。只安裝可信的擴展，
+      並謹慎授權網站訪問你的錢包功能。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://webln.guide/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">WebLN 指南</a>
+    </li>
+    <li>
+      • <a
+        href="https://getalby.com/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Alby - WebLN 擴展</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lnurl"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lightning-address"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Address</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/lnurl"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL</a
+      >
+      如何簡化閃電網路互動。
+    </p>
+  </div>
+</ArticleLayout>

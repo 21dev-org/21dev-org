@@ -1,0 +1,364 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Simple Taproot Channels 簡單 Taproot 通道"
+  description="深入了解 Simple Taproot Channels 的技術實現，包括 MuSig2 簽名、Taproot 輸出結構和向後兼容性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Simple Taproot Channels' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Taproot Channels', href: '/tech/lightning/taproot-channels' }}
+  nextPage={{ title: 'MuSig2', href: '/tech/lightning/musig2' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Simple Taproot Channels？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Simple Taproot Channels (STC) 是閃電網路向 Taproot 過渡的第一階段。
+    它保持現有通道結構，同時引入 MuSig2 和 Taproot 的優勢。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>LND 0.17+：</strong>
+      Simple Taproot Channels 已在 LND 0.17 中實驗性支援。
+      這是邁向完整 Taproot 閃電網路的重要一步。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與傳統通道的比較</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統通道 vs Simple Taproot Channels：
+
+傳統 P2WSH 通道：
+┌──────────────────────────────────────────────────────────────┐
+│ Funding Output:                                              │
+│ OP_2 <pubkeyA> <pubkeyB> OP_2 OP_CHECKMULTISIG              │
+│                                                              │
+│ 特點：                                                       │
+│ ├── 2-of-2 多簽明確可見                                      │
+│ ├── 腳本在鏈上暴露                                           │
+│ └── 明顯是閃電通道                                           │
+└──────────────────────────────────────────────────────────────┘
+
+Simple Taproot 通道：
+┌──────────────────────────────────────────────────────────────┐
+│ Funding Output:                                              │
+│ OP_1 <aggregated_pubkey>                                     │
+│                                                              │
+│ 內部結構：                                                   │
+│ ├── Internal Key: MuSig2(pubkeyA, pubkeyB)                   │
+│ └── Taproot Tree: (empty for keypath spend)                  │
+│                                                              │
+│ 特點：                                                       │
+│ ├── 看起來像普通單簽輸出                                     │
+│ ├── 合作關閉時無腳本暴露                                     │
+│ └── 鏈上隱私大幅提升                                         │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Funding 輸出結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Simple Taproot Funding Output：
+
+密鑰聚合：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 雙方交換公鑰                                              │
+│    Alice: pubkey_a                                           │
+│    Bob: pubkey_b                                             │
+│                                                              │
+│ 2. MuSig2 密鑰聚合                                           │
+│    aggregate_key = MuSig2_KeyAgg(pubkey_a, pubkey_b)         │
+│                                                              │
+│ 3. 構建 Taproot 輸出                                         │
+│    internal_key = aggregate_key                              │
+│    merkle_root = (empty)                                     │
+│    output_key = internal_key + H(internal_key || merkle_root)*G
+│                                                              │
+│ 4. Funding 輸出                                              │
+│    scriptPubKey: OP_1 <output_key>                           │
+│    這是標準的 P2TR 輸出                                      │
+└──────────────────────────────────────────────────────────────┘
+
+為什麼用空的 Taproot Tree？
+┌──────────────────────────────────────────────────────────────┐
+│ Simple Taproot = 只使用 keypath spend                        │
+│                                                              │
+│ 優點：                                                       │
+│ ├── 合作關閉時，交易看起來完全普通                           │
+│ ├── 沒有腳本暴露                                             │
+│ └── 最小的鏈上足跡                                           │
+│                                                              │
+│ 缺點：                                                       │
+│ ├── 非合作情況下仍需揭露承諾交易結構                         │
+│ └── 不如完整 Taproot 通道靈活                                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">承諾交易結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Simple Taproot 承諾交易：
+
+輸入簽名方式：
+┌──────────────────────────────────────────────────────────────┐
+│ 傳統：兩個獨立的 ECDSA 簽名                                  │
+│                                                              │
+│ Simple Taproot：                                             │
+│ ├── MuSig2 聚合簽名                                          │
+│ ├── 單一 Schnorr 簽名                                        │
+│ └── 64 bytes（vs 傳統的 ~144 bytes）                         │
+└──────────────────────────────────────────────────────────────┘
+
+承諾交易輸出（保持類似結構）：
+┌──────────────────────────────────────────────────────────────┐
+│ to_local 輸出（使用 P2TR）：                                 │
+│ ┌────────────────────────────────────────────────────────┐   │
+│ │ Internal Key: revocation_pubkey                        │   │
+│ │                                                        │   │
+│ │ Script Path (leaf):                                    │   │
+│ │   <local_delayedpubkey>                                │   │
+│ │   OP_CHECKSIG                                          │   │
+│ │   <to_self_delay>                                      │   │
+│ │   OP_CHECKSEQUENCEVERIFY                               │   │
+│ │   OP_DROP                                              │   │
+│ └────────────────────────────────────────────────────────┘   │
+│                                                              │
+│ to_remote 輸出（使用 P2TR）：                                │
+│ ┌────────────────────────────────────────────────────────┐   │
+│ │ 簡單的 P2TR 輸出                                       │   │
+│ │ 對方可以直接用 keypath 花費                            │   │
+│ └────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+
+HTLC 輸出（使用 P2TR）：
+┌──────────────────────────────────────────────────────────────┐
+│ Offered HTLC:                                                │
+│ Internal Key: revocation_pubkey                              │
+│                                                              │
+│ Script Leaves:                                               │
+│ ├── [0] 成功路徑：<remote_htlcpubkey> CHECKSIG               │
+│ │       (with preimage in annex)                             │
+│ │                                                            │
+│ └── [1] 超時路徑：<local_htlcpubkey> CHECKSIG                │
+│         <cltv_expiry> CHECKLOCKTIMEVERIFY                    │
+│                                                              │
+│ Received HTLC: 類似但路徑相反                                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">MuSig2 簽名流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`承諾交易 MuSig2 簽名：
+
+兩輪協議：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  Alice                                     Bob               │
+│    │                                        │                │
+│    │  [Round 1: Nonce Exchange]             │                │
+│    │                                        │                │
+│    │──── nonce_a ──────────────────────────>│                │
+│    │<─── nonce_b ───────────────────────────│                │
+│    │                                        │                │
+│    │  [Compute aggregate nonce]             │                │
+│    │  R = R_a + R_b                         │                │
+│    │                                        │                │
+│    │  [Round 2: Partial Signature]          │                │
+│    │                                        │                │
+│    │──── partial_sig_a ────────────────────>│                │
+│    │<─── partial_sig_b ─────────────────────│                │
+│    │                                        │                │
+│    │  [Combine signatures]                  │                │
+│    │  sig = partial_sig_a + partial_sig_b   │                │
+│    │                                        │                │
+└──────────────────────────────────────────────────────────────┘
+
+與傳統簽名的差異：
+┌──────────────────────────────────────────────────────────────┐
+│ 傳統 2-of-2：                                                │
+│ ├── Alice 簽名 → sig_a                                       │
+│ ├── Bob 簽名 → sig_b                                         │
+│ └── 見證：<sig_a> <sig_b> <script>                           │
+│                                                              │
+│ MuSig2：                                                     │
+│ ├── Alice partial_sig → s_a                                  │
+│ ├── Bob partial_sig → s_b                                    │
+│ ├── 聚合 → sig = (R, s_a + s_b)                              │
+│ └── 見證：<sig>（單一簽名）                                  │
+│                                                              │
+│ 節省：~80 bytes per commitment tx                            │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">通道生命週期</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Simple Taproot 通道生命週期：
+
+開設：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. open_channel2 消息                                        │
+│    ├── channel_type = option_taproot                         │
+│    └── funding_pubkey（將用於 MuSig2）                       │
+│                                                              │
+│ 2. accept_channel2 消息                                      │
+│    └── funding_pubkey                                        │
+│                                                              │
+│ 3. MuSig2 密鑰聚合                                           │
+│    └── 計算聚合公鑰                                          │
+│                                                              │
+│ 4. tx_add_input / tx_add_output                              │
+│    └── 雙向資金（如果使用）                                  │
+│                                                              │
+│ 5. commitment_signed（使用 MuSig2 nonces）                   │
+│    ├── 交換 nonces                                           │
+│    └── 交換 partial signatures                               │
+│                                                              │
+│ 6. tx_signatures                                             │
+│    └── 資金交易簽名                                          │
+└──────────────────────────────────────────────────────────────┘
+
+運營：
+┌──────────────────────────────────────────────────────────────┐
+│ 更新承諾交易：                                               │
+│                                                              │
+│ 1. update_add_htlc / update_fulfill_htlc / ...               │
+│                                                              │
+│ 2. commitment_signed                                         │
+│    ├── 包含 MuSig2 nonce                                     │
+│    └── 包含 partial signature                                │
+│                                                              │
+│ 3. revoke_and_ack                                            │
+│    ├── 揭露前一個狀態的撤銷密鑰                              │
+│    └── 發送新的 nonce（為下次準備）                          │
+│                                                              │
+│ 注意：需要額外的 nonce 狀態管理                              │
+└──────────────────────────────────────────────────────────────┘
+
+關閉：
+┌──────────────────────────────────────────────────────────────┐
+│ 合作關閉（理想情況）：                                       │
+│ ├── shutdown 消息                                            │
+│ ├── closing_signed（使用 MuSig2）                            │
+│ └── 鏈上只看到 P2TR → P2TR/P2WPKH                            │
+│     看起來像普通的單簽交易！                                 │
+│                                                              │
+│ 非合作關閉：                                                 │
+│ ├── 廣播承諾交易                                             │
+│ ├── 揭露 Taproot script path                                 │
+│ └── 仍然比傳統通道更小                                       │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 與隱私</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Taproot 通道的 Gossip：
+
+channel_announcement 變化：
+┌──────────────────────────────────────────────────────────────┐
+│ 傳統：                                                       │
+│ ├── bitcoin_key_1, bitcoin_key_2                             │
+│ └── 簽名證明擁有 funding output                              │
+│                                                              │
+│ Taproot：                                                    │
+│ ├── 需要證明擁有聚合密鑰                                     │
+│ ├── 使用 MuSig2 簽名                                         │
+│ └── 新的消息格式（待標準化）                                 │
+└──────────────────────────────────────────────────────────────┘
+
+鏈上分析抵抗：
+┌──────────────────────────────────────────────────────────────┐
+│ 合作關閉時：                                                 │
+│ ├── 輸入：P2TR（看起來像單簽）                               │
+│ ├── 輸出：P2TR/P2WPKH                                        │
+│ └── 無法從鏈上確定是閃電通道                                 │
+│                                                              │
+│ 即使是公開通道：                                             │
+│ ├── Gossip 可以選擇性參與                                    │
+│ ├── 私有通道完全隱藏                                         │
+│ └── 通道容量不再可輕易追蹤                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">優點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        隱私提升、費用降低、向後兼容。
+        是 Taproot 閃電的第一步。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        非合作關閉仍揭露腳本。
+        完整 PTLCs 需要更多工作。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>實驗性功能：</strong>
+      Simple Taproot Channels 仍在開發中。
+      生產環境使用前請確認節點版本和對等節點支援。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/995"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Simple Taproot Channels PR</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/musig2"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">MuSig2 簽名</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/taproot-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Taproot Channels 概述</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/musig2"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">MuSig2</a
+      >
+      如何實現安全的多方簽名。
+    </p>
+  </div>
+</ArticleLayout>

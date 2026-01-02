@@ -1,0 +1,284 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Liquidity Ads 流動性廣告"
+  description="了解 Core Lightning 的流動性廣告機制，節點如何在 gossip 網路中公告可購買的流動性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Liquidity Ads' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Lightning Pool', href: '/tech/lightning/lightning-pool' }}
+  nextPage={{ title: 'Funding Transaction', href: '/tech/lightning/funding-tx' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是流動性廣告？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    流動性廣告（Liquidity Ads）是 BOLT 規範的一部分，允許節點在 gossip 網路中
+    公告其願意提供的流動性服務。與 Lightning Pool 不同，這是完全去中心化的機制，
+    不需要中央協調者。Core Lightning 原生支援此功能。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>去中心化設計：</strong>
+      流動性廣告通過 node_announcement 傳播，任何節點都可以看到並直接購買，
+      無需第三方市場。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`流動性廣告機制：
+
+賣方公告流動性：
+┌──────────────────────────────────────────────────────────┐
+│ node_announcement 擴展欄位：                             │
+│                                                          │
+│ will_fund (TLV)：                                        │
+│ ├── lease_fee_base_sat: 基礎費用（satoshis）             │
+│ ├── lease_fee_basis: 比例費用（每萬分之一）              │
+│ ├── funding_weight: 預期的交易權重貢獻                   │
+│ ├── channel_fee_max_base_msat: 最大基礎路由費            │
+│ ├── channel_fee_max_proportional_millionths: 最大比例費  │
+│ └── compact_lease: 租賃條款的緊湊編碼                    │
+└──────────────────────────────────────────────────────────┘
+
+買方購買流程：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 買方發現賣方的流動性廣告（通過 gossip）               │
+│ 2. 買方發起 dual-funded 通道開設                         │
+│ 3. 買方請求賣方貢獻資金                                  │
+│ 4. 賣方計算費用並要求支付                                │
+│ 5. 買方接受條款                                          │
+│ 6. 執行互動式交易構建                                    │
+│ 7. 通道開設完成                                          │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`流動性廣告費用計算：
+
+租賃費用公式：
+┌──────────────────────────────────────────────────────────┐
+│ lease_fee = lease_fee_base_sat                           │
+│           + (amount × lease_fee_basis / 10000)           │
+│                                                          │
+│ 示例：                                                   │
+│ ├── lease_fee_base_sat: 1000 sats                        │
+│ ├── lease_fee_basis: 50（0.5%）                          │
+│ ├── amount: 1,000,000 sats                               │
+│ └── 費用 = 1000 + (1,000,000 × 50 / 10000)              │
+│         = 1000 + 5000 = 6000 sats                        │
+└──────────────────────────────────────────────────────────┘
+
+路由費承諾：
+┌──────────────────────────────────────────────────────────┐
+│ 賣方承諾在租賃期內：                                     │
+│ ├── 基礎費 ≤ channel_fee_max_base_msat                   │
+│ └── 比例費 ≤ channel_fee_max_proportional_millionths     │
+│                                                          │
+│ 這確保買方獲得的通道有合理的路由費用                     │
+│ 防止賣方開通道後設置極高費率                             │
+└──────────────────────────────────────────────────────────┘
+
+租賃期限：
+├── 標準租賃期：4032 區塊（約 4 週）
+├── 可協商其他期限
+└── 期限通過 compact_lease 編碼`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置流動性廣告</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Core Lightning 配置：
+
+啟用流動性廣告（賣方）：
+# lightningd 配置或命令
+lightning-cli funderupdate \\
+  -k policy=match \\           # 匹配對方金額
+  policy_mod=100 \\             # 匹配 100%
+  min_their_funding=100000 \\  # 最小對方資金
+  max_their_funding=10000000 \\ # 最大對方資金
+  per_channel_min=100000 \\    # 每通道最小
+  per_channel_max=5000000 \\   # 每通道最大
+  reserve_tank=50000 \\        # 保留資金
+  fuzz_percent=0 \\            # 模糊百分比
+  fund_probability=100 \\      # 資助概率
+  lease_fee_base_msat=1000000 \\ # 基礎費用（msat）
+  lease_fee_basis=50 \\        # 比例費用（0.5%）
+  channel_fee_max_base_msat=1000 \\ # 最大路由基礎費
+  channel_fee_max_proportional_millionths=100 # 最大路由比例費
+
+查看當前設置：
+lightning-cli funderupdate
+
+購買流動性（買方）：
+# 開通道時請求對方貢獻
+lightning-cli fundchannel \\
+  <node_id> \\
+  1000000sat \\                # 我的貢獻
+  request_amt=500000sat        # 請求對方貢獻`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Dual-Funded 整合</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`流動性廣告依賴 Dual-Funded Channels：
+
+訊息流程：
+┌──────────────────────────────────────────────────────────┐
+│ 買方                                  賣方               │
+│   │                                    │                 │
+│   │ [看到賣方的 will_fund 廣告]        │                 │
+│   │                                    │                 │
+│   │──── open_channel2 ────────────────>│                 │
+│   │     (request_funds)                │                 │
+│   │                                    │                 │
+│   │<─── accept_channel2 ───────────────│                 │
+│   │     (will_fund: terms)             │                 │
+│   │                                    │                 │
+│   │ [互動式交易構建]                   │                 │
+│   │←──── tx_add_input ────────────────>│                 │
+│   │←──── tx_add_output ───────────────>│                 │
+│   │                                    │                 │
+│   │ [簽名交換]                         │                 │
+│   │←──── tx_signatures ───────────────>│                 │
+│   │                                    │                 │
+│   │ [通道開設，租賃生效]               │                 │
+│   │                                    │                 │
+└──────────────────────────────────────────────────────────┘
+
+租賃證明（Lease Proof）：
+┌──────────────────────────────────────────────────────────┐
+│ 賣方在 channel_ready 中提供租賃簽名                      │
+│ 證明其承諾在租賃期內維持服務                             │
+│ 買方可以保存作為違約證據                                 │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Pool vs Liquidity Ads</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`兩種流動性市場比較：
+
+Lightning Pool：
+┌──────────────────────────────────────────────────────────┐
+│ 優點：                                                   │
+│ ├── 價格發現機制（拍賣）                                 │
+│ ├── 節點評級系統                                         │
+│ ├── 批次執行節省鏈上費用                                 │
+│ └── Sidecar 通道支援                                     │
+│                                                          │
+│ 缺點：                                                   │
+│ ├── 需要中央協調者                                       │
+│ ├── 只有 LND 原生支援                                    │
+│ └── 拍賣週期有延遲                                       │
+└──────────────────────────────────────────────────────────┘
+
+Liquidity Ads：
+┌──────────────────────────────────────────────────────────┐
+│ 優點：                                                   │
+│ ├── 完全去中心化                                         │
+│ ├── 標準協議（BOLT 規範）                                │
+│ ├── 即時執行                                             │
+│ ├── 無需信任第三方                                       │
+│ └── 跨實現相容                                           │
+│                                                          │
+│ 缺點：                                                   │
+│ ├── 無價格發現機制                                       │
+│ ├── 需要自己評估賣方                                     │
+│ └── 採用率還在成長中                                     │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">尋找流動性賣家</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Gossip 查詢</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        通過 gossip 協議自動發現公告流動性的節點。
+        Core Lightning 的 listpeers 可以顯示此資訊。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">網路瀏覽器</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如 1ML、Amboss 等網站可能會列出提供流動性廣告的節點。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">社群資源</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning 社群論壇和 Discord 通常有節點運營者分享其流動性服務。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">LSP 目錄</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        一些 LSP 通過流動性廣告提供服務，可以從 LSP 列表中找到。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>選擇建議：</strong>
+      評估賣方時考慮：節點 uptime 歷史、連接性、現有通道數量、
+      社群評價。不要只看價格。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/pull/878"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT Liquidity Ads 提案</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/dual-funded"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Dual-Funded Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/lightning-pool"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Pool</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/funding-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">注資交易</a
+      >
+      的技術細節。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,341 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Sphinx 洋蔥封包"
+  description="深入了解閃電網路使用的 Sphinx 洋蔥路由封包格式，如何實現支付路徑的隱私保護。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Sphinx' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Channel Announcements', href: '/tech/lightning/channel-announcements' }}
+  nextPage={{ title: 'Network Topology', href: '/tech/lightning/network-topology' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Sphinx？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Sphinx 是一種密碼學封包格式，用於實現洋蔥路由的隱私保護。
+    在閃電網路中，發送者使用 Sphinx 封裝支付資訊，每個中繼節點只能看到
+    下一跳的資訊，無法得知完整路徑或發送者/接收者的身份。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>洋蔥類比：</strong>
+      Sphinx 封包像洋蔥一樣有多層加密。每個節點剝開一層，
+      看到自己的指令，然後將剩餘部分傳遞給下一跳。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">封包結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Sphinx 洋蔥封包結構（1366 字節）：
+
+┌──────────────────────────────────────────────────────────┐
+│ 版本（1 字節）                                           │
+├──────────────────────────────────────────────────────────┤
+│ 臨時公鑰（33 字節）                                      │
+│ ephemeral_pubkey                                         │
+├──────────────────────────────────────────────────────────┤
+│ 路由資訊（1300 字節）                                    │
+│ ┌────────────────────────────────────────────────────┐  │
+│ │ Hop 1 payload（加密）                              │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ Hop 2 payload（雙重加密）                          │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ Hop 3 payload（三重加密）                          │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ ...                                                │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ 填充（隨機資料）                                   │  │
+│ └────────────────────────────────────────────────────┘  │
+├──────────────────────────────────────────────────────────┤
+│ HMAC（32 字節）                                          │
+│ 驗證封包完整性                                           │
+└──────────────────────────────────────────────────────────┘
+
+固定大小的重要性：
+├── 每個節點看到相同大小的封包
+├── 無法從大小推斷剩餘跳數
+└── 最多支援 20 跳`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">加密過程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發送者構建洋蔥：
+
+假設路徑：Alice → Bob → Carol → Dave
+
+1. 生成臨時密鑰對
+┌──────────────────────────────────────────────────────────┐
+│ ephemeral_privkey = random()                             │
+│ ephemeral_pubkey = ephemeral_privkey × G                 │
+└──────────────────────────────────────────────────────────┘
+
+2. 為每跳計算共享密鑰
+┌──────────────────────────────────────────────────────────┐
+│ 使用 ECDH：                                              │
+│                                                          │
+│ shared_secret_bob = SHA256(                              │
+│   ephemeral_privkey × Bob_pubkey                         │
+│ )                                                        │
+│                                                          │
+│ shared_secret_carol = SHA256(                            │
+│   ephemeral_privkey' × Carol_pubkey                      │
+│ )                                                        │
+│ （ephemeral_privkey' 是派生的盲化密鑰）                  │
+│                                                          │
+│ shared_secret_dave = SHA256(                             │
+│   ephemeral_privkey'' × Dave_pubkey                      │
+│ )                                                        │
+└──────────────────────────────────────────────────────────┘
+
+3. 逆序加密（從最後一跳開始）
+┌──────────────────────────────────────────────────────────┐
+│ 先加密 Dave 的 payload                                   │
+│ → 用 Carol 的密鑰加密整個封包                            │
+│ → 用 Bob 的密鑰加密整個封包                              │
+│                                                          │
+│ 結果：最外層是 Bob 的加密                                │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解密過程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`中繼節點處理洋蔥：
+
+Bob 收到洋蔥：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 計算共享密鑰                                          │
+│    shared_secret = SHA256(                               │
+│      Bob_privkey × ephemeral_pubkey                      │
+│    )                                                     │
+│                                                          │
+│ 2. 驗證 HMAC                                             │
+│    expected_hmac = HMAC(shared_secret, routing_info)     │
+│    if hmac ≠ expected_hmac: reject                       │
+│                                                          │
+│ 3. 解密路由資訊                                          │
+│    decrypted = ChaCha20(routing_info, shared_secret)     │
+│                                                          │
+│ 4. 讀取自己的 payload                                    │
+│    ├── short_channel_id: 下一跳通道                      │
+│    ├── amt_to_forward: 轉發金額                          │
+│    └── outgoing_cltv_value: CLTV                         │
+│                                                          │
+│ 5. 構建新洋蔥給下一跳                                    │
+│    ├── 盲化臨時公鑰                                      │
+│    ├── 移除自己的 payload                                │
+│    ├── 添加填充                                          │
+│    └── 更新 HMAC                                         │
+└──────────────────────────────────────────────────────────┘
+
+臨時公鑰盲化：
+┌──────────────────────────────────────────────────────────┐
+│ blinding_factor = SHA256(ephemeral_pubkey || shared_secret)
+│ new_ephemeral = ephemeral_pubkey × blinding_factor       │
+│                                                          │
+│ 每跳都改變臨時公鑰，但下一跳仍能計算正確的共享密鑰      │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Payload 格式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`TLV Payload 格式（現代格式）：
+
+┌──────────────────────────────────────────────────────────┐
+│ length (BigSize): payload 長度                           │
+├──────────────────────────────────────────────────────────┤
+│ TLV Records:                                             │
+│ ┌────────────────────────────────────────────────────┐  │
+│ │ type=2: amt_to_forward (tu64)                      │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ type=4: outgoing_cltv_value (tu32)                 │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ type=6: short_channel_id (8 bytes)                 │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ type=8: payment_data (for final hop)               │  │
+│ │   └── payment_secret + total_msat                  │  │
+│ ├────────────────────────────────────────────────────┤  │
+│ │ [其他可選 TLV...]                                  │  │
+│ └────────────────────────────────────────────────────┘  │
+├──────────────────────────────────────────────────────────┤
+│ hmac (32 bytes): 下一個封包的 HMAC                       │
+└──────────────────────────────────────────────────────────┘
+
+中繼節點 vs 最終節點：
+┌──────────────────────────────────────────────────────────┐
+│ 中繼節點 payload：                                       │
+│ ├── short_channel_id: 必須                               │
+│ ├── amt_to_forward: 必須                                 │
+│ └── outgoing_cltv_value: 必須                            │
+│                                                          │
+│ 最終節點 payload：                                       │
+│ ├── amt_to_forward: 支付金額                             │
+│ ├── outgoing_cltv_value: 最終 CLTV                       │
+│ ├── payment_secret: 防止探測                             │
+│ ├── total_msat: MPP 總額                                 │
+│ └── 無 short_channel_id                                  │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">發送者匿名</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中繼節點不知道誰是發送者。第一跳只知道它是第一跳，
+        但不知道是發送者還是另一個中繼。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">接收者匿名</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        中繼節點不知道誰是接收者。每跳只知道下一跳，
+        不知道剩餘多少跳。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">路徑長度隱藏</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        固定大小的封包使得無法從大小推斷路徑長度。
+        填充確保短路徑看起來和長路徑一樣。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">不可關聯性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        臨時公鑰每跳變化，使得無法將入站和出站封包關聯。
+        （但 payment_hash 仍可關聯）
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">錯誤返回</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`錯誤訊息的洋蔥加密：
+
+錯誤發生時：
+┌──────────────────────────────────────────────────────────┐
+│ 失敗節點構建錯誤訊息：                                   │
+│ ├── failure_code: 錯誤類型                               │
+│ └── data: 額外資訊                                       │
+│                                                          │
+│ 逐跳加密返回：                                           │
+│ 1. 失敗節點用共享密鑰加密錯誤                            │
+│ 2. 每個中繼節點用其共享密鑰再加密                        │
+│ 3. 發送者收到多層加密的錯誤                              │
+│                                                          │
+│ 發送者解密：                                             │
+│ 1. 嘗試用每跳的密鑰解密                                  │
+│ 2. 成功解密的那層對應失敗節點                            │
+│ 3. 讀取錯誤代碼和資訊                                    │
+└──────────────────────────────────────────────────────────┘
+
+錯誤訊息結構：
+┌──────────────────────────────────────────────────────────┐
+│ hmac (32 bytes)                                          │
+│ failure_len (2 bytes)                                    │
+│ failuremsg (failure_len bytes)                           │
+│ pad_len (2 bytes)                                        │
+│ pad (pad_len bytes)                                      │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與 Route Blinding 結合</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`盲化路徑增強：
+
+傳統 Sphinx：
+├── 發送者知道完整路徑
+├── 發送者知道接收者節點
+└── 發票洩露接收者位置
+
+Sphinx + Route Blinding：
+┌──────────────────────────────────────────────────────────┐
+│ 接收者預先構建盲化路徑：                                 │
+│ ├── 入口節點公鑰（可見）                                 │
+│ ├── 盲化的後續節點                                       │
+│ └── 加密的 payload                                       │
+│                                                          │
+│ 發送者：                                                 │
+│ ├── 構建 Sphinx 到入口節點                               │
+│ ├── 將盲化路徑附加到洋蔥末尾                             │
+│ └── 不知道入口之後的路徑                                 │
+│                                                          │
+│ 結果：發送者不知道接收者的真實位置                       │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>限制：</strong>
+      雖然 Sphinx 保護路徑隱私，但 payment_hash 在所有跳間相同，
+      使得這些 HTLC 可被關聯。PTLCs 將解決此問題。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/04-onion-routing.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 4 - Onion Routing</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt-onion"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">洋蔥路由</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/route-blinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Route Blinding</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/ptlcs"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">PTLCs</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/network-topology"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">網路拓撲</a
+      >
+      如何影響支付路由。
+    </p>
+  </div>
+</ArticleLayout>

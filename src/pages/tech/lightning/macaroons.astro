@@ -1,0 +1,342 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Macaroons LND 認證機制"
+  description="了解 LND 的 Macaroon 認證系統，如何安全地管理節點 API 存取權限。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Macaroons' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Node Operation', href: '/tech/lightning/node-operation' }}
+  nextPage={{ title: 'Channel Backup', href: '/tech/lightning/channel-backup' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Macaroons？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Macaroons 是 LND 使用的認證令牌系統。它們類似於 cookies，但提供更細粒度的
+    權限控制和委託能力。每個 macaroon 定義了持有者可以執行的操作。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>安全核心：</strong>
+      Macaroons 是保護 LND 節點的第一道防線。正確管理 macaroons
+      對節點安全至關重要。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">內建 Macaroons</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`LND 默認 Macaroons：
+
+位置：~/.lnd/data/chain/bitcoin/mainnet/
+┌──────────────────────────────────────────────────────────────┐
+│ admin.macaroon                                               │
+│ ├── 完整權限                                                 │
+│ ├── 可以執行所有操作                                         │
+│ └── 最敏感，必須妥善保管                                     │
+│                                                              │
+│ readonly.macaroon                                            │
+│ ├── 唯讀權限                                                 │
+│ ├── 可以查詢餘額、發票、通道狀態                             │
+│ └── 不能發送支付或修改設定                                   │
+│                                                              │
+│ invoice.macaroon                                             │
+│ ├── 發票相關權限                                             │
+│ ├── 創建和查詢發票                                           │
+│ └── 不能發送支付                                             │
+│                                                              │
+│ invoices.macaroon（複數）                                    │
+│ ├── 增強的發票權限                                           │
+│ └── 包含發票訂閱                                             │
+│                                                              │
+│ chainnotifier.macaroon                                       │
+│ ├── 鏈上通知權限                                             │
+│ └── 訂閱區塊和交易確認                                       │
+│                                                              │
+│ signer.macaroon                                              │
+│ ├── 簽名權限                                                 │
+│ └── 用於遠端簽名器                                           │
+│                                                              │
+│ walletkit.macaroon                                           │
+│ ├── 錢包操作權限                                             │
+│ └── 地址生成、PSBT 等                                        │
+│                                                              │
+│ router.macaroon                                              │
+│ ├── 路由權限                                                 │
+│ ├── 發送支付                                                 │
+│ └── 路由查詢                                                 │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Macaroon 結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Macaroon 內部結構：
+
+┌──────────────────────────────────────────────────────────────┐
+│ Macaroon 組成：                                              │
+│                                                              │
+│ ┌─────────────────────────────────────────────────────────┐  │
+│ │ Identifier                                              │  │
+│ │   唯一識別符，用於追蹤                                  │  │
+│ ├─────────────────────────────────────────────────────────┤  │
+│ │ Location (optional)                                     │  │
+│ │   發行者位置（如 "lnd"）                                │  │
+│ ├─────────────────────────────────────────────────────────┤  │
+│ │ Caveats (條件/限制)                                     │  │
+│ │   ├── caveat 1: "entity=info"                           │  │
+│ │   ├── caveat 2: "entity=invoices"                       │  │
+│ │   ├── caveat 3: "action=read"                           │  │
+│ │   └── ...                                               │  │
+│ ├─────────────────────────────────────────────────────────┤  │
+│ │ Signature                                               │  │
+│ │   HMAC 簽名，驗證完整性                                 │  │
+│ └─────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+
+Caveats（條件）類型：
+┌──────────────────────────────────────────────────────────────┐
+│ First-party caveats：                                        │
+│ ├── 直接嵌入在 macaroon 中                                   │
+│ ├── 由驗證者檢查                                             │
+│ └── 例如：時間限制、IP 限制                                  │
+│                                                              │
+│ Third-party caveats：                                        │
+│ ├── 需要第三方驗證                                           │
+│ ├── 實現多方授權                                             │
+│ └── LND 主要使用 first-party                                 │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">創建自定義 Macaroon</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`使用 lncli 創建自定義 macaroon：
+
+基本語法：
+┌──────────────────────────────────────────────────────────────┐
+│ lncli bakemacaroon <permissions...> [flags]                  │
+│                                                              │
+│ 權限格式：entity:action                                      │
+│ ├── entity: info, offchain, onchain, address, message,       │
+│ │           peers, invoices, macaroon, signer                │
+│ └── action: read, write, generate                            │
+└──────────────────────────────────────────────────────────────┘
+
+範例：
+┌──────────────────────────────────────────────────────────────┐
+│ # 只讀 macaroon                                              │
+│ lncli bakemacaroon info:read offchain:read onchain:read      │
+│                                                              │
+│ # 只能創建發票                                               │
+│ lncli bakemacaroon invoices:read invoices:write              │
+│                                                              │
+│ # 可以發送支付，但不能修改通道                               │
+│ lncli bakemacaroon offchain:read offchain:write \\            │
+│   --save_to=./payment.macaroon                               │
+│                                                              │
+│ # 帶時間限制                                                 │
+│ lncli bakemacaroon info:read \\                               │
+│   --timeout 3600 \\                                           │
+│   --save_to=./temp.macaroon                                  │
+│                                                              │
+│ # 帶 IP 限制                                                 │
+│ lncli bakemacaroon info:read \\                               │
+│   --allow_external_permissions \\                             │
+│   --custom_caveat "ipaddr 192.168.1.0/24"                    │
+└──────────────────────────────────────────────────────────────┘
+
+常用權限組合：
+┌──────────────────────────────────────────────────────────────┐
+│ 監控用途（如 RTL、Thunderhub）：                             │
+│ info:read offchain:read onchain:read peers:read              │
+│                                                              │
+│ 支付用途（如 BTCPay Server）：                               │
+│ invoices:read invoices:write offchain:read offchain:write    │
+│                                                              │
+│ 完整操作（等同 admin）：                                     │
+│ 不推薦，使用 admin.macaroon                                  │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">衍生 Macaroon</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`從現有 Macaroon 衍生受限版本：
+
+關鍵特性：
+┌──────────────────────────────────────────────────────────────┐
+│ Macaroon 的獨特能力：                                        │
+│ ├── 可以添加 caveats（限制）                                 │
+│ ├── 不能移除已有的 caveats                                   │
+│ └── 無需聯繫原始發行者                                       │
+│                                                              │
+│ 這意味著：                                                   │
+│ 你可以把 admin macaroon 變成受限版本                         │
+│ 但不能把 readonly 變成 admin                                 │
+└──────────────────────────────────────────────────────────────┘
+
+添加限制：
+┌──────────────────────────────────────────────────────────────┐
+│ # 添加時間限制                                               │
+│ lncli constrainmacaroon \\                                    │
+│   --macaroon_file=./admin.macaroon \\                         │
+│   --timeout=3600 \\                                           │
+│   --output=./temp_admin.macaroon                             │
+│                                                              │
+│ # 添加 IP 限制                                               │
+│ lncli constrainmacaroon \\                                    │
+│   --macaroon_file=./admin.macaroon \\                         │
+│   --ip_address=192.168.1.100 \\                               │
+│   --output=./restricted.macaroon                             │
+│                                                              │
+│ 現在 restricted.macaroon：                                   │
+│ ├── 保留原有的所有權限                                       │
+│ ├── 但只能從 192.168.1.100 使用                              │
+│ └── 其他 IP 會被拒絕                                         │
+└──────────────────────────────────────────────────────────────┘
+
+委託場景：
+┌──────────────────────────────────────────────────────────────┐
+│ 場景：你要給第三方服務有限存取                               │
+│                                                              │
+│ 1. 從 admin.macaroon 創建受限版本                            │
+│ 2. 添加時間限制（1 天）                                      │
+│ 3. 添加 IP 限制（服務的 IP）                                 │
+│ 4. 只給予需要的權限                                          │
+│                                                              │
+│ lncli bakemacaroon invoices:read invoices:write \\            │
+│   --timeout 86400 \\                                          │
+│   --ip_address <service_ip> \\                                │
+│   --save_to ./service.macaroon                               │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全最佳實踐</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Macaroon 安全指南：
+
+保護 admin.macaroon：
+┌──────────────────────────────────────────────────────────────┐
+│ ⚠ admin.macaroon = 節點完整控制權                            │
+│                                                              │
+│ 應該：                                                       │
+│ ├── 加密儲存                                                 │
+│ ├── 限制檔案權限（chmod 600）                                │
+│ ├── 永遠不要傳輸或分享                                       │
+│ └── 考慮使用硬體安全模組（HSM）                              │
+│                                                              │
+│ 不應該：                                                     │
+│ ├── 放在公開可存取的位置                                     │
+│ ├── 通過不安全通道傳輸                                       │
+│ ├── 給予第三方服務                                           │
+│ └── 提交到版本控制                                           │
+└──────────────────────────────────────────────────────────────┘
+
+最小權限原則：
+┌──────────────────────────────────────────────────────────────┐
+│ 為每個用途創建專用 macaroon：                                │
+│                                                              │
+│ BTCPay Server：                                              │
+│   invoices:read invoices:write                               │
+│                                                              │
+│ 監控面板：                                                   │
+│   info:read peers:read offchain:read onchain:read            │
+│                                                              │
+│ 自動支付腳本：                                               │
+│   offchain:write + 金額限制                                  │
+│                                                              │
+│ 開發測試：                                                   │
+│   短時間限制 + IP 限制                                       │
+└──────────────────────────────────────────────────────────────┘
+
+定期輪換：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 定期生成新的 macaroons                                    │
+│ 2. 更新使用舊 macaroon 的服務                                │
+│ 3. 刪除舊的 macaroon（雖然不能撤銷）                         │
+│                                                              │
+│ 注意：Macaroons 不能被「撤銷」                               │
+│ 唯一的方法是更改 LND 的 root key                             │
+│ 這會使所有現有 macaroons 失效                                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">vs API Keys</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        傳統 API keys 是固定的。
+        Macaroons 可以被衍生和限制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">CLN: Runes</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Core Lightning 使用類似的 Runes 系統。
+        概念相似但實現不同。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>備份重要：</strong>
+      雖然 macaroons 可以重新生成，但確保 root key（macaroons.db）
+      和 wallet 一起備份。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://docs.lightning.engineering/lightning-network-tools/lnd/macaroons"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LND Macaroons 文檔</a>
+    </li>
+    <li>
+      • <a
+        href="https://research.google/pubs/pub41892/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Macaroons 論文</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/node-operation"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">節點運營</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/channel-backup"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道備份</a
+      >
+      確保資金安全。
+    </p>
+  </div>
+</ArticleLayout>

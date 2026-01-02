@@ -1,0 +1,292 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Invoice Request 發票請求"
+  description="了解 BOLT 12 的發票請求機制，如何從 Offer 獲取動態生成的發票。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Invoice Request' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'BOLT12 Offers', href: '/tech/lightning/bolt12-offers' }}
+  nextPage={{ title: 'Onion Messages', href: '/tech/lightning/onion-messages' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票請求概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Invoice Request 是 BOLT 12 協議的核心部分，允許買家向賣家請求發票。
+    這是從靜態 Offer 到動態 Invoice 的橋樑。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>互動式協議：</strong>
+      不同於 BOLT 11 的一次性發票，BOLT 12 允許買賣雙方通過
+      洋蔥訊息互動，實現更靈活的支付流程。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">完整流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 12 支付流程：
+
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  賣家                                      買家              │
+│    │                                        │                │
+│    │ [1. 發布 Offer]                        │                │
+│    │──────────────────────────────────────>│                │
+│    │     (網站、QR 碼、NFC 等)              │                │
+│    │                                        │                │
+│    │                    [2. 解析 Offer]     │                │
+│    │                    [3. 創建請求]       │                │
+│    │                                        │                │
+│    │ <──────── invoice_request ────────────│                │
+│    │           (via 洋蔥訊息)               │                │
+│    │                                        │                │
+│    │ [4. 驗證請求]                          │                │
+│    │ [5. 生成發票]                          │                │
+│    │                                        │                │
+│    │─────────── invoice ──────────────────>│                │
+│    │           (via 洋蔥訊息)               │                │
+│    │                                        │                │
+│    │                    [6. 驗證發票]       │                │
+│    │                    [7. 發送支付]       │                │
+│    │                                        │                │
+│    │ <═══════════ HTLC ═══════════════════│                │
+│    │                                        │                │
+│    │ [8. 確認收款]                          │                │
+│    │                                        │                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Invoice Request 結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`invoice_request TLV 欄位：
+
+必要欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ offer_id (4): 32 bytes                                       │
+│   對應 Offer 的 ID（Offer 的 merkle root）                   │
+│                                                              │
+│ payer_key (38): 33 bytes                                     │
+│   買家的公鑰（用於簽名和回覆路由）                           │
+│                                                              │
+│ payer_signature (240): 64 bytes                              │
+│   買家的 Schnorr 簽名                                        │
+└──────────────────────────────────────────────────────────────┘
+
+可選欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ chain (3): 32 bytes                                          │
+│   區塊鏈識別（如果 Offer 支援多條鏈）                        │
+│                                                              │
+│ amount (8): TU64                                             │
+│   請求金額（如果 Offer 沒有固定金額）                        │
+│                                                              │
+│ quantity (32): TU64                                          │
+│   數量（如果 Offer 支援數量）                                │
+│                                                              │
+│ payer_info (50): variable                                    │
+│   買家附加資訊（賣家會在 Invoice 中回傳）                    │
+│                                                              │
+│ payer_note (34): UTF-8 string                                │
+│   買家備註                                                   │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">驗證規則</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`賣家驗證 invoice_request：
+
+必要檢查：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. offer_id 匹配                                             │
+│    └── 確認請求對應到有效的 Offer                            │
+│                                                              │
+│ 2. 簽名驗證                                                  │
+│    └── payer_signature 與 payer_key 匹配                     │
+│    └── 簽名覆蓋所有請求欄位                                  │
+│                                                              │
+│ 3. 金額檢查                                                  │
+│    ├── 如果 Offer 有固定金額：不應有 amount 欄位             │
+│    ├── 如果 Offer 無固定金額：必須有 amount 欄位             │
+│    └── 金額在 Offer 的 min/max 範圍內                        │
+│                                                              │
+│ 4. 數量檢查（如果適用）                                      │
+│    ├── 數量在 Offer 允許範圍內                               │
+│    └── 總金額 = 單價 × 數量                                  │
+│                                                              │
+│ 5. 鏈檢查                                                    │
+│    └── chain 在 Offer 支援的鏈列表中                         │
+└──────────────────────────────────────────────────────────────┘
+
+失敗處理：
+┌──────────────────────────────────────────────────────────────┐
+│ 如果驗證失敗，賣家可以：                                     │
+│ ├── 靜默忽略（推薦，避免資訊洩漏）                           │
+│ └── 發送 invoice_error 訊息（告知原因）                      │
+│                                                              │
+│ invoice_error 包含：                                         │
+│ ├── erroneous_field: 有問題的欄位                            │
+│ └── error: 錯誤描述                                          │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Invoice 回應</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`賣家生成 invoice：
+
+Invoice 繼承 Offer 欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ 從 Offer 複製（不變）：                                      │
+│ ├── description                                              │
+│ ├── features                                                 │
+│ ├── chains                                                   │
+│ └── offer_id 參考                                            │
+│                                                              │
+│ 從 invoice_request 複製：                                    │
+│ ├── payer_key                                                │
+│ ├── payer_info（如果提供）                                   │
+│ └── quantity（如果適用）                                     │
+└──────────────────────────────────────────────────────────────┘
+
+Invoice 新增欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ payment_hash: 32 bytes                                       │
+│   為此支付新生成                                             │
+│                                                              │
+│ amount: TU64                                                 │
+│   最終確定的金額                                             │
+│                                                              │
+│ created_at: TU64                                             │
+│   發票創建時間                                               │
+│                                                              │
+│ relative_expiry: TU32                                        │
+│   從 created_at 算起的過期秒數                               │
+│                                                              │
+│ paths: blinded_path[]                                        │
+│   支付路徑（可以是盲化路徑）                                 │
+│                                                              │
+│ signature: 64 bytes                                          │
+│   賣家的 Schnorr 簽名                                        │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">洋蔥訊息傳輸</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通過洋蔥訊息傳輸：
+
+發送 invoice_request：
+┌──────────────────────────────────────────────────────────────┐
+│ 買家：                                                       │
+│ 1. 從 Offer 獲取 paths（盲化路徑到賣家）                     │
+│ 2. 構建洋蔥訊息：                                            │
+│    ├── 目的地：Offer 的 paths 之一                           │
+│    ├── 回覆路徑：買家的盲化路徑                              │
+│    └── 內容：invoice_request TLV                             │
+│ 3. 通過閃電網路發送                                          │
+└──────────────────────────────────────────────────────────────┘
+
+接收和回覆：
+┌──────────────────────────────────────────────────────────────┐
+│ 賣家：                                                       │
+│ 1. 解密洋蔥訊息                                              │
+│ 2. 提取 invoice_request                                      │
+│ 3. 驗證請求                                                  │
+│ 4. 生成 invoice                                              │
+│ 5. 使用回覆路徑發送 invoice                                  │
+│                                                              │
+│ 買家：                                                       │
+│ 1. 接收洋蔥訊息                                              │
+│ 2. 提取 invoice                                              │
+│ 3. 驗證 invoice                                              │
+│ 4. 發送 HTLC 支付                                            │
+└──────────────────────────────────────────────────────────────┘
+
+回覆路徑重要性：
+├── 買家創建自己的盲化路徑
+├── 賣家不知道買家真實身份
+├── 雙向隱私保護
+└── 需要買家在線接收回覆`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">非互動式 Offer</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果 Offer 包含 invoice，則可以直接支付，
+        無需 invoice_request 步驟。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">重試機制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        如果沒有收到 invoice，買家可以重新發送請求。
+        賣家應該能處理重複請求。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>在線需求：</strong>
+      invoice_request 流程需要賣家在線以生成發票。
+      對於離線收款，可以考慮預生成的 BOLT 11 發票或其他方案。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/12-offer-encoding.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 12 Offers</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers 介紹</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/onion-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Onion Messages</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/onion-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Onion Messages</a
+      >
+      如何傳輸這些請求和回覆。
+    </p>
+  </div>
+</ArticleLayout>

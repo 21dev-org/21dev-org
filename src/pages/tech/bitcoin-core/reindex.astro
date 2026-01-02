@@ -1,0 +1,469 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Reindex"
+  description="深入了解 Bitcoin Core 的 reindex 功能，如何重建區塊鏈索引和 UTXO 集。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Reindex' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Wallet Encryption', href: '/tech/bitcoin-core/wallet-encryption' }}
+  nextPage={{ title: 'DbCache', href: '/tech/bitcoin-core/dbcache' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Reindex？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Reindex 是 Bitcoin Core 的重建索引功能，用於從本地區塊文件重新處理所有區塊，
+      重建 UTXO 集、區塊索引和其他資料庫。當資料庫損壞或需要驗證完整性時特別有用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Reindex 的用途</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">資料庫修復</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• UTXO 資料庫損壞</li>
+            <li>• 區塊索引損壞</li>
+            <li>• LevelDB 錯誤</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">升級/變更</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 啟用新的索引</li>
+            <li>• 升級後的完整性檢查</li>
+            <li>• 更改 assumevalid</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="modes" class="text-2xl font-bold text-[var(--text-primary)]">Reindex 模式</h2>
+
+    <h3 id="reindex" class="text-xl font-semibold text-[var(--text-primary)]">-reindex</h3>
+    <p class="text-[var(--text-secondary)]">
+      完整重建模式，從本地區塊文件重新處理所有區塊，重建所有資料庫。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 完整重建索引
+bitcoind -reindex
+
+# 配合其他選項
+bitcoind -reindex -dbcache=4096 -txindex</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">-reindex 過程</h4>
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">清除資料庫</strong>
+            <p class="text-sm">刪除 chainstate（UTXO 集）和 blocks/index</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">掃描區塊文件</strong>
+            <p class="text-sm">讀取 blocks/blk*.dat 文件找出所有區塊</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">重建區塊索引</strong>
+            <p class="text-sm">按順序排列區塊，建立 blocks/index</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">處理每個區塊</strong>
+            <p class="text-sm">驗證交易並更新 UTXO 集</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="reindex-chainstate" class="text-xl font-semibold text-[var(--text-primary)]">-reindex-chainstate</h3>
+    <p class="text-[var(--text-secondary)]">
+      僅重建 UTXO 集（chainstate），保留區塊索引。比完整 reindex 更快。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 僅重建 chainstate
+bitcoind -reindex-chainstate
+
+# 適用於 chainstate 損壞但區塊索引完好的情況</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">兩種模式比較</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">-reindex</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">-reindex-chainstate</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">重建區塊索引</td>
+              <td class="py-2 text-green-400">是</td>
+              <td class="py-2 text-red-400">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">重建 UTXO 集</td>
+              <td class="py-2 text-green-400">是</td>
+              <td class="py-2 text-green-400">是</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">掃描區塊文件</td>
+              <td class="py-2 text-green-400">是</td>
+              <td class="py-2 text-red-400">否</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">所需時間</td>
+              <td class="py-2">較長</td>
+              <td class="py-2">較短</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">適用情況</td>
+              <td class="py-2">區塊索引損壞</td>
+              <td class="py-2">僅 chainstate 損壞</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="block-scanning" class="text-xl font-semibold text-[var(--text-primary)]">區塊掃描</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊文件結構
+interface BlockFile {
+  path: string;  // blocks/blk00000.dat
+  size: number;
+  blocks: BlockLocation[];
+}
+
+interface BlockLocation {
+  hash: string;
+  fileNumber: number;
+  dataPos: number;  // 在文件中的位置
+  undoPos: number;  // undo 數據位置
+}
+
+// 區塊文件格式
+// 每個區塊前有 8 字節頭
+// [4 bytes: magic] [4 bytes: size] [block data]
+const MAINNET_MAGIC = 0xD9B4BEF9;
+const TESTNET_MAGIC = 0x0709110B;
+
+async function scanBlockFile(
+  filePath: string,
+  network: 'mainnet' | 'testnet'
+): Promise<BlockLocation[]> {
+  const magic = network === 'mainnet' ? MAINNET_MAGIC : TESTNET_MAGIC;
+  const blocks: BlockLocation[] = [];
+  const file = await openFile(filePath);
+  let pos = 0;
+
+  while (pos < file.size) {
+    // 讀取魔數
+    const fileMagic = await file.readUint32LE(pos);
+    if (fileMagic !== magic) {
+      // 可能是填充或損壞，跳過
+      pos++;
+      continue;
+    }
+
+    // 讀取區塊大小
+    const blockSize = await file.readUint32LE(pos + 4);
+
+    // 讀取區塊數據並計算哈希
+    const blockData = await file.read(pos + 8, blockSize);
+    const blockHash = calculateBlockHash(blockData);
+
+    blocks.push({
+      hash: blockHash,
+      fileNumber: extractFileNumber(filePath),
+      dataPos: pos + 8,
+      undoPos: 0,  // 稍後填充
+    });
+
+    pos += 8 + blockSize;
+  }
+
+  return blocks;
+}</code></pre>
+    </div>
+
+    <h3 id="chainstate-rebuild" class="text-xl font-semibold text-[var(--text-primary)]">Chainstate 重建</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface UTXO {
+  txid: string;
+  vout: number;
+  value: number;
+  scriptPubKey: Buffer;
+  height: number;
+  coinbase: boolean;
+}
+
+class ChainstateRebuilder {
+  private utxoSet: Map<string, UTXO> = new Map();
+  private currentHeight: number = 0;
+
+  async processBlock(block: Block): Promise<void> {
+    // 1. 處理 coinbase 交易（新創建的幣）
+    const coinbaseTx = block.transactions[0];
+    for (let i = 0; i < coinbaseTx.outputs.length; i++) {
+      const output = coinbaseTx.outputs[i];
+      if (!isUnspendable(output.scriptPubKey)) {
+        this.addUtxo({
+          txid: coinbaseTx.txid,
+          vout: i,
+          value: output.value,
+          scriptPubKey: output.scriptPubKey,
+          height: this.currentHeight,
+          coinbase: true,
+        });
+      }
+    }
+
+    // 2. 處理一般交易
+    for (let i = 1; i < block.transactions.length; i++) {
+      const tx = block.transactions[i];
+
+      // 移除被花費的 UTXO
+      for (const input of tx.inputs) {
+        this.removeUtxo(input.txid, input.vout);
+      }
+
+      // 添加新的 UTXO
+      for (let j = 0; j < tx.outputs.length; j++) {
+        const output = tx.outputs[j];
+        if (!isUnspendable(output.scriptPubKey)) {
+          this.addUtxo({
+            txid: tx.txid,
+            vout: j,
+            value: output.value,
+            scriptPubKey: output.scriptPubKey,
+            height: this.currentHeight,
+            coinbase: false,
+          });
+        }
+      }
+    }
+
+    this.currentHeight++;
+  }
+
+  private addUtxo(utxo: UTXO): void {
+    const key = `${utxo.txid}:${utxo.vout}`;
+    this.utxoSet.set(key, utxo);
+  }
+
+  private removeUtxo(txid: string, vout: number): void {
+    const key = `${txid}:${vout}`;
+    this.utxoSet.delete(key);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="performance" class="text-2xl font-bold text-[var(--text-primary)]">效能優化</h2>
+
+    <h3 id="dbcache" class="text-xl font-semibold text-[var(--text-primary)]">使用 dbcache</h3>
+    <p class="text-[var(--text-secondary)]">
+      增加 dbcache 可以顯著加快 reindex 速度，因為更多 UTXO 可以保持在記憶體中。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 4GB dbcache（推薦用於 reindex）
+bitcoind -reindex -dbcache=4096
+
+# 使用 8GB dbcache（如果有足夠記憶體）
+bitcoind -reindex -dbcache=8192
+
+# 建議：留出至少 2-4GB 給系統和其他進程</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">Reindex 時間估算</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">dbcache</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">磁碟類型</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">估計時間</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">450MB（預設）</td>
+              <td class="py-2">HDD</td>
+              <td class="py-2">數天</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">450MB（預設）</td>
+              <td class="py-2">SSD</td>
+              <td class="py-2">10-20 小時</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">4096MB</td>
+              <td class="py-2">SSD</td>
+              <td class="py-2">4-8 小時</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">8192MB+</td>
+              <td class="py-2">NVMe</td>
+              <td class="py-2">2-4 小時</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="other-options" class="text-xl font-semibold text-[var(--text-primary)]">其他優化選項</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 組合優化選項
+bitcoind -reindex \
+  -dbcache=4096 \
+  -par=0 \          # 使用所有 CPU 核心進行腳本驗證
+  -checkblocks=0 \  # 跳過啟動時的區塊檢查
+  -checklevel=0     # 最小檢查級別
+
+# 注意：這些選項會減少驗證，僅在信任本地數據時使用</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="common-scenarios" class="text-2xl font-bold text-[var(--text-primary)]">常見場景</h2>
+
+    <h3 id="corruption" class="text-xl font-semibold text-[var(--text-primary)]">資料庫損壞</h3>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">常見錯誤訊息</h4>
+      <pre class="text-sm overflow-x-auto text-[var(--text-secondary)]"><code is:raw>Error: Error opening block database.
+Error: Corrupted block database detected.
+Error: A fatal internal error occurred, see debug.log for details
+LevelDB error: Corruption: block checksum mismatch</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">修復步驟</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 停止 Bitcoin Core
+bitcoin-cli stop
+
+# 2. 備份錢包（重要！）
+cp -r ~/.bitcoin/wallets ~/bitcoin-wallets-backup
+
+# 3. 嘗試 reindex-chainstate（較快）
+bitcoind -reindex-chainstate
+
+# 4. 如果仍然失敗，使用完整 reindex
+bitcoind -reindex
+
+# 5. 如果還是失敗，可能需要重新下載
+rm -rf ~/.bitcoin/blocks ~/.bitcoin/chainstate
+bitcoind</code></pre>
+    </div>
+
+    <h3 id="enable-txindex" class="text-xl font-semibold text-[var(--text-primary)]">啟用 txindex</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 首次啟用 txindex 需要 reindex
+bitcoind -txindex -reindex
+
+# 或者添加到配置文件
+echo "txindex=1" >> ~/.bitcoin/bitcoin.conf
+bitcoind -reindex</code></pre>
+    </div>
+
+    <h3 id="upgrade" class="text-xl font-semibold text-[var(--text-primary)]">版本升級</h3>
+    <p class="text-[var(--text-secondary)]">
+      某些版本升級可能需要 reindex，通常會在發布說明中提及。
+    </p>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">提示：</strong>
+        升級前請閱讀發布說明。大多數小版本升級不需要 reindex，
+        但某些涉及資料庫格式變更的升級可能需要。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控進度</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 reindex 進度
+tail -f ~/.bitcoin/debug.log | grep -E "(Reindexing|progress=)"
+
+# 使用 RPC 查看區塊鏈資訊
+bitcoin-cli getblockchaininfo
+
+# 查看驗證進度
+bitcoin-cli getblockchaininfo | jq '.verificationprogress'
+
+# 持續監控
+watch -n 5 'bitcoin-cli getblockchaininfo | jq "{blocks, headers, verificationprogress}"'</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">日誌輸出示例</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Reindexing block file blk00000.dat...
+Reindexing block file blk00001.dat...
+...
+UpdateTip: new best=0000000000000000000... height=800000 progress=0.999854
+Pre-allocating up to position 0x8000000 in blk02345.dat</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">-reindex：</strong>完整重建區塊索引和 UTXO 集</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">-reindex-chainstate：</strong>僅重建 UTXO 集，更快</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">效能優化：</strong>增加 dbcache 可顯著加快 reindex</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>Reindex 前請務必備份錢包</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

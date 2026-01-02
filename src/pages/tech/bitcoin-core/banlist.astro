@@ -1,0 +1,435 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Banlist"
+  description="深入了解 Bitcoin Core 的節點封禁機制，如何管理惡意或不良行為的對等節點。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Banlist' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'DbCache', href: '/tech/bitcoin-core/dbcache' }}
+  nextPage={{ title: 'Blocks Only', href: '/tech/bitcoin-core/blocksonly' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Banlist？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Banlist 是 Bitcoin Core 維護的封禁節點清單，用於記錄因惡意行為或協議違規而被禁止連接的對等節點。
+      這是節點自我保護機制的重要組成部分，防止資源被惡意節點濫用。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">封禁的目的</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">防止攻擊</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 阻止 DoS 攻擊</li>
+            <li>• 防止垃圾交易廣播</li>
+            <li>• 抵禦 Eclipse 攻擊</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">節省資源</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 避免處理無效數據</li>
+            <li>• 保護頻寬</li>
+            <li>• 維護連接品質</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="ban-vs-disconnect" class="text-2xl font-bold text-[var(--text-primary)]">封禁 vs 斷開連接</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">兩者的區別</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Disconnect</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Ban</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">持久性</td>
+              <td class="py-2">臨時</td>
+              <td class="py-2">持久（儲存到磁碟）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">重新連接</td>
+              <td class="py-2">可以立即重連</td>
+              <td class="py-2">封禁期間不可連接</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">預設時長</td>
+              <td class="py-2">N/A</td>
+              <td class="py-2">24 小時</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">適用情況</td>
+              <td class="py-2">輕微問題</td>
+              <td class="py-2">嚴重違規</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="discourage" class="text-xl font-semibold text-[var(--text-primary)]">Discourage（勸阻）</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 26.0 引入了 discourage 機制，比 ban 更溫和。被勸阻的節點可以連接，
+      但會被優先斷開以騰出連接槽位給其他節點。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看被勸阻的節點
+bitcoin-cli listbanned
+
+# 在輸出中，banned_until = 0 表示 discourage 而非 ban</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="ban-reasons" class="text-2xl font-bold text-[var(--text-primary)]">封禁原因</h2>
+
+    <h3 id="automatic-bans" class="text-xl font-semibold text-[var(--text-primary)]">自動封禁</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 會自動封禁違反協議規則或行為異常的節點：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-sm flex-shrink-0">!</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">無效區塊</strong>
+            <p class="text-sm">發送違反共識規則的區塊</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-sm flex-shrink-0">!</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">無效交易</strong>
+            <p class="text-sm">發送違反共識規則的交易</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-sm flex-shrink-0">!</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">DoS 行為</strong>
+            <p class="text-sm">過多的無效請求或垃圾數據</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-yellow-500 text-white flex items-center justify-center text-sm flex-shrink-0">!</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">協議違規</strong>
+            <p class="text-sm">不遵循 P2P 協議的行為</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="dos-score" class="text-xl font-semibold text-[var(--text-primary)]">DoS 評分系統</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Bitcoin Core 的 DoS 評分機制
+interface PeerMisbehavior {
+  peerId: number;
+  score: number;
+  threshold: number;  // 預設 100
+}
+
+// 違規行為的懲罰分數示例
+const MISBEHAVIOR_SCORES = {
+  // 嚴重違規 - 立即封禁
+  INVALID_BLOCK: 100,
+  INVALID_TX_CONSENSUS: 100,
+
+  // 中等違規
+  INVALID_TX_POLICY: 10,
+  DUPLICATE_VERSION: 10,
+  UNKNOWN_MESSAGE: 1,
+
+  // 輕微違規
+  TIMEOUT: 1,
+};
+
+class PeerManager {
+  private misbehavior: Map<number, number> = new Map();
+  private readonly banThreshold = 100;
+
+  // 記錄違規行為
+  misbehaving(peerId: number, howmuch: number, reason: string): void {
+    const current = this.misbehavior.get(peerId) || 0;
+    const newScore = current + howmuch;
+
+    console.log(`Peer ${peerId} misbehaving: ${reason} (+${howmuch})`);
+    this.misbehavior.set(peerId, newScore);
+
+    if (newScore >= this.banThreshold) {
+      this.banPeer(peerId);
+    }
+  }
+
+  private banPeer(peerId: number): void {
+    const peer = this.getPeer(peerId);
+    if (peer) {
+      this.addToBanlist(peer.address, 24 * 60 * 60);  // 24 小時
+      this.disconnectPeer(peerId);
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="management" class="text-2xl font-bold text-[var(--text-primary)]">管理封禁清單</h2>
+
+    <h3 id="cli-commands" class="text-xl font-semibold text-[var(--text-primary)]">CLI 命令</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看所有封禁的節點
+bitcoin-cli listbanned
+
+# 輸出示例
+[
+  {
+    "address": "192.168.1.100/32",
+    "ban_created": 1703980800,
+    "banned_until": 1704067200,
+    "ban_duration": 86400,
+    "time_remaining": 43200,
+    "ban_reason": "manually added"
+  }
+]
+
+# 手動封禁 IP
+bitcoin-cli setban "192.168.1.100" "add" 86400  # 24 小時
+
+# 封禁 IP 範圍（CIDR）
+bitcoin-cli setban "192.168.1.0/24" "add" 86400
+
+# 解除封禁
+bitcoin-cli setban "192.168.1.100" "remove"
+
+# 清除所有封禁
+bitcoin-cli clearbanned
+
+# 斷開特定節點（不封禁）
+bitcoin-cli disconnectnode "192.168.1.100:8333"</code></pre>
+    </div>
+
+    <h3 id="banlist-file" class="text-xl font-semibold text-[var(--text-primary)]">Banlist 檔案</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 封禁清單儲存位置
+~/.bitcoin/banlist.json
+
+# 檔案格式（JSON）
+{
+  "banned_nets": [
+    {
+      "version": 1,
+      "ban_created": 1703980800,
+      "banned_until": 1704067200,
+      "address": "192.168.1.100/32"
+    }
+  ]
+}
+
+# 舊版本使用 banlist.dat（二進制格式）</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        封禁是基於 IP 地址而非節點 ID。如果惡意節點使用 VPN 或動態 IP，
+        封禁可能無法完全阻止它們。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="ban-storage" class="text-xl font-semibold text-[var(--text-primary)]">封禁儲存</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface BanEntry {
+  subnet: string;      // IP 或 CIDR
+  banCreated: number;  // Unix timestamp
+  bannedUntil: number; // Unix timestamp（0 = discourage）
+  banReason: string;
+}
+
+class BanMan {
+  private banlist: Map<string, BanEntry> = new Map();
+  private dirty: boolean = false;
+
+  // 檢查是否被封禁
+  isBanned(addr: string): boolean {
+    const now = Date.now() / 1000;
+
+    for (const [subnet, entry] of this.banlist) {
+      if (this.matchSubnet(addr, subnet)) {
+        if (entry.bannedUntil > now) {
+          return true;
+        }
+        // 封禁已過期，稍後清理
+      }
+    }
+
+    return false;
+  }
+
+  // 檢查是否被勸阻
+  isDiscouraged(addr: string): boolean {
+    for (const [subnet, entry] of this.banlist) {
+      if (this.matchSubnet(addr, subnet)) {
+        // bannedUntil = 0 表示 discourage
+        if (entry.bannedUntil === 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 添加封禁
+  ban(subnet: string, durationSeconds: number, reason: string): void {
+    const now = Date.now() / 1000;
+    this.banlist.set(subnet, {
+      subnet,
+      banCreated: now,
+      bannedUntil: now + durationSeconds,
+      banReason: reason,
+    });
+    this.dirty = true;
+  }
+
+  // 勸阻（不完全封禁）
+  discourage(subnet: string): void {
+    const now = Date.now() / 1000;
+    this.banlist.set(subnet, {
+      subnet,
+      banCreated: now,
+      bannedUntil: 0,  // 0 表示 discourage
+      banReason: 'discouraged',
+    });
+    this.dirty = true;
+  }
+
+  // 儲存到磁碟
+  async dumpBanlist(): Promise<void> {
+    if (!this.dirty) return;
+
+    const data = {
+      banned_nets: Array.from(this.banlist.values()),
+    };
+
+    await writeFile('banlist.json', JSON.stringify(data, null, 2));
+    this.dirty = false;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 設定封禁時長（秒），預設 86400（24 小時）
+bantime=86400
+
+# 禁止自動封禁（不建議）
+# 只會 discourage 而不會 ban
+# noban=1
+
+# 使用白名單（繞過封禁檢查）
+whitelist=192.168.1.0/24
+
+# 白名單權限
+whitebind=127.0.0.1:8333
+whitelistrelay=1
+whitelistforcerelay=1</code></pre>
+    </div>
+
+    <h3 id="whitelist" class="text-xl font-semibold text-[var(--text-primary)]">白名單</h3>
+    <p class="text-[var(--text-secondary)]">
+      白名單中的節點不會被自動封禁或斷開連接，即使它們的行為觸發了 DoS 保護。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 白名單選項
+-whitelist=<IP>           # 添加到白名單
+-whitebind=<addr>         # 綁定地址並將連接加入白名單
+
+# 白名單權限
+-whitelistrelay           # 允許中繼來自白名單的交易
+-whitelistforcerelay      # 強制中繼（即使不符合 mempool 政策）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 建議</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 讓自動封禁機制正常運作</li>
+          <li>• 定期檢查封禁清單</li>
+          <li>• 為可信節點設定白名單</li>
+          <li>• 監控異常連接模式</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 禁用自動封禁</li>
+          <li>• 過度使用手動封禁</li>
+          <li>• 封禁大範圍 IP</li>
+          <li>• 忽略封禁日誌</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">封禁機制：</strong>防止惡意節點消耗資源</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">DoS 評分：</strong>累積違規行為觸發自動封禁</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Discourage：</strong>溫和的處理方式，優先斷開而非封禁</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">注意：</strong>封禁基於 IP，無法阻止使用 VPN 的攻擊者</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

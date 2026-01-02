@@ -1,0 +1,325 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Funding Transaction 注資交易"
+  description="深入了解閃電網路通道的注資交易結構，如何建立 2-of-2 多簽輸出並確保通道安全。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Funding Transaction' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Liquidity Ads', href: '/tech/lightning/liquidity-ads' }}
+  nextPage={{ title: 'Channel Announcements', href: '/tech/lightning/channel-announcements' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是注資交易？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    注資交易（Funding Transaction）是開設閃電網路通道的鏈上交易。
+    它創建一個 2-of-2 多簽輸出，將資金鎖定在通道中。
+    這筆交易確認後，通道就可以開始使用。注資交易的 TXID 和輸出索引組成通道的唯一標識。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>通道基礎：</strong>
+      注資交易是通道的「錨點」。所有後續的承諾交易都花費這個輸出，
+      但在協商關閉或強制關閉之前不會廣播。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">交易結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`注資交易結構：
+
+┌──────────────────────────────────────────────────────────┐
+│ Funding Transaction                                      │
+├──────────────────────────────────────────────────────────┤
+│ 輸入（Inputs）：                                         │
+│   ├── 發起方的 UTXO(s)                                   │
+│   └── [Dual-Fund: 接受方的 UTXO(s)]                      │
+│                                                          │
+│ 輸出（Outputs）：                                        │
+│   ├── [0] Funding Output（通道資金）                     │
+│   │       P2WSH: 2-of-2 multisig                         │
+│   │       金額: 通道總容量                               │
+│   │                                                      │
+│   └── [1+] 找零輸出（如果有）                            │
+└──────────────────────────────────────────────────────────┘
+
+Funding Output 腳本：
+┌──────────────────────────────────────────────────────────┐
+│ 2-of-2 多簽腳本（P2WSH）：                               │
+│                                                          │
+│ OP_2                                                     │
+│ <pubkey_A>（按字典序排列較小的公鑰）                     │
+│ <pubkey_B>（按字典序排列較大的公鑰）                     │
+│ OP_2                                                     │
+│ OP_CHECKMULTISIG                                         │
+│                                                          │
+│ 使用的公鑰：                                             │
+│ ├── funding_pubkey（雙方在 open_channel 中交換）         │
+│ └── 按字典序排列確保確定性                               │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">開通道流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`單向注資通道開設：
+
+Alice（發起方）                    Bob（接受方）
+  │                                    │
+  │──── open_channel ─────────────────>│
+  │     funding_pubkey: A_fund         │
+  │     funding_satoshis: 1000000      │
+  │                                    │
+  │<─── accept_channel ────────────────│
+  │     funding_pubkey: B_fund         │
+  │                                    │
+  │ [Alice 構建注資交易]               │
+  │ [Alice 構建初始承諾交易]           │
+  │                                    │
+  │──── funding_created ──────────────>│
+  │     funding_txid                   │
+  │     funding_output_index           │
+  │     signature（Bob 的承諾交易簽名）│
+  │                                    │
+  │<─── funding_signed ────────────────│
+  │     signature（Alice 承諾交易簽名）│
+  │                                    │
+  │ [Alice 廣播注資交易]               │
+  │                                    │
+  │ [等待確認...]                      │
+  │                                    │
+  │<─── channel_ready ─────────────────│
+  │──── channel_ready ────────────────>│
+  │                                    │
+  │ [通道可用]                         │
+
+關鍵順序：
+1. 先交換承諾交易簽名
+2. 確保雙方都能退出後
+3. 才廣播注資交易
+→ 防止資金被永久鎖定`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考慮</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">承諾交易先行</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        必須先獲得對方的承諾交易簽名，才能廣播注資交易。
+        否則資金可能被永久鎖定在無法花費的多簽中。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">TXID 穩定性</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        必須使用 SegWit 輸入，確保 TXID 不會被第三方篡改（malleability）。
+        承諾交易引用的 TXID 必須穩定。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">確認要求</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        標準通道需要等待注資交易確認（通常 3-6 個區塊）。
+        零確認通道可以跳過等待但需要信任對方。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">金額驗證</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        接受方必須驗證注資交易的輸出金額與協商一致。
+        錯誤的金額會導致後續計算錯誤。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Dual-Funded 注資</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`雙向注資交易（Interactive TX Construction）：
+
+交易構建過程：
+┌──────────────────────────────────────────────────────────┐
+│ Alice                                 Bob                │
+│   │                                    │                 │
+│   │──── open_channel2 ────────────────>│                 │
+│   │<─── accept_channel2 ───────────────│                 │
+│   │                                    │                 │
+│   │ [互動式交易構建開始]               │                 │
+│   │                                    │                 │
+│   │──── tx_add_input ─────────────────>│ Alice 添加輸入 │
+│   │<─── tx_add_input ──────────────────│ Bob 添加輸入   │
+│   │──── tx_add_output ────────────────>│ 添加通道輸出   │
+│   │<─── tx_add_output ─────────────────│ Bob 找零       │
+│   │──── tx_add_output ────────────────>│ Alice 找零     │
+│   │                                    │                 │
+│   │──── tx_complete ──────────────────>│                 │
+│   │<─── tx_complete ───────────────────│                 │
+│   │                                    │                 │
+│   │ [交換承諾交易簽名]                 │                 │
+│   │<───  commitment_signed ───────────>│                 │
+│   │                                    │                 │
+│   │ [交換注資交易簽名]                 │                 │
+│   │<─── tx_signatures ────────────────>│                 │
+│   │                                    │                 │
+│   │ [廣播注資交易]                     │                 │
+│   │                                    │                 │
+└──────────────────────────────────────────────────────────┘
+
+雙向注資的優點：
+├── 雙方都可以貢獻資金
+├── 開通道時就有雙向容量
+└── 支援流動性購買`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Taproot 通道</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Taproot 通道的注資輸出：
+
+傳統 P2WSH：
+┌──────────────────────────────────────────────────────────┐
+│ 腳本可見：明顯是 2-of-2 多簽                             │
+│ 大小：約 71 字節 witness                                 │
+│ 隱私：可被識別為閃電通道                                 │
+└──────────────────────────────────────────────────────────┘
+
+Taproot (P2TR)：
+┌──────────────────────────────────────────────────────────┐
+│ 使用 MuSig2 聚合公鑰                                     │
+│                                                          │
+│ 內部公鑰：                                               │
+│   P = MuSig2(funding_pubkey_A, funding_pubkey_B)         │
+│                                                          │
+│ 協商關閉：key path spend                                 │
+│   └── 看起來像普通單簽交易                               │
+│                                                          │
+│ 強制關閉：script path spend                              │
+│   └── 揭露腳本，但只在必要時                             │
+│                                                          │
+│ 優點：                                                   │
+│ ├── 協商關閉時完全隱私                                   │
+│ ├── 更小的交易大小                                       │
+│ └── 更低的費用                                           │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SCID 派生</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`從注資交易派生 Short Channel ID：
+
+SCID 結構（8 字節）：
+┌──────────────────────────────────────────────────────────┐
+│ 區塊高度（24 位）│ 交易索引（24 位）│ 輸出索引（16 位）  │
+└──────────────────────────────────────────────────────────┘
+
+派生過程：
+1. 注資交易確認在區塊 700000
+2. 交易在區塊中的位置是第 1234 筆
+3. 通道輸出是交易的第 0 個輸出
+→ SCID = 700000x1234x0
+
+用途：
+├── 唯一識別通道
+├── 路由時引用通道
+├── gossip 公告中使用
+└── 可被 SCID 別名替代（隱私）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看注資交易</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`查看通道的注資交易：
+
+LND：
+# 列出通道
+lncli listchannels | jq '.channels[0].channel_point'
+# 輸出格式：<txid>:<output_index>
+
+# 查看待確認通道
+lncli pendingchannels
+
+CLN：
+# 列出通道
+lightning-cli listpeerchannels | jq '.[0].funding_txid'
+
+# 在區塊瀏覽器查看
+# 訪問 mempool.space/tx/<txid>
+
+識別閃電通道注資交易：
+├── P2WSH 輸出
+├── 標準多簽腳本
+├── 通常金額較大且整數
+└── 或使用 Taproot（新通道）`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>隱私提示：</strong>
+      傳統注資交易在鏈上可被識別。使用 Taproot 通道和協商關閉可以
+      大幅提升隱私，使通道看起來像普通交易。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/02-peer-protocol.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 2 - Channel Protocol</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/payment-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">支付通道</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/dual-funded"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Dual-Funded Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/taproot-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Taproot Channels</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/channel-announcements"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">通道公告</a
+      >
+      如何向網路廣播通道資訊。
+    </p>
+  </div>
+</ArticleLayout>

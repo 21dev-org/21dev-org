@@ -1,0 +1,360 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Lightning Loop 流動性服務"
+  description="了解 Lightning Labs 的 Loop 服務，如何通過 Loop In 和 Loop Out 管理通道流動性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Lightning Loop' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Submarine Swaps', href: '/tech/lightning/submarine-swaps' }}
+  nextPage={{ title: 'Lightning Pool', href: '/tech/lightning/lightning-pool' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 Lightning Loop？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    Lightning Loop 是 Lightning Labs 提供的非託管服務，允許用戶在閃電網路和
+    鏈上比特幣之間移動資金。它基於 Submarine Swaps 技術，無需關閉通道
+    即可管理流動性。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>非託管：</strong>
+      Loop 使用原子交換，資金始終在你的控制下。如果任何步驟失敗，
+      資金會自動退回。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Loop Out</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Loop Out：閃電 → 鏈上
+
+使用場景：
+┌──────────────────────────────────────────────────────────────┐
+│ 問題：出站容量用盡，無法發送支付                             │
+│                                                              │
+│ 通道狀態：                                                   │
+│ ┌────────────────────────────────────────┐                   │
+│ │ 本地（你）: 100,000 sats              │                   │
+│ │ 遠端（對方）: 900,000 sats            │ ← 大部分在對方   │
+│ └────────────────────────────────────────┘                   │
+│                                                              │
+│ 解決方案：Loop Out 將閃電資金轉到鏈上                        │
+└──────────────────────────────────────────────────────────────┘
+
+流程：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  你              Loop 服務器             區塊鏈              │
+│   │                  │                      │                │
+│   │ 1. 請求 Loop Out │                      │                │
+│   │─────────────────>│                      │                │
+│   │                  │                      │                │
+│   │ 2. 收到 HTLC 條款│                      │                │
+│   │<─────────────────│                      │                │
+│   │                  │                      │                │
+│   │ 3. 閃電支付（鎖定）                     │                │
+│   │═════════════════>│                      │                │
+│   │                  │                      │                │
+│   │                  │ 4. 鏈上交易         │                │
+│   │                  │─────────────────────>│                │
+│   │                  │                      │                │
+│   │                  │ 5. 交易確認         │                │
+│   │<─────────────────────────────────────────│                │
+│   │                  │                      │                │
+│   │ 6. 揭露 preimage，完成交換             │                │
+│   │═════════════════>│                      │                │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+結果：
+├── 閃電通道：獲得出站容量
+├── 鏈上錢包：收到比特幣
+└── 通道不需要關閉`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Loop In</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Loop In：鏈上 → 閃電
+
+使用場景：
+┌──────────────────────────────────────────────────────────────┐
+│ 問題：入站容量不足，無法接收支付                             │
+│                                                              │
+│ 通道狀態：                                                   │
+│ ┌────────────────────────────────────────┐                   │
+│ │ 本地（你）: 900,000 sats ← 大部分在你 │                   │
+│ │ 遠端（對方）: 100,000 sats            │                   │
+│ └────────────────────────────────────────┘                   │
+│                                                              │
+│ 解決方案：Loop In 將鏈上資金轉到閃電                         │
+└──────────────────────────────────────────────────────────────┘
+
+流程：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  你              Loop 服務器             區塊鏈              │
+│   │                  │                      │                │
+│   │ 1. 請求 Loop In  │                      │                │
+│   │─────────────────>│                      │                │
+│   │                  │                      │                │
+│   │ 2. 收到 HTLC 地址│                      │                │
+│   │<─────────────────│                      │                │
+│   │                  │                      │                │
+│   │ 3. 發送鏈上交易  │                      │                │
+│   │─────────────────────────────────────────>│                │
+│   │                  │                      │                │
+│   │                  │ 4. 確認後           │                │
+│   │                  │<─────────────────────│                │
+│   │                  │                      │                │
+│   │ 5. 閃電支付      │                      │                │
+│   │<═════════════════│                      │                │
+│   │                  │                      │                │
+│   │ 6. 揭露 preimage │                      │                │
+│   │═════════════════>│                      │                │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+結果：
+├── 閃電通道：獲得入站容量
+├── 鏈上錢包：減少比特幣
+└── 本地餘額增加`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">費用結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Loop 費用組成：
+
+Loop Out 費用：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. Loop 服務費：                                             │
+│    └── 交換金額的百分比（約 0.1% - 0.5%）                    │
+│                                                              │
+│ 2. 閃電路由費：                                              │
+│    └── 支付路徑上的節點費用                                  │
+│                                                              │
+│ 3. 鏈上礦工費：                                              │
+│    └── Loop 服務器支付，計入總費用                           │
+│                                                              │
+│ 範例（Loop Out 100,000 sats）：                              │
+│ ├── 服務費：~300 sats                                        │
+│ ├── 路由費：~10 sats                                         │
+│ ├── 礦工費：~500 sats（取決於費率）                          │
+│ └── 總計：~810 sats                                          │
+└──────────────────────────────────────────────────────────────┘
+
+Loop In 費用：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. Loop 服務費：                                             │
+│    └── 通常低於 Loop Out                                     │
+│                                                              │
+│ 2. 你支付的鏈上礦工費：                                      │
+│    └── 發送到 HTLC 地址的交易費                              │
+│                                                              │
+│ 3. 閃電路由費：                                              │
+│    └── Loop 服務器支付給你的路徑費用                         │
+└──────────────────────────────────────────────────────────────┘
+
+費用查詢：
+# 查看當前費用
+loop quote out 100000
+loop quote in 100000`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">使用命令</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Loop CLI 命令：
+
+安裝：
+# 通常與 LND 一起安裝
+# 或獨立安裝 loopd
+
+查看報價：
+# Loop Out 報價
+loop quote out <amount_sats>
+
+# Loop In 報價
+loop quote in <amount_sats>
+
+執行 Loop Out：
+loop out \\
+  --amt <amount_sats> \\
+  --channel <channel_id> \\   # 指定通道
+  --addr <btc_address> \\      # 接收地址
+  --conf_target 6              # 確認目標
+
+執行 Loop In：
+loop in \\
+  --amt <amount_sats> \\
+  --last_hop <pubkey>          # 指定最後一跳
+
+查看狀態：
+# 列出進行中的 swap
+loop listswaps
+
+# 查看特定 swap
+loop swapinfo <swap_id>
+
+自動化：
+# 自動 Loop（Autoloop）
+loop setparams \\
+  --autoloop=true \\
+  --autobudget=100000 \\
+  --autoout=true`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Autoloop 自動化</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Autoloop 自動流動性管理：
+
+工作原理：
+┌──────────────────────────────────────────────────────────────┐
+│ loopd 持續監控通道餘額：                                     │
+│                                                              │
+│ 規則範例：                                                   │
+│ ├── 如果本地餘額 > 80%：觸發 Loop Out                        │
+│ ├── 如果本地餘額 < 20%：觸發 Loop In                         │
+│ └── 預算限制：每月最多 X sats                                │
+│                                                              │
+│ 自動執行 swap 保持通道平衡                                   │
+└──────────────────────────────────────────────────────────────┘
+
+配置：
+loop setparams \\
+  --autoloop=true \\
+  --autobudget=500000 \\        # 月預算
+  --autobudgetrefreshsec=2592000 \\ # 30 天刷新
+  --autoout=true \\             # 啟用自動 Loop Out
+  --autoin=true \\              # 啟用自動 Loop In
+  --autohtlcconfirmations=3    # HTLC 確認數
+
+通道規則：
+# 為特定通道設置目標
+loop setrule <channel_id> \\
+  --target_incoming=50 \\      # 目標入站比例
+  --target_outgoing=50         # 目標出站比例
+
+查看建議：
+# 查看 autoloop 會執行什麼
+loop suggestswaps`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">適用場景</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        路由節點需要維持雙向流動性。
+        商家需要持續的入站容量接收支付。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">替代方案</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Boltz、PeerSwap 等也提供類似服務。
+        自托管 swap 服務器可以避免對單一提供商的依賴。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">安全考量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Loop 安全機制：
+
+原子交換保證：
+┌──────────────────────────────────────────────────────────────┐
+│ HTLC 鏈接：                                                  │
+│ ├── 閃電 HTLC 和鏈上 HTLC 使用相同 hash                      │
+│ ├── 只有知道 preimage 才能領取兩邊                           │
+│ └── 超時後資金自動退回                                       │
+│                                                              │
+│ 可能的結果：                                                 │
+│ ├── 成功：雙方都完成交換                                     │
+│ ├── 超時：雙方都退回原狀                                     │
+│ └── 不可能：一方得到兩份                                     │
+└──────────────────────────────────────────────────────────────┘
+
+超時設置：
+┌──────────────────────────────────────────────────────────────┐
+│ Loop Out：                                                   │
+│ ├── 鏈上 HTLC 超時：較長（保護用戶）                         │
+│ └── 閃電 HTLC 超時：較短                                     │
+│                                                              │
+│ Loop In：                                                    │
+│ ├── 鏈上 HTLC 超時：用戶設定                                 │
+│ └── 閃電 HTLC 超時：服務器設定                               │
+└──────────────────────────────────────────────────────────────┘
+
+風險：
+├── 服務器不可用 → swap 超時退回
+├── 鏈上擁堵 → 可能需要等待更長
+└── 閃電路由失敗 → 需要重試`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>費用波動：</strong>
+      鏈上費用高時 Loop 費用也會增加。建議在費用低時執行 swap，
+      或使用 autoloop 設置最大費用限制。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://lightning.engineering/loop/"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Loop 官方網站</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/submarine-swaps"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Submarine Swaps 原理</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/liquidity"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">流動性管理</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/lightning-pool"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Lightning Pool</a
+      >
+      如何通過拍賣獲得入站流動性。
+    </p>
+  </div>
+</ArticleLayout>

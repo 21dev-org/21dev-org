@@ -1,0 +1,332 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="TLV Streams TLV 編碼"
+  description="了解閃電網路中廣泛使用的 Type-Length-Value 編碼格式，實現協議的可擴展性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'TLV Streams' },
+  ]}
+  difficulty="advanced"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'BOLT Messages', href: '/tech/lightning/bolt-messages' }}
+  nextPage={{ title: 'Onion Messages', href: '/tech/lightning/onion-messages' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 TLV？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    TLV（Type-Length-Value）是閃電網路訊息中使用的可擴展編碼格式。
+    它允許在不破壞向後相容性的情況下添加新欄位，是協議演進的基礎。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>可擴展性：</strong>
+      TLV 讓新版本可以添加欄位，舊版本會忽略不認識的 type。
+      這是閃電網路平滑升級的關鍵。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">TLV 格式</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`TLV 記錄結構：
+
+單個 TLV 記錄：
+┌──────────────────────────────────────────────────────────────┐
+│ ┌─────────────┬─────────────┬─────────────────────────────┐ │
+│ │    Type     │   Length    │          Value              │ │
+│ │  (BigSize)  │  (BigSize)  │      (Length bytes)         │ │
+│ └─────────────┴─────────────┴─────────────────────────────┘ │
+│                                                              │
+│ Type：識別這是什麼欄位                                       │
+│ Length：Value 的位元組長度                                   │
+│ Value：實際資料                                              │
+└──────────────────────────────────────────────────────────────┘
+
+TLV Stream（多個記錄）：
+┌──────────────────────────────────────────────────────────────┐
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐             │
+│ │ TLV 1   │ │ TLV 2   │ │ TLV 3   │ │ ...     │             │
+│ └─────────┘ └─────────┘ └─────────┘ └─────────┘             │
+│                                                              │
+│ 規則：                                                       │
+│ ├── Type 必須嚴格遞增                                        │
+│ ├── 不允許重複的 Type                                        │
+│ └── 未知 Type 的處理取決於奇偶性                             │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BigSize 編碼</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BigSize 變長整數編碼：
+
+編碼規則：
+┌──────────────────────────────────────────────────────────────┐
+│ 值範圍              │ 編碼格式                               │
+│─────────────────────┼────────────────────────────────────────│
+│ 0x00 - 0xFC         │ 1 byte：直接值                         │
+│ 0xFD - 0xFFFF       │ 3 bytes：0xFD + 2 bytes (big-endian)   │
+│ 0x10000 - 0xFFFFFFFF│ 5 bytes：0xFE + 4 bytes (big-endian)   │
+│ > 0xFFFFFFFF        │ 9 bytes：0xFF + 8 bytes (big-endian)   │
+└──────────────────────────────────────────────────────────────┘
+
+編碼範例：
+┌──────────────────────────────────────────────────────────────┐
+│ 值         │ 編碼（十六進位）                                │
+│────────────┼─────────────────────────────────────────────────│
+│ 0          │ 00                                              │
+│ 252        │ FC                                              │
+│ 253        │ FD 00 FD                                        │
+│ 65535      │ FD FF FF                                        │
+│ 65536      │ FE 00 01 00 00                                  │
+│ 4294967295 │ FE FF FF FF FF                                  │
+│ 4294967296 │ FF 00 00 00 01 00 00 00 00                      │
+└──────────────────────────────────────────────────────────────┘
+
+最小編碼規則：
+├── 必須使用能表示該值的最短形式
+├── 非最小編碼是無效的
+└── 這防止了編碼歧義`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Type 規則</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Type 奇偶規則：
+
+未知 Type 處理：
+┌──────────────────────────────────────────────────────────────┐
+│ 偶數 Type（even）：                                          │
+│ ├── 「必須理解」                                             │
+│ ├── 如果不認識，必須拒絕整個訊息                             │
+│ └── 用於關鍵欄位                                             │
+│                                                              │
+│ 奇數 Type（odd）：                                           │
+│ ├── 「可以忽略」                                             │
+│ ├── 如果不認識，可以安全忽略                                 │
+│ └── 用於可選欄位                                             │
+└──────────────────────────────────────────────────────────────┘
+
+範例：
+┌──────────────────────────────────────────────────────────────┐
+│ Type 2（偶數）：payment_hash                                 │
+│   → 必須理解，否則無法處理支付                               │
+│                                                              │
+│ Type 3（奇數）：payment_metadata                             │
+│   → 可選，舊版本可以忽略                                     │
+│                                                              │
+│ Type 8（偶數）：payment_secret                               │
+│   → MPP 必需，不認識就拒絕                                   │
+└──────────────────────────────────────────────────────────────┘
+
+Type 排序：
+├── 所有 Type 必須嚴格遞增
+├── 確保解析效率
+└── 允許快速跳過不需要的欄位`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">洋蔥 Payload TLV</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`洋蔥路由 payload 中的 TLV：
+
+標準 TLV Types：
+┌──────────────────────────────────────────────────────────────┐
+│ Type │ 名稱                    │ 描述                       │
+│──────┼─────────────────────────┼────────────────────────────│
+│ 2    │ amt_to_forward          │ 轉發金額（msat）           │
+│ 4    │ outgoing_cltv_value     │ 出站 CLTV                  │
+│ 6    │ short_channel_id        │ 下一跳通道 ID              │
+│ 8    │ payment_data            │ 支付資料（最終跳）         │
+│ 10   │ encrypted_recipient_data│ 盲化路徑加密資料           │
+│ 12   │ blinding_point          │ 盲化點                     │
+│ 16   │ payment_metadata        │ 支付元資料                 │
+│ 18   │ total_amount_msat       │ MPP 總金額                 │
+└──────────────────────────────────────────────────────────────┘
+
+payment_data 結構（Type 8）：
+┌──────────────────────────────────────────────────────────────┐
+│ ├── payment_secret: 32 bytes                                 │
+│ └── total_msat: 8 bytes（TU64）                              │
+│                                                              │
+│ 用於 MPP 支付的最終跳                                        │
+└──────────────────────────────────────────────────────────────┘
+
+中繼 vs 最終跳：
+┌──────────────────────────────────────────────────────────────┐
+│ 中繼節點 payload：                                           │
+│ ├── amt_to_forward（必需）                                   │
+│ ├── outgoing_cltv_value（必需）                              │
+│ └── short_channel_id（必需）                                 │
+│                                                              │
+│ 最終節點 payload：                                           │
+│ ├── amt_to_forward（必需）                                   │
+│ ├── outgoing_cltv_value（必需）                              │
+│ ├── payment_data（MPP 必需）                                 │
+│ └── payment_metadata（可選）                                 │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">訊息中的 TLV</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`常見訊息的 TLV 欄位：
+
+open_channel2 TLV：
+┌──────────────────────────────────────────────────────────────┐
+│ Type │ 名稱                    │ 描述                       │
+│──────┼─────────────────────────┼────────────────────────────│
+│ 0    │ upfront_shutdown_script │ 預設關閉腳本               │
+│ 1    │ channel_type            │ 通道類型                   │
+│ 2    │ require_confirmed_inputs│ 要求確認輸入               │
+└──────────────────────────────────────────────────────────────┘
+
+node_announcement TLV：
+┌──────────────────────────────────────────────────────────────┐
+│ Type │ 名稱                    │ 描述                       │
+│──────┼─────────────────────────┼────────────────────────────│
+│ 1    │ will_fund               │ 流動性廣告條款             │
+└──────────────────────────────────────────────────────────────┘
+
+invoice TLV（BOLT 12）：
+┌──────────────────────────────────────────────────────────────┐
+│ Type │ 名稱                    │ 描述                       │
+│──────┼─────────────────────────┼────────────────────────────│
+│ 0    │ chains                  │ 支援的區塊鏈               │
+│ 2    │ offer_id                │ Offer 識別符               │
+│ 4    │ amount                  │ 金額                       │
+│ 6    │ description             │ 描述                       │
+│ 8    │ features                │ 功能位                     │
+│ 10   │ paths                   │ 盲化路徑                   │
+│ ...  │ ...                     │ ...                        │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解析範例</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`TLV 解析示範：
+
+原始資料（十六進位）：
+02 08 00000000000003E8
+04 04 00028F5C
+06 08 018A8B0000040000
+
+解析過程：
+┌──────────────────────────────────────────────────────────────┐
+│ TLV 1：                                                      │
+│ ├── Type: 02（amt_to_forward）                               │
+│ ├── Length: 08（8 bytes）                                    │
+│ └── Value: 00000000000003E8（1000 msat）                     │
+│                                                              │
+│ TLV 2：                                                      │
+│ ├── Type: 04（outgoing_cltv_value）                          │
+│ ├── Length: 04（4 bytes）                                    │
+│ └── Value: 00028F5C（167772）                                │
+│                                                              │
+│ TLV 3：                                                      │
+│ ├── Type: 06（short_channel_id）                             │
+│ ├── Length: 08（8 bytes）                                    │
+│ └── Value: 018A8B0000040000（block:tx:output 編碼）          │
+└──────────────────────────────────────────────────────────────┘
+
+JavaScript 解析：
+function parseTLV(buffer) {
+  const records = [];
+  let offset = 0;
+
+  while (offset < buffer.length) {
+    const type = readBigSize(buffer, offset);
+    offset += bigSizeLength(type);
+
+    const length = readBigSize(buffer, offset);
+    offset += bigSizeLength(length);
+
+    const value = buffer.slice(offset, offset + length);
+    offset += length;
+
+    records.push({ type, length, value });
+  }
+
+  return records;
+}`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">向後相容</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        奇數 Type 可被舊版本忽略，新功能可以安全添加
+        而不破壞現有實現。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">高效解析</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Type 遞增順序允許單次掃描解析，
+        BigSize 編碼最小化開銷。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>驗證重要：</strong>
+      解析 TLV 時必須驗證 Type 嚴格遞增、BigSize 使用最小編碼、
+      偶數未知 Type 必須拒絕。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/01-messaging.md#type-length-value-format"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 1 TLV 規範</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 訊息協議</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt-onion"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">洋蔥路由</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/onion-messages"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Onion Messages</a
+      >
+      如何使用 TLV 傳遞任意訊息。
+    </p>
+  </div>
+</ArticleLayout>

@@ -1,0 +1,315 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="SCID Alias 短通道ID別名"
+  description="了解閃電網路的 SCID 別名機制，如何提升隱私保護和支援零確認通道。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'SCID Alias' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Revocation', href: '/tech/lightning/revocation' }}
+  nextPage={{ title: 'AMP', href: '/tech/lightning/amp' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 SCID？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    短通道 ID（Short Channel ID，SCID）是閃電網路中識別通道的 8 字節標識符。
+    傳統上，SCID 直接編碼了通道注資交易在區塊鏈上的位置（區塊高度、交易索引、輸出索引），
+    這會洩露通道的鏈上資訊。SCID 別名允許使用任意值作為通道識別符，提升隱私。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>功能位 46/47：</strong>
+      option_scid_alias 允許節點協商使用別名而非真實的區塊位置。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">傳統 SCID 結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`傳統 SCID 格式（8 字節 = 64 位）：
+
+┌──────────────────────────────────────────────────────────┐
+│ 區塊高度      │ 交易索引      │ 輸出索引                │
+│ (24 bits)     │ (24 bits)     │ (16 bits)               │
+├──────────────────────────────────────────────────────────┤
+│ 範例：                                                   │
+│ SCID: 700000x1234x0                                      │
+│ ├── 區塊高度: 700000                                     │
+│ ├── 交易索引: 1234                                       │
+│ └── 輸出索引: 0                                          │
+│                                                          │
+│ 十六進位：0x000AB2800004D200                             │
+└──────────────────────────────────────────────────────────┘
+
+隱私問題：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 任何人都可以從 SCID 找到注資交易                      │
+│ 2. 可以確定通道容量                                      │
+│ 3. 可以追蹤節點的鏈上活動                                │
+│ 4. 路由節點可以關聯支付和通道                            │
+│ 5. 私有通道的 SCID 也會洩露資訊                          │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">SCID 別名</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`SCID 別名機制：
+
+別名生成：
+┌──────────────────────────────────────────────────────────┐
+│ 節點可以為通道分配任意 SCID 別名                         │
+│                                                          │
+│ 生成方式：                                               │
+│ ├── 隨機生成 8 字節值                                    │
+│ ├── 確保唯一性（本地不衝突）                             │
+│ └── 無需對應真實區塊位置                                 │
+│                                                          │
+│ 範例：                                                   │
+│ 真實 SCID: 700000x1234x0                                 │
+│ 別名 SCID: 0x0123456789ABCDEF（隨機）                    │
+└──────────────────────────────────────────────────────────┘
+
+使用場景：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 私有通道：發票路由提示使用別名                        │
+│    → 隱藏真實的注資交易位置                              │
+│                                                          │
+│ 2. 零確認通道：在確認前就有可用的 SCID                   │
+│    → 不需要等待區塊確認獲得真實 SCID                     │
+│                                                          │
+│ 3. Splicing：地址變更後保持相同的識別符                  │
+│    → 通道容量變更不影響路由                              │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">協商流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`SCID 別名協商：
+
+開通道時的協商：
+Alice                                 Bob
+  │                                    │
+  │──── open_channel ─────────────────>│
+  │     (option_scid_alias: 1)         │  Alice 支援別名
+  │                                    │
+  │<─── accept_channel ────────────────│
+  │     (option_scid_alias: 1)         │  Bob 也支援
+  │                                    │
+  │ [通道開設完成]                     │
+  │                                    │
+  │<─── channel_ready ─────────────────│
+  │     (short_channel_id: 真實SCID)   │
+  │     (alias: 0xABCD...)             │  Bob 分配別名
+  │                                    │
+  │──── channel_ready ────────────────>│
+  │     (short_channel_id: 真實SCID)   │
+  │     (alias: 0x1234...)             │  Alice 分配別名
+  │                                    │
+
+channel_ready（原 funding_locked）擴展：
+┌──────────────────────────────────────────────────────────┐
+│ channel_id: 32 bytes                                     │
+│ next_per_commitment_point: 33 bytes                      │
+│ short_channel_id: 8 bytes（真實 SCID，可選）             │
+│ alias: 8 bytes（別名 SCID）                              │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">與零確認通道</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`零確認通道需要 SCID 別名：
+
+問題：
+┌──────────────────────────────────────────────────────────┐
+│ 傳統 SCID 編碼區塊位置                                   │
+│ 零確認通道的注資交易還未進入區塊                         │
+│ → 無法計算真實 SCID                                      │
+│ → 通道無法被識別和使用                                   │
+└──────────────────────────────────────────────────────────┘
+
+解決方案：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 雙方生成並交換 SCID 別名                              │
+│ 2. 使用別名進行支付路由                                  │
+│ 3. 注資交易確認後，可選擇繼續用別名或切換到真實 SCID    │
+│                                                          │
+│ 流程：                                                   │
+│ ├── 注資交易廣播                                         │
+│ ├── 交換別名（不等確認）                                 │
+│ ├── 立即開始路由支付                                     │
+│ └── 背景等待確認                                         │
+└──────────────────────────────────────────────────────────┘
+
+配合 option_zeroconf：
+┌──────────────────────────────────────────────────────────┐
+│ option_zeroconf (50/51) + option_scid_alias (46/47)     │
+│                                                          │
+│ 兩者通常一起使用：                                       │
+│ ├── zeroconf：允許未確認通道                             │
+│ └── scid_alias：提供可用的通道識別符                     │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">隱私保護</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">私有通道隱私</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        私有通道不公告到網路，但發票需要提供路由提示。
+        使用別名可以避免在發票中洩露注資交易位置。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">UTXO 關聯</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        真實 SCID 可以關聯到鏈上 UTXO。別名打破這種關聯，
+        增加鏈上分析難度。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">容量隱藏</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        無法從別名推斷通道容量。觀察者無法確定通道的資金規模。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">節點關聯</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        別名減少了將閃電網路活動與特定鏈上地址關聯的可能性。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票中的使用</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發票路由提示中的 SCID 別名：
+
+私有通道發票：
+┌──────────────────────────────────────────────────────────┐
+│ lnbc10u1p...                                             │
+│                                                          │
+│ 路由提示（r 標籤）：                                     │
+│ ├── pubkey: 對方節點公鑰                                 │
+│ ├── short_channel_id: 別名（不是真實 SCID）              │
+│ ├── fee_base_msat: 基礎費用                              │
+│ ├── fee_proportional_millionths: 比例費用                │
+│ └── cltv_expiry_delta: 時間鎖差值                        │
+│                                                          │
+│ 發送者流程：                                             │
+│ 1. 解碼發票獲取路由提示                                  │
+│ 2. 使用別名 SCID 構建洋蔥路由                            │
+│ 3. 接收節點識別別名並轉發                                │
+└──────────────────────────────────────────────────────────┘
+
+接收節點處理：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 收到使用別名的 HTLC                                   │
+│ 2. 查找本地別名對應表                                    │
+│ 3. 找到對應的通道                                        │
+│ 4. 正常處理 HTLC                                         │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">配置與使用</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`啟用 SCID 別名：
+
+LND（lnd.conf）：
+[protocol]
+# 啟用 SCID 別名支援（默認啟用）
+protocol.option-scid-alias=true
+
+# 零確認通道也需要
+protocol.zero-conf=true
+
+# 查看通道別名
+lncli listchannels | jq '.channels[].alias_scids'
+
+CLN（config）：
+# 預設支援 SCID 別名
+# 無需額外配置
+
+# 查看通道
+lightning-cli listpeerchannels
+
+開設使用別名的通道：
+# LND
+lncli openchannel --node_key <pubkey> \\
+  --local_amt 1000000 \\
+  --private \\           # 私有通道
+  --zero_conf            # 零確認（需要別名）
+
+# CLN
+lightning-cli fundchannel <node_id> 1000000sat \\
+  announce=false`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>注意：</strong>
+      公開通道仍然使用真實 SCID 進行網路公告（channel_announcement），
+      因為其他節點需要驗證通道的鏈上存在。別名主要用於私有通道和零確認通道。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/09-features.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 9 - Feature Bits</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/zero-conf"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Zero-Conf Channels</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/private-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">私有通道</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/amp"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">原子多路徑支付（AMP）</a
+      >
+      的高級多路徑機制。
+    </p>
+  </div>
+</ArticleLayout>

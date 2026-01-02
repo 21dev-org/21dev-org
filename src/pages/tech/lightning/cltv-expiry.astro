@@ -1,0 +1,278 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="CLTV Expiry Delta 時間鎖設定"
+  description="深入了解閃電網路的 CLTV 過期差值設定，如何影響路由安全性和支付成功率。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'CLTV Expiry Delta' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Timelocks', href: '/tech/lightning/timelocks' }}
+  nextPage={{ title: 'HTLC Scripts', href: '/tech/lightning/htlc-scripts' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 CLTV Expiry Delta？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    CLTV Expiry Delta 是每個閃電節點設定的時間鎖差值。它決定了節點在轉發 HTLC 時
+    需要的時間緩衝，以確保有足夠時間在鏈上解決爭議。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>安全參數：</strong>
+      CLTV delta 是閃電網路安全的關鍵參數。設定太小可能導致資金損失，
+      設定太大可能使路由被拒絕。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">CLTV Delta 工作原理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`CLTV Delta 在路由中的應用：
+
+多跳支付示例（Alice → Bob → Carol → Dave）：
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│ 當前區塊高度：800,000                                        │
+│ 最終過期（Dave）：800,100（+100 blocks）                     │
+│                                                              │
+│ Bob's delta: 40    Carol's delta: 40    Dave's delta: 18     │
+│                                                              │
+│ Alice ──────> Bob ──────> Carol ──────> Dave                 │
+│   │           │            │             │                   │
+│   │ HTLC      │ HTLC       │ HTLC        │                   │
+│   │ expiry:   │ expiry:    │ expiry:     │                   │
+│   │ 800,180   │ 800,140    │ 800,100     │                   │
+│   │           │            │             │                   │
+│   └───────────┴────────────┴─────────────┘                   │
+│                                                              │
+│ 計算過程：                                                   │
+│ Dave: 800,100（發票指定的 min_final_cltv_expiry）            │
+│ Carol → Dave: 800,100（無需加 delta，是最終節點）            │
+│ Bob → Carol: 800,100 + 40 = 800,140                          │
+│ Alice → Bob: 800,140 + 40 = 800,180                          │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">為什麼需要 Delta？</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Delta 提供的安全時間窗口：
+
+場景：Carol 收到 preimage 但需要向 Bob 結算
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│ 時間線（區塊高度）：                                         │
+│                                                              │
+│ 800,100     800,140                                          │
+│    │           │                                             │
+│    ▼           ▼                                             │
+│ ───┼───────────┼──────────────────────────────────>          │
+│    │           │                                             │
+│    │           └── Bob→Carol HTLC 過期                       │
+│    │                                                         │
+│    └── Carol→Dave HTLC 過期                                  │
+│                                                              │
+│ Carol 的 40 個區塊窗口：                                     │
+│ ├── 區塊 800,100：Dave HTLC 過期，Carol 最後機會獲取 preimage│
+│ ├── 區塊 800,100-800,140：Carol 有時間向 Bob 提交 preimage   │
+│ └── 區塊 800,140：Bob HTLC 過期，Carol 最後機會結算          │
+│                                                              │
+│ 如果 delta 太小（比如 3 個區塊）：                           │
+│ ├── 鏈上擁堵時可能來不及廣播                                 │
+│ ├── 礦工可能延遲打包                                         │
+│ └── Carol 可能損失資金！                                     │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Delta 設定建議</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`推薦的 CLTV Delta 設定：
+
+默認值（不同實現）：
+┌──────────────────────────────────────────────────────────────┐
+│ LND:                                                         │
+│ ├── time_lock_delta: 40（默認）                              │
+│ └── 配置：lnd.conf 或 updatechanpolicy                       │
+│                                                              │
+│ Core Lightning:                                              │
+│ ├── cltv_delta: 34（默認）                                   │
+│ └── 配置：setchannel 或 config                               │
+│                                                              │
+│ Eclair:                                                      │
+│ ├── cltv-expiry-delta: 48（默認）                            │
+│ └── 配置：eclair.conf                                        │
+└──────────────────────────────────────────────────────────────┘
+
+選擇 Delta 的考量：
+┌──────────────────────────────────────────────────────────────┐
+│ 較大 Delta（如 144 = ~1 天）：                               │
+│ ├── ✓ 更安全，有充足時間處理                                 │
+│ ├── ✓ 適合不常在線的節點                                     │
+│ ├── ✗ 資金鎖定時間更長                                       │
+│ └── ✗ 可能被路由算法跳過                                     │
+│                                                              │
+│ 較小 Delta（如 18）：                                        │
+│ ├── ✓ 資金鎖定時間短                                         │
+│ ├── ✓ 對付款人更有吸引力                                     │
+│ ├── ✗ 鏈上擁堵時可能不安全                                   │
+│ └── ✗ 需要節點高度可用                                       │
+│                                                              │
+│ 平衡建議：                                                   │
+│ ├── 路由節點：40-80（需要可靠監控）                          │
+│ ├── 個人節點：80-144（更保守）                               │
+│ └── 高價值通道：144+（最大安全）                             │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">min_final_cltv_expiry</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發票中的最終過期設定：
+
+BOLT 11 發票欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ min_final_cltv_expiry_delta (c):                             │
+│ ├── 類型：varint                                             │
+│ ├── 默認值：18（如果未指定）                                 │
+│ └── 含義：最終節點需要的最小過期差值                         │
+│                                                              │
+│ 範例：                                                       │
+│ lnbc1u1p...c18...（c 後面的數字）                            │
+│                                                              │
+│ 如果當前區塊高度是 800,000：                                 │
+│ 付款人必須設定最終 HTLC 過期 >= 800,018                      │
+└──────────────────────────────────────────────────────────────┘
+
+接收節點驗證：
+┌──────────────────────────────────────────────────────────────┐
+│ 收到 HTLC 時：                                               │
+│                                                              │
+│ if htlc.cltv_expiry < current_height + min_final_cltv:       │
+│     reject(INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS)             │
+│                                                              │
+│ 這確保接收者有足夠時間：                                     │
+│ ├── 驗證支付                                                 │
+│ ├── 決定是否接受                                             │
+│ └── 必要時在鏈上結算                                         │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">常見問題</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`CLTV 相關的錯誤和問題：
+
+錯誤類型：
+┌──────────────────────────────────────────────────────────────┐
+│ INCORRECT_CLTV_EXPIRY：                                      │
+│ ├── 原因：過期值不符合預期                                   │
+│ ├── 發送節點設定的過期太小                                   │
+│ └── 解決：重試時使用更大的 delta                             │
+│                                                              │
+│ EXPIRY_TOO_SOON：                                            │
+│ ├── 原因：HTLC 即將過期                                      │
+│ ├── 路由太長導致 delta 累積過多                              │
+│ └── 解決：選擇更短的路由                                     │
+│                                                              │
+│ EXPIRY_TOO_FAR：                                             │
+│ ├── 原因：過期時間太遠（超過 max_htlc_cltv）                 │
+│ ├── 節點設定了最大過期限制                                   │
+│ └── 解決：選擇 delta 較小的路由                              │
+└──────────────────────────────────────────────────────────────┘
+
+max_htlc_cltv 限制：
+┌──────────────────────────────────────────────────────────────┐
+│ 許多節點限制最大 CLTV：                                      │
+│                                                              │
+│ LND 默認：max_cltv = 2016（約 2 週）                         │
+│                                                              │
+│ 原因：                                                       │
+│ ├── 避免資金被長時間鎖定                                     │
+│ ├── 減少 wumbo 攻擊向量                                      │
+│ └── 限制通道被占用時間                                       │
+│                                                              │
+│ 長路由問題：                                                 │
+│ 如果路由有 20 跳，每跳 delta=40：                            │
+│ 總 CLTV = 20 × 40 = 800 blocks ≈ 5.5 天                      │
+│ 加上 min_final = 18，可能接近限制                            │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Shadow Route</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        添加額外的 CLTV 來隱藏真實目的地。
+        使路由長度更難推測。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">Anchor Outputs</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Anchor 輸出允許費用追加，
+        減少對大 delta 的依賴。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>監控重要：</strong>
+      如果你運行路由節點，確保有系統監控即將過期的 HTLC。
+      錯過過期時間可能導致資金損失。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/02-peer-protocol.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 2 Peer Protocol</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/timelocks"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">時間鎖概述</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/htlc-scripts"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 腳本</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/htlc-scripts"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 腳本</a
+      >
+      中 CLTV 的具體實現。
+    </p>
+  </div>
+</ArticleLayout>

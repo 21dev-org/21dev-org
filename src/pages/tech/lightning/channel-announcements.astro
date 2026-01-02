@@ -1,0 +1,339 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Channel Announcements 通道公告"
+  description="了解閃電網路的通道公告機制，節點如何向網路廣播通道資訊以供路由使用。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Channel Announcements' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Funding Transaction', href: '/tech/lightning/funding-tx' }}
+  nextPage={{ title: 'Sphinx', href: '/tech/lightning/sphinx' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是通道公告？</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    通道公告（Channel Announcement）是閃電網路 gossip 協議的核心訊息類型。
+    當兩個節點開設公開通道後，它們會向網路廣播通道的存在，
+    讓其他節點可以通過這個通道進行路由支付。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>公開 vs 私有：</strong>
+      只有公開通道會發送 channel_announcement。
+      私有通道不公告，但仍可通過發票路由提示使用。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 訊息類型</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`三種主要 gossip 訊息：
+
+1. node_announcement
+┌──────────────────────────────────────────────────────────┐
+│ 用途：公告節點的存在和連接資訊                           │
+│ 發送者：節點自己                                         │
+│ 內容：                                                   │
+│ ├── signature: 節點簽名                                  │
+│ ├── features: 支援的功能                                 │
+│ ├── timestamp: 時間戳                                    │
+│ ├── node_id: 節點公鑰                                    │
+│ ├── rgb_color: 節點顏色                                  │
+│ ├── alias: 節點別名（最多 32 字節）                      │
+│ └── addresses: IP/Tor 地址列表                           │
+└──────────────────────────────────────────────────────────┘
+
+2. channel_announcement
+┌──────────────────────────────────────────────────────────┐
+│ 用途：公告通道的存在                                     │
+│ 發送者：通道雙方共同簽名                                 │
+│ 內容：見下方詳細結構                                     │
+└──────────────────────────────────────────────────────────┘
+
+3. channel_update
+┌──────────────────────────────────────────────────────────┐
+│ 用途：更新通道的路由參數                                 │
+│ 發送者：通道一方                                         │
+│ 內容：                                                   │
+│ ├── signature: 發送方簽名                                │
+│ ├── short_channel_id: 通道 ID                            │
+│ ├── timestamp: 時間戳                                    │
+│ ├── channel_flags: 方向和狀態                            │
+│ ├── cltv_expiry_delta: CLTV 差值                         │
+│ ├── htlc_minimum_msat: 最小 HTLC                         │
+│ ├── fee_base_msat: 基礎費用                              │
+│ ├── fee_proportional_millionths: 比例費用                │
+│ └── htlc_maximum_msat: 最大 HTLC                         │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">channel_announcement 結構</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`channel_announcement 詳細結構：
+
+┌──────────────────────────────────────────────────────────┐
+│ 欄位                      大小      描述                 │
+├──────────────────────────────────────────────────────────┤
+│ node_signature_1          64 bytes  節點 1 簽名          │
+│ node_signature_2          64 bytes  節點 2 簽名          │
+│ bitcoin_signature_1       64 bytes  Bitcoin 密鑰 1 簽名  │
+│ bitcoin_signature_2       64 bytes  Bitcoin 密鑰 2 簽名  │
+│ features                  var       功能位向量           │
+│ chain_hash                32 bytes  區塊鏈識別           │
+│ short_channel_id          8 bytes   通道短 ID            │
+│ node_id_1                 33 bytes  節點 1 公鑰          │
+│ node_id_2                 33 bytes  節點 2 公鑰          │
+│ bitcoin_key_1             33 bytes  Bitcoin 公鑰 1       │
+│ bitcoin_key_2             33 bytes  Bitcoin 公鑰 2       │
+└──────────────────────────────────────────────────────────┘
+
+簽名驗證：
+┌──────────────────────────────────────────────────────────┐
+│ 被簽名的資料：                                           │
+│ SHA256(SHA256(                                           │
+│   features || chain_hash || short_channel_id ||          │
+│   node_id_1 || node_id_2 ||                              │
+│   bitcoin_key_1 || bitcoin_key_2                         │
+│ ))                                                       │
+│                                                          │
+│ 需要驗證：                                               │
+│ ├── 4 個簽名都有效                                       │
+│ ├── node_id 對應活躍節點                                 │
+│ ├── bitcoin_key 對應注資交易輸出                         │
+│ └── 注資交易已確認且未花費                               │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">公告流程</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`通道公告時序：
+
+Alice                                 Bob
+  │                                    │
+  │ [通道開設完成，等待確認]           │
+  │                                    │
+  │ [注資交易獲得足夠確認]             │
+  │                                    │
+  │──── announcement_signatures ──────>│
+  │     short_channel_id               │
+  │     node_signature                 │
+  │     bitcoin_signature              │
+  │                                    │
+  │<─── announcement_signatures ───────│
+  │     short_channel_id               │
+  │     node_signature                 │
+  │     bitcoin_signature              │
+  │                                    │
+  │ [雙方組合成 channel_announcement]  │
+  │                                    │
+  │ [廣播 channel_announcement]        │
+  │ [廣播 channel_update (方向 0)]     │
+  │ [廣播 channel_update (方向 1)]     │
+  │                                    │
+
+確認要求：
+├── 標準：6 個確認
+├── 可配置：minimum_depth 參數
+└── 零確認通道不發送 announcement（私有）`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">鏈上驗證</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`接收節點驗證步驟：
+
+1. 簽名驗證
+┌──────────────────────────────────────────────────────────┐
+│ 驗證 4 個簽名：                                          │
+│ ├── node_signature_1 by node_id_1                        │
+│ ├── node_signature_2 by node_id_2                        │
+│ ├── bitcoin_signature_1 by bitcoin_key_1                 │
+│ └── bitcoin_signature_2 by bitcoin_key_2                 │
+└──────────────────────────────────────────────────────────┘
+
+2. 鏈上驗證
+┌──────────────────────────────────────────────────────────┐
+│ 使用 short_channel_id 找到注資交易：                     │
+│ ├── 區塊高度 → 區塊                                      │
+│ ├── 交易索引 → 交易                                      │
+│ └── 輸出索引 → 輸出                                      │
+│                                                          │
+│ 驗證：                                                   │
+│ ├── 輸出存在且未花費                                     │
+│ ├── 輸出是 P2WSH 2-of-2 多簽                             │
+│ ├── 腳本使用 bitcoin_key_1 和 bitcoin_key_2              │
+│ └── 公鑰順序正確（字典序）                               │
+└──────────────────────────────────────────────────────────┘
+
+3. 存儲到路由圖
+├── 添加通道到本地 graph
+├── 記錄雙方節點
+└── 等待 channel_update 獲取路由參數`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">channel_update</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`channel_update 欄位：
+
+┌──────────────────────────────────────────────────────────┐
+│ channel_flags 位元：                                     │
+│ ├── bit 0 (direction): 0=node_1→node_2, 1=node_2→node_1 │
+│ └── bit 1 (disabled): 0=啟用, 1=停用                    │
+│                                                          │
+│ 每個通道需要兩個 channel_update：                        │
+│ ├── 方向 0：node_1 發送，描述 node_1→node_2 的參數      │
+│ └── 方向 1：node_2 發送，描述 node_2→node_1 的參數      │
+└──────────────────────────────────────────────────────────┘
+
+路由參數含義：
+┌──────────────────────────────────────────────────────────┐
+│ cltv_expiry_delta：                                      │
+│   每跳需要的 CLTV 差值                                   │
+│                                                          │
+│ htlc_minimum_msat：                                      │
+│   接受的最小 HTLC 金額                                   │
+│                                                          │
+│ htlc_maximum_msat：                                      │
+│   接受的最大 HTLC 金額                                   │
+│                                                          │
+│ fee_base_msat + fee_proportional_millionths：            │
+│   路由費用 = base + (amount × proportional / 1,000,000)  │
+└──────────────────────────────────────────────────────────┘
+
+更新觸發：
+├── 定期更新（保持活躍）
+├── 參數變更
+├── 通道啟用/停用
+└── 對方節點狀態變化`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Gossip 傳播</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">洪泛傳播</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        節點收到有效的 gossip 訊息後，轉發給所有對等節點。
+        訊息最終傳播到整個網路。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">去重機制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        使用 short_channel_id 和 timestamp 去重。
+        只接受更新的訊息，忽略舊的或重複的。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">查詢同步</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        新節點可以使用 gossip_queries 請求歷史訊息。
+        按區塊範圍或 SCID 範圍查詢。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">過期清理</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        2 週未更新的 channel_update 可能被視為過期。
+        注資交易被花費的通道會被移除。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">私有通道處理</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`私有通道不公告：
+
+私有通道（Unannounced Channel）：
+┌──────────────────────────────────────────────────────────┐
+│ 不發送 channel_announcement                              │
+│ 不發送 channel_update 到 gossip                          │
+│ 不出現在網路路由圖中                                     │
+│                                                          │
+│ 但仍可使用：                                             │
+│ ├── 直接支付給對方                                       │
+│ └── 通過發票路由提示接收支付                             │
+└──────────────────────────────────────────────────────────┘
+
+發票路由提示：
+┌──────────────────────────────────────────────────────────┐
+│ BOLT 11 發票的 'r' 標籤：                                │
+│                                                          │
+│ route_hints:                                             │
+│   - pubkey: 入口節點公鑰                                 │
+│     short_channel_id: 通道 ID（可用別名）                │
+│     fee_base_msat: 費用                                  │
+│     fee_proportional_millionths: 費用                    │
+│     cltv_expiry_delta: CLTV 差值                         │
+│                                                          │
+│ 發送者使用這些資訊構建最後一跳                           │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>網路健康：</strong>
+      定期發送 channel_update 表示通道仍然活躍。
+      長時間沒有更新的通道可能被其他節點忽略。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/07-routing-gossip.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 7 - Gossip Protocol</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/gossip"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/private-channels"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">私有通道</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/sphinx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Sphinx 封包</a
+      >
+      如何實現洋蔥路由的隱私。
+    </p>
+  </div>
+</ArticleLayout>

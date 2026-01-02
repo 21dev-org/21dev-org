@@ -1,0 +1,290 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="HTLC Scripts HTLC 腳本"
+  description="深入了解 HTLC 的 Bitcoin Script 實現，包括 offered 和 received HTLC 的腳本結構。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'HTLC Scripts' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'HTLC', href: '/tech/lightning/htlc' }}
+  nextPage={{ title: 'Commitment Transaction', href: '/tech/lightning/commitment-tx' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 腳本概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    HTLC（哈希時間鎖定合約）是閃電網路的核心構建塊。其安全性依賴於精心設計的
+    Bitcoin Script，確保資金只能在正確條件下被花費。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>兩種視角：</strong>
+      同一個 HTLC 在發送方承諾交易中是 "offered"（提供的），
+      在接收方承諾交易中是 "received"（收到的）。腳本略有不同。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Offered HTLC 腳本</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Offered HTLC（在發送方承諾交易中）：
+
+腳本結構：
+┌──────────────────────────────────────────────────────────────┐
+│ # 撤銷路徑                                                   │
+│ OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))>      │
+│ OP_EQUAL                                                     │
+│ OP_IF                                                        │
+│     OP_CHECKSIG                                              │
+│ OP_ELSE                                                      │
+│     <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL          │
+│     OP_NOTIF                                                 │
+│         # 接收方超時後可以取回                               │
+│         OP_DROP 2 OP_SWAP <local_htlcpubkey> 2               │
+│         OP_CHECKMULTISIG                                     │
+│     OP_ELSE                                                  │
+│         # 成功路徑：提供 preimage                            │
+│         OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY  │
+│         OP_CHECKSIG                                          │
+│     OP_ENDIF                                                 │
+│ OP_ENDIF                                                     │
+└──────────────────────────────────────────────────────────────┘
+
+三種花費路徑：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 撤銷路徑：                                                │
+│    └── witness: <revocation_sig> <revocationpubkey>          │
+│    └── 條件：對方發布舊狀態                                  │
+│                                                              │
+│ 2. 成功路徑（preimage）：                                    │
+│    └── witness: <remotehtlcsig> <payment_preimage>           │
+│    └── 條件：接收方知道 preimage                             │
+│                                                              │
+│ 3. 超時路徑：                                                │
+│    └── witness: 0 <remotehtlcsig> <localhtlcsig>             │
+│    └── 條件：CLTV 時間鎖過期                                 │
+│    └── 需要通過 HTLC-timeout 交易                            │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Received HTLC 腳本</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Received HTLC（在接收方承諾交易中）：
+
+腳本結構：
+┌──────────────────────────────────────────────────────────────┐
+│ # 撤銷路徑                                                   │
+│ OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))>      │
+│ OP_EQUAL                                                     │
+│ OP_IF                                                        │
+│     OP_CHECKSIG                                              │
+│ OP_ELSE                                                      │
+│     <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL          │
+│     OP_IF                                                    │
+│         # 成功路徑：提供 preimage                            │
+│         OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY  │
+│         2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG      │
+│     OP_ELSE                                                  │
+│         # 超時路徑                                           │
+│         OP_DROP <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP │
+│         OP_CHECKSIG                                          │
+│     OP_ENDIF                                                 │
+│ OP_ENDIF                                                     │
+└──────────────────────────────────────────────────────────────┘
+
+花費路徑差異：
+┌──────────────────────────────────────────────────────────────┐
+│ Received HTLC vs Offered HTLC：                              │
+│                                                              │
+│ 成功路徑：                                                   │
+│ ├── 需要通過 HTLC-success 交易                               │
+│ └── 輸出有 to_self_delay 延遲                                │
+│                                                              │
+│ 超時路徑：                                                   │
+│ ├── 直接使用 remote_htlc 簽名                                │
+│ └── 需要 CLTV 時間鎖過期                                     │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">HTLC 二級交易</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC-Success 和 HTLC-Timeout 交易：
+
+為什麼需要二級交易：
+┌──────────────────────────────────────────────────────────────┐
+│ 問題：                                                       │
+│ ├── HTLC 輸出需要被領取                                      │
+│ ├── 但直接花費可能繞過撤銷機制                               │
+│ └── 需要強制經過延遲                                         │
+│                                                              │
+│ 解決方案：                                                   │
+│ ├── HTLC 輸出先發送到 HTLC-success/timeout 交易              │
+│ ├── 這些交易的輸出有 to_self_delay                           │
+│ └── 給對方時間發現作弊並撤銷                                 │
+└──────────────────────────────────────────────────────────────┘
+
+HTLC-Success 交易結構：
+┌──────────────────────────────────────────────────────────────┐
+│ 輸入：                                                       │
+│ └── 承諾交易的 received HTLC 輸出                            │
+│     witness: 0 <remotehtlcsig> <localhtlcsig> <payment_prei> │
+│                                                              │
+│ 輸出：                                                       │
+│ └── 延遲輸出（to_self_delay 後可花費）                       │
+│     腳本與 to_local 輸出相同                                 │
+└──────────────────────────────────────────────────────────────┘
+
+HTLC-Timeout 交易結構：
+┌──────────────────────────────────────────────────────────────┐
+│ 輸入：                                                       │
+│ └── 承諾交易的 offered HTLC 輸出                             │
+│     witness: 0 <remotehtlcsig> <localhtlcsig> <>             │
+│     locktime: cltv_expiry                                    │
+│                                                              │
+│ 輸出：                                                       │
+│ └── 延遲輸出（to_self_delay 後可花費）                       │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">金鑰推導</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`HTLC 相關金鑰推導：
+
+每個承諾使用不同金鑰：
+┌──────────────────────────────────────────────────────────────┐
+│ 基於 per_commitment_point 推導：                             │
+│                                                              │
+│ local_htlcpubkey = local_htlc_basepoint                      │
+│                  + SHA256(per_commitment_point ||            │
+│                           local_htlc_basepoint) * G          │
+│                                                              │
+│ remote_htlcpubkey = remote_htlc_basepoint                    │
+│                   + SHA256(per_commitment_point ||           │
+│                            remote_htlc_basepoint) * G        │
+└──────────────────────────────────────────────────────────────┘
+
+撤銷金鑰：
+┌──────────────────────────────────────────────────────────────┐
+│ revocationpubkey =                                           │
+│     revocation_basepoint * SHA256(                           │
+│         revocation_basepoint || per_commitment_point         │
+│     )                                                        │
+│   + per_commitment_point * SHA256(                           │
+│         per_commitment_point || revocation_basepoint         │
+│     )                                                        │
+│                                                              │
+│ 只有在揭露 per_commitment_secret 後，                        │
+│ 對方才能計算出完整的撤銷私鑰                                 │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Anchor HTLC</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Anchor Outputs 對 HTLC 的影響：
+
+原始 HTLC 問題：
+┌──────────────────────────────────────────────────────────────┐
+│ HTLC 交易費用在創建時固定                                    │
+│ 如果鏈上費用上漲，交易可能長時間不確認                       │
+│ 可能導致資金被鎖定                                           │
+└──────────────────────────────────────────────────────────────┘
+
+Anchor HTLC 改進：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. HTLC 交易輸入添加 1 CSV delay                             │
+│    └── 防止 HTLC 交易在承諾交易確認前廣播                    │
+│                                                              │
+│ 2. 可以使用 CPFP 加速                                        │
+│    └── 花費 HTLC 交易輸出來提高有效費率                      │
+│                                                              │
+│ 3. Zero-fee HTLC（option_anchors_zero_fee_htlc_tx）          │
+│    └── HTLC 交易本身零費用                                   │
+│    └── 完全依賴 CPFP                                         │
+└──────────────────────────────────────────────────────────────┘
+
+Zero-fee HTLC 腳本變化：
+# HTLC-success/timeout 輸入添加：
+OP_1 OP_CHECKSEQUENCEVERIFY OP_DROP
+# 在腳本開頭，強制 1 個區塊延遲`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">腳本大小</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        HTLC 腳本相對複雜，增加了交易權重。
+        這就是為什麼有最大 HTLC 數量限制。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">灰塵限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        HTLC 金額必須高於灰塵限制，
+        否則創建的輸出會被網路拒絕。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>Taproot 改進：</strong>
+      Simple Taproot Channels 使用 Tapscript，減少腳本大小並提高隱私。
+      正常路徑使用 key path，只有爭議時才暴露腳本。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/03-transactions.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 3 Transactions</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/htlc"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">HTLC 概述</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/commitment-tx"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">承諾交易</a
+      >
+      如何組織這些 HTLC 輸出。
+    </p>
+  </div>
+</ArticleLayout>

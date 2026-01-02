@@ -1,0 +1,366 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Invoice Encoding 發票編碼"
+  description="深入了解 BOLT 11 發票的編碼格式，包括 Bech32 編碼、欄位結構和簽名驗證。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Invoice Encoding' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'BOLT Invoice', href: '/tech/lightning/bolt-invoice' }}
+  nextPage={{ title: 'LNURL', href: '/tech/lightning/lnurl' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">BOLT 11 發票結構</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    BOLT 11 定義了閃電網路發票的標準編碼格式。發票使用 Bech32 編碼，
+    包含支付所需的所有資訊：金額、目的地、支付哈希、過期時間等。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>人類可讀：</strong>
+      BOLT 11 發票以 "ln" 開頭，後接網路標識符（bc=主網、tb=測試網），
+      使其易於識別為閃電發票。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">發票格式解析</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 11 發票結構：
+
+完整發票範例：
+┌──────────────────────────────────────────────────────────────┐
+│ lnbc10u1pj9...省略...cqzzsxqyz5vq                            │
+│                                                              │
+│ 分解：                                                       │
+│ ├── ln        : 前綴（Lightning Network）                    │
+│ ├── bc        : 網路（bc=mainnet, tb=testnet, bcrt=regtest） │
+│ ├── 10u       : 金額（10 micro-bitcoin = 1000 sats）         │
+│ ├── 1         : 分隔符                                       │
+│ ├── pj9...    : 時間戳 + 資料欄位（Bech32 編碼）             │
+│ └── cqzzsxqyz5vq : 簽名 + 恢復標誌                           │
+└──────────────────────────────────────────────────────────────┘
+
+金額單位：
+┌──────────────────────────────────────────────────────────────┐
+│ 字母  │ 乘數        │ 換算                                  │
+│───────┼─────────────┼───────────────────────────────────────│
+│ m     │ 0.001       │ milli-bitcoin（100,000 sats）         │
+│ u     │ 0.000001    │ micro-bitcoin（100 sats）             │
+│ n     │ 0.000000001 │ nano-bitcoin（0.1 sats）              │
+│ p     │ 1e-12       │ pico-bitcoin（0.0001 sats）           │
+└──────────────────────────────────────────────────────────────┘
+
+範例：
+├── lnbc1m    = 0.001 BTC = 100,000 sats
+├── lnbc100u  = 0.0001 BTC = 10,000 sats
+├── lnbc1000n = 0.000001 BTC = 100 sats
+└── lnbc（無金額）= 金額由付款人決定`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">資料欄位（Tagged Fields）</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`BOLT 11 標籤欄位：
+
+欄位結構：
+┌──────────────────────────────────────────────────────────────┐
+│ [type: 5 bits] [data_length: 10 bits] [data: variable]      │
+└──────────────────────────────────────────────────────────────┘
+
+必要欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ p (1)  : payment_hash                                        │
+│          256-bit SHA256 哈希                                 │
+│          用於 HTLC 構建                                      │
+└──────────────────────────────────────────────────────────────┘
+
+常用欄位：
+┌──────────────────────────────────────────────────────────────┐
+│ d (13) : description                                         │
+│          短描述文字（UTF-8）                                 │
+│                                                              │
+│ h (23) : description_hash                                    │
+│          長描述的 SHA256 哈希                                │
+│          （與 d 互斥）                                       │
+│                                                              │
+│ x (6)  : expiry                                              │
+│          過期時間（秒），預設 3600                           │
+│                                                              │
+│ n (19) : payee_pubkey                                        │
+│          收款人公鑰（33 bytes）                              │
+│          可從簽名恢復                                        │
+│                                                              │
+│ c (24) : min_final_cltv_expiry_delta                         │
+│          最小 CLTV delta，預設 18                            │
+└──────────────────────────────────────────────────────────────┘
+
+路由提示：
+┌──────────────────────────────────────────────────────────────┐
+│ r (3)  : routing_info                                        │
+│          私有通道的路由提示                                  │
+│          每跳 51 bytes：                                     │
+│          ├── pubkey: 33 bytes                                │
+│          ├── short_channel_id: 8 bytes                       │
+│          ├── fee_base_msat: 4 bytes                          │
+│          ├── fee_proportional_millionths: 4 bytes            │
+│          └── cltv_expiry_delta: 2 bytes                      │
+└──────────────────────────────────────────────────────────────┘
+
+功能位：
+┌──────────────────────────────────────────────────────────────┐
+│ 9 (5)  : feature_bits                                        │
+│          發票支援的功能                                      │
+│          如 payment_secret、basic_mpp 等                     │
+└──────────────────────────────────────────────────────────────┘
+
+支付密鑰：
+┌──────────────────────────────────────────────────────────────┐
+│ s (16) : payment_secret                                      │
+│          256-bit 隨機值                                      │
+│          防止探測和前向劫持                                  │
+│          MPP 要求此欄位                                      │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Bech32 編碼</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`Bech32 編碼細節：
+
+字元集（32 個字元）：
+┌──────────────────────────────────────────────────────────────┐
+│ qpzry9x8gf2tvdw0s3jn54khce6mua7l                             │
+│                                                              │
+│ 排除易混淆字元：1, b, i, o                                   │
+│ 全小寫，減少錯誤                                             │
+└──────────────────────────────────────────────────────────────┘
+
+編碼過程：
+┌──────────────────────────────────────────────────────────────┐
+│ 1. 原始資料（8-bit bytes）                                   │
+│    ↓                                                         │
+│ 2. 轉換為 5-bit groups                                       │
+│    ↓                                                         │
+│ 3. 映射到 Bech32 字元                                        │
+│    ↓                                                         │
+│ 4. 添加校驗碼（6 字元）                                      │
+└──────────────────────────────────────────────────────────────┘
+
+校驗碼計算：
+├── 使用 BCH 碼（Bose-Chaudhuri-Hocquenghem）
+├── 可偵測最多 4 個字元錯誤
+├── 在 89 字元內保證偵測 2 個替換錯誤
+└── 提供錯誤位置提示
+
+範例轉換：
+┌──────────────────────────────────────────────────────────────┐
+│ 時間戳 1496314658                                            │
+│ = 0x5932DC22（32-bit）                                       │
+│ = 分成 7 個 5-bit groups                                     │
+│ = [0b01011, 0b00100, ...]                                    │
+│ = Bech32 字元                                                │
+└──────────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">簽名與驗證</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發票簽名：
+
+簽名對象：
+┌──────────────────────────────────────────────────────────────┐
+│ SHA256(SHA256(                                               │
+│   hrp (as UTF-8 bytes) ||                                    │
+│   data (as 5-bit values, excluding signature)                │
+│ ))                                                           │
+│                                                              │
+│ hrp = "lnbc" 或 "lntb" 等                                    │
+└──────────────────────────────────────────────────────────────┘
+
+簽名格式（65 bytes）：
+┌──────────────────────────────────────────────────────────────┐
+│ ├── r: 32 bytes   │ ECDSA 簽名 r 值                         │
+│ ├── s: 32 bytes   │ ECDSA 簽名 s 值                         │
+│ └── recovery: 1 byte │ 公鑰恢復標誌 (0-3)                   │
+└──────────────────────────────────────────────────────────────┘
+
+公鑰恢復：
+┌──────────────────────────────────────────────────────────────┐
+│ 如果發票沒有 n（payee_pubkey）欄位：                         │
+│                                                              │
+│ 1. 計算簽名訊息的哈希                                        │
+│ 2. 使用 recovery ID 從簽名恢復公鑰                           │
+│ 3. 恢復的公鑰即為收款人節點 ID                               │
+│                                                              │
+│ 優點：節省 33 bytes 空間                                     │
+└──────────────────────────────────────────────────────────────┘
+
+驗證流程：
+1. 解碼 Bech32
+2. 驗證校驗碼
+3. 解析欄位
+4. 驗證簽名（或恢復公鑰）
+5. 檢查過期時間
+6. 驗證金額格式`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">解碼範例</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`發票解碼示範：
+
+原始發票：
+lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rq
+wzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahr
+sqsrzjqwryaup9lh50kkranzgcdnn2fgvx390wgj5jd07rwr3vxeje0glclldc
+wwnqqqqqqqqqqqqqqqsqfq2zs8t3c
+
+解碼結果：
+┌──────────────────────────────────────────────────────────────┐
+│ 網路：mainnet (bc)                                           │
+│ 金額：20 mBTC = 2,000,000 sats                               │
+│                                                              │
+│ 時間戳：1496314658                                           │
+│         2017-06-01 12:57:38 UTC                              │
+│                                                              │
+│ payment_hash:                                                │
+│   0001020304050607080900010203040506070809000102030405060708 │
+│                                                              │
+│ description_hash:                                            │
+│   3925b6f67e2c340036ed12093dd44e0368df1b6ea26c53dbe4811f58fd5db8c1│
+│                                                              │
+│ 過期：3600 秒（預設）                                        │
+│                                                              │
+│ 簽名：有效                                                   │
+│ 收款人公鑰：（從簽名恢復）                                   │
+└──────────────────────────────────────────────────────────────┘
+
+CLI 解碼：
+# LND
+lncli decodepayreq <invoice>
+
+# Core Lightning
+lightning-cli decode <invoice>
+
+# 線上工具
+https://lightningdecoder.com/`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`JavaScript 解碼範例：
+
+// 使用 bolt11 庫
+import * as bolt11 from 'bolt11';
+
+const invoice = 'lnbc10u1p...';
+
+// 解碼
+const decoded = bolt11.decode(invoice);
+
+console.log({
+  network: decoded.network,           // 'bc' | 'tb'
+  satoshis: decoded.satoshis,         // 金額
+  timestamp: decoded.timestamp,       // Unix 時間戳
+  timeExpireDate: decoded.timeExpireDate,
+  paymentHash: decoded.tags.find(t => t.tagName === 'payment_hash')?.data,
+  description: decoded.tags.find(t => t.tagName === 'description')?.data,
+  payeeNodeKey: decoded.payeeNodeKey, // 收款人公鑰
+});
+
+// 創建發票（需要私鑰）
+const encoded = bolt11.encode({
+  satoshis: 1000,
+  description: 'Test payment',
+  timestamp: Math.floor(Date.now() / 1000),
+  tags: [
+    { tagName: 'payment_hash', data: paymentHash },
+    { tagName: 'expire_time', data: 3600 },
+  ],
+});
+
+const signedInvoice = bolt11.sign(encoded, privateKey);`}</pre>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">發票大小限制</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        沒有硬性限制，但 QR 碼有實際限制。
+        建議保持在約 1023 字元以下以確保 QR 可讀。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">大小寫</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Bech32 使用小寫，但解碼器應接受大寫或小寫。
+        混合大小寫是無效的。
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>BOLT 12 演進：</strong>
+      BOLT 12 Offers 使用 TLV 編碼取代 Bech32，
+      支援可重複使用的支付請求和更好的隱私。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://github.com/lightning/bolts/blob/master/11-payment-encoding.md"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT 11 規範</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt-invoice"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">發票格式概覽</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/bolt12-offers"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">BOLT12 Offers</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/lnurl"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">LNURL</a
+      >
+      如何簡化支付流程。
+    </p>
+  </div>
+</ArticleLayout>

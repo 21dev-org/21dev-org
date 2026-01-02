@@ -1,0 +1,324 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Network Topology 網路拓撲"
+  description="了解閃電網路的網路結構特性，節點連接模式，以及拓撲對路由效率和去中心化的影響。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Lightning Network', href: '/tech/lightning/' },
+    { label: 'Network Topology' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Sphinx', href: '/tech/lightning/sphinx' }}
+  nextPage={{ title: 'Lightning Wallets', href: '/tech/lightning/lightning-wallets' }}
+>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路結構概述</h2>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
+    閃電網路是一個點對點的支付通道網路。網路拓撲——即節點和通道的連接方式——
+    直接影響路由效率、隱私保護和去中心化程度。理解網路結構有助於優化節點運營
+    和評估網路健康狀況。
+  </p>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>小世界網路：</strong>
+      閃電網路展現出「小世界」特性——大多數節點可以通過少數幾跳到達任何其他節點。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">網路統計</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`閃電網路典型指標（示例數據）：
+
+網路規模：
+┌──────────────────────────────────────────────────────────┐
+│ 公開節點數：~16,000+                                     │
+│ 公開通道數：~75,000+                                     │
+│ 總容量：~5,000+ BTC                                      │
+│ 平均通道容量：~0.07 BTC                                  │
+│ 中位通道容量：~0.02 BTC                                  │
+└──────────────────────────────────────────────────────────┘
+
+連接特性：
+┌──────────────────────────────────────────────────────────┐
+│ 平均每節點通道數：~5-10                                  │
+│ 最大連接節點：1000+ 通道                                 │
+│ 平均路徑長度：~3-4 跳                                    │
+│ 網路直徑：~6-8 跳                                        │
+└──────────────────────────────────────────────────────────┘
+
+注意：實際數據會隨時間變化，以上為示意
+私有通道不計入公開統計`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">拓撲類型</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`網路拓撲模式：
+
+1. 無標度網路（Scale-Free）
+┌──────────────────────────────────────────────────────────┐
+│ 特徵：少數「超級節點」有大量連接                         │
+│       大多數節點只有少量連接                             │
+│                                                          │
+│ 優點：                                                   │
+│ ├── 短路徑長度                                           │
+│ ├── 高效路由                                             │
+│ └── 抗隨機故障                                           │
+│                                                          │
+│ 缺點：                                                   │
+│ ├── 中心化風險                                           │
+│ ├── 超級節點成為單點故障                                 │
+│ └── 隱私集中                                             │
+└──────────────────────────────────────────────────────────┘
+
+2. 星型拓撲（Hub-and-Spoke）
+┌──────────────────────────────────────────────────────────┐
+│       ○                                                  │
+│      /|\\                                                │
+│     ○-●-○   ● = 中心節點                                │
+│      /|\\   ○ = 邊緣節點                                │
+│       ○                                                  │
+│                                                          │
+│ 實際：LSP 與其用戶的關係                                 │
+└──────────────────────────────────────────────────────────┘
+
+3. 網狀拓撲（Mesh）
+┌──────────────────────────────────────────────────────────┐
+│ ○───○───○                                               │
+│ │╲ /│╲ /│                                               │
+│ │ ○ │ ○ │                                               │
+│ │/ ╲│/ ╲│                                               │
+│ ○───○───○                                               │
+│                                                          │
+│ 特徵：節點間多路徑連接                                   │
+│ 優點：冗餘高、去中心化                                   │
+│ 缺點：需要更多資金鎖定                                   │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">節點類型</h2>
+
+  <div class="grid md:grid-cols-2 gap-4 mb-8">
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">路由節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        專門為網路提供路由服務。維護多個通道，
+        平衡流動性，通過路由費用獲利。通常是網路骨幹。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">商家節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        主要接收支付。需要入站容量，
+        可能連接到多個路由節點確保可達性。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">終端用戶</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        個人錢包用戶。通常只有 1-2 個通道，
+        連接到 LSP 或大型節點。多為私有通道。
+      </p>
+    </div>
+    <div class="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)]">
+      <h4 class="font-semibold text-[var(--text-primary)] mb-2">LSP 節點</h4>
+      <p class="text-sm text-[var(--text-secondary)]">
+        Lightning Service Provider。為大量用戶提供通道和流動性。
+        是網路中的超級節點。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">中心化度量</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`網路中心化指標：
+
+節點中心性（Centrality）：
+┌──────────────────────────────────────────────────────────┐
+│ 度中心性（Degree Centrality）：                          │
+│   通道數量                                               │
+│                                                          │
+│ 介數中心性（Betweenness Centrality）：                   │
+│   節點位於多少最短路徑上                                 │
+│   高介數 = 更多支付經過此節點                            │
+│                                                          │
+│ 接近中心性（Closeness Centrality）：                     │
+│   到所有其他節點的平均距離                               │
+│   高接近性 = 可以快速到達網路各處                        │
+└──────────────────────────────────────────────────────────┘
+
+基尼係數：
+┌──────────────────────────────────────────────────────────┐
+│ 測量容量/連接分配的不平等程度                            │
+│                                                          │
+│ 0 = 完全平等（所有節點相同）                             │
+│ 1 = 完全不平等（一個節點擁有一切）                       │
+│                                                          │
+│ 閃電網路容量基尼係數：~0.8-0.9                           │
+│ → 高度集中，少數節點持有大部分容量                       │
+└──────────────────────────────────────────────────────────┘
+
+前 N 節點控制比例：
+├── 前 10 個節點控制 ~15% 容量
+├── 前 100 個節點控制 ~50% 容量
+└── 長尾分佈明顯`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">對路由的影響</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`拓撲對路由的影響：
+
+路徑可用性：
+┌──────────────────────────────────────────────────────────┐
+│ 高連接性 → 更多可選路徑                                  │
+│ 多路徑 → MPP 更容易成功                                  │
+│ 網狀結構 → 單通道失敗不致命                              │
+└──────────────────────────────────────────────────────────┘
+
+流動性分佈：
+┌──────────────────────────────────────────────────────────┐
+│ 中心節點容量大 → 大額支付更可能成功                      │
+│ 邊緣節點容量小 → 可能需要 MPP                            │
+│ 不平衡通道 → 需要再平衡                                  │
+└──────────────────────────────────────────────────────────┘
+
+延遲和可靠性：
+┌──────────────────────────────────────────────────────────┐
+│ 短路徑 → 更少跳數 → 更低延遲                             │
+│ 超級節點 → 高可用性 → 更可靠路由                         │
+│ 但依賴超級節點 → 故障影響大                              │
+└──────────────────────────────────────────────────────────┘
+
+費用：
+├── 競爭激烈的路線 → 費用較低
+├── 必經之路 → 可能收取更高費用
+└── 邊緣區域 → 選擇較少，費用可能較高`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">改善網路拓撲</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`提升網路結構的策略：
+
+節點運營者：
+┌──────────────────────────────────────────────────────────┐
+│ 1. 選擇性連接                                            │
+│    ├── 連接到不同「區域」的節點                          │
+│    ├── 避免只連接超級節點                                │
+│    └── 建立三角形連接增加冗餘                            │
+│                                                          │
+│ 2. 容量分配                                              │
+│    ├── 根據流量調整通道大小                              │
+│    ├── 保持平衡的入站/出站比例                           │
+│    └── 為常用路線分配更多容量                            │
+│                                                          │
+│ 3. 互聯協調                                              │
+│    ├── Ring of Fire 等社群活動                           │
+│    ├── 與地理分散的節點建立通道                          │
+│    └── 支援新興節點                                      │
+└──────────────────────────────────────────────────────────┘
+
+協議層面：
+┌──────────────────────────────────────────────────────────┐
+│ Channel Factories：多方共享注資交易                      │
+│ Splicing：動態調整通道容量                               │
+│ Trampoline：減少端節點負擔                               │
+│ 更好的路徑發現算法                                       │
+└──────────────────────────────────────────────────────────┘`}</pre>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查看網路拓撲</h2>
+
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]">{`網路探索工具：
+
+網頁工具：
+├── 1ML (https://1ml.com)
+│   └── 節點排名、統計、搜索
+├── Amboss (https://amboss.space)
+│   └── 詳細節點資訊、社群功能
+├── LN+ (https://lightningnetwork.plus)
+│   └── 節點連接協調
+└── mempool.space/lightning
+    └── 網路概覽
+
+CLI 工具（LND）：
+# 查看網路資訊
+lncli getnetworkinfo
+
+# 查看特定節點
+lncli getnodeinfo <pubkey>
+
+# 查看節點的通道
+lncli describegraph | jq '.nodes | length'
+
+CLI 工具（CLN）：
+# 網路統計
+lightning-cli listnodes | jq 'length'
+lightning-cli listchannels | jq 'length'`}</pre>
+  </div>
+
+  <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+    <p class="text-sm text-yellow-700 dark:text-yellow-400">
+      <strong>隱私注意：</strong>
+      公開可見的拓撲只包含公告的通道。私有通道不計入，
+      實際網路比可見的更大、更連通。
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">相關資源</h2>
+
+  <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
+    <li>
+      • <a
+        href="https://1ml.com/statistics"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">1ML 網路統計</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/gossip"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">Gossip 協議</a>
+    </li>
+    <li>
+      • <a
+        href="/tech/lightning/pathfinding"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">路徑搜索</a>
+    </li>
+  </ul>
+
+  <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+    <p class="text-sm text-[var(--text-secondary)]">
+      <strong class="text-[var(--text-primary)]">下一步：</strong>
+      了解 <a
+        href="/tech/lightning/lightning-wallets"
+        class="text-yellow-600 dark:text-yellow-400 hover:underline">閃電錢包指南</a
+      >
+      幫助選擇合適的錢包。
+    </p>
+  </div>
+</ArticleLayout>
