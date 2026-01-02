@@ -1,0 +1,565 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Tor Integration"
+  description="深入了解 Bitcoin Core 的 Tor 網路整合，如何透過洋蔥路由增強比特幣節點的隱私和匿名性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Tor Integration' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Pruning', href: '/tech/bitcoin-core/pruning' }}
+  nextPage={{ title: 'Dust Limits', href: '/tech/bitcoin-core/dust' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">為什麼使用 Tor？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Tor（The Onion Router）是一個匿名通訊網路，透過多層加密和隨機路由隱藏用戶的 IP 地址。
+      Bitcoin Core 內建 Tor 支援，讓節點運營者可以隱藏其真實網路身份，增強隱私和抗審查能力。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Tor 的優勢</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私保護</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 隱藏節點的真實 IP 地址</li>
+            <li>• 防止交易與 IP 關聯</li>
+            <li>• 保護節點運營者身份</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">抗審查能力</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 繞過地理限制</li>
+            <li>• 防止 ISP 封鎖</li>
+            <li>• 提高網路韌性</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="how-tor-works" class="text-2xl font-bold text-[var(--text-primary)]">Tor 運作原理</h2>
+
+    <h3 id="onion-routing" class="text-xl font-semibold text-[var(--text-primary)]">洋蔥路由</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>你的節點                                        目標節點
+    ↓                                              ↑
+ [加密層3]                                    [解密層3]
+    ↓                                              ↑
+  Guard → [加密層2] → Middle → [加密層1] → Exit →
+  Node      ↓         Relay       ↓        Node
+         知道你是誰   只知道前後節點   知道目標
+
+每一層加密就像洋蔥的一層
+只有到達對應節點時才能解開該層</code></pre>
+    </div>
+
+    <h3 id="onion-services" class="text-xl font-semibold text-[var(--text-primary)]">Onion Services（v3）</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 支援 Tor v3 onion services，提供端對端加密的匿名連接：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Onion v3 地址格式（56 字元）:
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.onion
+
+例如:
+5g73biadjjswokqe3rqjpkqq...dqblvz25v53p5xbiad.onion
+
+特點：
+- 使用 ed25519 公鑰
+- 256 位安全性
+- 無需出口節點
+- 端對端加密</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置方式</h2>
+
+    <h3 id="basic-setup" class="text-xl font-semibold text-[var(--text-primary)]">基本設定</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <p class="text-sm text-[var(--text-secondary)] mb-3">1. 安裝並啟動 Tor：</p>
+      <pre class="text-sm overflow-x-auto mb-4"><code class="language-bash" is:raw># Ubuntu/Debian
+sudo apt install tor
+
+# macOS
+brew install tor
+
+# 啟動 Tor 服務
+sudo systemctl start tor
+# 或
+tor &</code></pre>
+
+      <p class="text-sm text-[var(--text-secondary)] mb-3">2. 配置 Bitcoin Core：</p>
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># ~/.bitcoin/bitcoin.conf
+
+# 透過 Tor SOCKS5 代理連接
+proxy=127.0.0.1:9050
+
+# 只使用 Tor（不連接明網）
+onlynet=onion
+
+# 允許節點被其他 Tor 節點連接
+listen=1
+
+# 自動創建 onion service
+listenonion=1</code></pre>
+    </div>
+
+    <h3 id="connection-modes" class="text-xl font-semibold text-[var(--text-primary)]">連接模式</h3>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-2 text-[var(--text-secondary)]">模式</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">配置</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">說明</th>
+          </tr>
+        </thead>
+        <tbody class="text-[var(--text-secondary)]">
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">僅 Tor</td>
+            <td class="py-2 font-mono text-xs">onlynet=onion</td>
+            <td class="py-2">最高隱私，只連接 onion 節點</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">混合模式</td>
+            <td class="py-2 font-mono text-xs">proxy=127.0.0.1:9050</td>
+            <td class="py-2">透過 Tor 連接明網和 onion 節點</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">雙棧</td>
+            <td class="py-2 font-mono text-xs">見下方配置</td>
+            <td class="py-2">同時使用 Tor 和直連</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="dual-stack" class="text-xl font-semibold text-[var(--text-primary)]">雙棧配置</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 同時使用 IPv4、IPv6 和 Tor
+# 適合想要更多連接但仍需 Tor 隱私的用戶
+
+# Tor 代理設定
+proxy=127.0.0.1:9050
+
+# 允許的網路類型
+onlynet=ipv4
+onlynet=ipv6
+onlynet=onion
+
+# 監聽設定
+listen=1
+listenonion=1
+bind=0.0.0.0:8333
+bind=[::]:8333
+
+# 對外連接時使用 Tor
+# 但接受來自任何網路的連接</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="onion-service-setup" class="text-2xl font-bold text-[var(--text-primary)]">Onion Service 設定</h2>
+
+    <h3 id="automatic-setup" class="text-xl font-semibold text-[var(--text-primary)]">自動設定</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 可以自動透過 Tor 控制埠創建 onion service：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <p class="text-sm text-[var(--text-secondary)] mb-3">1. 配置 Tor 控制埠（/etc/tor/torrc）：</p>
+      <pre class="text-sm overflow-x-auto mb-4"><code class="language-text" is:raw>ControlPort 9051
+CookieAuthentication 1
+CookieAuthFileGroupReadable 1</code></pre>
+
+      <p class="text-sm text-[var(--text-secondary)] mb-3">2. Bitcoin Core 配置：</p>
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 自動創建 onion service
+listenonion=1
+
+# Tor 控制埠
+torcontrol=127.0.0.1:9051
+
+# 使用 cookie 認證（預設）
+# 或使用密碼認證
+# torpassword=your_hashed_password</code></pre>
+    </div>
+
+    <h3 id="manual-setup" class="text-xl font-semibold text-[var(--text-primary)]">手動設定</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <p class="text-sm text-[var(--text-secondary)] mb-3">在 /etc/tor/torrc 中手動配置：</p>
+      <pre class="text-sm overflow-x-auto mb-4"><code class="language-text" is:raw># Bitcoin Core onion service
+HiddenServiceDir /var/lib/tor/bitcoin-service/
+HiddenServicePort 8333 127.0.0.1:8333
+
+# 可選：RPC onion service（謹慎使用）
+# HiddenServiceDir /var/lib/tor/bitcoin-rpc/
+# HiddenServicePort 8332 127.0.0.1:8332</code></pre>
+
+      <p class="text-sm text-[var(--text-secondary)] mb-3">查看生成的 onion 地址：</p>
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw>sudo cat /var/lib/tor/bitcoin-service/hostname
+# 輸出類似：
+# abcdef1234567890abcdef1234567890abcdef1234567890abcdefgh.onion</code></pre>
+    </div>
+
+    <h3 id="verify-setup" class="text-xl font-semibold text-[var(--text-primary)]">驗證設定</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看網路資訊
+bitcoin-cli getnetworkinfo
+
+# 輸出範例：
+# {
+#   "networks": [
+#     {
+#       "name": "onion",
+#       "limited": false,
+#       "reachable": true,
+#       "proxy": "127.0.0.1:9050"
+#     }
+#   ],
+#   "localaddresses": [
+#     {
+#       "address": "abcdef...gh.onion",
+#       "port": 8333,
+#       "score": 4
+#     }
+#   ]
+# }
+
+# 查看對等節點
+bitcoin-cli getpeerinfo | jq '.[] | {addr, network}'
+# 應該看到 "network": "onion" 的連接</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="privacy-considerations" class="text-2xl font-bold text-[var(--text-primary)]">隱私注意事項</h2>
+
+    <h3 id="transaction-privacy" class="text-xl font-semibold text-[var(--text-primary)]">交易隱私</h3>
+
+    <div class="bg-yellow-500/10 p-6 rounded-lg border border-yellow-500/30">
+      <h4 class="font-semibold text-yellow-400 mb-3">重要提醒</h4>
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">Tor 只保護網路層：</strong>
+            隱藏你的 IP，但鏈上分析仍可追蹤交易。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">時序分析：</strong>
+            交易時間可能洩露資訊，考慮使用延遲廣播。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">節點指紋：</strong>
+            獨特的節點行為可能被用於識別。
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="complete-privacy" class="text-xl font-semibold text-[var(--text-primary)]">完整隱私配置</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 最大隱私配置
+
+# 只使用 Tor
+onlynet=onion
+proxy=127.0.0.1:9050
+listenonion=1
+
+# 禁用 DNS 查詢洩露
+dnsseed=0
+dns=0
+
+# 添加已知的 onion 種子節點
+addnode=5g73biadjj...onion:8333
+addnode=cssusbltcm...onion:8333
+
+# 禁用 UPnP（可能洩露本地 IP）
+upnp=0
+natpmp=0
+
+# 禁用區塊過濾器（可能洩露感興趣的地址）
+peerblockfilters=0
+blockfilterindex=0
+
+# 減少時序攻擊
+# 使用私有 mempool 接受策略
+mempoolreplacement=fee,optin</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="performance" class="text-2xl font-bold text-[var(--text-primary)]">效能影響</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Tor vs 直連比較</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">指標</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">直連</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">Tor</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">延遲</td>
+              <td class="py-2">~50-200 ms</td>
+              <td class="py-2 text-yellow-400">~200-1000 ms</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">吞吐量</td>
+              <td class="py-2">不受限</td>
+              <td class="py-2 text-yellow-400">1-5 MB/s</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">IBD 時間</td>
+              <td class="py-2">~6-24 小時</td>
+              <td class="py-2 text-yellow-400">~24-72 小時</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">連接穩定性</td>
+              <td class="py-2 text-green-400">高</td>
+              <td class="py-2 text-yellow-400">中</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="optimization" class="text-xl font-semibold text-[var(--text-primary)]">效能優化</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 增加連接數以彌補 Tor 的不穩定性
+maxconnections=125
+
+# 增加對外連接
+maxoutboundconnections=12
+
+# 為 IBD 使用混合模式（同步後再切換到僅 Tor）
+# 同步期間：
+# onlynet=ipv4
+# onlynet=onion
+
+# 同步後：
+# onlynet=onion
+
+# 啟用 Compact Blocks 減少數據傳輸
+blocksonly=0
+# 對於頻寬受限的 Tor 連接，考慮：
+# blocksonly=1</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="i2p-alternative" class="text-2xl font-bold text-[var(--text-primary)]">I2P 替代方案</h2>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 27.0+ 也支援 I2P（Invisible Internet Project）作為另一個匿名網路選項：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># I2P 配置
+i2psam=127.0.0.1:7656
+
+# 可以同時使用 Tor 和 I2P
+onlynet=onion
+onlynet=i2p
+
+proxy=127.0.0.1:9050</code></pre>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4 mt-4">
+      <div class="p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">Tor 優點</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 更成熟穩定</li>
+          <li>• 更多節點</li>
+          <li>• 更廣泛支援</li>
+          <li>• 可存取明網</li>
+        </ul>
+      </div>
+      <div class="p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">I2P 優點</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 分散式設計</li>
+          <li>• 抗出口節點攻擊</li>
+          <li>• 更好的端對端加密</li>
+          <li>• 較少的中心化風險</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security-risks" class="text-2xl font-bold text-[var(--text-primary)]">安全風險</h2>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h3 class="text-lg font-semibold text-red-400 mb-4">潛在風險</h3>
+      <ul class="space-y-4 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">1.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">Eclipse 攻擊：</strong>
+            如果所有對等節點都是惡意的 Tor 節點，可能被隔離在假鏈上。
+            <span class="text-sm block mt-1">緩解：連接到已知可信的節點，使用混合網路模式。</span>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">2.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">Sybil 攻擊：</strong>
+            攻擊者創建大量 Tor 節點佔據網路。
+            <span class="text-sm block mt-1">緩解：限制來自相似地址的連接。</span>
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500 font-bold">3.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">DoS 放大：</strong>
+            Tor 連接可能被用於 DoS 攻擊。
+            <span class="text-sm block mt-1">緩解：啟用連接限制和速率限制。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="mitigations" class="text-xl font-semibold text-[var(--text-primary)]">緩解措施</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 添加可信的明網節點作為錨點
+addnode=seed.bitcoin.sipa.be:8333
+connect=your-trusted-node.com:8333
+
+# 限制入站連接
+maxconnections=50
+
+# 不完全依賴 Tor DNS seeds
+dnsseed=1
+
+# 定期驗證與多個來源的鏈一致性
+# （手動檢查區塊雜湊）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="troubleshooting" class="text-2xl font-bold text-[var(--text-primary)]">常見問題</h2>
+
+    <div class="space-y-4">
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">無法連接到 Tor</h4>
+        <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 Tor 是否運行
+systemctl status tor
+
+# 檢查 SOCKS 埠是否監聽
+ss -tlnp | grep 9050
+
+# 測試 Tor 連接
+curl --socks5 127.0.0.1:9050 https://check.torproject.org/</code></pre>
+      </div>
+
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">Onion service 無法建立</h4>
+        <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查控制埠權限
+ls -la /run/tor/control.authcookie
+
+# 將 bitcoin 用戶加入 tor 群組
+sudo usermod -a -G debian-tor bitcoin
+
+# 檢查 Bitcoin Core 日誌
+tail -f ~/.bitcoin/debug.log | grep -i tor</code></pre>
+      </div>
+
+      <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
+        <h4 class="font-semibold text-[var(--text-primary)] mb-2">連接不穩定</h4>
+        <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 增加連接數
+bitcoin-cli addnode "knownnode.onion:8333" "add"
+
+# 檢查對等節點狀態
+bitcoin-cli getpeerinfo | jq '.[].subver'
+
+# 考慮使用混合模式提高穩定性</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 保持 Tor 軟體更新</li>
+          <li>• 使用 onion v3 地址</li>
+          <li>• 添加可信的種子節點</li>
+          <li>• 監控連接品質</li>
+          <li>• 定期驗證鏈狀態</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 注意事項</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 不要暴露 RPC 到 Tor</li>
+          <li>• 注意 DNS 洩露</li>
+          <li>• 考慮時序攻擊</li>
+          <li>• 不要僅依賴 Tor 隱私</li>
+          <li>• IBD 時考慮混合模式</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">IP 隱私：</strong>Tor 隱藏節點的真實 IP 地址，保護運營者身份</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">抗審查：</strong>繞過地理封鎖和 ISP 限制</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">易於設定：</strong>Bitcoin Core 內建支援，配置簡單</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">效能代價：</strong>較高延遲和較低吞吐量，IBD 時間增加</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">僅網路層隱私：</strong>不解決鏈上分析問題</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

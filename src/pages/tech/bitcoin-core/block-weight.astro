@@ -1,0 +1,659 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Weight"
+  description="深入了解比特幣的區塊重量系統，SegWit 如何透過 weight units 替代傳統的區塊大小限制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Weight' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Dust Limits', href: '/tech/bitcoin-core/dust' }}
+  nextPage={{ title: 'SegWit', href: '/tech/bitcoin-core/segwit' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">從區塊大小到區塊重量</h2>
+    <p class="text-[var(--text-secondary)]">
+      在 SegWit（BIP-141）啟用之前，比特幣區塊有嚴格的 1 MB 大小限制。SegWit 引入了新的「區塊重量」
+      （Block Weight）概念，使用 Weight Units (WU) 來衡量區塊大小，最大限制為 4,000,000 WU。
+      這個改變允許區塊包含更多交易，同時保持向後兼容。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">關鍵數字</h3>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg text-center">
+          <div class="text-3xl font-bold text-bitcoin-500 mb-2">4 MWU</div>
+          <div class="text-sm text-[var(--text-secondary)]">最大區塊重量</div>
+          <div class="text-xs text-[var(--text-tertiary)]">4,000,000 Weight Units</div>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg text-center">
+          <div class="text-3xl font-bold text-blue-500 mb-2">~1.8 MB</div>
+          <div class="text-sm text-[var(--text-secondary)]">典型區塊大小</div>
+          <div class="text-xs text-[var(--text-tertiary)]">使用 SegWit 交易</div>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg text-center">
+          <div class="text-3xl font-bold text-green-500 mb-2">~4 MB</div>
+          <div class="text-sm text-[var(--text-secondary)]">理論最大大小</div>
+          <div class="text-xs text-[var(--text-tertiary)]">純見證數據</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="weight-calculation" class="text-2xl font-bold text-[var(--text-primary)]">重量計算</h2>
+
+    <h3 id="basic-formula" class="text-xl font-semibold text-[var(--text-primary)]">基本公式</h3>
+    <p class="text-[var(--text-secondary)]">
+      區塊和交易的重量計算方式如下：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Weight = (基礎數據大小 × 4) + (見證數據大小 × 1)
+
+或等價於：
+
+Weight = (非見證數據 × 4) + (見證數據 × 1)
+       = (總大小 × 4) - (見證數據 × 3)
+
+其中：
+- 基礎數據：version, inputs, outputs, locktime
+- 見證數據：簽名和公鑰（SegWit 專用）</code></pre>
+    </div>
+
+    <h3 id="virtual-bytes" class="text-xl font-semibold text-[var(--text-primary)]">Virtual Bytes (vB)</h3>
+    <p class="text-[var(--text-secondary)]">
+      Virtual Bytes 是將 Weight Units 轉換回「等效位元組」的方式，用於手續費計算：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>vBytes = Weight / 4（向上取整）
+
+例如：
+- Legacy 交易：225 bytes = 900 WU = 225 vB
+- SegWit 交易：140 base + 70 witness = 630 WU ≈ 158 vB
+
+手續費率通常以 sat/vB 表示
+fee = size_in_vbytes × fee_rate</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="transaction-types" class="text-2xl font-bold text-[var(--text-primary)]">交易類型比較</h2>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-2 text-[var(--text-secondary)]">類型</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">基礎大小</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">見證大小</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">總大小</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">Weight</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">vBytes</th>
+          </tr>
+        </thead>
+        <tbody class="text-[var(--text-secondary)]">
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">P2PKH (1-in-1-out)</td>
+            <td class="py-2">192 B</td>
+            <td class="py-2">0 B</td>
+            <td class="py-2">192 B</td>
+            <td class="py-2 text-yellow-400">768 WU</td>
+            <td class="py-2">192 vB</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">P2WPKH (1-in-1-out)</td>
+            <td class="py-2">82 B</td>
+            <td class="py-2">107 B</td>
+            <td class="py-2">189 B</td>
+            <td class="py-2 text-green-400">435 WU</td>
+            <td class="py-2">109 vB</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">P2TR (1-in-1-out)</td>
+            <td class="py-2">87 B</td>
+            <td class="py-2">65 B</td>
+            <td class="py-2">152 B</td>
+            <td class="py-2 text-green-400">413 WU</td>
+            <td class="py-2">104 vB</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">P2PKH (2-in-2-out)</td>
+            <td class="py-2">374 B</td>
+            <td class="py-2">0 B</td>
+            <td class="py-2">374 B</td>
+            <td class="py-2 text-yellow-400">1496 WU</td>
+            <td class="py-2">374 vB</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">P2WPKH (2-in-2-out)</td>
+            <td class="py-2">130 B</td>
+            <td class="py-2">214 B</td>
+            <td class="py-2">344 B</td>
+            <td class="py-2 text-green-400">734 WU</td>
+            <td class="py-2">184 vB</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-sm text-[var(--text-tertiary)]">
+      SegWit 交易節省約 40-50% 的 vBytes，這意味著同樣的區塊空間可以容納更多交易。
+    </p>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="witness-discount" class="text-2xl font-bold text-[var(--text-primary)]">見證折扣</h2>
+
+    <h3 id="why-discount" class="text-xl font-semibold text-[var(--text-primary)]">為什麼見證數據有折扣？</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-4 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">1.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">UTXO 集合影響：</strong>
+            基礎數據（輸入輸出）直接影響 UTXO 集合大小，這是節點必須永久存儲的。
+            見證數據在驗證後可以丟棄。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">2.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">驗證成本：</strong>
+            UTXO 查詢是區塊驗證的瓶頸。見證驗證（簽名檢查）相對較快。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">3.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">激勵結構：</strong>
+            折扣鼓勵使用更高效的腳本類型，減少對節點的負擔。
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="cost-comparison" class="text-xl font-semibold text-[var(--text-primary)]">成本比較</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>基礎數據：1 byte = 4 WU = 1 vByte
+見證數據：1 byte = 1 WU = 0.25 vByte
+
+在 10 sat/vB 手續費率下：
+- 基礎數據：10 sats/byte
+- 見證數據：2.5 sats/byte（75% 折扣）
+
+實際節省（P2WPKH vs P2PKH，單輸入單輸出）：
+- P2PKH: 192 vB × 10 sat/vB = 1,920 sats
+- P2WPKH: 109 vB × 10 sat/vB = 1,090 sats
+- 節省: 830 sats (43%)</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="calculation-code" class="text-xl font-semibold text-[var(--text-primary)]">重量計算代碼</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface Transaction {
+  version: number;
+  inputs: TxInput[];
+  outputs: TxOutput[];
+  locktime: number;
+  witness?: WitnessData[];
+}
+
+interface TxInput {
+  prevTxHash: Buffer;  // 32 bytes
+  prevIndex: number;   // 4 bytes
+  scriptSig: Buffer;   // variable
+  sequence: number;    // 4 bytes
+}
+
+interface TxOutput {
+  value: bigint;       // 8 bytes
+  scriptPubKey: Buffer;  // variable
+}
+
+const WITNESS_SCALE_FACTOR = 4;
+
+function calculateWeight(tx: Transaction): number {
+  // 基礎大小（不含見證）
+  const baseSize = calculateBaseSize(tx);
+
+  // 見證大小
+  const witnessSize = calculateWitnessSize(tx);
+
+  // 總重量
+  return baseSize * WITNESS_SCALE_FACTOR + witnessSize;
+}
+
+function calculateVBytes(tx: Transaction): number {
+  const weight = calculateWeight(tx);
+  return Math.ceil(weight / WITNESS_SCALE_FACTOR);
+}
+
+function calculateBaseSize(tx: Transaction): number {
+  let size = 0;
+
+  // Version (4 bytes)
+  size += 4;
+
+  // Input count (varint)
+  size += varintSize(tx.inputs.length);
+
+  // Inputs
+  for (const input of tx.inputs) {
+    size += 32;  // prevTxHash
+    size += 4;   // prevIndex
+    size += varintSize(input.scriptSig.length);
+    size += input.scriptSig.length;
+    size += 4;   // sequence
+  }
+
+  // Output count (varint)
+  size += varintSize(tx.outputs.length);
+
+  // Outputs
+  for (const output of tx.outputs) {
+    size += 8;  // value
+    size += varintSize(output.scriptPubKey.length);
+    size += output.scriptPubKey.length;
+  }
+
+  // Locktime (4 bytes)
+  size += 4;
+
+  return size;
+}
+
+function calculateWitnessSize(tx: Transaction): number {
+  if (!tx.witness || tx.witness.length === 0) {
+    return 0;
+  }
+
+  let size = 0;
+
+  // Marker and flag (2 bytes total for SegWit transactions)
+  size += 2;
+
+  // Witness data for each input
+  for (const witnessStack of tx.witness) {
+    size += varintSize(witnessStack.length);
+    for (const item of witnessStack) {
+      size += varintSize(item.length);
+      size += item.length;
+    }
+  }
+
+  return size;
+}
+
+function varintSize(value: number): number {
+  if (value < 0xfd) return 1;
+  if (value <= 0xffff) return 3;
+  if (value <= 0xffffffff) return 5;
+  return 9;
+}
+
+// 使用範例
+const tx: Transaction = {
+  version: 2,
+  inputs: [/* ... */],
+  outputs: [/* ... */],
+  locktime: 0,
+  witness: [/* ... */],
+};
+
+console.log('Weight:', calculateWeight(tx), 'WU');
+console.log('vBytes:', calculateVBytes(tx), 'vB');
+console.log('Fee at 10 sat/vB:', calculateVBytes(tx) * 10, 'sats');</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="block-structure" class="text-2xl font-bold text-[var(--text-primary)]">區塊結構變化</h2>
+
+    <h3 id="pre-segwit" class="text-xl font-semibold text-[var(--text-primary)]">SegWit 之前</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊結構（Pre-SegWit）:
+┌────────────────────────────────┐
+│ Block Header (80 bytes)        │
+├────────────────────────────────┤
+│ Transaction Count (varint)     │
+├────────────────────────────────┤
+│ Transaction 1                  │
+│   - Version                    │
+│   - Inputs (含 scriptSig/簽名)  │
+│   - Outputs                    │
+│   - Locktime                   │
+├────────────────────────────────┤
+│ Transaction 2                  │
+│ ...                            │
+└────────────────────────────────┘
+最大大小: 1,000,000 bytes</code></pre>
+    </div>
+
+    <h3 id="post-segwit" class="text-xl font-semibold text-[var(--text-primary)]">SegWit 之後</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊結構（Post-SegWit）:
+┌────────────────────────────────┐
+│ Block Header (80 bytes)        │
+├────────────────────────────────┤
+│ Transaction Count (varint)     │
+├────────────────────────────────┤
+│ Transaction 1 (Base)           │
+│   - Version                    │
+│   - Marker (0x00)              │ ← SegWit 標記
+│   - Flag (0x01)                │ ← SegWit 標誌
+│   - Inputs (空 scriptSig)       │
+│   - Outputs                    │
+│   - Witness Data               │ ← 見證數據（折扣計算）
+│   - Locktime                   │
+├────────────────────────────────┤
+│ Transaction 2                  │
+│ ...                            │
+└────────────────────────────────┘
+最大重量: 4,000,000 WU
+實際最大大小: ~4 MB（純見證時）</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="practical-limits" class="text-2xl font-bold text-[var(--text-primary)]">實際限制</h2>
+
+    <h3 id="theoretical-vs-real" class="text-xl font-semibold text-[var(--text-primary)]">理論 vs 實際</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">場景</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">區塊大小</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">說明</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">純 Legacy 交易</td>
+              <td class="py-2">~1 MB</td>
+              <td class="py-2">4M WU / 4 = 1M bytes</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">典型 SegWit 混合</td>
+              <td class="py-2">~1.5-2 MB</td>
+              <td class="py-2">常見的區塊大小</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">純 SegWit 交易</td>
+              <td class="py-2">~2-2.5 MB</td>
+              <td class="py-2">所有交易使用 SegWit</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">純見證數據</td>
+              <td class="py-2">~4 MB</td>
+              <td class="py-2">理論最大值，實際不可能</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 id="why-not-4mb" class="text-xl font-semibold text-[var(--text-primary)]">為什麼區塊不是 4 MB？</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        要達到 4 MB 區塊大小，交易必須只包含見證數據。但實際交易需要：
+      </p>
+      <ul class="space-y-2 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span>輸入引用（prevout）：最少 36 bytes × 4 = 144 WU</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span>輸出腳本：最少 9 bytes × 4 = 36 WU</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span>交易開銷（version, locktime 等）：~40 WU</span>
+        </li>
+      </ul>
+      <p class="text-[var(--text-secondary)] mt-4">
+        因此，即使是最優化的交易，也需要相當比例的基礎數據。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="fee-estimation" class="text-2xl font-bold text-[var(--text-primary)]">手續費估算</h2>
+
+    <h3 id="fee-calculation" class="text-xl font-semibold text-[var(--text-primary)]">手續費計算</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface FeeEstimate {
+  scriptType: 'p2pkh' | 'p2wpkh' | 'p2tr';
+  inputCount: number;
+  outputCount: number;
+  feeRate: number;  // sat/vB
+}
+
+// 典型輸入大小（vBytes）
+const INPUT_VBYTES = {
+  p2pkh: 148,
+  p2wpkh: 68,
+  p2tr: 58,
+} as const;
+
+// 典型輸出大小（vBytes）
+const OUTPUT_VBYTES = {
+  p2pkh: 34,
+  p2wpkh: 31,
+  p2tr: 43,
+} as const;
+
+// 固定開銷
+const OVERHEAD_VBYTES = {
+  p2pkh: 10,   // version + locktime + in/out counts
+  p2wpkh: 11,  // + marker + flag
+  p2tr: 11,
+} as const;
+
+function estimateTxVBytes(params: Omit<FeeEstimate, 'feeRate'>): number {
+  const { scriptType, inputCount, outputCount } = params;
+
+  const overhead = OVERHEAD_VBYTES[scriptType];
+  const inputsSize = INPUT_VBYTES[scriptType] * inputCount;
+  const outputsSize = OUTPUT_VBYTES[scriptType] * outputCount;
+
+  return overhead + inputsSize + outputsSize;
+}
+
+function estimateFee(params: FeeEstimate): number {
+  const vBytes = estimateTxVBytes(params);
+  return vBytes * params.feeRate;
+}
+
+// 使用範例
+const p2pkhFee = estimateFee({
+  scriptType: 'p2pkh',
+  inputCount: 2,
+  outputCount: 2,
+  feeRate: 10,
+});
+console.log('P2PKH 2-in-2-out at 10 sat/vB:', p2pkhFee, 'sats');
+// 輸出：3740 sats
+
+const p2wpkhFee = estimateFee({
+  scriptType: 'p2wpkh',
+  inputCount: 2,
+  outputCount: 2,
+  feeRate: 10,
+});
+console.log('P2WPKH 2-in-2-out at 10 sat/vB:', p2wpkhFee, 'sats');
+// 輸出：2090 sats
+
+// 節省
+console.log('Savings:', p2pkhFee - p2wpkhFee, 'sats',
+  '(' + Math.round((1 - p2wpkhFee / p2pkhFee) * 100) + '%)');</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="mining-implications" class="text-2xl font-bold text-[var(--text-primary)]">對挖礦的影響</h2>
+
+    <h3 id="transaction-selection" class="text-xl font-semibold text-[var(--text-primary)]">交易選擇</h3>
+    <p class="text-[var(--text-secondary)]">
+      礦工根據 sat/vB（或 sat/WU）來排序交易，而不是 sat/byte：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface MempoolTransaction {
+  txid: string;
+  weight: number;
+  fee: number;
+}
+
+function sortByFeeRate(txs: MempoolTransaction[]): MempoolTransaction[] {
+  return [...txs].sort((a, b) => {
+    const rateA = a.fee / (a.weight / 4);  // fee per vByte
+    const rateB = b.fee / (b.weight / 4);
+    return rateB - rateA;  // 降序
+  });
+}
+
+function selectTransactions(
+  txs: MempoolTransaction[],
+  maxWeight: number = 4_000_000
+): { selected: MempoolTransaction[]; totalWeight: number; totalFee: number } {
+  const sorted = sortByFeeRate(txs);
+  const selected: MempoolTransaction[] = [];
+  let totalWeight = 0;
+  let totalFee = 0;
+
+  for (const tx of sorted) {
+    if (totalWeight + tx.weight <= maxWeight) {
+      selected.push(tx);
+      totalWeight += tx.weight;
+      totalFee += tx.fee;
+    }
+  }
+
+  return { selected, totalWeight, totalFee };
+}</code></pre>
+    </div>
+
+    <h3 id="block-template" class="text-xl font-semibold text-[var(--text-primary)]">區塊模板</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 獲取區塊模板
+bitcoin-cli getblocktemplate '{"rules": ["segwit"]}'
+
+# 返回的模板包含：
+{
+  "previousblockhash": "...",
+  "transactions": [...],
+  "weight": 3999892,        # 區塊總重量（接近 4M 限制）
+  "sigoplimit": 80000,      # sigop 限制
+  "sigopcost": 12345,       # 當前 sigop 成本
+  "curtime": 1234567890,
+  "bits": "170d21b9",
+  "height": 800000,
+  ...
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rpc-commands" class="text-2xl font-bold text-[var(--text-primary)]">相關 RPC 命令</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊重量
+bitcoin-cli getblock <blockhash> 1 | jq '.weight'
+
+# 查看交易重量
+bitcoin-cli getrawtransaction <txid> true | jq '{size, vsize, weight}'
+
+# 解碼交易並查看重量
+bitcoin-cli decoderawtransaction <hex> | jq '{size, vsize, weight}'
+
+# 查看 mempool 統計
+bitcoin-cli getmempoolinfo
+# {
+#   "size": 12345,
+#   "bytes": 12345678,
+#   "usage": 87654321,
+#   "total_fee": 0.12345678,
+#   ...
+# }
+
+# 估算手續費（以 sat/vB 為單位）
+bitcoin-cli estimatesmartfee 6
+# {
+#   "feerate": 0.00012345,  # BTC/kvB
+#   "blocks": 6
+# }</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 使用 SegWit 或 Taproot 地址</li>
+          <li>• 以 sat/vB 計算手續費</li>
+          <li>• 批量處理輸出以減少總重量</li>
+          <li>• 使用高效的腳本類型</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 注意事項</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 不要用 bytes 估算 SegWit 手續費</li>
+          <li>• 考慮輸入的重量成本</li>
+          <li>• 監控區塊重量使用率</li>
+          <li>• 選擇合適的找零輸出類型</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Weight Units：</strong>4M WU 限制取代了 1 MB 區塊大小限制</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">見證折扣：</strong>見證數據以 1/4 成本計算，鼓勵使用 SegWit</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">vBytes：</strong>手續費以 sat/vB 計算，vBytes = Weight/4</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">實際效果：</strong>區塊大小增加到約 2 MB，同時減少 UTXO 膨脹</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

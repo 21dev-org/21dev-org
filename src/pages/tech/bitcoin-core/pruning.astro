@@ -1,0 +1,560 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Pruning"
+  description="深入了解 Bitcoin Core 的區塊鏈修剪機制，如何在有限硬碟空間下運行完整驗證節點。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Pruning' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'AssumeValid', href: '/tech/bitcoin-core/assumevalid' }}
+  nextPage={{ title: 'Tor Integration', href: '/tech/bitcoin-core/tor' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Pruning？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Pruning（修剪）是 Bitcoin Core 的一項功能，允許節點在完成驗證後刪除舊的區塊數據，只保留 UTXO 集合和最近的區塊。
+      這讓用戶可以在有限的硬碟空間下運行完整驗證節點。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">存儲需求比較</h3>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg text-center">
+          <div class="text-3xl font-bold text-bitcoin-500 mb-2">~600 GB</div>
+          <div class="text-sm text-[var(--text-secondary)]">完整區塊鏈</div>
+          <div class="text-xs text-[var(--text-tertiary)]">（持續增長）</div>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg text-center">
+          <div class="text-3xl font-bold text-green-500 mb-2">~10 GB</div>
+          <div class="text-sm text-[var(--text-secondary)]">修剪節點（最小）</div>
+          <div class="text-xs text-[var(--text-tertiary)]">（550 MiB 區塊）</div>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg text-center">
+          <div class="text-3xl font-bold text-blue-500 mb-2">~8 GB</div>
+          <div class="text-sm text-[var(--text-secondary)]">UTXO 集合</div>
+          <div class="text-xs text-[var(--text-tertiary)]">（必須保留）</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="how-it-works" class="text-2xl font-bold text-[var(--text-primary)]">運作原理</h2>
+
+    <h3 id="what-is-kept" class="text-xl font-semibold text-[var(--text-primary)]">保留的數據</h3>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 永久保留</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• <strong>UTXO 集合：</strong>所有未花費的交易輸出</li>
+          <li>• <strong>區塊頭：</strong>所有區塊的 80 位元組頭部</li>
+          <li>• <strong>區塊索引：</strong>區塊位置和元數據</li>
+          <li>• <strong>鏈狀態：</strong>當前鏈頂和驗證狀態</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 被刪除</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• <strong>舊區塊體：</strong>完整交易數據</li>
+          <li>• <strong>舊區塊撤銷數據：</strong>用於重組的回滾數據</li>
+          <li>• <strong>已花費輸出：</strong>歷史 UTXO</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 id="pruning-process" class="text-xl font-semibold text-[var(--text-primary)]">修剪流程</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>初始區塊下載（IBD）
+        ↓
+接收區塊 → 完整驗證 → 更新 UTXO → 寫入磁碟
+                                      ↓
+                              區塊數據超過限制？
+                                   ↙    ↘
+                                 否       是
+                                 ↓        ↓
+                               繼續    刪除最舊區塊
+                                          ↓
+                                    保留區塊頭
+                                          ↓
+                                    釋放磁碟空間</code></pre>
+    </div>
+
+    <h3 id="target-size" class="text-xl font-semibold text-[var(--text-primary)]">目標大小</h3>
+    <p class="text-[var(--text-secondary)]">
+      修剪目標是保留的區塊數據量，不包括 UTXO 集合和索引。最小值是 550 MiB，建議至少 1000 MiB：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 最小修剪（550 MiB 區塊數據）
+bitcoind -prune=550
+
+# 建議設定（2 GB 區塊數據）
+bitcoind -prune=2000
+
+# 保留約一週的區塊（~10 GB）
+bitcoind -prune=10000
+
+# 配置文件設定
+echo "prune=2000" >> ~/.bitcoin/bitcoin.conf</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <h3 id="prune-modes" class="text-xl font-semibold text-[var(--text-primary)]">修剪模式</h3>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-2 text-[var(--text-secondary)]">設定</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">說明</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">磁碟使用</th>
+          </tr>
+        </thead>
+        <tbody class="text-[var(--text-secondary)]">
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-mono">prune=0</td>
+            <td class="py-2">禁用修剪（預設）</td>
+            <td class="py-2">~600 GB+</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-mono">prune=1</td>
+            <td class="py-2">手動修剪模式</td>
+            <td class="py-2">可變</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-mono">prune=550</td>
+            <td class="py-2">自動修剪（最小）</td>
+            <td class="py-2">~10 GB</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-mono">prune=10000</td>
+            <td class="py-2">自動修剪（10 GB）</td>
+            <td class="py-2">~18 GB</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="manual-pruning" class="text-xl font-semibold text-[var(--text-primary)]">手動修剪</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用手動修剪模式
+bitcoind -prune=1
+
+# 手動修剪到指定高度
+bitcoin-cli pruneblockchain 800000
+
+# 返回實際修剪到的高度
+# {
+#   "result": 800000
+# }
+
+# 查看修剪狀態
+bitcoin-cli getblockchaininfo | grep prune</code></pre>
+    </div>
+
+    <h3 id="rpc-commands" class="text-xl font-semibold text-[var(--text-primary)]">相關 RPC 命令</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊鏈資訊
+bitcoin-cli getblockchaininfo
+# {
+#   "pruned": true,
+#   "pruneheight": 750000,
+#   "prune_target_size": 576716800,
+#   ...
+# }
+
+# 手動觸發修剪
+bitcoin-cli pruneblockchain 800000
+
+# 查看磁碟使用
+bitcoin-cli gettxoutsetinfo
+# {
+#   "disk_size": 8234567890,  # UTXO 集合大小
+#   ...
+# }</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="limitations" class="text-2xl font-bold text-[var(--text-primary)]">功能限制</h2>
+
+    <div class="bg-yellow-500/10 p-6 rounded-lg border border-yellow-500/30">
+      <h3 class="text-lg font-semibold text-yellow-400 mb-4">修剪節點的限制</h3>
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">無法提供歷史區塊：</strong>
+            修剪節點不能為其他節點提供已刪除的區塊數據。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">無法重新掃描：</strong>
+            <code class="bg-[var(--bg-primary)] px-1 rounded">rescanblockchain</code> 只能掃描保留的區塊。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">無法使用 txindex：</strong>
+            交易索引需要完整區塊數據，與修剪不兼容。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">錢包導入受限：</strong>
+            導入舊地址可能無法找到歷史交易。
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="still-possible" class="text-xl font-semibold text-[var(--text-primary)]">仍然可行的功能</h3>
+
+    <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+      <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+        <li>• 完整交易驗證（當前和未來）</li>
+        <li>• 接收和發送比特幣</li>
+        <li>• 驗證新區塊和交易</li>
+        <li>• 提供區塊頭給 SPV 客戶端</li>
+        <li>• 提供保留範圍內的區塊</li>
+        <li>• 參與交易中繼</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="block-files" class="text-xl font-semibold text-[var(--text-primary)]">區塊文件結構</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 將區塊存儲在 blk*.dat 文件中，每個文件最大約 128 MB：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/blocks/
+├── blk00000.dat      # 區塊數據
+├── blk00001.dat
+├── ...
+├── blkNNNNN.dat
+├── rev00000.dat      # 撤銷數據（用於重組）
+├── rev00001.dat
+├── ...
+└── index/            # LevelDB 索引
+    ├── 000001.log
+    ├── CURRENT
+    └── ...</code></pre>
+    </div>
+
+    <h3 id="pruning-algorithm" class="text-xl font-semibold text-[var(--text-primary)]">修剪演算法</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface PruneState {
+  pruneTarget: number;      // 目標保留大小（位元組）
+  currentSize: number;      // 當前區塊數據大小
+  pruneHeight: number;      // 已修剪到的高度
+  minBlocksToKeep: number;  // 最少保留區塊數
+}
+
+class BlockPruner {
+  private readonly MIN_BLOCKS = 288;  // 約 2 天的區塊
+
+  async maybePrune(state: PruneState): Promise<void> {
+    // 檢查是否需要修剪
+    if (state.currentSize <= state.pruneTarget) {
+      return;
+    }
+
+    const chainHeight = await this.getChainHeight();
+    const minKeepHeight = chainHeight - this.MIN_BLOCKS;
+
+    // 從最舊的區塊開始刪除
+    let heightToDelete = state.pruneHeight + 1;
+
+    while (
+      state.currentSize > state.pruneTarget &&
+      heightToDelete < minKeepHeight
+    ) {
+      await this.pruneBlock(heightToDelete);
+      heightToDelete++;
+    }
+
+    console.log(`Pruned to height ${heightToDelete - 1}`);
+  }
+
+  private async pruneBlock(height: number): Promise<void> {
+    // 1. 刪除區塊數據文件中的數據
+    await this.deleteBlockData(height);
+
+    // 2. 刪除對應的撤銷數據
+    await this.deleteUndoData(height);
+
+    // 3. 更新索引（保留區塊頭）
+    await this.updateIndex(height, { pruned: true });
+  }
+}
+
+// 文件級修剪
+class FileBasedPruner {
+  private readonly FILE_SIZE = 128 * 1024 * 1024;  // 128 MB
+
+  async pruneOldFiles(
+    currentSize: number,
+    targetSize: number
+  ): Promise<number> {
+    let prunedSize = 0;
+    const files = await this.getBlockFiles();
+
+    // 按順序刪除舊文件
+    for (const file of files) {
+      if (currentSize - prunedSize <= targetSize) {
+        break;
+      }
+
+      // 檢查文件中的區塊是否都可以刪除
+      if (await this.canPruneFile(file)) {
+        const fileSize = await this.deleteFile(file);
+        prunedSize += fileSize;
+        console.log(`Deleted ${file}, freed ${fileSize} bytes`);
+      }
+    }
+
+    return prunedSize;
+  }
+
+  private async canPruneFile(file: string): Promise<boolean> {
+    // 檢查文件中是否有需要保留的區塊
+    const blocks = await this.getBlocksInFile(file);
+    const minHeight = await this.getMinKeepHeight();
+
+    return blocks.every(b => b.height < minHeight);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="network-impact" class="text-2xl font-bold text-[var(--text-primary)]">網路影響</h2>
+
+    <h3 id="serving-blocks" class="text-xl font-semibold text-[var(--text-primary)]">區塊服務能力</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <p class="text-[var(--text-secondary)] mb-4">
+        修剪節點會在 P2P 網路中廣播其能提供的區塊範圍：
+      </p>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>服務標誌位：
+- NODE_NETWORK (1)        : 可以提供完整區塊歷史
+- NODE_NETWORK_LIMITED (1024) : 只能提供最近的區塊
+
+修剪節點使用 NODE_NETWORK_LIMITED，表示：
+- 可以提供最近 288 個區塊（約 2 天）
+- 不能提供更早的區塊
+- 仍然可以中繼新交易和區塊</code></pre>
+    </div>
+
+    <h3 id="ibd-peers" class="text-xl font-semibold text-[var(--text-primary)]">IBD 對等節點選擇</h3>
+    <p class="text-[var(--text-secondary)]">
+      新節點在進行初始區塊下載時，會優先連接具有 NODE_NETWORK 標誌的完整節點，因為修剪節點無法提供完整歷史。
+    </p>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="wallet-considerations" class="text-2xl font-bold text-[var(--text-primary)]">錢包注意事項</h2>
+
+    <h3 id="new-wallet" class="text-xl font-semibold text-[var(--text-primary)]">新錢包</h3>
+    <p class="text-[var(--text-secondary)]">
+      對於新創建的錢包，修剪節點運作正常。錢包只需要追蹤從創建時間之後的交易。
+    </p>
+
+    <h3 id="importing-keys" class="text-xl font-semibold text-[var(--text-primary)]">導入密鑰</h3>
+
+    <div class="bg-yellow-500/10 p-6 rounded-lg border border-yellow-500/30">
+      <h4 class="font-semibold text-yellow-400 mb-3">警告：導入舊密鑰</h4>
+      <p class="text-sm text-[var(--text-secondary)] mb-4">
+        如果導入一個有歷史交易的密鑰，修剪節點可能無法找到相關交易：
+      </p>
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 這可能不會找到所有歷史交易
+bitcoin-cli importprivkey "your-private-key"
+
+# 解決方案 1：使用 rescanblockchain 掃描保留的區塊
+bitcoin-cli rescanblockchain 800000  # 只能掃描保留的範圍
+
+# 解決方案 2：使用完整節點導入
+# 或使用外部區塊瀏覽器查看歷史
+
+# 解決方案 3：使用 descriptor 錢包指定出生高度
+bitcoin-cli importdescriptors '[{
+  "desc": "wpkh(your-xpub/0/*)#checksum",
+  "timestamp": "2023-01-01"
+}]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="vs-alternatives" class="text-2xl font-bold text-[var(--text-primary)]">與其他方案比較</h2>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-2 text-[var(--text-secondary)]">方案</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">存儲</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">驗證</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">信任</th>
+          </tr>
+        </thead>
+        <tbody class="text-[var(--text-secondary)]">
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">完整節點</td>
+            <td class="py-2">~600 GB</td>
+            <td class="py-2 text-green-400">完整</td>
+            <td class="py-2 text-green-400">無需信任</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">修剪節點</td>
+            <td class="py-2">~10 GB</td>
+            <td class="py-2 text-green-400">完整</td>
+            <td class="py-2 text-green-400">無需信任</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">SPV 錢包</td>
+            <td class="py-2">~50 MB</td>
+            <td class="py-2 text-yellow-400">僅 PoW</td>
+            <td class="py-2 text-yellow-400">信任節點</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2 font-semibold text-[var(--text-primary)]">託管錢包</td>
+            <td class="py-2">0</td>
+            <td class="py-2 text-red-400">無</td>
+            <td class="py-2 text-red-400">完全信任</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">結論</h4>
+      <p class="text-[var(--text-secondary)]">
+        修剪節點提供與完整節點相同的安全保證，因為它在刪除數據之前已經驗證了所有內容。
+        唯一的代價是無法為其他節點提供歷史區塊。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="setup-guide" class="text-2xl font-bold text-[var(--text-primary)]">設定指南</h2>
+
+    <h3 id="fresh-install" class="text-xl font-semibold text-[var(--text-primary)]">全新安裝</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 創建配置文件
+mkdir -p ~/.bitcoin
+cat > ~/.bitcoin/bitcoin.conf << 'EOF'
+# 啟用修剪，保留 2 GB 區塊數據
+prune=2000
+
+# 其他推薦設定
+server=1
+txindex=0  # 修剪模式下必須禁用
+EOF
+
+# 2. 啟動節點
+bitcoind
+
+# 3. 等待同步完成
+bitcoin-cli getblockchaininfo</code></pre>
+    </div>
+
+    <h3 id="convert-existing" class="text-xl font-semibold text-[var(--text-primary)]">轉換現有節點</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 停止節點
+bitcoin-cli stop
+
+# 2. 編輯配置文件
+echo "prune=2000" >> ~/.bitcoin/bitcoin.conf
+
+# 3. 如果之前啟用了 txindex，必須禁用
+sed -i 's/txindex=1/txindex=0/' ~/.bitcoin/bitcoin.conf
+
+# 4. 重新啟動
+bitcoind
+
+# 節點會在運行時自動開始修剪舊區塊</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">注意：</strong>
+        如果之前啟用了 txindex，需要在轉換前禁用它，否則節點會報錯。
+        禁用 txindex 後需要重新建立索引或刪除索引文件。
+      </p>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 推薦</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 設定 prune >= 1000（至少 1 GB）</li>
+          <li>• 使用 SSD 以獲得更好效能</li>
+          <li>• 定期備份錢包文件</li>
+          <li>• 監控磁碟空間使用</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 不要同時啟用 txindex</li>
+          <li>• 不要頻繁導入舊密鑰</li>
+          <li>• 不要期望提供歷史區塊</li>
+          <li>• 不要設定過小的修剪目標</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">完整驗證：</strong>修剪節點驗證所有交易和區塊，安全性與完整節點相同</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">低存儲需求：</strong>只需約 10 GB 即可運行完整驗證節點</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">保留 UTXO：</strong>所有未花費輸出都被保留，支援正常交易</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">有限服務：</strong>無法為其他節點提供歷史區塊，無法使用 txindex</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

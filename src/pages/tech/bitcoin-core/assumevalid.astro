@@ -1,0 +1,578 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="AssumeValid"
+  description="深入了解 Bitcoin Core 的 AssumeValid 優化機制，如何在保持安全性的前提下加速初始區塊下載。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'AssumeValid' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'AssumeUTXO', href: '/tech/bitcoin-core/assumeutxo' }}
+  nextPage={{ title: 'Pruning', href: '/tech/bitcoin-core/pruning' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 AssumeValid？</h2>
+    <p class="text-[var(--text-secondary)]">
+      AssumeValid 是 Bitcoin Core 0.14.0 引入的優化功能，允許節點在初始區塊下載（IBD）期間跳過對歷史區塊中交易簽名的驗證。
+      這不是信任假設的改變，而是效能優化——節點仍然驗證所有其他共識規則，只是推遲了簽名驗證。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">AssumeValid vs 傳統驗證</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">傳統 IBD</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 驗證每個交易的簽名</li>
+            <li>• CPU 密集型操作</li>
+            <li>• 同步需要數小時到數天</li>
+            <li>• 完整的密碼學驗證</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">AssumeValid IBD</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 跳過已知區塊的簽名驗證</li>
+            <li>• 大幅減少 CPU 使用</li>
+            <li>• 同步時間減少 80%+</li>
+            <li>• 仍驗證區塊結構和 UTXO</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="how-it-works" class="text-2xl font-bold text-[var(--text-primary)]">運作原理</h2>
+
+    <h3 id="assume-valid-block" class="text-xl font-semibold text-[var(--text-primary)]">AssumeValid 區塊</h3>
+    <p class="text-[var(--text-secondary)]">
+      Bitcoin Core 在源碼中硬編碼了一個「假設有效」的區塊雜湊。對於這個區塊及其所有祖先區塊，節點會跳過腳本驗證。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">驗證流程</h4>
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>下載區塊 → 驗證 PoW → 驗證區塊結構 → 驗證 Merkle Root
+                                              ↓
+                            區塊高度 <= AssumeValid？
+                                    ↙         ↘
+                                  是            否
+                                  ↓             ↓
+                            跳過腳本驗證    完整腳本驗證
+                                  ↓             ↓
+                            更新 UTXO Set   更新 UTXO Set</code></pre>
+    </div>
+
+    <h3 id="still-verified" class="text-xl font-semibold text-[var(--text-primary)]">仍然驗證的內容</h3>
+    <p class="text-[var(--text-secondary)]">
+      AssumeValid 不是盲目信任，節點仍然驗證大量共識規則：
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 仍然驗證</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 工作量證明（PoW）</li>
+          <li>• 區塊結構和大小</li>
+          <li>• Merkle 樹正確性</li>
+          <li>• 交易結構有效性</li>
+          <li>• UTXO 雙花檢查</li>
+          <li>• 幣齡和金額</li>
+          <li>• 時間鎖條件</li>
+          <li>• Coinbase 成熟度</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">⏭ 跳過驗證</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• ECDSA/Schnorr 簽名</li>
+          <li>• 腳本執行</li>
+          <li>• OP_CHECKSIG 操作</li>
+          <li>• 多重簽名驗證</li>
+          <li>• 時間鎖腳本</li>
+          <li>• 自訂腳本邏輯</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="security" class="text-2xl font-bold text-[var(--text-primary)]">安全性分析</h2>
+
+    <h3 id="trust-model" class="text-xl font-semibold text-[var(--text-primary)]">信任模型</h3>
+    <p class="text-[var(--text-secondary)]">
+      AssumeValid 的安全性基於以下觀察：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-4 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">1.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">PoW 仍然驗證：</strong>
+            攻擊者無法創建不包含真實工作量證明的假區塊鏈。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">2.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">UTXO 仍然驗證：</strong>
+            雙花和無效支出仍會被檢測到，只是不驗證簽名本身。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">3.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">公開審查：</strong>
+            AssumeValid 雜湊在源碼中公開，任何人都可以審查。
+          </div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500 font-bold">4.</span>
+          <div>
+            <strong class="text-[var(--text-primary)]">可禁用：</strong>
+            用戶可以用 <code class="bg-[var(--bg-primary)] px-1 rounded">-assumevalid=0</code> 禁用此功能。
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <h3 id="attack-scenarios" class="text-xl font-semibold text-[var(--text-primary)]">攻擊場景分析</h3>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">假設的攻擊</h4>
+      <p class="text-[var(--text-secondary)] mb-4">
+        如果 Bitcoin Core 開發者是惡意的，他們可以在 AssumeValid 區塊之前插入一個偷取所有比特幣的交易？
+      </p>
+      <h4 class="font-semibold text-green-400 mb-3">為什麼不可行</h4>
+      <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+        <li>• <strong>需要礦工配合：</strong>惡意交易需要被打包進區塊，需要礦工的 PoW</li>
+        <li>• <strong>UTXO 驗證：</strong>偷取比特幣會創建無效的 UTXO 支出，這仍會被檢測</li>
+        <li>• <strong>公開可審計：</strong>任何人都可以驗證 AssumeValid 區塊是否在主鏈上</li>
+        <li>• <strong>需要超過源碼信任：</strong>如果不信任源碼，根本不應該運行該軟體</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <h3 id="cli-options" class="text-xl font-semibold text-[var(--text-primary)]">命令行選項</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用預設的 AssumeValid（推薦）
+bitcoind
+
+# 禁用 AssumeValid，完整驗證所有簽名
+bitcoind -assumevalid=0
+
+# 使用自訂的 AssumeValid 區塊
+bitcoind -assumevalid=000000000000000000029ab747014fcd6b1e0d3b1d0c4e5a6e7f8b9c0d1e2f3a
+
+# 查看當前的 AssumeValid 設定
+bitcoin-cli getblockchaininfo | grep assumevalid</code></pre>
+    </div>
+
+    <h3 id="config-file" class="text-xl font-semibold text-[var(--text-primary)]">配置文件</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <p class="text-sm text-[var(--text-secondary)] mb-3">在 bitcoin.conf 中設定：</p>
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 禁用 AssumeValid
+assumevalid=0
+
+# 或指定特定區塊
+assumevalid=000000000000000000029ab747014fcd6b1e0d3b1d0c4e5a6e7f8b9c0d1e2f3a</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <h3 id="source-code" class="text-xl font-semibold text-[var(--text-primary)]">源碼中的定義</h3>
+    <p class="text-[var(--text-secondary)]">
+      AssumeValid 區塊雜湊在 chainparams.cpp 中定義，每個版本都會更新到較新的區塊：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// src/kernel/chainparams.cpp (Bitcoin Core)
+class CMainParams : public CChainParams {
+public:
+    CMainParams() {
+        // ...
+
+        // AssumeValid 區塊雜湊
+        // 這個區塊及其所有祖先的腳本都不會被驗證
+        consensus.defaultAssumeValid = uint256S(
+            "00000000000000000001a0a448d6cf2546b06801389cc030b2b18c6491266815"
+        );
+
+        // 相關的最小鏈工作量
+        consensus.nMinimumChainWork = uint256S(
+            "000000000000000000000000000000000000000052b2559353df4117b7348b64"
+        );
+    }
+};</code></pre>
+    </div>
+
+    <h3 id="validation-logic" class="text-xl font-semibold text-[var(--text-primary)]">驗證邏輯</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// 簡化的驗證邏輯
+bool CheckBlock(const CBlock& block, CValidationState& state) {
+    // 1. 始終驗證 PoW
+    if (!CheckProofOfWork(block.GetHash(), block.nBits, params)) {
+        return state.Invalid("high-hash");
+    }
+
+    // 2. 始終驗證區塊結構
+    if (!CheckBlockStructure(block, state)) {
+        return false;
+    }
+
+    // 3. 檢查是否在 AssumeValid 範圍內
+    bool fScriptChecks = true;
+    if (pindexBestHeader != nullptr) {
+        // 如果當前區塊是 assumevalid 區塊的祖先
+        if (IsAssumeValidAncestor(pindex)) {
+            fScriptChecks = false;  // 跳過腳本驗證
+        }
+    }
+
+    // 4. 驗證交易
+    for (const auto& tx : block.vtx) {
+        if (!CheckTransaction(*tx, state)) {
+            return false;
+        }
+
+        // 只有在需要時才驗證腳本
+        if (fScriptChecks) {
+            if (!VerifyScript(tx->vin, tx->vout)) {
+                return state.Invalid("script-verify-failed");
+            }
+        }
+    }
+
+    return true;
+}</code></pre>
+    </div>
+
+    <h3 id="typescript-example" class="text-xl font-semibold text-[var(--text-primary)]">TypeScript 模擬</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface Block {
+  hash: string;
+  height: number;
+  prevHash: string;
+  transactions: Transaction[];
+  nonce: number;
+  difficulty: bigint;
+}
+
+interface ValidationConfig {
+  assumeValidBlock: string | null;  // null = 完整驗證
+}
+
+class BlockValidator {
+  private assumeValidHeight: number | null = null;
+
+  constructor(private config: ValidationConfig) {}
+
+  async initialize(getBlockHeight: (hash: string) => Promise<number>) {
+    if (this.config.assumeValidBlock) {
+      this.assumeValidHeight = await getBlockHeight(
+        this.config.assumeValidBlock
+      );
+    }
+  }
+
+  async validateBlock(block: Block): Promise<boolean> {
+    // 1. 始終驗證 PoW
+    if (!this.validatePoW(block)) {
+      throw new Error('Invalid proof of work');
+    }
+
+    // 2. 始終驗證區塊結構
+    if (!this.validateStructure(block)) {
+      throw new Error('Invalid block structure');
+    }
+
+    // 3. 決定是否需要腳本驗證
+    const needScriptValidation = this.shouldValidateScripts(block);
+
+    // 4. 驗證所有交易
+    for (const tx of block.transactions) {
+      // UTXO 驗證（始終執行）
+      if (!await this.validateUTXO(tx)) {
+        throw new Error('Invalid UTXO spend');
+      }
+
+      // 腳本驗證（可能跳過）
+      if (needScriptValidation) {
+        if (!await this.validateScripts(tx)) {
+          throw new Error('Script validation failed');
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private shouldValidateScripts(block: Block): boolean {
+    // 如果沒有設定 assumevalid，驗證所有腳本
+    if (this.assumeValidHeight === null) {
+      return true;
+    }
+
+    // 如果區塊高度超過 assumevalid，需要驗證
+    return block.height > this.assumeValidHeight;
+  }
+
+  private validatePoW(block: Block): boolean {
+    // 驗證區塊雜湊小於目標難度
+    const hash = BigInt('0x' + block.hash);
+    const target = this.calculateTarget(block.difficulty);
+    return hash < target;
+  }
+
+  private validateStructure(block: Block): boolean {
+    // 驗證 Merkle root、區塊大小等
+    return true; // 簡化
+  }
+
+  private async validateUTXO(tx: Transaction): Promise<boolean> {
+    // 驗證輸入引用有效的 UTXO，金額正確等
+    return true; // 簡化
+  }
+
+  private async validateScripts(tx: Transaction): Promise<boolean> {
+    // 執行腳本驗證（ECDSA 簽名等）
+    return true; // 簡化
+  }
+
+  private calculateTarget(difficulty: bigint): bigint {
+    const maxTarget = BigInt('0x00000000FFFF0000000000000000000000000000000000000000000000000000');
+    return maxTarget / difficulty;
+  }
+}
+
+// 使用示例
+const validator = new BlockValidator({
+  assumeValidBlock: '00000000000000000001a0a448d6cf2546b06801389cc030b2b18c6491266815'
+});
+
+// 同步期間
+async function syncBlocks(blocks: Block[]) {
+  for (const block of blocks) {
+    await validator.validateBlock(block);
+    console.log(`Block ${block.height}: validated (scripts: ${
+      block.height > 800000 ? 'yes' : 'skipped'
+    })`);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="performance" class="text-2xl font-bold text-[var(--text-primary)]">效能影響</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">IBD 時間比較（典型硬體）</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">模式</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">CPU 使用</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">同步時間</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">安全性</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">完整驗證</td>
+              <td class="py-2">100%</td>
+              <td class="py-2">24-72 小時</td>
+              <td class="py-2 text-green-400">最高</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">AssumeValid（預設）</td>
+              <td class="py-2">~30%</td>
+              <td class="py-2">4-12 小時</td>
+              <td class="py-2 text-green-400">等效</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">AssumeUTXO</td>
+              <td class="py-2">~10%</td>
+              <td class="py-2">10-30 分鐘*</td>
+              <td class="py-2 text-yellow-400">信任快照</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-[var(--text-tertiary)] mt-2">* AssumeUTXO 需要額外時間在背景完成驗證</p>
+    </div>
+
+    <h3 id="why-so-fast" class="text-xl font-semibold text-[var(--text-primary)]">為什麼快這麼多？</h3>
+    <p class="text-[var(--text-secondary)]">
+      簽名驗證是 IBD 中最耗費 CPU 的操作。區塊鏈包含數億個簽名，每個都需要橢圓曲線運算：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span><strong class="text-[var(--text-primary)]">ECDSA 驗證：</strong>每個簽名需要 ~1ms CPU 時間</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span><strong class="text-[var(--text-primary)]">總簽名數：</strong>區塊鏈包含 10+ 億個簽名</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span><strong class="text-[var(--text-primary)]">跳過效益：</strong>節省 80%+ 的 CPU 計算時間</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">•</span>
+          <span><strong class="text-[var(--text-primary)]">瓶頸轉移：</strong>從 CPU 轉為 I/O 和網路</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="vs-assumeutxo" class="text-2xl font-bold text-[var(--text-primary)]">AssumeValid vs AssumeUTXO</h2>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border-default)]">
+            <th class="text-left py-2 text-[var(--text-secondary)]">特性</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">AssumeValid</th>
+            <th class="text-left py-2 text-[var(--text-secondary)]">AssumeUTXO</th>
+          </tr>
+        </thead>
+        <tbody class="text-[var(--text-secondary)]">
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2">跳過內容</td>
+            <td class="py-2">簽名驗證</td>
+            <td class="py-2">整個歷史區塊</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2">PoW 驗證</td>
+            <td class="py-2 text-green-400">是</td>
+            <td class="py-2 text-yellow-400">背景執行</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2">UTXO 驗證</td>
+            <td class="py-2 text-green-400">是</td>
+            <td class="py-2 text-yellow-400">信任快照</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2">同步速度</td>
+            <td class="py-2">快 3-5 倍</td>
+            <td class="py-2">快 10-20 倍</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2">預設啟用</td>
+            <td class="py-2 text-green-400">是</td>
+            <td class="py-2 text-yellow-400">否</td>
+          </tr>
+          <tr class="border-b border-[var(--border-default)]">
+            <td class="py-2">最終狀態</td>
+            <td class="py-2">完整驗證節點</td>
+            <td class="py-2">完整驗證節點*</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-sm text-[var(--text-tertiary)]">* AssumeUTXO 在背景完成驗證後達到完整驗證狀態</p>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="updates" class="text-2xl font-bold text-[var(--text-primary)]">更新機制</h2>
+    <p class="text-[var(--text-secondary)]">
+      AssumeValid 區塊雜湊會在每個 Bitcoin Core 主要版本中更新，通常選擇發布前幾個月的區塊：
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">更新流程</h4>
+      <ol class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <span>開發者選擇一個已被廣泛確認的區塊（通常 1000+ 確認）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <span>驗證該區塊在所有已知節點上都存在且相同</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <span>更新源碼中的雜湊值</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <span>代碼審查確保雜湊正確</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">5</span>
+          <span>發布新版本</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 推薦做法</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 對大多數用戶使用預設設定</li>
+          <li>• 保持 Bitcoin Core 更新</li>
+          <li>• 信任但驗證源碼來源</li>
+          <li>• 理解這只是效能優化</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">⚠ 特殊情況</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-2">
+          <li>• 安全審計時使用 -assumevalid=0</li>
+          <li>• 研究歷史交易時完整驗證</li>
+          <li>• 建立新實現時從頭驗證</li>
+          <li>• 懷疑鏈分裂時完整驗證</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">效能優化：</strong>IBD 時間減少 70-80%，不犧牲安全性</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">仍然驗證：</strong>PoW、區塊結構、UTXO 支出都完整驗證</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">可選擇性：</strong>用戶可以禁用並執行完整驗證</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">透明公開：</strong>AssumeValid 雜湊在開源代碼中公開審查</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
