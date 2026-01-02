@@ -1,0 +1,489 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Package Relay"
+  description="Package Relay：交易包中繼與驗證機制"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Package Relay' },
+  ]}
+  difficulty="advanced"
+  readingTime="16 分鐘"
+  prevPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+  nextPage={{ title: 'Fees', href: '/tech/bitcoin-core/fees' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Package Relay 允許將多筆相關交易作為一個「包」(package) 一起提交和驗證，
+    而不是單獨處理每筆交易。這解決了 CPFP（子付父）場景中的手續費問題，
+    對閃電網路等二層協議的安全性至關重要。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>開發狀態：</strong>
+      Package Relay 正在積極開發中。部分功能已在 Bitcoin Core 中實現，
+      完整的 P2P 協議仍在進行中。
+    </p>
+  </div>
+
+  <h2 id="problem">問題背景</h2>
+
+  <h3>CPFP 的困境</h3>
+  <pre><code class="language-text" is:raw>當前交易接受邏輯的問題:
+
+場景: 父交易手續費太低
+┌─────────────────────────────────────────────┐
+│ Parent TX                                   │
+│ - Fee: 1 sat/vB (低於 mempool 最低)         │
+│ - 狀態: 被拒絕 ✗                            │
+└─────────────────────────────────────────────┘
+           │
+           ▼ (花費 parent 的輸出)
+┌─────────────────────────────────────────────┐
+│ Child TX                                    │
+│ - Fee: 100 sat/vB (很高)                    │
+│ - 狀態: 無法驗證 (parent 不在 mempool)      │
+└─────────────────────────────────────────────┘
+
+問題:
+1. Parent 手續費太低，被節點拒絕
+2. Child 引用了不存在的輸入
+3. 即使 child 願意付高費用，也無法幫助 parent
+4. 形成死鎖
+
+這對閃電網路很危險:
+- 強制關閉交易可能手續費不足
+- 無法及時確認可能導致資金損失</code></pre>
+
+  <h3>閃電網路場景</h3>
+  <pre><code class="language-text" is:raw>閃電網路承諾交易:
+
+問題場景:
+1. Alice 和 Bob 有通道
+2. Bob 廣播過時的承諾交易
+3. Alice 需要廣播懲罰交易
+4. 但承諾交易手續費太低
+
+傳統解決方案 - Anchor Outputs:
+- 在承諾交易中添加小額錨定輸出
+- 允許任一方使用 CPFP 加速
+
+問題仍存在:
+- 承諾交易必須先進入 mempool
+- 如果完全被拒絕，錨定輸出無法使用
+
+Package Relay 解決方案:
+- 將承諾交易和 CPFP 交易一起提交
+- 以包的總手續費率評估
+- 確保時間敏感的交易能被處理</code></pre>
+
+  <h2 id="design">設計原理</h2>
+
+  <h3>Package 定義</h3>
+  <pre><code class="language-text" is:raw>什麼是 Package:
+
+定義: 有依賴關係的交易集合
+
+規則:
+1. 拓撲排序 (父交易在前)
+2. 連通 (形成 DAG)
+3. 大小限制 (通常 <= 25 交易)
+4. 總大小限制
+
+Package 類型:
+┌─────────────────────────────────────────────┐
+│ 1. Child-With-Unconfirmed-Parents (CWUP)   │
+│                                             │
+│    Parent1    Parent2                       │
+│       \         /                           │
+│        \       /                            │
+│         Child                               │
+│                                             │
+│ 最常見的場景                                │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│ 2. Package CPFP                             │
+│                                             │
+│    Low-fee Parent                           │
+│         │                                   │
+│         ▼                                   │
+│    High-fee Child                           │
+│                                             │
+│ 子交易為父交易提供手續費                    │
+└─────────────────────────────────────────────┘</code></pre>
+
+  <h3>費率計算</h3>
+  <pre><code class="language-text" is:raw>Package 費率計算:
+
+單交易費率:
+fee_rate = fee / vsize
+
+Package 費率:
+package_fee_rate = total_fees / total_vsize
+
+範例:
+Parent: 200 vB, 200 sat (1 sat/vB)
+Child:  100 vB, 5000 sat (50 sat/vB)
+Package: 300 vB, 5200 sat (17.3 sat/vB)
+
+驗收規則:
+1. Package 費率 >= mempool 最低費率
+2. 不低於增量費率 (如果替換)
+3. 符合 mempool 限制
+
+與單獨評估對比:
+單獨: Parent 被拒 (1 sat/vB 太低)
+Package: 接受 (17.3 sat/vB 足夠)</code></pre>
+
+  <h2 id="implementation">實作細節</h2>
+
+  <h3>驗證流程</h3>
+  <pre><code class="language-typescript" is:raw>interface Package {
+  transactions: Transaction[];
+  // 必須拓撲排序
+}
+
+interface PackageValidation {
+  valid: boolean;
+  accepted: Transaction[];
+  rejected: Array&lt;{ tx: Transaction; reason: string }&gt;;
+}
+
+async function validatePackage(
+  pkg: Package,
+  mempool: Mempool
+): Promise&lt;PackageValidation&gt; {
+  const accepted: Transaction[] = [];
+  const rejected: Array&lt;{ tx: Transaction; reason: string }&gt; = [];
+
+  // 創建臨時 UTXO 視圖
+  const tempUtxoSet = mempool.getUtxoSnapshot();
+
+  // 計算 package 總費用和大小
+  let totalFees = 0n;
+  let totalVsize = 0;
+
+  for (const tx of pkg.transactions) {
+    // 驗證交易結構
+    const structureResult = validateTransactionStructure(tx);
+    if (!structureResult.valid) {
+      rejected.push({ tx, reason: structureResult.error! });
+      continue;
+    }
+
+    // 驗證輸入 (可以來自 mempool、區塊鏈或 package 內)
+    const inputsResult = await validateInputs(tx, tempUtxoSet);
+    if (!inputsResult.valid) {
+      rejected.push({ tx, reason: inputsResult.error! });
+      continue;
+    }
+
+    // 計算費用
+    const fee = inputsResult.totalInput - getTotalOutput(tx);
+    totalFees += fee;
+    totalVsize += getVirtualSize(tx);
+
+    // 更新臨時 UTXO 集合
+    for (const input of tx.inputs) {
+      tempUtxoSet.spend(input.txid, input.vout);
+    }
+    for (let i = 0; i &lt; tx.outputs.length; i++) {
+      tempUtxoSet.add(tx.txid, i, tx.outputs[i]);
+    }
+
+    accepted.push(tx);
+  }
+
+  // 檢查 package 費率
+  const packageFeeRate = Number(totalFees) / totalVsize;
+  if (packageFeeRate &lt; mempool.getMinFeeRate()) {
+    return {
+      valid: false,
+      accepted: [],
+      rejected: accepted.map(tx => ({
+        tx,
+        reason: 'Package fee rate too low'
+      }))
+    };
+  }
+
+  // 提交到 mempool
+  for (const tx of accepted) {
+    mempool.add(tx);
+  }
+
+  return { valid: true, accepted, rejected };
+}</code></pre>
+
+  <h3>Package RBF</h3>
+  <pre><code class="language-typescript" is:raw>// Package 替換 (Package RBF)
+interface PackageRBFResult {
+  success: boolean;
+  replaced: Transaction[];
+  error?: string;
+}
+
+async function packageRBF(
+  pkg: Package,
+  mempool: Mempool
+): Promise&lt;PackageRBFResult&gt; {
+  // 找出被替換的交易
+  const toReplace: Transaction[] = [];
+
+  for (const tx of pkg.transactions) {
+    for (const input of tx.inputs) {
+      const conflicting = mempool.findConflicting(input.txid, input.vout);
+      if (conflicting) {
+        toReplace.push(conflicting);
+        // 也需要移除其所有後代
+        toReplace.push(...mempool.getDescendants(conflicting.txid));
+      }
+    }
+  }
+
+  if (toReplace.length === 0) {
+    // 不是 RBF，普通添加
+    return { success: true, replaced: [] };
+  }
+
+  // 計算被替換交易的總費用
+  const replacedFees = toReplace.reduce(
+    (sum, tx) => sum + mempool.getFee(tx.txid),
+    0n
+  );
+
+  // 計算新 package 的總費用
+  let packageFees = 0n;
+  for (const tx of pkg.transactions) {
+    packageFees += calculateFee(tx);
+  }
+
+  // RBF 規則: 新費用必須足夠高
+  const incrementalFee = mempool.getIncrementalRelayFee() *
+    BigInt(getTotalVsize(pkg.transactions));
+
+  if (packageFees &lt; replacedFees + incrementalFee) {
+    return {
+      success: false,
+      replaced: [],
+      error: 'Insufficient fee for replacement'
+    };
+  }
+
+  // 執行替換
+  for (const tx of toReplace) {
+    mempool.remove(tx.txid);
+  }
+
+  for (const tx of pkg.transactions) {
+    mempool.add(tx);
+  }
+
+  return { success: true, replaced: toReplace };
+}</code></pre>
+
+  <h2 id="p2p-protocol">P2P 協議</h2>
+
+  <h3>新訊息類型</h3>
+  <pre><code class="language-text" is:raw>Package Relay P2P 訊息 (提案中):
+
+1. sendpackages
+   - 在連接時協商
+   - 表示支持 package relay
+
+2. getpkgtxns
+   - 請求 package 中的交易
+   - 包含祖先 TXIDs
+
+3. pkgtxns
+   - 回覆 package 交易
+   - 拓撲排序的交易列表
+
+4. pkginfo
+   - package 元數據
+   - 包含費用、大小等信息
+
+訊息流程:
+┌────────────────────────────────────────────────┐
+│ Node A                         Node B          │
+│    │                              │            │
+│    │ ─── sendpackages ──▶         │            │
+│    │ ◀── sendpackages ───         │            │
+│    │                              │            │
+│    │ (收到孤立交易 child)          │            │
+│    │                              │            │
+│    │ ── getpkgtxns(child) ──▶     │            │
+│    │                              │            │
+│    │ ◀── pkgtxns(parent, child)── │            │
+│    │                              │            │
+│    │ (驗證並接受 package)          │            │
+└────────────────────────────────────────────────┘</code></pre>
+
+  <h3>孤立交易處理</h3>
+  <pre><code class="language-text" is:raw>孤立交易與 Package Relay:
+
+當前行為:
+1. 收到交易，輸入不存在
+2. 存入 orphan pool
+3. 等待父交易到達
+4. 如果父交易手續費低，可能永遠不到
+
+Package Relay 改進:
+1. 收到交易，輸入不存在
+2. 請求缺失的祖先 (作為 package)
+3. 收到完整 package
+4. 以 package 費率評估
+5. 接受或拒絕整個 package
+
+優勢:
+- 不依賴單獨交易的費率
+- 更快解決孤立狀態
+- 支持 CPFP 場景</code></pre>
+
+  <h2 id="use-cases">應用場景</h2>
+
+  <h3>閃電網路</h3>
+  <pre><code class="language-text" is:raw>閃電網路安全改進:
+
+1. 承諾交易 + CPFP
+   ┌─────────────────────────────────────────┐
+   │ Commitment TX (低費率)                  │
+   │ - 雙方預簽名                           │
+   │ - 費率可能過時                          │
+   └─────────────────────────────────────────┘
+              │
+              ▼
+   ┌─────────────────────────────────────────┐
+   │ Anchor Spend TX (高費率)                │
+   │ - 廣播時創建                           │
+   │ - 補足手續費                           │
+   └─────────────────────────────────────────┘
+
+   Package Relay 確保:
+   - 即使承諾 TX 費率過低
+   - 可以與 anchor TX 一起接受
+
+2. HTLC 超時
+   - 必須在時間鎖前確認
+   - Package Relay 提供保障
+
+3. 懲罰交易
+   - 需要及時確認以防資金損失
+   - 可以用 CPFP 加速</code></pre>
+
+  <h3>錢包應用</h3>
+  <pre><code class="language-text" is:raw>錢包使用場景:
+
+1. 加速卡住的交易
+   - 原交易費率不足
+   - 創建花費它的高費 CPFP 交易
+   - 作為 package 提交
+
+2. 批量支付
+   - 多筆相關交易一起提交
+   - 更可預測的確認行為
+
+3. 依賴交易
+   - 需要特定順序的交易
+   - Package 確保一起處理
+
+API 設計 (概念):
+submitpackage([
+  { tx: parentTxHex, fee: 200 },
+  { tx: childTxHex, fee: 5000 }
+])
+// 返回: 整體接受或拒絕</code></pre>
+
+  <h2 id="mempool-policy">Mempool 策略</h2>
+
+  <h3>限制與規則</h3>
+  <pre><code class="language-text" is:raw>Package 接受規則:
+
+1. 大小限制
+   - 最多 25 筆交易
+   - 總大小 <= 101 KB
+   - 與祖先/後代限制一致
+
+2. 費率要求
+   - Package 費率 >= mempool 最低
+   - 個別交易可以低於最低
+   - RBF 需要額外增量
+
+3. 拓撲要求
+   - 必須拓撲排序
+   - 所有依賴在 package 內或已確認
+   - 不能有循環
+
+4. 標準性
+   - 所有交易必須是標準交易
+   - 腳本必須符合標準規則
+
+失敗處理:
+- 單個交易失敗: 整個 package 失敗
+- 驗證按順序進行
+- 返回首個失敗原因</code></pre>
+
+  <h3>實作狀態</h3>
+  <pre><code class="language-text" is:raw>Bitcoin Core 實作進度:
+
+已完成:
+- submitpackage RPC (v24.0)
+- Package 驗證邏輯
+- Package CPFP 評估
+
+進行中:
+- P2P package relay
+- 動態 package 構建
+- 優化孤立處理
+
+RPC 使用:
+$ bitcoin-cli submitpackage '["parent_hex", "child_hex"]'
+{
+  "package_msg": "success",
+  "tx-results": {
+    "txid1": { "vsize": 200, "fees": {...} },
+    "txid2": { "vsize": 100, "fees": {...} }
+  }
+}
+
+限制:
+- 目前只支持 1 parent + 1 child
+- 未來將擴展</code></pre>
+
+  <h2 id="future">未來發展</h2>
+  <pre><code class="language-text" is:raw>Package Relay 路線圖:
+
+近期:
+1. 完善 CPFP package 支持
+2. P2P 協議標準化
+3. 更多交易類型支持
+
+中期:
+1. 多 parent 支持
+2. Package RBF 完善
+3. 與 Erlay 整合
+
+長期:
+1. 動態 package 大小
+2. 更複雜的 DAG 結構
+3. 跨節點 package 協調
+
+相關提案:
+- v3 交易 (限制性 package 策略)
+- Ephemeral anchors
+- Cluster mempool</code></pre>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bitcoin/issues/27463" target="_blank" rel="noopener noreferrer">Package Relay Tracking Issue</a></li>
+    <li><a href="https://github.com/bitcoin/bips/pull/1382" target="_blank" rel="noopener noreferrer">Package Relay BIP Draft</a></li>
+    <li><a href="/tech/bitcoin-core/mempool">Mempool</a></li>
+    <li><a href="/tech/bitcoin-core/fees">Transaction Fees</a></li>
+    <li><a href="/tech/lightning/anchor-outputs">Anchor Outputs</a></li>
+  </ul>
+</ArticleLayout>

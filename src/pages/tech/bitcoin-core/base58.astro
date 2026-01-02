@@ -1,0 +1,569 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Base58Check"
+  description="Base58Check 編碼：比特幣傳統地址的編碼格式"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Base58' },
+  ]}
+  difficulty="beginner"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Bech32', href: '/tech/bitcoin-core/bech32' }}
+  nextPage={{ title: 'Addresses', href: '/tech/bitcoin-core/addresses' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Base58Check 是比特幣早期地址使用的編碼格式，由中本聰設計。
+    它基於 Base58，並添加了版本前綴和校驗碼。雖然現在推薦使用 Bech32，
+    但 Base58Check 仍廣泛用於 P2PKH 和 P2SH 地址。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-amber-400">
+      <strong>地址前綴：</strong>
+      P2PKH 地址以 <code>1</code> 開頭，P2SH 地址以 <code>3</code> 開頭。
+      這些前綴由版本字節決定。
+    </p>
+  </div>
+
+  <h2 id="alphabet">字符集</h2>
+
+  <h3>Base58 字符</h3>
+  <pre><code class="language-text" is:raw>Base58 字符集 (58 個字符):
+
+123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+
+排除的字符:
+- 0 (零) 和 O (大寫 O) - 容易混淆
+- I (大寫 I) 和 l (小寫 L) - 容易混淆
+- + 和 / - 在某些格式中有特殊意義
+
+設計原則:
+- 人類可讀
+- 避免視覺上相似的字符
+- 不含標點符號
+- 可以雙擊選中整個地址
+
+vs Base64:
+┌─────────────────────────────────────────┐
+│ Base64: A-Z, a-z, 0-9, +, /            │
+│ 問題: 0/O, I/l 混淆, +/ 在 URL 中問題   │
+├─────────────────────────────────────────┤
+│ Base58: 移除了容易混淆的字符            │
+│ 更適合人類閱讀和輸入                    │
+└─────────────────────────────────────────┘</code></pre>
+
+  <h3>字符映射</h3>
+  <pre><code class="language-typescript" is:raw>const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+// 字符到值的映射
+const ALPHABET_MAP: { [key: string]: number } = {};
+for (let i = 0; i < BASE58_ALPHABET.length; i++) {
+  ALPHABET_MAP[BASE58_ALPHABET[i]] = i;
+}
+
+// 值到字符
+function valueToChar(value: number): string {
+  return BASE58_ALPHABET[value];
+}
+
+// 字符到值
+function charToValue(char: string): number {
+  const value = ALPHABET_MAP[char];
+  if (value === undefined) {
+    throw new Error(`Invalid Base58 character: ${char}`);
+  }
+  return value;
+}</code></pre>
+
+  <h2 id="encoding">編碼過程</h2>
+
+  <h3>Base58 編碼</h3>
+  <pre><code class="language-text" is:raw>Base58 編碼原理:
+
+輸入: 二進制數據 (bytes)
+輸出: Base58 字串
+
+過程:
+1. 將 bytes 視為一個大整數 (big-endian)
+2. 反覆除以 58，取餘數
+3. 餘數映射到 Base58 字符
+4. 處理前導零 (轉換為 '1')
+
+範例:
+輸入: 0x00ab2f (3 bytes)
+= 0 × 256² + 171 × 256 + 47
+= 43823
+
+43823 ÷ 58 = 755 餘 43 → 'k'
+755 ÷ 58 = 13 餘 1   → '2'
+13 ÷ 58 = 0 餘 13    → 'E'
+
+結果: "E2k" (反轉)
+
+前導零處理:
+0x00 → '1'
+0x0000 → '11'</code></pre>
+
+  <h3>TypeScript 實作</h3>
+  <pre><code class="language-typescript" is:raw>// Base58 編碼
+function base58Encode(bytes: Uint8Array): string {
+  // 計數前導零
+  let zeros = 0;
+  for (const byte of bytes) {
+    if (byte !== 0) break;
+    zeros++;
+  }
+
+  // 分配足夠的空間
+  const size = Math.ceil(bytes.length * 138 / 100) + 1;
+  const b58 = new Uint8Array(size);
+
+  // 將 bytes 視為大整數進行轉換
+  let length = 0;
+  for (const byte of bytes) {
+    let carry = byte;
+    let i = 0;
+
+    for (let j = size - 1; (carry !== 0 || i < length) && j >= 0; j--, i++) {
+      carry += 256 * b58[j];
+      b58[j] = carry % 58;
+      carry = Math.floor(carry / 58);
+    }
+
+    length = i;
+  }
+
+  // 跳過前導零
+  let it = size - length;
+  while (it < size && b58[it] === 0) {
+    it++;
+  }
+
+  // 轉換為字串
+  let result = '1'.repeat(zeros);
+  for (; it < size; it++) {
+    result += BASE58_ALPHABET[b58[it]];
+  }
+
+  return result;
+}
+
+// Base58 解碼
+function base58Decode(str: string): Uint8Array {
+  if (str.length === 0) {
+    return new Uint8Array(0);
+  }
+
+  // 計數前導 '1'
+  let zeros = 0;
+  for (const char of str) {
+    if (char !== '1') break;
+    zeros++;
+  }
+
+  // 分配空間
+  const size = Math.ceil(str.length * 733 / 1000) + 1;
+  const b256 = new Uint8Array(size);
+
+  // 轉換
+  let length = 0;
+  for (const char of str) {
+    let carry = ALPHABET_MAP[char];
+    if (carry === undefined) {
+      throw new Error(`Invalid character: ${char}`);
+    }
+
+    let i = 0;
+    for (let j = size - 1; (carry !== 0 || i < length) && j >= 0; j--, i++) {
+      carry += 58 * b256[j];
+      b256[j] = carry % 256;
+      carry = Math.floor(carry / 256);
+    }
+
+    length = i;
+  }
+
+  // 跳過前導零
+  let it = size - length;
+  while (it < size && b256[it] === 0) {
+    it++;
+  }
+
+  // 組合結果
+  const result = new Uint8Array(zeros + (size - it));
+  result.fill(0, 0, zeros);
+  for (let i = zeros; it < size; i++, it++) {
+    result[i] = b256[it];
+  }
+
+  return result;
+}</code></pre>
+
+  <h2 id="base58check">Base58Check</h2>
+
+  <h3>結構</h3>
+  <pre><code class="language-text" is:raw>Base58Check 結構:
+
+┌─────────────────────────────────────────────────────┐
+│              Base58Check 編碼                       │
+├──────────┬─────────────────────────┬────────────────┤
+│ Version  │        Payload          │   Checksum     │
+│ (1 byte) │       (20+ bytes)       │   (4 bytes)    │
+└──────────┴─────────────────────────┴────────────────┘
+
+Checksum 計算:
+checksum = SHA256(SHA256(version + payload))[:4]
+
+完整流程:
+1. 準備 version + payload
+2. 計算雙重 SHA256
+3. 取前 4 bytes 作為 checksum
+4. 連接: version + payload + checksum
+5. Base58 編碼
+
+版本字節:
+┌───────────────────────────────────────────────────┐
+│ 版本   │ 前綴 │ 用途                              │
+├───────────────────────────────────────────────────┤
+│ 0x00   │ 1    │ P2PKH 主網地址                    │
+│ 0x05   │ 3    │ P2SH 主網地址                     │
+│ 0x6F   │ m/n  │ P2PKH 測試網地址                  │
+│ 0xC4   │ 2    │ P2SH 測試網地址                   │
+│ 0x80   │ 5/K/L│ WIF 私鑰 (主網)                   │
+│ 0xEF   │ 9/c  │ WIF 私鑰 (測試網)                 │
+│ 0x0488B21E │ xpub │ BIP-32 擴展公鑰               │
+│ 0x0488ADE4 │ xprv │ BIP-32 擴展私鑰               │
+└───────────────────────────────────────────────────┘</code></pre>
+
+  <h3>實作</h3>
+  <pre><code class="language-typescript" is:raw>import * as crypto from 'crypto';
+
+// SHA256
+function sha256(data: Uint8Array): Uint8Array {
+  return new Uint8Array(
+    crypto.createHash('sha256').update(data).digest()
+  );
+}
+
+// 雙重 SHA256
+function doubleSha256(data: Uint8Array): Uint8Array {
+  return sha256(sha256(data));
+}
+
+// Base58Check 編碼
+function base58CheckEncode(version: number, payload: Uint8Array): string {
+  // 構建完整數據
+  const data = new Uint8Array(1 + payload.length);
+  data[0] = version;
+  data.set(payload, 1);
+
+  // 計算 checksum
+  const hash = doubleSha256(data);
+  const checksum = hash.slice(0, 4);
+
+  // 組合並編碼
+  const full = new Uint8Array(data.length + 4);
+  full.set(data);
+  full.set(checksum, data.length);
+
+  return base58Encode(full);
+}
+
+// Base58Check 解碼
+function base58CheckDecode(address: string): {
+  version: number;
+  payload: Uint8Array;
+} {
+  const decoded = base58Decode(address);
+
+  if (decoded.length < 5) {
+    throw new Error('Invalid Base58Check: too short');
+  }
+
+  // 分離數據和 checksum
+  const data = decoded.slice(0, -4);
+  const checksum = decoded.slice(-4);
+
+  // 驗證 checksum
+  const hash = doubleSha256(data);
+  const expectedChecksum = hash.slice(0, 4);
+
+  for (let i = 0; i < 4; i++) {
+    if (checksum[i] !== expectedChecksum[i]) {
+      throw new Error('Invalid checksum');
+    }
+  }
+
+  return {
+    version: data[0],
+    payload: data.slice(1)
+  };
+}
+
+// 創建 P2PKH 地址
+function createP2PKHAddress(
+  publicKeyHash: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  const version = network === 'mainnet' ? 0x00 : 0x6f;
+  return base58CheckEncode(version, publicKeyHash);
+}
+
+// 創建 P2SH 地址
+function createP2SHAddress(
+  scriptHash: Uint8Array,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  const version = network === 'mainnet' ? 0x05 : 0xc4;
+  return base58CheckEncode(version, scriptHash);
+}
+
+// 使用範例
+const pubkeyHash = hexToBytes('89abcdefabbaabbaabbaabbaabbaabbaabbaabba');
+const address = createP2PKHAddress(pubkeyHash);
+console.log(address); // 1DpZ...
+
+const decoded = base58CheckDecode(address);
+console.log('Version:', decoded.version); // 0
+console.log('Payload:', bytesToHex(decoded.payload));</code></pre>
+
+  <h2 id="wif">WIF 私鑰格式</h2>
+
+  <h3>結構</h3>
+  <pre><code class="language-text" is:raw>WIF (Wallet Import Format):
+
+未壓縮公鑰 WIF:
+┌──────────┬────────────────────────────────┐
+│ 0x80     │ 32-byte 私鑰                   │
+└──────────┴────────────────────────────────┘
+結果: 以 '5' 開頭，51 字符
+
+壓縮公鑰 WIF:
+┌──────────┬────────────────────────────────┬──────┐
+│ 0x80     │ 32-byte 私鑰                   │ 0x01 │
+└──────────┴────────────────────────────────┴──────┘
+結果: 以 'K' 或 'L' 開頭，52 字符
+
+測試網:
+- 版本: 0xEF
+- 未壓縮: 以 '9' 開頭
+- 壓縮: 以 'c' 開頭</code></pre>
+
+  <h3>實作</h3>
+  <pre><code class="language-typescript" is:raw>// 私鑰轉 WIF
+function privateKeyToWIF(
+  privateKey: Uint8Array,
+  compressed: boolean = true,
+  network: 'mainnet' | 'testnet' = 'mainnet'
+): string {
+  if (privateKey.length !== 32) {
+    throw new Error('Private key must be 32 bytes');
+  }
+
+  const version = network === 'mainnet' ? 0x80 : 0xef;
+
+  let payload: Uint8Array;
+  if (compressed) {
+    payload = new Uint8Array(33);
+    payload.set(privateKey);
+    payload[32] = 0x01;
+  } else {
+    payload = privateKey;
+  }
+
+  return base58CheckEncode(version, payload);
+}
+
+// WIF 轉私鑰
+function wifToPrivateKey(wif: string): {
+  privateKey: Uint8Array;
+  compressed: boolean;
+  network: 'mainnet' | 'testnet';
+} {
+  const { version, payload } = base58CheckDecode(wif);
+
+  let network: 'mainnet' | 'testnet';
+  if (version === 0x80) {
+    network = 'mainnet';
+  } else if (version === 0xef) {
+    network = 'testnet';
+  } else {
+    throw new Error(`Unknown WIF version: ${version}`);
+  }
+
+  let privateKey: Uint8Array;
+  let compressed: boolean;
+
+  if (payload.length === 33 && payload[32] === 0x01) {
+    privateKey = payload.slice(0, 32);
+    compressed = true;
+  } else if (payload.length === 32) {
+    privateKey = payload;
+    compressed = false;
+  } else {
+    throw new Error('Invalid WIF payload length');
+  }
+
+  return { privateKey, compressed, network };
+}
+
+// 使用範例
+const privkey = hexToBytes(
+  '0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d'
+);
+
+const wif = privateKeyToWIF(privkey, true);
+console.log('WIF:', wif); // 5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ
+
+const decoded = wifToPrivateKey(wif);
+console.log('Compressed:', decoded.compressed);</code></pre>
+
+  <h2 id="extended-keys">擴展密鑰</h2>
+  <pre><code class="language-text" is:raw>BIP-32 擴展密鑰 (78 bytes):
+
+┌───────────────────────────────────────────────────────────┐
+│ Version    │ Depth │ Fingerprint │ Child  │ Chain  │ Key │
+│ (4 bytes)  │(1 byte)│ (4 bytes)   │ Number │ Code   │     │
+│            │       │             │(4 bytes)│(32 bytes)│(33)│
+└───────────────────────────────────────────────────────────┘
+
+版本:
+- 0x0488B21E: xpub (主網公鑰)
+- 0x0488ADE4: xprv (主網私鑰)
+- 0x043587CF: tpub (測試網公鑰)
+- 0x04358394: tprv (測試網私鑰)
+
+其他衍生標準:
+- ypub/yprv: BIP-49 (P2WPKH-nested-in-P2SH)
+- zpub/zprv: BIP-84 (native P2WPKH)
+
+編碼結果:
+- xpub: 111 字符
+- xprv: 111 字符</code></pre>
+
+  <h2 id="validation">地址驗證</h2>
+  <pre><code class="language-typescript" is:raw>interface AddressValidation {
+  valid: boolean;
+  type?: 'p2pkh' | 'p2sh';
+  network?: 'mainnet' | 'testnet';
+  error?: string;
+}
+
+function validateBase58Address(address: string): AddressValidation {
+  try {
+    const { version, payload } = base58CheckDecode(address);
+
+    // 檢查 payload 長度
+    if (payload.length !== 20) {
+      return { valid: false, error: 'Invalid payload length' };
+    }
+
+    // 確定類型和網路
+    let type: 'p2pkh' | 'p2sh';
+    let network: 'mainnet' | 'testnet';
+
+    switch (version) {
+      case 0x00:
+        type = 'p2pkh';
+        network = 'mainnet';
+        break;
+      case 0x05:
+        type = 'p2sh';
+        network = 'mainnet';
+        break;
+      case 0x6f:
+        type = 'p2pkh';
+        network = 'testnet';
+        break;
+      case 0xc4:
+        type = 'p2sh';
+        network = 'testnet';
+        break;
+      default:
+        return { valid: false, error: `Unknown version: ${version}` };
+    }
+
+    return { valid: true, type, network };
+  } catch (e) {
+    return { valid: false, error: (e as Error).message };
+  }
+}
+
+// 通用地址驗證 (支持 Base58 和 Bech32)
+function validateBitcoinAddress(address: string): {
+  valid: boolean;
+  format?: 'base58' | 'bech32';
+  type?: string;
+  network?: string;
+  error?: string;
+} {
+  // 嘗試 Bech32
+  if (address.toLowerCase().startsWith('bc1') ||
+      address.toLowerCase().startsWith('tb1')) {
+    const result = validateBech32Address(address);
+    return { ...result, format: 'bech32' };
+  }
+
+  // 嘗試 Base58
+  const result = validateBase58Address(address);
+  return { ...result, format: result.valid ? 'base58' : undefined };
+}</code></pre>
+
+  <h2 id="comparison">編碼效率比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>Hex</th>
+        <th>Base64</th>
+        <th>Base58</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>字符集大小</td>
+        <td>16</td>
+        <td>64</td>
+        <td>58</td>
+      </tr>
+      <tr>
+        <td>每字符 bits</td>
+        <td>4</td>
+        <td>6</td>
+        <td>~5.86</td>
+      </tr>
+      <tr>
+        <td>20 bytes 長度</td>
+        <td>40 字符</td>
+        <td>28 字符</td>
+        <td>~28 字符</td>
+      </tr>
+      <tr>
+        <td>人類可讀</td>
+        <td>差</td>
+        <td>中</td>
+        <td>好</td>
+      </tr>
+      <tr>
+        <td>混淆字符</td>
+        <td>無</td>
+        <td>有 (0/O, I/l)</td>
+        <td>無</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://en.bitcoin.it/wiki/Base58Check_encoding" target="_blank" rel="noopener noreferrer">Base58Check Wiki</a></li>
+    <li><a href="https://en.bitcoin.it/wiki/Wallet_import_format" target="_blank" rel="noopener noreferrer">WIF Wiki</a></li>
+    <li><a href="/tech/bitcoin-core/addresses">Address Types</a></li>
+    <li><a href="/tech/bitcoin-core/bech32">Bech32 & Bech32m</a></li>
+    <li><a href="/tech/bitcoin-core/hd-wallets">HD Wallets</a></li>
+  </ul>
+</ArticleLayout>

@@ -1,0 +1,473 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Soft Fork Activation"
+  description="軟分叉啟用機制：BIP-9、BIP-8 和 Speedy Trial"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Soft Fork Activation' },
+  ]}
+  difficulty="advanced"
+  readingTime="18 分鐘"
+  prevPage={{ title: 'Consensus', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    軟分叉是一種向後兼容的共識規則更改。舊節點仍然認為新規則產生的區塊有效，
+    但新節點會拒絕不符合新規則的區塊。啟用軟分叉需要協調礦工和節點，
+    這個過程有多種機制可以選擇。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>軟分叉 vs 硬分叉：</strong>
+      軟分叉收緊規則（新規則是舊規則的子集），硬分叉放寬規則。
+      軟分叉不需要所有節點同時升級，更安全平滑。
+    </p>
+  </div>
+
+  <h2 id="history">歷史方法</h2>
+
+  <h3>Flag Day</h3>
+  <pre><code class="language-text" is:raw>Flag Day 啟用:
+
+定義: 在指定日期/高度自動啟用新規則
+
+範例:
+- BIP-16 (P2SH): 區塊高度 173,805
+- BIP-30: 2012年3月15日
+
+流程:
+1. 開發者確定啟用時間
+2. 發布包含新規則的軟體
+3. 節點在指定時間後執行新規則
+
+優點:
+- 簡單直接
+- 確定的時間表
+
+缺點:
+- 如果礦工算力不足，可能造成鏈分裂
+- 不知道礦工準備情況
+- 可能需要多次推遲</code></pre>
+
+  <h3>IsSuperMajority (ISM)</h3>
+  <pre><code class="language-text" is:raw>IsSuperMajority 機制:
+
+定義: 要求最近 1000 個區塊中 950 個 (95%) 使用新版本
+
+用於:
+- BIP-34 (Coinbase 高度)
+- BIP-66 (嚴格 DER 簽名)
+- BIP-65 (OP_CHECKLOCKTIMEVERIFY)
+
+流程:
+1. 礦工升級並設置區塊版本號
+2. 當 95% 區塊使用新版本時，規則生效
+3. 之後拒絕舊版本區塊
+
+問題:
+- 區塊版本號是整數，難以同時進行多個升級
+- 沒有明確的超時機制
+- 可能無限期停滯</code></pre>
+
+  <h2 id="bip9">BIP-9 版本位</h2>
+
+  <h3>機制設計</h3>
+  <pre><code class="language-text" is:raw>BIP-9 版本位信號:
+
+區塊頭版本欄位 (4 bytes):
+┌─────────────────────────────────────────────────────────┐
+│ bit 31-29 │ bit 28 │ bit 27-0                          │
+│   001     │   ?    │  可用於信號的 29 個位             │
+├───────────┴────────┴────────────────────────────────────┤
+│ 0x20000000 = 基礎版本 (版本位啟用)                      │
+└─────────────────────────────────────────────────────────┘
+
+每個軟分叉分配一個位 (0-28):
+- 位 0: 某個提案
+- 位 1: 另一個提案
+- ...
+
+可以同時進行多個升級信號
+
+狀態機:
+DEFINED → STARTED → LOCKED_IN → ACTIVE
+           ↓
+         FAILED</code></pre>
+
+  <h3>參數</h3>
+  <pre><code class="language-text" is:raw>BIP-9 參數:
+
+每個部署定義:
+- bit: 使用的位 (0-28)
+- starttime: 開始時間 (Unix 時間戳)
+- timeout: 超時時間
+- threshold: 激活閾值 (通常 95%)
+
+難度調整週期 (2016 區塊) 為計數單位
+
+狀態轉換:
+┌──────────────────────────────────────────────────────────┐
+│ DEFINED                                                  │
+│   當前時間 >= starttime                                  │
+│        ↓                                                 │
+│ STARTED                                                  │
+│   週期內 >= 95% 區塊設置該位                             │
+│        ↓                                                 │
+│ LOCKED_IN                                                │
+│   一個週期後                                             │
+│        ↓                                                 │
+│ ACTIVE                                                   │
+│   規則永久生效                                           │
+├──────────────────────────────────────────────────────────┤
+│ STARTED                                                  │
+│   當前時間 >= timeout 且未達到閾值                       │
+│        ↓                                                 │
+│ FAILED                                                   │
+│   提案失敗                                               │
+└──────────────────────────────────────────────────────────┘</code></pre>
+
+  <h3>實作</h3>
+  <pre><code class="language-typescript" is:raw>enum DeploymentState {
+  DEFINED = 'DEFINED',
+  STARTED = 'STARTED',
+  LOCKED_IN = 'LOCKED_IN',
+  ACTIVE = 'ACTIVE',
+  FAILED = 'FAILED'
+}
+
+interface BIP9Deployment {
+  bit: number;
+  startTime: number;
+  timeout: number;
+  threshold: number; // 0.95 for 95%
+  minActivationHeight?: number;
+}
+
+const RETARGET_INTERVAL = 2016;
+
+function getDeploymentState(
+  deployment: BIP9Deployment,
+  currentHeight: number,
+  currentTime: number,
+  getBlock: (height: number) => { version: number; time: number }
+): DeploymentState {
+  // 計算當前週期的起始高度
+  const periodStart = Math.floor(currentHeight / RETARGET_INTERVAL) * RETARGET_INTERVAL;
+  const periodEnd = periodStart + RETARGET_INTERVAL - 1;
+
+  // 獲取週期開始時間
+  const periodStartTime = getBlock(periodStart).time;
+
+  // 狀態轉換邏輯
+  if (periodStartTime < deployment.startTime) {
+    return DeploymentState.DEFINED;
+  }
+
+  // 檢查之前週期是否已 LOCKED_IN 或 ACTIVE
+  // (簡化：這裡需要遞歸或緩存之前的狀態)
+
+  if (periodStartTime >= deployment.timeout) {
+    // 需要檢查是否曾經 LOCKED_IN
+    return DeploymentState.FAILED; // 或 ACTIVE
+  }
+
+  // 計算信號比例
+  let signalCount = 0;
+  for (let h = periodStart; h <= Math.min(periodEnd, currentHeight); h++) {
+    const block = getBlock(h);
+    if (block.version & (1 << deployment.bit)) {
+      signalCount++;
+    }
+  }
+
+  const threshold = Math.floor(RETARGET_INTERVAL * deployment.threshold);
+  if (signalCount >= threshold) {
+    return DeploymentState.LOCKED_IN;
+  }
+
+  return DeploymentState.STARTED;
+}
+
+// 檢查區塊版本是否信號支持
+function isSignaling(version: number, bit: number): boolean {
+  // 必須是版本位格式
+  if ((version & 0xE0000000) !== 0x20000000) {
+    return false;
+  }
+  return (version & (1 << bit)) !== 0;
+}</code></pre>
+
+  <h2 id="bip8">BIP-8</h2>
+
+  <h3>強制啟用選項</h3>
+  <pre><code class="language-text" is:raw>BIP-8 改進:
+
+BIP-9 的問題:
+- 礦工可以無限期拖延
+- 即使社區支持，也可能超時失敗
+
+BIP-8 添加:
+- lockinontimeout (LOT) 參數
+- LOT=true: 超時時強制 LOCKED_IN
+- LOT=false: 與 BIP-9 相同
+
+狀態機 (LOT=true):
+DEFINED → STARTED → LOCKED_IN → ACTIVE
+           ↓            ↑
+         MUST_SIGNAL ───┘
+
+在 MUST_SIGNAL 期間:
+- 必須設置信號位
+- 不設置的區塊被認為無效
+
+爭議:
+- LOT=true 可能造成鏈分裂
+- 礦工被迫升級
+- 類似 UASF (用戶激活軟分叉)</code></pre>
+
+  <h3>使用區塊高度</h3>
+  <pre><code class="language-text" is:raw>BIP-8 使用高度而非時間:
+
+BIP-9:
+- 使用 MTP (中位時間過去值)
+- 時間可被操縱 (時間戳範圍寬鬆)
+
+BIP-8:
+- 使用區塊高度
+- 更可預測
+- 無法被礦工操縱
+
+參數:
+- startheight: 開始信號的高度
+- timeoutheight: 超時高度
+- threshold: 閾值 (可自定義)
+- lockinontimeout: 是否強制激活</code></pre>
+
+  <h2 id="speedy-trial">Speedy Trial</h2>
+
+  <h3>Taproot 啟用</h3>
+  <pre><code class="language-text" is:raw>Speedy Trial (快速嘗試):
+
+用於 Taproot 激活 (2021):
+
+特點:
+- 短暫的信號窗口 (3 個月)
+- 90% 閾值 (低於傳統 95%)
+- 如果成功，延遲激活到固定高度
+- 如果失敗，可以用其他方法重試
+
+Taproot 參數:
+- 開始: 區塊 681,408 (2021年4月)
+- 超時: 區塊 693,504 (2021年8月)
+- 閾值: 90% (1815/2016)
+- 激活高度: 709,632 (2021年11月)
+
+結果:
+- 2021年6月12日 LOCKED_IN
+- 2021年11月14日 ACTIVE
+
+為什麼用這種方式:
+- 避免 LOT 爭議
+- 給礦工時間準備
+- 如果失敗可以再討論</code></pre>
+
+  <h3>時間表</h3>
+  <pre><code class="language-text" is:raw>Taproot 激活時間表:
+
+2020年10月: Bitcoin Core 0.21.0 包含 Taproot 代碼
+2021年4月: 開始信號
+2021年6月: 達到 90% 閾值, LOCKED_IN
+2021年11月: 區塊 709,632 激活
+
+信號統計:
+週期 1: 低於閾值
+週期 2: 低於閾值
+週期 3: 達到 90%+ ✓
+
+這表明礦工有足夠時間準備升級</code></pre>
+
+  <h2 id="implementation-details">實作細節</h2>
+
+  <h3>版本位計算</h3>
+  <pre><code class="language-typescript" is:raw>// 計算區塊版本
+function computeBlockVersion(
+  deployments: Map&lt;string, BIP9Deployment&gt;,
+  currentHeight: number,
+  currentTime: number,
+  getBlock: (height: number) => { version: number; time: number }
+): number {
+  let version = 0x20000000; // 基礎版本位
+
+  for (const [name, deployment] of deployments) {
+    const state = getDeploymentState(
+      deployment,
+      currentHeight,
+      currentTime,
+      getBlock
+    );
+
+    // 只在 STARTED 或 MUST_SIGNAL 狀態設置位
+    if (state === DeploymentState.STARTED) {
+      version |= (1 << deployment.bit);
+    }
+  }
+
+  return version;
+}
+
+// 驗證區塊版本
+function validateBlockVersion(
+  block: { version: number; height: number; time: number },
+  deployments: Map&lt;string, BIP9Deployment&gt;,
+  getBlock: (height: number) => { version: number; time: number }
+): boolean {
+  for (const [name, deployment] of deployments) {
+    const state = getDeploymentState(
+      deployment,
+      block.height,
+      block.time,
+      getBlock
+    );
+
+    // 在 MUST_SIGNAL 期間必須設置位
+    if (state === 'MUST_SIGNAL') {
+      if (!(block.version & (1 << deployment.bit))) {
+        return false; // 區塊無效
+      }
+    }
+  }
+
+  return true;
+}</code></pre>
+
+  <h3>共識規則檢查</h3>
+  <pre><code class="language-typescript" is:raw>// 檢查軟分叉規則是否生效
+function isDeploymentActive(
+  deploymentName: string,
+  height: number,
+  chainState: ChainState
+): boolean {
+  const deployment = chainState.deployments.get(deploymentName);
+  if (!deployment) return false;
+
+  const state = getDeploymentState(
+    deployment,
+    height,
+    chainState.getMedianTime(height),
+    (h) => chainState.getBlock(h)
+  );
+
+  return state === DeploymentState.ACTIVE;
+}
+
+// 在交易驗證中使用
+function validateTransaction(
+  tx: Transaction,
+  height: number,
+  chainState: ChainState
+): boolean {
+  // 如果 SegWit 已激活
+  if (isDeploymentActive('segwit', height, chainState)) {
+    // 驗證 witness 數據
+    if (!validateWitness(tx)) {
+      return false;
+    }
+  }
+
+  // 如果 Taproot 已激活
+  if (isDeploymentActive('taproot', height, chainState)) {
+    // 驗證 Taproot 規則
+    if (!validateTaproot(tx)) {
+      return false;
+    }
+  }
+
+  return true;
+}</code></pre>
+
+  <h2 id="notable-forks">重要軟分叉</h2>
+  <pre><code class="language-text" is:raw>比特幣主要軟分叉:
+
+2012: BIP-16 (P2SH)
+- Flag Day 啟用
+- 引入腳本雜湊地址
+
+2015: BIP-65 (CLTV)
+- ISM 啟用
+- 時間鎖功能
+
+2015: BIP-66 (嚴格 DER)
+- ISM 啟用
+- 修復簽名格式問題
+
+2016: BIP-68/112/113 (CSV)
+- BIP-9 啟用
+- 相對時間鎖
+
+2017: BIP-141/143/144 (SegWit)
+- BIP-9 啟用 (經歷 UASF 爭議)
+- 隔離見證
+
+2021: BIP-341/342 (Taproot)
+- Speedy Trial 啟用
+- Schnorr 簽名和 MAST</code></pre>
+
+  <h2 id="controversies">爭議與教訓</h2>
+  <pre><code class="language-text" is:raw>SegWit 啟用爭議 (2017):
+
+背景:
+- SegWit 準備就緒
+- 部分礦工反對
+- 長期無法達到 95%
+
+UASF (BIP-148):
+- 用戶激活軟分叉
+- 威脅礦工必須信號
+- 引發 BIP-91 妥協
+
+教訓:
+1. 95% 閾值可能過高
+2. 礦工不應有否決權
+3. 需要更好的協調機制
+
+Taproot 的不同:
+- 社區更團結
+- Speedy Trial 減少爭議
+- 90% 閾值更合理
+- 成功且平滑的升級</code></pre>
+
+  <h2 id="future">未來展望</h2>
+  <pre><code class="language-text" is:raw>潛在的未來軟分叉:
+
+1. OP_CTV (BIP-119)
+   - 契約功能
+   - 激活方法待定
+
+2. ANYPREVOUT (BIP-118)
+   - 簽名可重新綁定
+   - 支持 Eltoo 閃電通道
+
+3. 大區塊 (如 64-bit arithmetic)
+   - 各種改進提案
+
+啟用機制討論:
+- 社區傾向 Speedy Trial 類似方法
+- 可能需要更多社區共識工具
+- 礦工信號作為準備度指標</code></pre>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki" target="_blank" rel="noopener noreferrer">BIP-9: Version Bits</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0008.mediawiki" target="_blank" rel="noopener noreferrer">BIP-8: Version Bits with Lock-in</a></li>
+    <li><a href="https://en.bitcoin.it/wiki/Softfork_activation" target="_blank" rel="noopener noreferrer">Softfork Activation Wiki</a></li>
+    <li><a href="/tech/bitcoin-core/consensus">Consensus</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+    <li><a href="/tech/bitcoin-core/segwit">SegWit</a></li>
+  </ul>
+</ArticleLayout>

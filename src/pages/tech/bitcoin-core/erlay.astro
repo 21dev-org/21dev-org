@@ -1,0 +1,436 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Erlay"
+  description="Erlay (BIP-330)：頻寬高效的交易中繼協議"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Erlay' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+  nextPage={{ title: 'Compact Blocks', href: '/tech/bitcoin-core/compact-blocks' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Erlay 是一種改進的交易中繼協議（BIP-330），旨在大幅減少比特幣節點間
+    交易公告的頻寬消耗。它結合了傳統洪水式廣播和集合調和技術，
+    預計可減少約 40% 的交易中繼頻寬。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+    <p class="text-sm text-amber-700 dark:text-amber-400">
+      <strong>開發狀態：</strong>
+      Erlay 仍在開發中，尚未部署到比特幣主網。
+      預計將在未來的 Bitcoin Core 版本中推出。
+    </p>
+  </div>
+
+  <h2 id="problem">當前問題</h2>
+
+  <h3>傳統交易中繼</h3>
+  <pre><code class="language-text" is:raw>當前的交易傳播 (洪水式廣播):
+
+流程:
+1. 節點收到新交易
+2. 驗證交易有效
+3. 向所有連接的節點發送 inv 訊息
+4. 對方回覆 getdata 請求
+5. 發送完整交易
+
+問題:
+┌─────────────────────────────────────────────┐
+│     Node A                                  │
+│       │                                     │
+│       │ ──inv(txid)──▶ Node B               │
+│       │ ──inv(txid)──▶ Node C               │
+│       │ ──inv(txid)──▶ Node D               │
+│       │ ──inv(txid)──▶ Node E               │
+│       ...                                   │
+│                                             │
+│ 每個節點收到同一交易的多個 inv              │
+│ 造成大量冗餘                                │
+└─────────────────────────────────────────────┘
+
+頻寬消耗:
+- inv 訊息: 32 bytes × 連接數
+- 典型節點: 8-125 個連接
+- 每筆交易: 256 - 4000 bytes 僅公告
+- 全網約 50% 頻寬用於交易公告</code></pre>
+
+  <h3>冗餘統計</h3>
+  <pre><code class="language-text" is:raw>當前中繼的冗餘分析:
+
+假設:
+- 平均 8 個出站連接
+- 平均 117 個入站連接
+- 每秒約 7 筆交易
+
+每筆交易的 inv 訊息:
+- 理論最少: 1 次 (只需收到一次)
+- 實際收到: ~8-10 次 (來自不同節點)
+- 冗餘率: ~8-10x
+
+頻寬影響:
+- inv: 32 bytes × 8 連接 = 256 bytes/tx
+- 每秒 7 tx: 1.8 KB/s 僅 inv
+- 每月: ~4.7 GB 僅 inv 訊息
+
+這還不包括:
+- getdata 請求
+- 完整交易傳輸
+- 已在 mempool 的重複交易</code></pre>
+
+  <h2 id="erlay-design">Erlay 設計</h2>
+
+  <h3>混合方法</h3>
+  <pre><code class="language-text" is:raw>Erlay 的兩種模式:
+
+1. 洪水式 (Flooding) - 少數連接
+   - 只向 8 個出站連接廣播
+   - 快速傳播
+   - 保持低延遲
+
+2. 集合調和 (Set Reconciliation) - 多數連接
+   - 定期與其他連接同步
+   - 使用 Minisketch
+   - 大幅減少頻寬
+
+流程:
+┌─────────────────────────────────────────────┐
+│ 收到新交易                                  │
+│       │                                     │
+│       ├──▶ 洪水廣播給 8 個出站連接         │
+│       │    (立即, inv 訊息)                │
+│       │                                     │
+│       └──▶ 加入調和集合                     │
+│            (定期, 與其他連接調和)           │
+└─────────────────────────────────────────────┘
+
+結果:
+- 傳播延遲: 略增 (~1-2 秒)
+- 頻寬節省: ~40%</code></pre>
+
+  <h3>Minisketch</h3>
+  <pre><code class="language-text" is:raw>Minisketch (集合調和庫):
+
+概念:
+- 兩個節點各有一組 TXID
+- 想知道對方有哪些我沒有的
+- 傳統方法: 交換完整列表
+- Minisketch: 只交換差異的草圖
+
+工作原理:
+1. 每個節點計算其集合的 sketch
+2. 交換 sketch (固定大小)
+3. 計算 sketch 差異
+4. 解碼差異得到缺失的元素
+
+特點:
+- 空間效率: O(差異大小), 不是 O(集合大小)
+- 誤差容忍: 可以處理估計不準確
+- BCH 碼: 基於錯誤更正碼的數學
+
+範例:
+Node A 集合: {tx1, tx2, tx3, tx4}
+Node B 集合: {tx1, tx2, tx5}
+差異: A 有 {tx3, tx4}, B 有 {tx5}
+Sketch 大小: ~32 bytes × 3 (差異數量)</code></pre>
+
+  <h2 id="protocol">協議細節</h2>
+
+  <h3>新訊息類型</h3>
+  <pre><code class="language-text" is:raw>Erlay 新增的 P2P 訊息:
+
+1. sendtxrcncl
+   - 在握手時發送
+   - 表示支持 Erlay
+   - 包含版本信息
+
+2. reqtxrcncl
+   - 請求進行調和
+   - 發送本地 sketch
+
+3. sketch
+   - 回覆調和請求
+   - 包含本地 sketch
+
+4. reconcildiff
+   - 請求差異中的具體交易
+
+5. reqsketchext
+   - 請求擴展 sketch (如果解碼失敗)
+
+調和流程:
+Node A                    Node B
+   │                         │
+   │ ── reqtxrcncl(q) ──▶    │
+   │                         │
+   │ ◀── sketch(sk_B) ──     │
+   │                         │
+   │ (計算 sk_A XOR sk_B)    │
+   │ (解碼差異)              │
+   │                         │
+   │ ── reconcildiff ──▶     │
+   │ (請求 B 有而 A 沒有的)   │
+   │                         │
+   │ ◀── tx data ───         │
+   └─────────────────────────┘</code></pre>
+
+  <h3>調和時機</h3>
+  <pre><code class="language-text" is:raw>何時進行調和:
+
+定時調和:
+- 每隔固定時間 (如 1-2 秒)
+- 與每個非洪水連接
+- 輪流進行避免同時
+
+觸發條件:
+- 累積足夠多新交易
+- 定時器觸發
+- 對方請求
+
+參數調優:
+- 調和間隔: 影響延遲和頻寬
+- Sketch 大小: 影響成功率
+- 洪水連接數: 影響傳播速度
+
+最佳化:
+- 動態估計差異大小
+- 根據歷史調整 sketch 容量
+- 失敗時擴展 sketch</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>簡化的 Sketch</h3>
+  <pre><code class="language-typescript" is:raw>// 簡化的 Minisketch 概念示範
+// 實際實現需要使用 libminisketch
+
+class SimpleSketch {
+  private elements: Set&lt;string&gt; = new Set();
+  private capacity: number;
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+  }
+
+  // 添加元素 (短 TXID)
+  add(shortTxid: string): void {
+    this.elements.add(shortTxid);
+  }
+
+  // 計算與另一個 sketch 的差異
+  // 實際中使用 BCH 碼的數學運算
+  difference(other: SimpleSketch): {
+    onlyInThis: string[];
+    onlyInOther: string[];
+  } {
+    const onlyInThis: string[] = [];
+    const onlyInOther: string[] = [];
+
+    for (const elem of this.elements) {
+      if (!other.elements.has(elem)) {
+        onlyInThis.push(elem);
+      }
+    }
+
+    for (const elem of other.elements) {
+      if (!this.elements.has(elem)) {
+        onlyInOther.push(elem);
+      }
+    }
+
+    return { onlyInThis, onlyInOther };
+  }
+
+  // 序列化 (實際中更緊湊)
+  serialize(): Uint8Array {
+    // 實際 Minisketch 使用 BCH 碼
+    // 這裡只是演示
+    return new TextEncoder().encode(
+      JSON.stringify([...this.elements])
+    );
+  }
+}
+
+// 短 TXID 計算 (32-bit)
+function computeShortTxid(txid: Uint8Array, salt: Uint8Array): number {
+  const data = new Uint8Array(txid.length + salt.length);
+  data.set(txid);
+  data.set(salt, txid.length);
+  const hash = sha256(data);
+  return new DataView(hash.buffer).getUint32(0, true);
+}</code></pre>
+
+  <h3>調和管理器</h3>
+  <pre><code class="language-typescript" is:raw>interface ReconciliationState {
+  localSet: Set&lt;string&gt;;       // 本地待調和的 TXID
+  lastReconcile: number;       // 上次調和時間
+  estimatedDifference: number; // 估計的差異大小
+}
+
+class ErlayManager {
+  private floodingPeers: Set&lt;Peer&gt; = new Set();
+  private reconciliationPeers: Map&lt;Peer, ReconciliationState&gt; = new Map();
+  private reconcileInterval = 2000; // 2 秒
+  private maxFloodingPeers = 8;
+
+  // 選擇洪水廣播的節點
+  selectFloodingPeers(allPeers: Peer[]): void {
+    // 優先選擇出站連接
+    const outbound = allPeers.filter(p => p.isOutbound);
+    for (const peer of outbound.slice(0, this.maxFloodingPeers)) {
+      this.floodingPeers.add(peer);
+    }
+  }
+
+  // 處理新交易
+  async handleNewTransaction(txid: string): Promise&lt;void&gt; {
+    // 洪水廣播給選定的節點
+    for (const peer of this.floodingPeers) {
+      await peer.send('inv', [{ type: 'tx', hash: txid }]);
+    }
+
+    // 加入其他節點的調和集合
+    for (const [peer, state] of this.reconciliationPeers) {
+      state.localSet.add(txid);
+    }
+  }
+
+  // 定期調和
+  async reconcileWithPeer(peer: Peer): Promise&lt;void&gt; {
+    const state = this.reconciliationPeers.get(peer);
+    if (!state) return;
+
+    // 創建本地 sketch
+    const sketch = new SimpleSketch(state.estimatedDifference * 2);
+    for (const txid of state.localSet) {
+      sketch.add(computeShortTxid(hexToBytes(txid), this.salt));
+    }
+
+    // 發送調和請求
+    await peer.send('reqtxrcncl', {
+      sketch: sketch.serialize()
+    });
+
+    // 等待回覆並處理
+    // ...
+  }
+
+  // 處理調和請求
+  async handleReconciliationRequest(
+    peer: Peer,
+    remoteSketch: Uint8Array
+  ): Promise&lt;void&gt; {
+    const state = this.reconciliationPeers.get(peer);
+    if (!state) return;
+
+    // 計算本地 sketch
+    const localSketch = new SimpleSketch(100);
+    for (const txid of state.localSet) {
+      localSketch.add(computeShortTxid(hexToBytes(txid), this.salt));
+    }
+
+    // 發送本地 sketch
+    await peer.send('sketch', {
+      sketch: localSketch.serialize()
+    });
+
+    // 清除已調和的交易
+    state.localSet.clear();
+    state.lastReconcile = Date.now();
+  }
+}</code></pre>
+
+  <h2 id="benefits">優勢分析</h2>
+  <pre><code class="language-text" is:raw>Erlay 的主要優勢:
+
+1. 頻寬節省
+   - 約 40% 減少交易公告頻寬
+   - 對入站連接多的節點效果更明顯
+   - 允許增加連接數而不增加成本
+
+2. 更好的連接性
+   - 節點可以維持更多連接
+   - 提高網路抗攻擊性
+   - 減少日蝕攻擊風險
+
+3. 隱私改進
+   - 調和不暴露交易來源
+   - 降低交易追蹤難度
+   - 隨機化傳播路徑
+
+對比:
+┌──────────────────────────────────────────────┐
+│ 指標          │ 傳統洪水 │ Erlay            │
+├──────────────────────────────────────────────┤
+│ 公告頻寬      │ 100%     │ ~60%             │
+│ 傳播延遲      │ ~3s      │ ~4s              │
+│ 最大連接數    │ ~125     │ ~200+            │
+│ 隱私          │ 較差     │ 較好             │
+└──────────────────────────────────────────────┘</code></pre>
+
+  <h2 id="tradeoffs">權衡與限制</h2>
+  <pre><code class="language-text" is:raw>Erlay 的權衡:
+
+1. 延遲增加
+   - 洪水: 立即傳播
+   - 調和: 等待下一個調和週期
+   - 增加約 1-2 秒
+   - 對大多數用例可接受
+
+2. 複雜性
+   - 需要維護調和狀態
+   - Minisketch 算法複雜
+   - 故障恢復較複雜
+
+3. 內存使用
+   - 需要存儲待調和集合
+   - 每個連接額外狀態
+   - 可以通過設定上限管理
+
+4. 協調成本
+   - 需要雙方都支持
+   - 漸進部署期間效果有限
+   - 完全效益需要廣泛採用
+
+適用場景:
+- 高連接數節點: 效益最大
+- 頻寬受限環境: 顯著改善
+- 時間不敏感應用: 可接受延遲</code></pre>
+
+  <h2 id="deployment">部署計劃</h2>
+  <pre><code class="language-text" is:raw>Erlay 部署狀態:
+
+當前進度:
+- BIP-330 已提出
+- libminisketch 已開發
+- Bitcoin Core PR 進行中
+
+預期時間表:
+- 測試網部署: TBD
+- 主網啟用: TBD
+
+向後兼容:
+- 新節點可以與舊節點通信
+- 只有雙方都支持時使用 Erlay
+- 不需要共識變更
+
+採用策略:
+- 版本位協商
+- 可選功能
+- 漸進式推廣</code></pre>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0330.mediawiki" target="_blank" rel="noopener noreferrer">BIP-330: Erlay</a></li>
+    <li><a href="https://github.com/sipa/minisketch" target="_blank" rel="noopener noreferrer">libminisketch</a></li>
+    <li><a href="https://arxiv.org/abs/1905.10518" target="_blank" rel="noopener noreferrer">Erlay 論文</a></li>
+    <li><a href="/tech/bitcoin-core/p2p-protocol">P2P Protocol</a></li>
+    <li><a href="/tech/bitcoin-core/mempool">Mempool</a></li>
+  </ul>
+</ArticleLayout>

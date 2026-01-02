@@ -1,0 +1,588 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Bech32 & Bech32m"
+  description="Bech32 編碼：SegWit 和 Taproot 地址的現代編碼格式"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Bech32' },
+  ]}
+  difficulty="intermediate"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Addresses', href: '/tech/bitcoin-core/addresses' }}
+  nextPage={{ title: 'Base58', href: '/tech/bitcoin-core/base58' }}
+>
+  <h2 id="overview">概述</h2>
+  <p>
+    Bech32 是一種專為 SegWit 地址設計的編碼格式（BIP-173），
+    而 Bech32m 是其改進版本（BIP-350），用於 Taproot 地址。
+    這兩種編碼提供更好的錯誤檢測能力，並且更容易閱讀和輸入。
+  </p>
+
+  <div class="not-prose my-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+    <p class="text-sm text-blue-700 dark:text-blue-400">
+      <strong>地址前綴：</strong>
+      主網以 <code>bc1</code> 開頭，測試網以 <code>tb1</code> 開頭。
+      SegWit v0 (bc1q) 使用 Bech32，Taproot (bc1p) 使用 Bech32m。
+    </p>
+  </div>
+
+  <h2 id="encoding">編碼設計</h2>
+
+  <h3>字符集</h3>
+  <pre><code class="language-text" is:raw>Bech32 字符集 (32 個字符):
+
+q p z r y 9 x 8 g f 2 t v d w 0 s 3 j n 5 4 k h c e 6 m u a 7 l
+
+設計原則:
+- 沒有 0/O 和 I/l (避免混淆)
+- 沒有 b (與前綴 bc 混淆)
+- 全小寫或全大寫 (不混用)
+- 容易區分的字符
+
+每個字符代表 5 bits:
+q=0, p=1, z=2, r=3, y=4, 9=5, x=6, 8=7, ...
+
+地址結構:
+┌─────────────────────────────────────────────┐
+│ bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4 │
+├───┬──┬─────────────────────────────────┬────┤
+│HRP│ 1│          Data Part             │Chk │
+│bc │分│  witness version + program     │sum │
+│   │隔│                                │    │
+└───┴──┴─────────────────────────────────┴────┘
+
+HRP: Human-Readable Part (bc 或 tb)
+分隔符: 1 (永遠是 1)
+Data: 5-bit 編碼的數據
+Checksum: 6 個字符的錯誤檢測碼</code></pre>
+
+  <h3>Checksum 算法</h3>
+  <pre><code class="language-text" is:raw>BCH 碼 (Bose-Chaudhuri-Hocquenghem):
+
+多項式: x^6 + x^4 + x^2 + x + 1
+
+Bech32 常數: 1
+Bech32m 常數: 0x2bc830a3
+
+錯誤檢測能力:
+- 保證檢測最多 4 個字符錯誤
+- 高機率檢測更多錯誤
+- 檢測任意位置的單字符錯誤
+
+錯誤定位:
+- 可以定位錯誤位置 (某些情況)
+- 幫助用戶修正輸入錯誤
+
+vs Base58Check:
+- Base58: 4 byte checksum (SHA256)
+- Bech32: 6 字符 BCH 碼
+- Bech32 錯誤檢測更強</code></pre>
+
+  <h2 id="versions">版本對比</h2>
+
+  <h3>Bech32 vs Bech32m</h3>
+  <pre><code class="language-text" is:raw>為什麼需要 Bech32m:
+
+Bech32 的弱點:
+- 當最後一個字符是 'p' 時
+- 插入或刪除 'q' 可能不改變 checksum
+- 這是 BCH 碼的數學特性
+
+範例:
+bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4  (有效)
+bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4qq... (可能有效!)
+
+影響:
+- SegWit v0 (witness version 0) 不受影響
+  因為長度固定 (20 或 32 bytes)
+- Witness v1+ 可能受影響
+
+解決方案 (BIP-350):
+- Bech32m 使用不同的常數
+- witness v0: 繼續使用 Bech32
+- witness v1+: 使用 Bech32m
+
+地址類型:
+┌─────────────────────────────────────────┐
+│ 類型          │ 前綴  │ 編碼    │ 版本 │
+├─────────────────────────────────────────┤
+│ P2WPKH        │ bc1q  │ Bech32  │ v0   │
+│ P2WSH         │ bc1q  │ Bech32  │ v0   │
+│ P2TR (Taproot)│ bc1p  │ Bech32m │ v1   │
+│ 未來版本      │ bc1?  │ Bech32m │ v2+  │
+└─────────────────────────────────────────┘</code></pre>
+
+  <h2 id="implementation">TypeScript 實作</h2>
+
+  <h3>編碼函數</h3>
+  <pre><code class="language-typescript" is:raw>const CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const BECH32_CONST = 1;
+const BECH32M_CONST = 0x2bc830a3;
+
+type Encoding = 'bech32' | 'bech32m';
+
+// 多項式運算
+function polymod(values: number[]): number {
+  const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+  let chk = 1;
+
+  for (const v of values) {
+    const top = chk >> 25;
+    chk = ((chk & 0x1ffffff) << 5) ^ v;
+    for (let i = 0; i < 5; i++) {
+      if ((top >> i) & 1) {
+        chk ^= GEN[i];
+      }
+    }
+  }
+
+  return chk;
+}
+
+// HRP 擴展
+function hrpExpand(hrp: string): number[] {
+  const result: number[] = [];
+  for (const c of hrp) {
+    result.push(c.charCodeAt(0) >> 5);
+  }
+  result.push(0);
+  for (const c of hrp) {
+    result.push(c.charCodeAt(0) & 31);
+  }
+  return result;
+}
+
+// 創建 checksum
+function createChecksum(
+  hrp: string,
+  data: number[],
+  encoding: Encoding
+): number[] {
+  const values = [...hrpExpand(hrp), ...data, 0, 0, 0, 0, 0, 0];
+  const constant = encoding === 'bech32' ? BECH32_CONST : BECH32M_CONST;
+  const polymodResult = polymod(values) ^ constant;
+
+  const checksum: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    checksum.push((polymodResult >> (5 * (5 - i))) & 31);
+  }
+  return checksum;
+}
+
+// 編碼
+function encode(
+  hrp: string,
+  data: number[],
+  encoding: Encoding
+): string {
+  const checksum = createChecksum(hrp, data, encoding);
+  const combined = [...data, ...checksum];
+
+  let result = hrp + '1';
+  for (const d of combined) {
+    result += CHARSET[d];
+  }
+  return result;
+}
+
+// 將 bytes 轉換為 5-bit 數組
+function convertBits(
+  data: Uint8Array,
+  fromBits: number,
+  toBits: number,
+  pad: boolean
+): number[] | null {
+  let acc = 0;
+  let bits = 0;
+  const result: number[] = [];
+  const maxv = (1 << toBits) - 1;
+
+  for (const value of data) {
+    if (value < 0 || value >> fromBits !== 0) {
+      return null;
+    }
+    acc = (acc << fromBits) | value;
+    bits += fromBits;
+    while (bits >= toBits) {
+      bits -= toBits;
+      result.push((acc >> bits) & maxv);
+    }
+  }
+
+  if (pad) {
+    if (bits > 0) {
+      result.push((acc << (toBits - bits)) & maxv);
+    }
+  } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv) !== 0) {
+    return null;
+  }
+
+  return result;
+}
+
+// 編碼 SegWit 地址
+function encodeSegWitAddress(
+  hrp: string,
+  version: number,
+  program: Uint8Array
+): string {
+  const data = convertBits(program, 8, 5, true);
+  if (!data) throw new Error('Invalid program');
+
+  const encoding = version === 0 ? 'bech32' : 'bech32m';
+  return encode(hrp, [version, ...data], encoding);
+}
+
+// 使用範例
+const pubkeyHash = hexToBytes('751e76e8199196d454941c45d1b3a323f1433bd6');
+const address = encodeSegWitAddress('bc', 0, pubkeyHash);
+console.log(address); // bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4</code></pre>
+
+  <h3>解碼函數</h3>
+  <pre><code class="language-typescript" is:raw>// 驗證 checksum
+function verifyChecksum(
+  hrp: string,
+  data: number[]
+): Encoding | null {
+  const values = [...hrpExpand(hrp), ...data];
+  const result = polymod(values);
+
+  if (result === BECH32_CONST) return 'bech32';
+  if (result === BECH32M_CONST) return 'bech32m';
+  return null;
+}
+
+// 解碼
+function decode(str: string): {
+  hrp: string;
+  data: number[];
+  encoding: Encoding;
+} | null {
+  // 檢查大小寫混用
+  if (str !== str.toLowerCase() && str !== str.toUpperCase()) {
+    return null;
+  }
+  str = str.toLowerCase();
+
+  // 找到分隔符
+  const pos = str.lastIndexOf('1');
+  if (pos < 1 || pos + 7 > str.length || str.length > 90) {
+    return null;
+  }
+
+  const hrp = str.slice(0, pos);
+  const dataStr = str.slice(pos + 1);
+
+  // 解碼數據
+  const data: number[] = [];
+  for (const c of dataStr) {
+    const idx = CHARSET.indexOf(c);
+    if (idx === -1) return null;
+    data.push(idx);
+  }
+
+  // 驗證 checksum
+  const encoding = verifyChecksum(hrp, data);
+  if (!encoding) return null;
+
+  // 移除 checksum
+  return {
+    hrp,
+    data: data.slice(0, -6),
+    encoding
+  };
+}
+
+// 解碼 SegWit 地址
+function decodeSegWitAddress(
+  hrp: string,
+  address: string
+): { version: number; program: Uint8Array } | null {
+  const decoded = decode(address);
+  if (!decoded || decoded.hrp !== hrp) return null;
+
+  const { data, encoding } = decoded;
+  if (data.length < 1) return null;
+
+  const version = data[0];
+
+  // 驗證版本和編碼的匹配
+  if (version === 0 && encoding !== 'bech32') return null;
+  if (version !== 0 && encoding !== 'bech32m') return null;
+
+  // 轉換回 8-bit
+  const program = convertBits(new Uint8Array(data.slice(1)), 5, 8, false);
+  if (!program) return null;
+
+  // 驗證長度
+  if (program.length < 2 || program.length > 40) return null;
+  if (version === 0 && program.length !== 20 && program.length !== 32) {
+    return null;
+  }
+
+  return { version, program: new Uint8Array(program) };
+}
+
+// 使用範例
+const decoded = decodeSegWitAddress('bc', 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4');
+console.log(decoded);
+// { version: 0, program: Uint8Array(20) [...] }</code></pre>
+
+  <h2 id="address-types">地址類型</h2>
+
+  <h3>SegWit v0 地址</h3>
+  <pre><code class="language-text" is:raw>P2WPKH (Pay-to-Witness-Public-Key-Hash):
+- 版本: 0
+- 程式長度: 20 bytes
+- 程式: HASH160(公鑰)
+- 地址範例: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+
+P2WSH (Pay-to-Witness-Script-Hash):
+- 版本: 0
+- 程式長度: 32 bytes
+- 程式: SHA256(witness script)
+- 地址範例: bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3
+
+識別方式:
+bc1q + 39 字符 = P2WPKH (42 總長)
+bc1q + 59 字符 = P2WSH (62 總長)</code></pre>
+
+  <h3>Taproot 地址</h3>
+  <pre><code class="language-text" is:raw>P2TR (Pay-to-Taproot):
+- 版本: 1
+- 程式長度: 32 bytes
+- 程式: x-only 公鑰 (32 bytes)
+- 編碼: Bech32m
+
+地址範例:
+bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr
+
+結構:
+┌─────────────────────────────────────────────────────┐
+│ bc1p...                                             │
+│ ├─ bc1: 主網前綴                                    │
+│ ├─ p: witness version 1 (編碼為 'p')               │
+│ └─ ...: 32-byte x-only 公鑰 + checksum             │
+└─────────────────────────────────────────────────────┘
+
+長度: 62 字符 (與 P2WSH 相同)</code></pre>
+
+  <h2 id="error-detection">錯誤檢測</h2>
+
+  <h3>錯誤類型</h3>
+  <pre><code class="language-text" is:raw>Bech32 可檢測的錯誤:
+
+1. 單字符替換
+   bc1qw508... → bc1qw5O8... ✗ 檢測到
+
+2. 相鄰字符交換
+   bc1qw508... → bc1qw058... ✗ 檢測到
+
+3. 單字符插入/刪除
+   bc1qw508... → bc1qw5088... ✗ 檢測到
+
+4. 多字符錯誤 (最多 4 個)
+   保證檢測
+
+5. 任意長度的突發錯誤 (最多 4 字符)
+   保證檢測
+
+錯誤更正限制:
+- 可以檢測但通常無法自動更正
+- 可以提示可能的錯誤位置
+- 需要人工確認更正</code></pre>
+
+  <h3>錯誤定位</h3>
+  <pre><code class="language-typescript" is:raw>// 嘗試定位錯誤
+function locateErrors(address: string): number[] | null {
+  const decoded = decode(address);
+  if (decoded) return []; // 沒有錯誤
+
+  // 嘗試每個位置的每個可能替換
+  const errors: number[] = [];
+  const chars = address.split('');
+  const pos = address.lastIndexOf('1');
+
+  for (let i = pos + 1; i < chars.length; i++) {
+    const original = chars[i];
+
+    for (const replacement of CHARSET) {
+      if (replacement === original) continue;
+
+      chars[i] = replacement;
+      const test = chars.join('');
+
+      if (decode(test)) {
+        errors.push(i);
+        break;
+      }
+    }
+
+    chars[i] = original;
+  }
+
+  return errors.length > 0 ? errors : null;
+}
+
+// 使用範例
+const wrongAddress = 'bc1qw5O8d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4';
+const errorPositions = locateErrors(wrongAddress);
+console.log('可能的錯誤位置:', errorPositions);</code></pre>
+
+  <h2 id="qr-codes">QR 碼優化</h2>
+  <pre><code class="language-text" is:raw>Bech32 的 QR 碼優勢:
+
+字母數字模式:
+- QR 碼有專門的字母數字模式
+- 支持: 0-9, A-Z, 空格, $%*+-./:
+- 比二進制模式效率高 45%
+
+Bech32 設計:
+- 全大寫時符合 QR 字母數字模式
+- BC1QW508... (大寫有效)
+- 更小的 QR 碼
+
+vs Base58:
+- Base58 包含小寫字母
+- 必須使用二進制模式
+- 相同數據需要更大的 QR 碼
+
+大小比較 (相同 20 byte payload):
+┌───────────────────────────────────────┐
+│ 編碼      │ 長度    │ QR 模式 │ 模組  │
+├───────────────────────────────────────┤
+│ Base58   │ 34 字符 │ 二進制  │ ~100 │
+│ Bech32   │ 42 字符 │ 字母數字│ ~80  │
+└───────────────────────────────────────┘
+
+建議: 生成 QR 碼時使用大寫</code></pre>
+
+  <h2 id="validation">地址驗證</h2>
+  <pre><code class="language-typescript" is:raw>interface AddressValidation {
+  valid: boolean;
+  type?: 'p2wpkh' | 'p2wsh' | 'p2tr' | 'unknown';
+  network?: 'mainnet' | 'testnet' | 'regtest';
+  error?: string;
+}
+
+function validateBech32Address(address: string): AddressValidation {
+  // 嘗試解碼
+  const decoded = decode(address.toLowerCase());
+
+  if (!decoded) {
+    return { valid: false, error: 'Invalid checksum or format' };
+  }
+
+  const { hrp, data, encoding } = decoded;
+
+  // 驗證網路
+  let network: AddressValidation['network'];
+  if (hrp === 'bc') network = 'mainnet';
+  else if (hrp === 'tb') network = 'testnet';
+  else if (hrp === 'bcrt') network = 'regtest';
+  else {
+    return { valid: false, error: `Unknown HRP: ${hrp}` };
+  }
+
+  // 提取版本和程式
+  const version = data[0];
+  const program = convertBits(new Uint8Array(data.slice(1)), 5, 8, false);
+
+  if (!program) {
+    return { valid: false, error: 'Invalid program encoding' };
+  }
+
+  // 驗證版本與編碼匹配
+  if (version === 0 && encoding !== 'bech32') {
+    return { valid: false, error: 'v0 must use bech32 encoding' };
+  }
+  if (version > 0 && encoding !== 'bech32m') {
+    return { valid: false, error: 'v1+ must use bech32m encoding' };
+  }
+
+  // 確定類型
+  let type: AddressValidation['type'];
+  if (version === 0 && program.length === 20) {
+    type = 'p2wpkh';
+  } else if (version === 0 && program.length === 32) {
+    type = 'p2wsh';
+  } else if (version === 1 && program.length === 32) {
+    type = 'p2tr';
+  } else {
+    type = 'unknown';
+  }
+
+  return { valid: true, type, network };
+}
+
+// 使用範例
+console.log(validateBech32Address('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'));
+// { valid: true, type: 'p2wpkh', network: 'mainnet' }
+
+console.log(validateBech32Address('bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr'));
+// { valid: true, type: 'p2tr', network: 'mainnet' }</code></pre>
+
+  <h2 id="comparison">編碼比較</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特性</th>
+        <th>Base58Check</th>
+        <th>Bech32</th>
+        <th>Bech32m</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>字符集</td>
+        <td>58 個</td>
+        <td>32 個</td>
+        <td>32 個</td>
+      </tr>
+      <tr>
+        <td>大小寫</td>
+        <td>混用</td>
+        <td>單一</td>
+        <td>單一</td>
+      </tr>
+      <tr>
+        <td>錯誤檢測</td>
+        <td>4 byte SHA256</td>
+        <td>BCH 碼</td>
+        <td>BCH 碼</td>
+      </tr>
+      <tr>
+        <td>錯誤定位</td>
+        <td>否</td>
+        <td>是</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td>QR 優化</td>
+        <td>否</td>
+        <td>是</td>
+        <td>是</td>
+      </tr>
+      <tr>
+        <td>用途</td>
+        <td>P2PKH, P2SH</td>
+        <td>SegWit v0</td>
+        <td>Taproot+</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="resources">相關資源</h2>
+  <ul>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki" target="_blank" rel="noopener noreferrer">BIP-173: Bech32</a></li>
+    <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki" target="_blank" rel="noopener noreferrer">BIP-350: Bech32m</a></li>
+    <li><a href="http://bitcoin.sipa.be/bech32/demo/demo.html" target="_blank" rel="noopener noreferrer">Bech32 Demo</a></li>
+    <li><a href="/tech/bitcoin-core/addresses">Address Types</a></li>
+    <li><a href="/tech/bitcoin-core/segwit">SegWit</a></li>
+    <li><a href="/tech/bitcoin-core/taproot">Taproot</a></li>
+  </ul>
+</ArticleLayout>
