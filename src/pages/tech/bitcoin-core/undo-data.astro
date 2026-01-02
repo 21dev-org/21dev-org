@@ -1,0 +1,323 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Undo Data"
+  description="深入了解 Bitcoin Core 的區塊 undo 數據，用於區塊鏈重組時回滾 UTXO 集。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Undo Data' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+  nextPage={{ title: 'Fee Estimation', href: '/tech/bitcoin-core/fee-estimation' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Undo Data？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Undo Data 是 Bitcoin Core 為每個區塊儲存的回滾資訊，記錄了該區塊花費的所有 UTXO。
+      當發生區塊鏈重組時，節點使用這些數據來恢復 UTXO 集到之前的狀態。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Undo Data 的作用</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">區塊重組</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 回滾被廢棄的區塊</li>
+            <li>• 恢復被花費的 UTXO</li>
+            <li>• 移除無效的 UTXO</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">數據驗證</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 驗證區塊完整性</li>
+            <li>• 重建 UTXO 集（reindex）</li>
+            <li>• 審計區塊鏈狀態</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="file-structure" class="text-2xl font-bold text-[var(--text-primary)]">檔案結構</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Undo 檔案位置
+~/.bitcoin/blocks/rev00000.dat
+~/.bitcoin/blocks/rev00001.dat
+...
+
+# 與區塊檔案對應
+# blk00000.dat → rev00000.dat
+# blk00001.dat → rev00001.dat
+
+# 查看檔案大小
+ls -lh ~/.bitcoin/blocks/rev*.dat | head -5
+
+# 典型輸出
+# -rw------- 1 user user 130M rev00000.dat
+# -rw------- 1 user user 128M rev00001.dat</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Undo 檔案格式：
+
+┌────────────────────────────────────────────────────┐
+│  Undo Block 1                                      │
+│  ├── 4 bytes: Magic (network)                      │
+│  ├── 4 bytes: Size                                 │
+│  └── Undo Data                                     │
+│       ├── VarInt: 交易數量 (不含 coinbase)          │
+│       └── 每個交易的 undo 資訊                      │
+│            ├── VarInt: 輸入數量                    │
+│            └── 每個輸入的被花費輸出                 │
+│                 ├── Coin (壓縮格式)                │
+│                 │    ├── 高度 + coinbase 標誌      │
+│                 │    ├── 金額 (壓縮)               │
+│                 │    └── 腳本 (壓縮)               │
+│                 └── ...                            │
+├────────────────────────────────────────────────────┤
+│  Undo Block 2                                      │
+│  └── ...                                           │
+└────────────────────────────────────────────────────┘</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface SpentCoin {
+  height: number;       // 創建這個 UTXO 的區塊高度
+  coinbase: boolean;    // 是否來自 coinbase
+  value: bigint;        // 金額（satoshis）
+  scriptPubKey: Buffer; // 輸出腳本
+}
+
+interface TxUndo {
+  // 這筆交易花費的所有 UTXO
+  // 順序與交易輸入順序相同
+  spentCoins: SpentCoin[];
+}
+
+interface BlockUndo {
+  // 區塊中所有交易的 undo 數據
+  // 不包含 coinbase（coinbase 沒有輸入）
+  txUndo: TxUndo[];
+}
+
+class UndoManager {
+  // 連接區塊時創建 undo 數據
+  createUndo(block: Block, utxoSet: UTXOSet): BlockUndo {
+    const blockUndo: BlockUndo = { txUndo: [] };
+
+    // 跳過 coinbase（索引 0）
+    for (let i = 1; i < block.transactions.length; i++) {
+      const tx = block.transactions[i];
+      const txUndo: TxUndo = { spentCoins: [] };
+
+      for (const input of tx.inputs) {
+        // 獲取被花費的 UTXO
+        const coin = utxoSet.getCoin(input.txid, input.vout);
+        txUndo.spentCoins.push({
+          height: coin.height,
+          coinbase: coin.coinbase,
+          value: coin.value,
+          scriptPubKey: coin.scriptPubKey,
+        });
+      }
+
+      blockUndo.txUndo.push(txUndo);
+    }
+
+    return blockUndo;
+  }
+
+  // 斷開區塊時使用 undo 數據
+  disconnectBlock(block: Block, undo: BlockUndo, utxoSet: UTXOSet): void {
+    // 反向處理交易（後進先出）
+    for (let i = block.transactions.length - 1; i >= 0; i--) {
+      const tx = block.transactions[i];
+
+      // 1. 移除這筆交易創建的 UTXO
+      for (let j = 0; j < tx.outputs.length; j++) {
+        utxoSet.removeCoin(tx.txid, j);
+      }
+
+      // 2. 恢復這筆交易花費的 UTXO（跳過 coinbase）
+      if (i > 0) {
+        const txUndo = undo.txUndo[i - 1];
+        for (let j = 0; j < tx.inputs.length; j++) {
+          const input = tx.inputs[j];
+          const spentCoin = txUndo.spentCoins[j];
+          utxoSet.addCoin(input.txid, input.vout, spentCoin);
+        }
+      }
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="reorg" class="text-2xl font-bold text-[var(--text-primary)]">區塊重組流程</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊重組示例：
+
+原始鏈：
+  Block 100 → Block 101 → Block 102A → Block 103A
+                              ↑ 當前最佳
+
+新的更長鏈：
+  Block 100 → Block 101 → Block 102B → Block 103B → Block 104B
+                              ↑ 新的最佳
+
+重組步驟：
+1. 斷開 Block 103A（使用 rev 數據恢復 UTXO）
+2. 斷開 Block 102A（使用 rev 數據恢復 UTXO）
+3. 連接 Block 102B（創建新的 rev 數據）
+4. 連接 Block 103B（創建新的 rev 數據）
+5. 連接 Block 104B（創建新的 rev 數據）</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ChainState {
+  async reorganize(
+    oldTip: BlockIndex,
+    newTip: BlockIndex
+  ): Promise<void> {
+    // 找到共同祖先
+    const fork = this.findForkPoint(oldTip, newTip);
+
+    // 收集要斷開和連接的區塊
+    const disconnect: BlockIndex[] = [];
+    const connect: BlockIndex[] = [];
+
+    // 從舊 tip 回溯到 fork
+    let block = oldTip;
+    while (block !== fork) {
+      disconnect.push(block);
+      block = block.prev;
+    }
+
+    // 從新 tip 回溯到 fork
+    block = newTip;
+    while (block !== fork) {
+      connect.unshift(block);  // 注意：需要反轉順序
+      block = block.prev;
+    }
+
+    // 斷開舊區塊
+    for (const blockIndex of disconnect) {
+      const undo = await this.readUndoData(blockIndex);
+      const block = await this.readBlock(blockIndex);
+      this.disconnectBlock(block, undo);
+
+      // 將交易返回 mempool
+      this.returnToMempool(block);
+    }
+
+    // 連接新區塊
+    for (const blockIndex of connect) {
+      const block = await this.readBlock(blockIndex);
+      const undo = this.connectBlock(block);
+      await this.writeUndoData(blockIndex, undo);
+    }
+
+    console.log(`Reorganized: removed ${disconnect.length}, added ${connect.length}`);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="pruning" class="text-2xl font-bold text-[var(--text-primary)]">Pruning 與 Undo Data</h2>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">重要：</strong>
+        即使啟用 pruning，Bitcoin Core 仍會保留最近區塊的 undo 數據，
+        以支持可能的重組。預設保留約 288 個區塊（約 2 天）的數據。
+      </p>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Pruning 模式下的數據保留
+# 保留最近 550 MB 的區塊和 undo 數據
+bitcoind -prune=550
+
+# 這確保了：
+# 1. 可以處理短期重組
+# 2. 可以服務最近區塊給其他節點
+# 3. 仍然完整驗證新區塊</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="verification" class="text-2xl font-bold text-[var(--text-primary)]">驗證與一致性</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Undo 數據的驗證
+class UndoVerifier {
+  // 驗證 undo 數據與區塊匹配
+  verify(block: Block, undo: BlockUndo): boolean {
+    // 交易數量應該匹配（減去 coinbase）
+    if (undo.txUndo.length !== block.transactions.length - 1) {
+      return false;
+    }
+
+    for (let i = 0; i < undo.txUndo.length; i++) {
+      const tx = block.transactions[i + 1];  // 跳過 coinbase
+      const txUndo = undo.txUndo[i];
+
+      // 輸入數量應該匹配
+      if (txUndo.spentCoins.length !== tx.inputs.length) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // 驗證 undo 數據的哈希（可選）
+  verifyHash(undo: BlockUndo, expectedHash: Buffer): boolean {
+    const actualHash = this.hashUndo(undo);
+    return actualHash.equals(expectedHash);
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">用途：</strong>儲存被花費的 UTXO 以支持區塊回滾</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">檔案：</strong>rev*.dat 與 blk*.dat 對應</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">重組：</strong>使用 undo 數據恢復 UTXO 集</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">Pruning：</strong>仍保留最近區塊的 undo 數據</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

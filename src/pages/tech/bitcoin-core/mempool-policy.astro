@@ -1,0 +1,346 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Mempool Policy"
+  description="深入了解 Bitcoin Core 的 mempool 接受策略，交易驗證規則和政策限制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Mempool Policy' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+  nextPage={{ title: 'Undo Data', href: '/tech/bitcoin-core/undo-data' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Mempool Policy？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Mempool Policy 是 Bitcoin Core 決定是否接受交易進入 mempool 的規則集。
+      這些規則分為兩類：共識規則（必須遵守）和政策規則（可配置的本地限制）。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">規則類型</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">共識規則</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 有效的簽名</li>
+            <li>• 輸入存在且未花費</li>
+            <li>• 輸入金額 ≥ 輸出金額</li>
+            <li>• 正確的腳本執行</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">政策規則</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 最小手續費率</li>
+            <li>• 交易大小限制</li>
+            <li>• 標準腳本類型</li>
+            <li>• RBF 規則</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="standardness" class="text-2xl font-bold text-[var(--text-primary)]">標準性規則</h2>
+
+    <h3 id="standard-scripts" class="text-xl font-semibold text-[var(--text-primary)]">標準腳本類型</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Bitcoin Core 接受的標準腳本類型
+enum TxoutType {
+  NONSTANDARD,
+  PUBKEY,           // P2PK
+  PUBKEYHASH,       // P2PKH
+  SCRIPTHASH,       // P2SH
+  MULTISIG,         // 裸多簽
+  NULL_DATA,        // OP_RETURN
+  WITNESS_V0_KEYHASH,    // P2WPKH
+  WITNESS_V0_SCRIPTHASH, // P2WSH
+  WITNESS_V1_TAPROOT,    // P2TR
+  WITNESS_UNKNOWN,  // 未來的見證版本
+}
+
+function isStandardTx(tx: Transaction): boolean {
+  // 1. 版本檢查
+  if (tx.version < 1 || tx.version > 2) {
+    return false;
+  }
+
+  // 2. 大小限制
+  if (tx.weight > MAX_STANDARD_TX_WEIGHT) {  // 400,000 WU
+    return false;
+  }
+
+  // 3. 檢查每個輸出
+  for (const output of tx.outputs) {
+    if (!isStandardOutput(output)) {
+      return false;
+    }
+    // Dust 檢查
+    if (isDust(output)) {
+      return false;
+    }
+  }
+
+  // 4. 檢查每個輸入
+  for (const input of tx.inputs) {
+    if (!isStandardInput(input)) {
+      return false;
+    }
+  }
+
+  return true;
+}</code></pre>
+    </div>
+
+    <h3 id="size-limits" class="text-xl font-semibold text-[var(--text-primary)]">大小限制</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">限制</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">值</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">說明</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MAX_STANDARD_TX_WEIGHT</td>
+              <td class="py-2">400,000 WU</td>
+              <td class="py-2">約 100 KB</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MAX_P2SH_SIGOPS</td>
+              <td class="py-2">15</td>
+              <td class="py-2">P2SH 腳本最大簽名操作</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MAX_STANDARD_P2WSH_SCRIPT_SIZE</td>
+              <td class="py-2">3,600 bytes</td>
+              <td class="py-2">P2WSH 見證腳本大小</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">MAX_STANDARD_P2WSH_STACK_ITEMS</td>
+              <td class="py-2">100</td>
+              <td class="py-2">見證堆疊項目數</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="fee-policy" class="text-2xl font-bold text-[var(--text-primary)]">手續費政策</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 手續費相關常量
+const MIN_RELAY_TX_FEE = 1000;  // 1 sat/vB（最小中繼費率）
+const DUST_RELAY_TX_FEE = 3000; // 3 sat/vB（dust 計算費率）
+
+// 計算 dust 閾值
+function getDustThreshold(output: TxOutput): number {
+  // Dust = 花費這個輸出所需的手續費
+  let spendSize: number;
+
+  if (output.isSegwit()) {
+    spendSize = 68;  // P2WPKH 輸入大小
+  } else {
+    spendSize = 148; // P2PKH 輸入大小
+  }
+
+  return spendSize * DUST_RELAY_TX_FEE / 1000;
+}
+
+function isDust(output: TxOutput): boolean {
+  // OP_RETURN 輸出不是 dust
+  if (output.script.isOpReturn()) {
+    return false;
+  }
+
+  return output.value < getDustThreshold(output);
+}
+
+// Mempool 最小費率（動態調整）
+class MempoolFeeEstimator {
+  private mempoolMinFee: number = MIN_RELAY_TX_FEE;
+
+  // 當 mempool 接近滿時，提高最小費率
+  updateMinFee(mempoolSize: number, maxSize: number): void {
+    if (mempoolSize > maxSize * 0.9) {
+      // 提高最小費率
+      this.mempoolMinFee = this.getBottomFeeRate();
+    } else {
+      // 逐漸降低
+      this.mempoolMinFee = Math.max(
+        MIN_RELAY_TX_FEE,
+        this.mempoolMinFee * 0.99
+      );
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="ancestor-limits" class="text-2xl font-bold text-[var(--text-primary)]">祖先/後代限制</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">限制</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">預設值</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">配置選項</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">祖先數量</td>
+              <td class="py-2">25</td>
+              <td class="py-2">-limitancestorcount</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">祖先總大小</td>
+              <td class="py-2">101 KB</td>
+              <td class="py-2">-limitancestorsize</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">後代數量</td>
+              <td class="py-2">25</td>
+              <td class="py-2">-limitdescendantcount</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">後代總大小</td>
+              <td class="py-2">101 KB</td>
+              <td class="py-2">-limitdescendantsize</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>交易鏈示例：
+
+TX_A (已確認)
+  └── TX_B (mempool)
+        └── TX_C (mempool)
+              └── TX_D (mempool)
+                    └── TX_E (新交易)
+
+TX_E 的祖先：TX_B, TX_C, TX_D (3 個)
+TX_B 的後代：TX_C, TX_D, TX_E (3 個)
+
+如果 TX_E 會導致任何交易超過祖先/後代限制，
+則 TX_E 會被拒絕</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rbf-policy" class="text-2xl font-bold text-[var(--text-primary)]">RBF 政策</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// BIP-125 RBF 規則
+function canReplaceTransaction(
+  original: Transaction,
+  replacement: Transaction
+): { allowed: boolean; reason?: string } {
+  // 規則 1: 原始交易必須有 RBF 信號
+  if (!isRbfSignaled(original)) {
+    return { allowed: false, reason: 'Original not replaceable' };
+  }
+
+  // 規則 2: 替換交易支付更高的絕對手續費
+  if (replacement.fee <= original.fee) {
+    return { allowed: false, reason: 'Insufficient fee' };
+  }
+
+  // 規則 3: 額外費用至少覆蓋替換交易的最小中繼費用
+  const minIncrease = replacement.vsize * MIN_RELAY_TX_FEE / 1000;
+  if (replacement.fee - original.fee < minIncrease) {
+    return { allowed: false, reason: 'Fee increase too small' };
+  }
+
+  // 規則 4: 替換的交易數量限制
+  const evictedCount = countEvictedTransactions(original);
+  if (evictedCount > 100) {
+    return { allowed: false, reason: 'Too many evictions' };
+  }
+
+  // 規則 5: 不能引入新的未確認輸入
+  if (hasNewUnconfirmedInputs(original, replacement)) {
+    return { allowed: false, reason: 'New unconfirmed inputs' };
+  }
+
+  return { allowed: true };
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 最小中繼費率（sat/kB）
+minrelaytxfee=1000
+
+# Mempool 大小限制（MB）
+maxmempool=300
+
+# 交易過期時間（小時）
+mempoolexpiry=336
+
+# 祖先限制
+limitancestorcount=25
+limitancestorsize=101
+
+# 後代限制
+limitdescendantcount=25
+limitdescendantsize=101
+
+# 允許非標準交易（僅測試網）
+# acceptnonstdtxn=1
+
+# Full RBF（允許替換任何交易）
+mempoolfullrbf=1</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">標準性：</strong>限制腳本類型和交易大小</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">手續費：</strong>最小中繼費率和 dust 限制</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">鏈限制：</strong>祖先/後代數量和大小限制</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">可配置：</strong>大部分政策規則可通過配置調整</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,338 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Fee Estimation"
+  description="深入了解 Bitcoin Core 的手續費估算算法，如何預測交易確認所需的手續費率。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Fee Estimation' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Undo Data', href: '/tech/bitcoin-core/undo-data' }}
+  nextPage={{ title: 'Peer Management', href: '/tech/bitcoin-core/peer-management' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Fee Estimation？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Fee Estimation 是 Bitcoin Core 用於預測交易確認所需手續費率的系統。
+      它分析歷史交易數據，追蹤不同手續費率的交易在多少個區塊內被確認，
+      以幫助用戶選擇適當的手續費。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">估算原理</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸入數據</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• Mempool 中的交易</li>
+            <li>• 已確認交易的歷史</li>
+            <li>• 區塊確認時間</li>
+          </ul>
+        </div>
+        <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
+          <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸出</h4>
+          <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+            <li>• 目標區塊數的費率</li>
+            <li>• 經濟/保守模式</li>
+            <li>• 置信區間</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="rpc" class="text-2xl font-bold text-[var(--text-primary)]">RPC 接口</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 估算 6 個區塊內確認的費率
+bitcoin-cli estimatesmartfee 6
+
+# 輸出示例
+{
+  "feerate": 0.00012500,  # BTC/kB
+  "blocks": 6             # 預計確認區塊數
+}
+
+# 保守模式（更可靠但可能較高）
+bitcoin-cli estimatesmartfee 6 "CONSERVATIVE"
+
+# 經濟模式（可能較低但風險較高）
+bitcoin-cli estimatesmartfee 6 "ECONOMICAL"
+
+# 查看費率分佈
+bitcoin-cli getmempoolinfo
+
+# 輸出包含
+{
+  "mempoolminfee": 0.00001000,  # 當前 mempool 最小費率
+  "minrelaytxfee": 0.00001000,  # 最小中繼費率
+  ...
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">estimatesmartfee 參數</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">目標區塊</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">用途</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">建議場景</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">1-2</td>
+              <td class="py-2">最快確認</td>
+              <td class="py-2">緊急交易</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">3-6</td>
+              <td class="py-2">較快確認</td>
+              <td class="py-2">一般支付</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">12-24</td>
+              <td class="py-2">中等優先級</td>
+              <td class="py-2">非緊急交易</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">144-1008</td>
+              <td class="py-2">低優先級</td>
+              <td class="py-2">整合 UTXO</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="algorithm" class="text-2xl font-bold text-[var(--text-primary)]">估算算法</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 費率桶（buckets）
+// Bitcoin Core 將費率分成多個範圍追蹤
+const FEE_SPACING = 1.05;  // 每個桶比前一個高 5%
+
+// 追蹤數據結構
+interface FeeStats {
+  // 在這個費率桶中，需要 N 個區塊確認的交易
+  // buckets[feeIndex][confirmBlocks] = count
+  confirmed: number[][];
+
+  // 在這個費率桶中，仍在 mempool 的交易
+  inMempool: number[];
+
+  // 總失敗（超過目標區塊仍未確認）
+  failed: number[];
+}
+
+class FeeEstimator {
+  private stats: FeeStats;
+  private decay: number = 0.998;  // 衰減因子
+
+  // 當交易進入 mempool
+  onTxEnterMempool(tx: Transaction, height: number): void {
+    const feeRate = tx.fee / tx.vsize;
+    const bucket = this.getBucket(feeRate);
+
+    // 記錄進入時的區塊高度
+    this.trackTx(tx.txid, bucket, height);
+  }
+
+  // 當交易被確認
+  onTxConfirmed(tx: Transaction, confirmHeight: number): void {
+    const tracking = this.getTracking(tx.txid);
+    if (!tracking) return;
+
+    const blocksToConfirm = confirmHeight - tracking.enterHeight;
+
+    // 更新統計
+    this.stats.confirmed[tracking.bucket][blocksToConfirm]++;
+
+    // 應用衰減（給最近的數據更高權重）
+    this.applyDecay();
+  }
+
+  // 估算指定目標區塊數的費率
+  estimate(targetBlocks: number, mode: 'CONSERVATIVE' | 'ECONOMICAL'): number {
+    let bestBucket = -1;
+    let bestSuccess = 0;
+
+    // 從最高費率桶開始向下搜索
+    for (let bucket = this.stats.confirmed.length - 1; bucket >= 0; bucket--) {
+      const successRate = this.getSuccessRate(bucket, targetBlocks);
+
+      // 需要足夠的成功率
+      const threshold = mode === 'CONSERVATIVE' ? 0.95 : 0.85;
+
+      if (successRate >= threshold) {
+        bestBucket = bucket;
+        break;
+      }
+    }
+
+    if (bestBucket < 0) {
+      return -1;  // 無法估算
+    }
+
+    return this.getBucketMedianFee(bestBucket);
+  }
+
+  private getSuccessRate(bucket: number, targetBlocks: number): number {
+    let confirmed = 0;
+    let total = 0;
+
+    // 計算在目標區塊內確認的比例
+    for (let blocks = 1; blocks <= targetBlocks; blocks++) {
+      confirmed += this.stats.confirmed[bucket][blocks];
+    }
+    total = confirmed + this.stats.failed[bucket] + this.stats.inMempool[bucket];
+
+    return total > 0 ? confirmed / total : 0;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="modes" class="text-2xl font-bold text-[var(--text-primary)]">估算模式</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">CONSERVATIVE</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 更可靠的估算</li>
+          <li>• 95% 置信度</li>
+          <li>• 考慮更長的歷史</li>
+          <li>• 費率通常較高</li>
+        </ul>
+      </div>
+      <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+        <h4 class="font-semibold text-yellow-400 mb-2">ECONOMICAL</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 更積極的估算</li>
+          <li>• 85% 置信度</li>
+          <li>• 偏向近期數據</li>
+          <li>• 費率通常較低</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>模式選擇建議：
+
+CONSERVATIVE:
+├── 閃電網路通道開關
+├── 時間敏感的支付
+└── 大額交易
+
+ECONOMICAL:
+├── 一般支付
+├── 非緊急轉帳
+└── 可以等待的交易
+
+如果使用 RBF（可替換交易）：
+└── 可以先用 ECONOMICAL，必要時提高手續費</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="limitations" class="text-2xl font-bold text-[var(--text-primary)]">限制與注意事項</h2>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h4 class="font-semibold text-red-400 mb-3">估算失敗的情況</h4>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>節點剛啟動，缺乏歷史數據</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>Blocks-only 模式（無 mempool 數據）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>極端網路擁堵或清空</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">✗</span>
+          <span>目標區塊數超過數據範圍</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 錯誤示例
+bitcoin-cli estimatesmartfee 6
+
+# 可能返回
+{
+  "errors": ["Insufficient data or no feerate found"],
+  "blocks": 6
+}
+
+# 解決方案：
+# 1. 等待節點運行更長時間
+# 2. 使用外部費率 API
+# 3. 檢查是否在 blocks-only 模式</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 費率估算的最小目標區塊數（預設 2）
+# 設置較高可以讓估算更保守
+minrelaytxfee=0.00001
+
+# 錢包預設手續費率（當估算失敗時使用）
+fallbackfee=0.00001
+
+# 錢包交易確認目標（區塊數）
+txconfirmtarget=6
+
+# 支付交易手續費（每 kB）
+paytxfee=0.00001
+
+# 不檢查手續費（危險！）
+# spendzeroconfchange=1</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">原理：</strong>追蹤歷史交易的確認時間</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">接口：</strong>estimatesmartfee RPC 命令</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">模式：</strong>CONSERVATIVE（保守）和 ECONOMICAL（經濟）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">限制：</strong>需要足夠的歷史數據</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

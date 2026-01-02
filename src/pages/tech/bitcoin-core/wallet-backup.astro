@@ -1,0 +1,310 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Wallet Backup"
+  description="深入了解 Bitcoin Core 錢包備份機制，包括 wallet.dat、描述符錢包和恢復流程。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Wallet Backup' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Peer Management', href: '/tech/bitcoin-core/peer-management' }}
+  nextPage={{ title: 'HD Wallets', href: '/tech/bitcoin-core/hd-wallets' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">錢包備份的重要性</h2>
+    <p class="text-[var(--text-secondary)]">
+      錢包備份是保護比特幣資產的關鍵步驟。Bitcoin Core 支持多種備份方式，
+      從傳統的 wallet.dat 檔案到現代的描述符（descriptor）導出。
+      正確的備份可以在硬體故障、軟體損壞或其他意外情況下恢復資金。
+    </p>
+
+    <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
+      <h3 class="font-semibold text-red-400 mb-3">警告</h3>
+      <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">!</span>
+          <span>沒有備份的錢包無法恢復</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">!</span>
+          <span>備份應加密並儲存在多個安全位置</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-red-500">!</span>
+          <span>定期更新備份（尤其是非 HD 錢包）</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="wallet-types" class="text-2xl font-bold text-[var(--text-primary)]">錢包類型</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">類型</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">備份方式</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">備份頻率</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Legacy（非 HD）</td>
+              <td class="py-2">wallet.dat</td>
+              <td class="py-2">每生成新地址</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">HD (BIP-32)</td>
+              <td class="py-2">種子詞 + wallet.dat</td>
+              <td class="py-2">一次（種子）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Descriptor</td>
+              <td class="py-2">描述符導出</td>
+              <td class="py-2">一次（描述符）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="backup-methods" class="text-2xl font-bold text-[var(--text-primary)]">備份方法</h2>
+
+    <h3 id="wallet-dat" class="text-xl font-semibold text-[var(--text-primary)]">1. wallet.dat 備份</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 RPC 備份（推薦）
+bitcoin-cli backupwallet "/path/to/backup/wallet-backup.dat"
+
+# 直接複製（需要先停止節點）
+bitcoin-cli stop
+cp ~/.bitcoin/wallets/default/wallet.dat /path/to/backup/
+
+# 對於命名錢包
+bitcoin-cli -rpcwallet=mywallet backupwallet "/path/to/backup.dat"
+
+# 備份檔案位置
+~/.bitcoin/wallets/
+├── default/
+│   └── wallet.dat
+├── mywallet/
+│   └── wallet.dat
+└── ...</code></pre>
+    </div>
+
+    <h3 id="dump-keys" class="text-xl font-semibold text-[var(--text-primary)]">2. 私鑰導出</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導出單個私鑰（WIF 格式）
+bitcoin-cli dumpprivkey "bc1q..."
+
+# 導出整個錢包（所有私鑰）
+bitcoin-cli dumpwallet "/path/to/wallet-dump.txt"
+
+# 輸出格式示例
+# extended private masterkey: xprv...
+# addr=bc1q... label= # hdkeypath=m/84'/0'/0'/0/0
+# KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn 2024-01-01T00:00:00Z</code></pre>
+    </div>
+
+    <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
+      <p class="text-sm text-[var(--text-secondary)]">
+        <strong class="text-yellow-400">安全警告：</strong>
+        導出的私鑰是未加密的。處理完成後請安全刪除導出檔案。
+      </p>
+    </div>
+
+    <h3 id="descriptors" class="text-xl font-semibold text-[var(--text-primary)]">3. 描述符備份</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 列出所有描述符（包含私鑰）
+bitcoin-cli listdescriptors true
+
+# 輸出示例
+{
+  "wallet_name": "mywallet",
+  "descriptors": [
+    {
+      "desc": "wpkh([d34db33f/84'/0'/0']xprv.../0/*)#checksum",
+      "timestamp": 1609459200,
+      "active": true,
+      "internal": false,
+      "range": [0, 999]
+    },
+    {
+      "desc": "wpkh([d34db33f/84'/0'/0']xprv.../1/*)#checksum",
+      "timestamp": 1609459200,
+      "active": true,
+      "internal": true,
+      "range": [0, 999]
+    }
+  ]
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="recovery" class="text-2xl font-bold text-[var(--text-primary)]">恢復流程</h2>
+
+    <h3 id="restore-wallet-dat" class="text-xl font-semibold text-[var(--text-primary)]">從 wallet.dat 恢復</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1: 使用 restorewallet（Bitcoin Core 24.0+）
+bitcoin-cli restorewallet "restored" "/path/to/backup/wallet.dat"
+
+# 方法 2: 直接複製（需要停止節點）
+bitcoin-cli stop
+mkdir -p ~/.bitcoin/wallets/restored/
+cp /path/to/backup/wallet.dat ~/.bitcoin/wallets/restored/
+bitcoind
+
+# 載入錢包
+bitcoin-cli loadwallet "restored"
+
+# 重新掃描區塊鏈（如果餘額不正確）
+bitcoin-cli -rpcwallet=restored rescanblockchain</code></pre>
+    </div>
+
+    <h3 id="restore-keys" class="text-xl font-semibold text-[var(--text-primary)]">從私鑰恢復</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導入單個私鑰
+bitcoin-cli importprivkey "KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn" "mylabel" true
+
+# 從 dump 檔案導入
+bitcoin-cli importwallet "/path/to/wallet-dump.txt"
+
+# 注意：導入會觸發區塊鏈重新掃描</code></pre>
+    </div>
+
+    <h3 id="restore-descriptors" class="text-xl font-semibold text-[var(--text-primary)]">從描述符恢復</h3>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建新的描述符錢包
+bitcoin-cli createwallet "restored" false true "" false true
+
+# 導入描述符
+bitcoin-cli -rpcwallet=restored importdescriptors '[
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xprv.../0/*)#checksum",
+    "timestamp": "now",
+    "active": true,
+    "internal": false
+  },
+  {
+    "desc": "wpkh([d34db33f/84h/0h/0h]xprv.../1/*)#checksum",
+    "timestamp": "now",
+    "active": true,
+    "internal": true
+  }
+]'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="best-practices" class="text-2xl font-bold text-[var(--text-primary)]">最佳實踐</h2>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+        <h4 class="font-semibold text-green-400 mb-2">✓ 建議</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 使用加密的錢包</li>
+          <li>• 備份到多個位置</li>
+          <li>• 使用描述符錢包</li>
+          <li>• 定期測試恢復流程</li>
+          <li>• 使用硬體錢包整合</li>
+        </ul>
+      </div>
+      <div class="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
+        <h4 class="font-semibold text-red-400 mb-2">✗ 避免</h4>
+        <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+          <li>• 只有單一備份</li>
+          <li>• 儲存在雲端（未加密）</li>
+          <li>• 忘記錢包密碼</li>
+          <li>• 從不測試恢復</li>
+          <li>• 忽略非 HD 錢包的更新備份</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">備份檢查清單</h4>
+      <ul class="space-y-2 text-[var(--text-secondary)]">
+        <li class="flex items-center gap-2">
+          <input type="checkbox" class="rounded" disabled />
+          <span>設置錢包加密密碼</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <input type="checkbox" class="rounded" disabled />
+          <span>使用 backupwallet 創建備份</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <input type="checkbox" class="rounded" disabled />
+          <span>導出描述符（包含私鑰）</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <input type="checkbox" class="rounded" disabled />
+          <span>儲存到安全的離線位置</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <input type="checkbox" class="rounded" disabled />
+          <span>測試恢復流程（使用測試網）</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="encryption" class="text-2xl font-bold text-[var(--text-primary)]">錢包加密</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 加密錢包
+bitcoin-cli encryptwallet "your-strong-passphrase"
+# 注意：這會關閉 bitcoind，需要重新啟動
+
+# 解鎖錢包（用於發送交易）
+bitcoin-cli walletpassphrase "your-passphrase" 60
+
+# 鎖定錢包
+bitcoin-cli walletlock
+
+# 更改密碼
+bitcoin-cli walletpassphrasechange "old-passphrase" "new-passphrase"</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">wallet.dat：</strong>完整的錢包備份檔案</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">描述符：</strong>現代錢包的最佳備份方式</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">加密：</strong>務必設置強密碼</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-yellow-500">⚠</span>
+          <span><strong class="text-[var(--text-primary)]">測試：</strong>定期測試恢復流程</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

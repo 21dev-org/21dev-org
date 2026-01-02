@@ -1,0 +1,384 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Peer Management"
+  description="深入了解 Bitcoin Core 的對等節點管理，連接類型、驅逐策略和網路拓撲。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Peer Management' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Fee Estimation', href: '/tech/bitcoin-core/fee-estimation' }}
+  nextPage={{ title: 'Wallet Backup', href: '/tech/bitcoin-core/wallet-backup' }}
+>
+  <section class="space-y-6">
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Peer Management？</h2>
+    <p class="text-[var(--text-secondary)]">
+      Peer Management 是 Bitcoin Core 管理與其他節點連接的系統。
+      它決定連接到哪些節點、維護多少連接、以及何時斷開或驅逐節點，
+      目標是維護健康、多樣化的網路連接。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">連接類型</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--border-default)]">
+              <th class="text-left py-2 text-[var(--text-secondary)]">類型</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">預設數量</th>
+              <th class="text-left py-2 text-[var(--text-secondary)]">功能</th>
+            </tr>
+          </thead>
+          <tbody class="text-[var(--text-secondary)]">
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Outbound Full-Relay</td>
+              <td class="py-2">8</td>
+              <td class="py-2">完整中繼（區塊、交易、地址）</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Outbound Block-Relay</td>
+              <td class="py-2">2</td>
+              <td class="py-2">只中繼區塊</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Inbound</td>
+              <td class="py-2">最多 117</td>
+              <td class="py-2">接受其他節點的連接</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Feeler</td>
+              <td class="py-2">1-2</td>
+              <td class="py-2">測試新地址的短連接</td>
+            </tr>
+            <tr class="border-b border-[var(--border-default)]">
+              <td class="py-2">Manual</td>
+              <td class="py-2">不限</td>
+              <td class="py-2">用戶手動添加</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="outbound" class="text-2xl font-bold text-[var(--text-primary)]">出站連接</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class OutboundConnectionManager {
+  // 出站連接目標
+  private readonly FULL_OUTBOUND_CONNECTIONS = 8;
+  private readonly BLOCK_RELAY_CONNECTIONS = 2;
+
+  // 選擇出站連接時確保多樣性
+  async selectOutboundPeer(): Promise<NetAddress | null> {
+    const connectedGroups = this.getConnectedGroups();
+
+    for (let attempts = 0; attempts < 100; attempts++) {
+      // 從 AddrMan 選擇地址
+      // 50% 機率從 New 表，50% 從 Tried 表
+      const addr = this.addrman.select();
+      if (!addr) continue;
+
+      // 檢查是否已連接
+      if (this.isConnected(addr)) continue;
+
+      // 確保網段多樣性（/16 網段）
+      const group = this.getGroup(addr);
+      if (connectedGroups.has(group)) {
+        // 同一網段已有連接
+        continue;
+      }
+
+      // 檢查是否被封禁
+      if (this.isBanned(addr)) continue;
+
+      return addr;
+    }
+
+    return null;
+  }
+
+  // 維護出站連接
+  async maintainOutbound(): Promise<void> {
+    const fullRelayCount = this.countByType('full-relay');
+    const blockRelayCount = this.countByType('block-relay');
+
+    // 補充 full-relay 連接
+    while (fullRelayCount < this.FULL_OUTBOUND_CONNECTIONS) {
+      const peer = await this.selectOutboundPeer();
+      if (peer) {
+        await this.connectTo(peer, 'full-relay');
+      } else {
+        break;  // 無法找到更多節點
+      }
+    }
+
+    // 補充 block-relay 連接
+    while (blockRelayCount < this.BLOCK_RELAY_CONNECTIONS) {
+      const peer = await this.selectOutboundPeer();
+      if (peer) {
+        await this.connectTo(peer, 'block-relay');
+      } else {
+        break;
+      }
+    }
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="inbound" class="text-2xl font-bold text-[var(--text-primary)]">入站連接</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class InboundConnectionManager {
+  private readonly MAX_INBOUND = 117;  // 125 總連接 - 8 出站
+
+  // 接受入站連接
+  onIncomingConnection(socket: Socket): boolean {
+    const addr = socket.remoteAddress;
+
+    // 1. 檢查是否被封禁
+    if (this.isBanned(addr)) {
+      socket.close();
+      return false;
+    }
+
+    // 2. 檢查是否達到限制
+    if (this.inboundCount >= this.MAX_INBOUND) {
+      // 嘗試驅逐一個現有連接
+      if (!this.evictInbound()) {
+        socket.close();
+        return false;
+      }
+    }
+
+    // 3. 每個網段的連接限制
+    const group = this.getGroup(addr);
+    if (this.countInboundByGroup(group) >= 2) {
+      // 同一 /16 網段最多 2 個入站連接
+      socket.close();
+      return false;
+    }
+
+    // 接受連接
+    this.addInbound(socket);
+    return true;
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="eviction" class="text-2xl font-bold text-[var(--text-primary)]">驅逐策略</h2>
+    <p class="text-[var(--text-secondary)]">
+      當需要為新連接騰出空間時，Bitcoin Core 使用複雜的驅逐算法，
+      保護有價值的節點（提供區塊快、交易多、連接時間長）。
+    </p>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class EvictionManager {
+  // 驅逐入站連接以騰出空間
+  evictInbound(): boolean {
+    let candidates = this.getInboundPeers();
+
+    // 保護各類有價值的節點
+    // 每一步都移除一些候選者
+
+    // 1. 保護最近發送區塊的節點（4 個）
+    candidates = this.removeTopN(candidates, 4, peer =>
+      peer.lastBlockTime
+    );
+
+    // 2. 保護最近發送交易的節點（4 個）
+    candidates = this.removeTopN(candidates, 4, peer =>
+      peer.lastTxTime
+    );
+
+    // 3. 保護 ping 時間最低的節點（4 個）
+    candidates = this.removeTopN(candidates, 4, peer =>
+      -peer.pingTime  // 負數，最低的會被保護
+    );
+
+    // 4. 保護連接時間最長的節點（8 個）
+    candidates = this.removeTopN(candidates, 8, peer =>
+      peer.connectedTime
+    );
+
+    // 5. 保護來自本地網路的節點
+    candidates = candidates.filter(peer =>
+      !peer.isLocal
+    );
+
+    // 6. 保護 Onion 節點（最多 4 個）
+    const onionPeers = candidates.filter(p => p.isTor);
+    if (onionPeers.length > 4) {
+      candidates = candidates.filter(p => !p.isTor);
+    }
+
+    // 從剩餘候選者中選擇要驅逐的
+    if (candidates.length === 0) {
+      return false;  // 無法驅逐
+    }
+
+    // 選擇來自最大網段組的節點
+    const victim = this.selectFromLargestGroup(candidates);
+    this.disconnect(victim);
+    return true;
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">保護優先級</h4>
+      <ul class="space-y-2 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <span>最近發送區塊的節點（快速傳播）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <span>最近發送交易的節點（活躍中繼）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <span>低延遲節點（網路質量好）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <span>長期連接節點（穩定可靠）</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm flex-shrink-0">5</span>
+          <span>Tor 節點（網路多樣性）</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="feeler" class="text-2xl font-bold text-[var(--text-primary)]">Feeler 連接</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Feeler 連接用於測試 AddrMan 中的地址
+class FeelerConnection {
+  // 定期從 New 表選擇地址測試
+  async runFeeler(): Promise<void> {
+    // 從 New 表選擇一個地址
+    const addr = this.addrman.selectFromNew();
+    if (!addr) return;
+
+    try {
+      // 嘗試連接
+      const socket = await this.connect(addr, { timeout: 5000 });
+
+      // 完成握手
+      await this.handshake(socket);
+
+      // 連接成功 - 將地址移到 Tried 表
+      this.addrman.good(addr);
+
+      // 立即斷開（feeler 只是測試）
+      socket.close();
+    } catch (error) {
+      // 連接失敗 - 從 AddrMan 移除或降低優先級
+      this.addrman.attempt(addr);
+    }
+  }
+}
+
+// Feeler 每 2 分鐘運行一次</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="cli" class="text-2xl font-bold text-[var(--text-primary)]">管理命令</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看所有連接的節點
+bitcoin-cli getpeerinfo
+
+# 簡化輸出
+bitcoin-cli getpeerinfo | jq '.[] | {addr, connection_type, ping: .pingtime}'
+
+# 手動添加節點
+bitcoin-cli addnode "192.168.1.100:8333" "add"
+
+# 查看手動添加的節點
+bitcoin-cli getaddednodeinfo
+
+# 手動斷開節點
+bitcoin-cli disconnectnode "192.168.1.100:8333"
+
+# 查看網路資訊
+bitcoin-cli getnetworkinfo
+
+# 查看連接數統計
+bitcoin-cli getnetworkinfo | jq '.connections, .connections_in, .connections_out'</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
+
+    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
+      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+
+# 最大連接數
+maxconnections=125
+
+# 最大上傳流量（MB/天，0 = 無限制）
+maxuploadtarget=5000
+
+# 手動指定節點
+addnode=192.168.1.100:8333
+
+# 只連接到指定節點
+connect=192.168.1.100:8333
+
+# 白名單（不會被驅逐或封禁）
+whitelist=192.168.1.0/24
+
+# 監聽入站連接
+listen=1
+
+# 綁定地址
+bind=0.0.0.0:8333
+
+# 使用 Tor
+proxy=127.0.0.1:9050
+onlynet=onion</code></pre>
+    </div>
+  </section>
+
+  <section class="space-y-6">
+    <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
+
+    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+      <ul class="space-y-3 text-[var(--text-secondary)]">
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">出站連接：</strong>8 個 full-relay + 2 個 block-relay</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">入站連接：</strong>最多 117 個，有驅逐策略</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">驅逐保護：</strong>保護有價值的節點</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-bitcoin-500">✓</span>
+          <span><strong class="text-[var(--text-primary)]">Feeler：</strong>定期測試新地址</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
