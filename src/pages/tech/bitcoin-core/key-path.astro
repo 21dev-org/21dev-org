@@ -1,0 +1,299 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot Key Path"
+  description="了解 Taproot key path 花費方式，使用單一簽名直接花費輸出。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Key Path' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+  nextPage={{ title: 'Script Path', href: '/tech/bitcoin-core/script-path' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Taproot key path 是最簡單和最高效的 Taproot 花費方式。
+        當所有參與者同意時，只需提供一個 Schnorr 簽名即可花費輸出，
+        無需揭露任何腳本，最大化隱私和效率。
+      </p>
+
+      <h2>Key Path 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 輸出結構:
+
+P2TR 輸出:
+OP_1 &lt;32-byte-x-only-pubkey&gt;
+
+其中公鑰是:
+Q = P + hash(P || m) × G
+
+P = 內部公鑰（internal key）
+m = Merkle root（腳本樹根，可以為空）
+G = 生成點
+
+Key Path 花費:
+- 只需要 Q 對應的私鑰簽名
+- 不需要揭露 P 或 m
+- 觀察者無法區分是 key path 還是 script path</code></pre>
+
+      <h2>為什麼使用 Key Path？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Key Path 的優勢:
+
+1. 效率最高
+   - 見證數據最小（64 字節簽名）
+   - 比 P2WPKH 還省空間
+   - 最低的手續費
+
+2. 隱私最佳
+   - 所有 P2TR 花費看起來相同
+   - 無法區分單簽、多簽、複雜腳本
+   - 不揭露任何腳本
+
+3. 簡單
+   - 一個簽名完成
+   - 與 P2WPKH 類似的用戶體驗
+
+適用場景:
+- 單一所有者的簡單支付
+- MuSig2 多簽（聚合為單一公鑰）
+- 所有參與者都同意的複雜設置</code></pre>
+
+      <h2>創建 Key Path 輸出</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>步驟 1: 生成內部公鑰
+
+# 從私鑰生成公鑰
+internal_privkey = random_256_bits()
+internal_pubkey = internal_privkey × G
+
+# x-only 公鑰（只取 x 座標）
+P = internal_pubkey.x
+
+步驟 2: 計算調整（無腳本的情況）
+
+# 如果沒有腳本樹
+t = hash_TapTweak(P)
+# TapTweak 是 BIP-340 定義的標籤雜湊
+
+步驟 3: 計算輸出公鑰
+
+Q = P + t × G
+
+# 如果 Q 的 y 座標是奇數，需要取反
+if Q.y is odd:
+    Q = -Q
+    # 相應調整私鑰
+
+步驟 4: 創建地址
+
+# Bech32m 編碼
+address = bech32m_encode("bc", 1, Q.x)
+# 結果: bc1p...</code></pre>
+
+      <h2>花費 Key Path 輸出</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>花費 Key Path 只需要簽名:
+
+步驟 1: 計算調整後的私鑰
+
+# 私鑰調整
+d = internal_privkey
+t = hash_TapTweak(P)
+tweaked_privkey = d + t
+
+# 如果輸出公鑰 y 是奇數，需要取反
+if Q.y was odd during creation:
+    tweaked_privkey = -tweaked_privkey
+
+步驟 2: 創建簽名
+
+# BIP-340 Schnorr 簽名
+sighash = compute_taproot_sighash(tx, input_index)
+signature = schnorr_sign(tweaked_privkey, sighash)
+
+步驟 3: 設置見證
+
+witness = [signature]  # 只有一個元素
+
+# 見證結構
+# &lt;64 或 65 字節簽名&gt;
+# 64 字節 = SIGHASH_DEFAULT
+# 65 字節 = 顯式 sighash 類型</code></pre>
+
+      <h2>Sighash 類型</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 簽名雜湊類型:
+
+SIGHASH_DEFAULT (0x00):
+- Taproot 專用
+- 等同於 SIGHASH_ALL
+- 簽名不包含類型字節（64 字節）
+
+SIGHASH_ALL (0x01):
+- 簽名所有輸入和輸出
+- 最常用
+- 簽名包含類型字節（65 字節）
+
+SIGHASH_NONE (0x02):
+- 不簽名輸出
+- 允許任何人添加輸出
+
+SIGHASH_SINGLE (0x03):
+- 只簽名對應索引的輸出
+
+SIGHASH_ANYONECANPAY (0x80):
+- 可與上述組合
+- 只簽名當前輸入
+
+// 使用 SIGHASH_DEFAULT 最省空間</code></pre>
+
+      <h2>MuSig2 與 Key Path</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MuSig2 多簽聚合:
+
+傳統 2-of-2 多簽:
+- 見證: 2 個簽名 + 2 個公鑰 + 腳本
+- 大小: ~200+ bytes
+
+MuSig2 Key Path:
+- 聚合公鑰: P_agg = H(P1, P2) × P1 + H(P2, P1) × P2
+- 見證: 1 個聚合簽名
+- 大小: 64 bytes
+
+流程:
+1. 參與者交換公鑰
+2. 計算聚合公鑰
+3. 創建 P2TR 輸出
+4. 花費時:
+   - 兩輪通訊
+   - 生成聚合簽名
+   - 提交單一簽名
+
+隱私優勢:
+- 觀察者看不出是多簽
+- 與單簽交易完全相同</code></pre>
+
+      <h2>程式實現</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python 示例（使用 bitcoinlib）
+
+from bitcoin import SelectParams
+from bitcoin.core import *
+from bitcoin.core.script import *
+from bitcoin.wallet import *
+
+# 選擇網路
+SelectParams('mainnet')
+
+# 生成內部密鑰
+internal_privkey = CBitcoinSecret.from_secret_bytes(os.urandom(32))
+internal_pubkey = internal_privkey.pub
+
+# 計算 x-only 公鑰
+x_only_pubkey = internal_pubkey[1:33]  # 去掉前綴
+
+# 計算 TapTweak
+tweak = tagged_hash("TapTweak", x_only_pubkey)
+
+# 調整公鑰
+# Q = P + t*G
+output_pubkey = point_add(internal_pubkey, scalar_mult(tweak))
+
+# 創建 P2TR 腳本
+scriptPubKey = CScript([OP_1, output_pubkey.x_only])
+
+# 創建地址
+address = P2TRBitcoinAddress.from_scriptPubKey(scriptPubKey)
+print(f"Address: {address}")
+
+# 花費時計算調整後的私鑰
+tweaked_privkey = (internal_privkey.secret + tweak) % SECP256K1_ORDER</code></pre>
+
+      <h2>與 Script Path 的選擇</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>何時使用 Key Path:
+
+✓ 單一所有者
+  - 最簡單的情況
+  - 與 P2WPKH 類似
+
+✓ MuSig2 多簽
+  - 所有參與者在線
+  - 願意進行互動簽名
+
+✓ 複雜設置的樂觀路徑
+  - 正常情況下大家都同意
+  - Script path 作為備用
+
+何時使用 Script Path:
+
+✓ 參與者無法互動
+  - 離線參與者
+  - 非同步簽名需求
+
+✓ 需要特定條件
+  - 時間鎖
+  - 哈希鎖
+  - 複雜邏輯
+
+✓ 爭議解決
+  - 當 key path 無法使用時的備用</code></pre>
+
+      <h2>交易示例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看 Key Path 花費交易
+
+bitcoin-cli getrawtransaction &lt;txid&gt; true
+{
+  "vin": [{
+    "txid": "...",
+    "vout": 0,
+    "scriptSig": {"asm": "", "hex": ""},
+    "txinwitness": [
+      "c1b5...64字節Schnorr簽名"
+    ],
+    "prevout": {
+      "scriptPubKey": {
+        "asm": "1 a1b2c3...",
+        "type": "witness_v1_taproot"
+      }
+    }
+  }]
+}
+
+# 注意:
+# - scriptSig 為空
+# - witness 只有一個元素（簽名）
+# - 沒有控制塊 = Key Path
+# - 有控制塊 = Script Path</code></pre>
+
+      <h2>安全考量</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>私鑰調整：</strong>確保正確計算調整後的私鑰</li>
+          <li><strong>Nonce 安全：</strong>Schnorr 簽名需要安全的隨機 nonce</li>
+          <li><strong>MuSig2 協議：</strong>嚴格遵循協議，防止 rogue key 攻擊</li>
+          <li><strong>y 座標處理：</strong>正確處理公鑰 y 座標的奇偶性</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Taproot：</strong>Taproot 升級概述</li>
+        <li><strong>Script Path：</strong>腳本路徑花費</li>
+        <li><strong>Schnorr Signatures：</strong>Schnorr 簽名</li>
+        <li><strong>MuSig2：</strong>多方簽名聚合</li>
+        <li><strong>Sighash Types：</strong>簽名雜湊類型</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

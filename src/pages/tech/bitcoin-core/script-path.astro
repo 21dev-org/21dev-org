@@ -1,0 +1,349 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot Script Path"
+  description="了解 Taproot script path 花費方式，使用 MAST 結構執行腳本條件。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Script Path' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Key Path', href: '/tech/bitcoin-core/key-path' }}
+  nextPage={{ title: 'Miniscript', href: '/tech/bitcoin-core/miniscript' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Taproot script path 允許通過執行腳本來花費輸出，使用 MAST（Merklized Alternative Script Trees）
+        結構，只需揭露實際使用的腳本分支，其他條件保持隱藏。
+      </p>
+
+      <h2>Script Path 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 腳本樹結構:
+
+                    [Root]
+                   /      \
+               [Branch]   [Branch]
+              /      \        \
+          [Leaf A] [Leaf B] [Leaf C]
+
+每個葉子是一個 TapScript:
+- Leaf A: 2-of-3 多簽
+- Leaf B: 時間鎖 + 單簽
+- Leaf C: 哈希鎖
+
+花費時只需揭露:
+1. 使用的腳本
+2. 該腳本的 Merkle 證明
+3. 滿足腳本的數據（簽名等）
+
+其他腳本保持隱藏</code></pre>
+
+      <h2>創建腳本樹</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>步驟 1: 定義葉子腳本
+
+# TapScript（類似 SegWit v0 腳本）
+script_a = [
+    pubkey_1, OP_CHECKSIG,
+    pubkey_2, OP_CHECKSIGADD,
+    pubkey_3, OP_CHECKSIGADD,
+    OP_2, OP_NUMEQUAL
+]  # 2-of-3 多簽
+
+script_b = [
+    delay, OP_CHECKSEQUENCEVERIFY, OP_DROP,
+    pubkey_backup, OP_CHECKSIG
+]  # 時間鎖
+
+步驟 2: 計算葉子雜湊
+
+# 葉子雜湊 = tagged_hash("TapLeaf", version || script)
+leaf_a = tagged_hash("TapLeaf", 0xc0 || compact_size(script_a) || script_a)
+leaf_b = tagged_hash("TapLeaf", 0xc0 || compact_size(script_b) || script_b)
+
+# 版本 0xc0 = leaf version，表示 TapScript
+
+步驟 3: 構建 Merkle 樹
+
+# 分支雜湊（排序後連接）
+if leaf_a &lt; leaf_b:
+    branch = tagged_hash("TapBranch", leaf_a || leaf_b)
+else:
+    branch = tagged_hash("TapBranch", leaf_b || leaf_a)
+
+# 這就是 Merkle root</code></pre>
+
+      <h2>計算輸出公鑰</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>將腳本樹嵌入公鑰:
+
+P = 內部公鑰
+m = Merkle root
+
+# 計算調整
+t = tagged_hash("TapTweak", P || m)
+
+# 輸出公鑰
+Q = P + t × G
+
+# 創建 P2TR 輸出
+scriptPubKey = OP_1 &lt;Q.x&gt;
+
+# 注意:
+# - 如果只有 key path（無腳本），m 為空
+# - 有腳本時，m 是腳本樹的 Merkle root
+# - Q 包含了對腳本樹的承諾</code></pre>
+
+      <h2>花費 Script Path</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>花費時需要提供:
+
+1. 滿足腳本的數據
+2. 腳本本身
+3. 控制塊（Control Block）
+
+見證結構:
+witness = [
+    &lt;script args&gt;,   # 滿足腳本的數據
+    &lt;script&gt;,        # TapScript
+    &lt;control_block&gt;  # 控制塊
+]
+
+控制塊結構:
+┌───────────────────────────────────────────┐
+│ leaf_version | parity (1 byte)           │
+│ internal_pubkey (32 bytes)               │
+│ merkle_path (32 bytes × n)               │
+└───────────────────────────────────────────┘
+
+leaf_version: 腳本版本（0xc0 或 0xc1）
+parity: 輸出公鑰 y 座標的奇偶性
+internal_pubkey: 內部公鑰 P
+merkle_path: 證明腳本在樹中的路徑</code></pre>
+
+      <h2>驗證流程</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>節點驗證 Script Path:
+
+def verify_script_path(witness, output_pubkey):
+    # 解析見證
+    control_block = witness[-1]
+    script = witness[-2]
+    args = witness[:-2]
+
+    # 解析控制塊
+    leaf_version = control_block[0] & 0xfe
+    parity = control_block[0] & 0x01
+    internal_pubkey = control_block[1:33]
+    merkle_path = control_block[33:]
+
+    # 計算葉子雜湊
+    leaf_hash = tagged_hash("TapLeaf",
+        bytes([leaf_version]) + compact_size(script) + script)
+
+    # 驗證 Merkle 路徑
+    current = leaf_hash
+    for i in range(0, len(merkle_path), 32):
+        sibling = merkle_path[i:i+32]
+        if current &lt; sibling:
+            current = tagged_hash("TapBranch", current + sibling)
+        else:
+            current = tagged_hash("TapBranch", sibling + current)
+
+    merkle_root = current
+
+    # 計算預期的輸出公鑰
+    t = tagged_hash("TapTweak", internal_pubkey + merkle_root)
+    expected_Q = internal_pubkey + t × G
+
+    # 驗證公鑰
+    if expected_Q.x != output_pubkey:
+        return False
+
+    # 執行腳本
+    return execute_tapscript(script, args)</code></pre>
+
+      <h2>TapScript 操作碼</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>TapScript vs SegWit v0 腳本:
+
+相同:
+- 大多數操作碼相同
+- 基本腳本邏輯相同
+
+改進:
+1. OP_CHECKSIGADD
+   - 取代 OP_CHECKMULTISIG
+   - 更高效的多簽
+   - 批量驗證友好
+
+2. 簽名驗證
+   - 使用 Schnorr 簽名
+   - 64 字節（無 sighash 類型時）
+
+3. 無 OP_CHECKMULTISIG
+   - 被 OP_CHECKSIGADD 取代
+   - 更靈活的多簽設計
+
+4. 資源限制不同
+   - 無 201 操作碼限制
+   - 有 sigops 預算限制
+
+範例 - 2-of-3 多簽:
+# 舊方式
+OP_2 &lt;pk1&gt; &lt;pk2&gt; &lt;pk3&gt; OP_3 OP_CHECKMULTISIG
+
+# TapScript 方式
+&lt;pk1&gt; OP_CHECKSIG
+&lt;pk2&gt; OP_CHECKSIGADD
+&lt;pk3&gt; OP_CHECKSIGADD
+OP_2 OP_NUMEQUAL</code></pre>
+
+      <h2>樹結構優化</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>最優樹結構設計:
+
+原則: 常用腳本放在較淺的位置
+
+範例: 4 個腳本，使用概率不同
+- Script A: 70% 概率使用
+- Script B: 20%
+- Script C: 8%
+- Script D: 2%
+
+不平衡樹（優化後）:
+        [Root]
+       /      \
+    [A]      [Branch]
+            /        \
+         [B]      [Branch]
+                 /       \
+              [C]        [D]
+
+深度:
+- A: 1 (最常用，最淺)
+- B: 2
+- C: 3
+- D: 3
+
+見證大小（控制塊）:
+- A: 33 + 32 = 65 bytes
+- B: 33 + 64 = 97 bytes
+- C, D: 33 + 96 = 129 bytes
+
+// 平衡樹所有深度都是 2，不夠優化</code></pre>
+
+      <h2>實際應用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 閃電網路承諾交易
+
+腳本樹設計:
+                    [Root]
+                   /      \
+           [合作關閉]    [Branch]
+                       /        \
+               [撤銷]         [超時]
+
+腳本:
+1. 合作關閉 (Key Path)
+   - MuSig2 聚合簽名
+   - 最常用，最高效
+
+2. 撤銷路徑
+   - &lt;revocation_key&gt; OP_CHECKSIG
+   - 對方作弊時使用
+
+3. 超時路徑
+   - &lt;delay&gt; OP_CSV OP_DROP &lt;local_key&gt; OP_CHECKSIG
+   - 正常單方關閉
+
+正常情況:
+- 使用 Key Path（合作關閉）
+- 看起來像普通交易
+
+爭議情況:
+- 使用 Script Path
+- 揭露具體條件</code></pre>
+
+      <h2>查看 Script Path 交易</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 識別 Script Path 花費
+
+bitcoin-cli getrawtransaction &lt;txid&gt; true
+{
+  "vin": [{
+    "txinwitness": [
+      "3045...簽名",           # 腳本參數
+      "20ab12...腳本",         # TapScript
+      "c1a1b2...控制塊"        # 控制塊
+    ]
+  }]
+}
+
+# 識別方式:
+# - witness 最後一個元素是控制塊
+# - 控制塊以 0xc0 或 0xc1 開頭
+# - 長度 = 33 + 32n (n = 樹深度)
+
+# 解析控制塊
+control_block = "c1" + "a1b2..." + "merkle_path..."
+# c1 = leaf version 0xc0 + parity 1
+# 接下來 32 字節是內部公鑰
+# 剩餘是 Merkle 路徑</code></pre>
+
+      <h2>與 Key Path 的比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">特性</th>
+                <th class="text-left py-2">Key Path</th>
+                <th class="text-left py-2">Script Path</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">見證大小</td>
+                <td class="py-2">64 bytes</td>
+                <td class="py-2">變化，較大</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">隱私</td>
+                <td class="py-2">最佳</td>
+                <td class="py-2">揭露使用的腳本</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">互動</td>
+                <td class="py-2">需要（MuSig2）</td>
+                <td class="py-2">可以非互動</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">適用場景</td>
+                <td class="py-2">合作/正常</td>
+                <td class="py-2">爭議/備用</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Taproot：</strong>Taproot 升級概述</li>
+        <li><strong>Key Path：</strong>密鑰路徑花費</li>
+        <li><strong>Miniscript：</strong>結構化腳本</li>
+        <li><strong>MAST：</strong>Merklized Abstract Syntax Trees</li>
+        <li><strong>Schnorr Signatures：</strong>Schnorr 簽名</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

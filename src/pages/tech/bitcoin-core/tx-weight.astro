@@ -1,0 +1,312 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Transaction Weight"
+  description="了解 SegWit 引入的交易權重計算方式，以及對手續費和區塊空間的影響。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'TX Weight' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Virtual Bytes', href: '/tech/bitcoin-core/vbytes' }}
+  nextPage={{ title: 'Block Weight', href: '/tech/bitcoin-core/block-weight' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        交易權重（Transaction Weight）是 SegWit 引入的新計量單位，
+        取代了傳統的字節大小。見證數據按 1/4 的權重計算，
+        這為 SegWit 交易提供了手續費優惠。
+      </p>
+
+      <h2>權重計算公式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易權重計算:
+
+weight = (base_size × 4) + witness_size
+       = (非見證數據 × 4) + 見證數據
+
+或等效地:
+weight = (total_size × 3) + (base_size × 1)
+
+其中:
+- base_size: 交易序列化大小（不含見證）
+- witness_size: 見證數據大小
+- total_size: 完整序列化大小（含見證）
+
+單位:
+- Weight Units (WU)
+- 1 vByte = 4 WU
+
+區塊限制:
+MAX_BLOCK_WEIGHT = 4,000,000 WU
+= 1,000,000 vBytes</code></pre>
+
+      <h2>計算示例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>範例 1: 傳統 P2PKH 交易（無 SegWit）
+
+結構:
+- 版本: 4 bytes
+- 輸入數量: 1 byte
+- 輸入 (1個):
+  - prevout: 36 bytes
+  - scriptSig: ~107 bytes
+  - sequence: 4 bytes
+- 輸出數量: 1 byte
+- 輸出 (2個): ~68 bytes
+- locktime: 4 bytes
+
+總大小: ~225 bytes
+見證: 0 bytes
+
+weight = 225 × 4 + 0 = 900 WU
+vsize = 900 / 4 = 225 vB
+
+// 傳統交易: vsize = size</code></pre>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>範例 2: Native SegWit P2WPKH 交易
+
+結構:
+- 版本: 4 bytes
+- marker: 1 byte (0x00)
+- flag: 1 byte (0x01)
+- 輸入數量: 1 byte
+- 輸入 (1個):
+  - prevout: 36 bytes
+  - scriptSig: 1 byte (空)
+  - sequence: 4 bytes
+- 輸出數量: 1 byte
+- 輸出 (2個): ~62 bytes
+- 見證:
+  - 簽名: ~72 bytes
+  - 公鑰: 33 bytes
+- locktime: 4 bytes
+
+base_size = 110 bytes (不含 marker, flag, 見證)
+witness_size = 107 bytes
+total_size = 219 bytes
+
+weight = 110 × 4 + 107 = 547 WU
+vsize = ceil(547 / 4) = 137 vB
+
+// SegWit 交易更小: 137 vB vs 225 vB
+// 節省約 39%</code></pre>
+
+      <h2>不同交易類型比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">交易類型</th>
+                <th class="text-left py-2">典型大小</th>
+                <th class="text-left py-2">權重 (WU)</th>
+                <th class="text-left py-2">vBytes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2PKH (1-in, 2-out)</td>
+                <td class="py-2">225 B</td>
+                <td class="py-2">900</td>
+                <td class="py-2">225</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2SH-P2WPKH</td>
+                <td class="py-2">~166 B</td>
+                <td class="py-2">~561</td>
+                <td class="py-2">~141</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2WPKH (native)</td>
+                <td class="py-2">~141 B</td>
+                <td class="py-2">~437</td>
+                <td class="py-2">~110</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">P2TR (key path)</td>
+                <td class="py-2">~153 B</td>
+                <td class="py-2">~445</td>
+                <td class="py-2">~112</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">2-of-3 P2WSH</td>
+                <td class="py-2">~265 B</td>
+                <td class="py-2">~574</td>
+                <td class="py-2">~144</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>為什麼見證數據有折扣？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證折扣的理由:
+
+1. UTXO 集合影響
+   - 非見證數據影響 UTXO 集合
+   - UTXO 集合是長期存儲
+   - 見證數據只需驗證一次
+
+2. 驗證成本
+   - 見證數據主要是簽名
+   - 驗證後可以丟棄
+   - 對節點存儲負擔較小
+
+3. 經濟激勵
+   - 鼓勵使用 SegWit
+   - 減少 UTXO 膨脹
+   - 更高效的區塊空間使用
+
+4. 向後兼容
+   - 舊節點看到較小的「區塊」
+   - 維持 1 MB 非見證限制
+   - 新節點可處理更多交易</code></pre>
+
+      <h2>手續費計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>手續費基於 vBytes 計算:
+
+fee = fee_rate × vsize
+    = fee_rate × ceil(weight / 4)
+
+範例:
+fee_rate = 10 sat/vB
+weight = 547 WU
+vsize = ceil(547 / 4) = 137 vB
+fee = 10 × 137 = 1370 satoshis
+
+比較同樣費率下的費用:
+P2PKH:  10 × 225 = 2250 sat
+P2WPKH: 10 × 110 = 1100 sat
+
+// SegWit 節省約 51% 手續費
+
+估算費用:
+bitcoin-cli estimatesmartfee 6
+# 返回 BTC/kvB，乘以 vsize 得到費用</code></pre>
+
+      <h2>查詢交易權重</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
+
+# 解碼交易查看權重
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+{
+  ...
+  "size": 219,      # 總大小（含見證）
+  "vsize": 137,     # 虛擬大小
+  "weight": 546,    # 權重單位
+  ...
+}
+
+# 或從已確認交易
+bitcoin-cli getrawtransaction &lt;txid&gt; true
+{
+  ...
+  "size": 219,
+  "vsize": 137,
+  "weight": 546,
+  ...
+}
+
+# 計算交易權重
+bitcoin-cli testmempoolaccept '["&lt;hex&gt;"]'
+# 返回 vsize 和 fees</code></pre>
+
+      <h2>程式計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python 計算交易權重
+
+def calculate_weight(tx_hex):
+    tx_bytes = bytes.fromhex(tx_hex)
+
+    # 檢查是否有見證標記
+    has_witness = (tx_bytes[4] == 0x00 and tx_bytes[5] == 0x01)
+
+    if not has_witness:
+        # 傳統交易
+        base_size = len(tx_bytes)
+        witness_size = 0
+    else:
+        # SegWit 交易
+        # 需要解析交易結構
+        base_size = get_base_size(tx_bytes)
+        witness_size = len(tx_bytes) - base_size - 2  # 減去 marker 和 flag
+
+    weight = base_size * 4 + witness_size
+    vsize = (weight + 3) // 4  # 向上取整
+
+    return {
+        'size': len(tx_bytes),
+        'base_size': base_size,
+        'witness_size': witness_size,
+        'weight': weight,
+        'vsize': vsize
+    }
+
+# 使用
+result = calculate_weight("0200000001...")
+print(f"Weight: {result['weight']} WU")
+print(f"vSize: {result['vsize']} vB")</code></pre>
+
+      <h2>區塊權重分析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看區塊權重使用
+
+bitcoin-cli getblock &lt;hash&gt;
+{
+  ...
+  "size": 1500000,       # 總大小
+  "weight": 3998000,     # 總權重
+  "strippedsize": 998000 # 剝離見證的大小
+  ...
+}
+
+# 計算 SegWit 使用率
+segwit_ratio = 1 - (strippedsize / size)
+
+# 分析區塊空間使用
+bitcoin-cli getblockstats &lt;height&gt;
+{
+  "total_weight": 3998456,
+  "total_size": 1456789,
+  "avgfeerate": 25,
+  "medianfee": 3500,
+  ...
+}
+
+# 區塊已使用容量
+used_percent = (total_weight / 4000000) × 100</code></pre>
+
+      <h2>優化建議</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>使用 SegWit：</strong>P2WPKH 或 P2TR 最節省費用</li>
+          <li><strong>合併 UTXO：</strong>多輸入增加權重，選擇性合併</li>
+          <li><strong>減少輸出：</strong>每個輸出約 31-43 字節</li>
+          <li><strong>使用 Taproot：</strong>複雜腳本用 key path 更省</li>
+          <li><strong>批量發送：</strong>一次多輸出比多次單輸出省</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Virtual Bytes：</strong>虛擬字節詳解</li>
+        <li><strong>Block Weight：</strong>區塊權重限制</li>
+        <li><strong>SegWit：</strong>隔離見證</li>
+        <li><strong>Transaction Fees：</strong>手續費計算</li>
+        <li><strong>Fee Estimation：</strong>費用估算</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

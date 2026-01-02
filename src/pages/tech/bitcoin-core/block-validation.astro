@@ -1,0 +1,385 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Validation"
+  description="了解 Bitcoin Core 如何驗證區塊的完整流程，包括頭部檢查、交易驗證和共識規則。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Validation' },
+  ]}
+  difficulty="advanced"
+  readingTime="15 分鐘"
+  prevPage={{ title: 'Consensus', href: '/tech/bitcoin-core/consensus' }}
+  nextPage={{ title: 'Script Validation', href: '/tech/bitcoin-core/script-validation' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        區塊驗證是 Bitcoin Core 的核心功能，確保每個區塊遵守共識規則。
+        驗證過程分為多個階段，從快速的頭部檢查到完整的腳本驗證。
+      </p>
+
+      <h2>驗證階段概覽</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊驗證的四個階段:
+
+1. 頭部驗證 (Header Validation)
+   - 最快，只需 80 字節
+   - 檢查 PoW、時間戳、版本
+   - 可以並行處理
+
+2. 上下文無關驗證 (Context-free)
+   - 不需要 UTXO 集合
+   - 檢查區塊大小、交易格式
+   - 可以提前進行
+
+3. 上下文相關驗證 (Contextual)
+   - 需要 UTXO 集合
+   - 檢查雙重支付、餘額
+   - 必須按順序進行
+
+4. 腳本驗證 (Script Validation)
+   - 最慢，CPU 密集
+   - 驗證所有簽名
+   - 可以並行處理</code></pre>
+
+      <h2>頭部驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊頭 (80 bytes):
+┌─────────────────────────────────────────┐
+│ Version (4 bytes)                       │
+│ Previous Block Hash (32 bytes)          │
+│ Merkle Root (32 bytes)                  │
+│ Timestamp (4 bytes)                     │
+│ nBits (4 bytes) - 難度目標              │
+│ Nonce (4 bytes)                         │
+└─────────────────────────────────────────┘
+
+頭部檢查項目:
+
+1. 工作量證明
+   hash = SHA256(SHA256(header))
+   要求: hash &lt;= target_from_nBits
+
+2. 時間戳
+   - 必須 > MTP (過去 11 區塊的中位時間)
+   - 必須 &lt; 當前時間 + 2 小時
+
+3. 難度目標
+   - 必須符合難度調整規則
+   - 每 2016 區塊檢查
+
+4. 版本號
+   - 檢查軟分叉信號
+   - BIP-9 版本位
+
+5. 前一區塊
+   - 必須是已知區塊
+   - 構成有效鏈</code></pre>
+
+      <h2>上下文無關驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>不需要鏈狀態的檢查:
+
+1. 區塊大小
+   block_weight &lt;= 4,000,000 WU
+   (約 1 MB 非見證 + 3 MB 見證)
+
+2. 第一筆交易
+   - 必須是 coinbase
+   - 只有一筆 coinbase
+
+3. Merkle Root
+   merkle_root == computed_merkle_root(transactions)
+
+4. 交易列表
+   - 每筆交易語法有效
+   - 沒有重複 TXID
+   - 沒有重複輸入
+
+5. Coinbase 結構
+   - ScriptSig 長度: 2-100 bytes
+   - 包含區塊高度 (BIP-34)
+
+6. 見證承諾 (如果有 SegWit 交易)
+   witness_commitment == computed_commitment</code></pre>
+
+      <h2>上下文相關驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>需要 UTXO 集合的檢查:
+
+1. 輸入存在性
+   for input in tx.inputs:
+       utxo = utxo_set.get(input.prevout)
+       if utxo is None:
+           reject("Missing input")
+
+2. 雙重支付
+   spent_outputs = set()
+   for tx in block.transactions:
+       for input in tx.inputs:
+           if input.prevout in spent_outputs:
+               reject("Double spend")
+           spent_outputs.add(input.prevout)
+
+3. Coinbase 成熟度
+   for input in tx.inputs:
+       if utxo.is_coinbase:
+           if block_height - utxo.height &lt; 100:
+               reject("Immature coinbase")
+
+4. 金額檢查
+   total_input = sum(utxo.amount for input)
+   total_output = sum(output.amount for output)
+   if total_input &lt; total_output:
+       reject("Insufficient funds")
+
+5. 時間鎖
+   - 檢查 nLockTime
+   - 檢查 nSequence (BIP-68)</code></pre>
+
+      <h2>腳本驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>驗證每個輸入的解鎖腳本:
+
+for tx in block.transactions[1:]:  # 跳過 coinbase
+    for i, input in enumerate(tx.inputs):
+        utxo = utxo_set.get(input.prevout)
+
+        # 構建驗證環境
+        flags = get_script_flags(block_height)
+
+        # 執行腳本
+        result = verify_script(
+            scriptSig=input.scriptSig,
+            scriptPubKey=utxo.scriptPubKey,
+            witness=tx.witness[i],
+            tx=tx,
+            input_index=i,
+            flags=flags
+        )
+
+        if not result:
+            reject("Script verification failed")
+
+腳本標誌 (隨高度變化):
+- SCRIPT_VERIFY_P2SH (BIP-16)
+- SCRIPT_VERIFY_DERSIG (BIP-66)
+- SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY (BIP-65)
+- SCRIPT_VERIFY_CHECKSEQUENCEVERIFY (BIP-112)
+- SCRIPT_VERIFY_WITNESS (BIP-141)
+- SCRIPT_VERIFY_TAPROOT (BIP-341)</code></pre>
+
+      <h2>並行驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 的並行化策略:
+
+1. 頭部驗證
+   - 可以完全並行
+   - 不需要鏈狀態
+
+2. 區塊下載
+   - Headers-first 同步
+   - 並行下載區塊體
+
+3. 腳本驗證
+   - 使用多線程
+   - 每個輸入獨立驗證
+   - 默認使用所有 CPU 核心
+
+配置選項:
+# bitcoin.conf
+par=N  # 腳本驗證線程數
+       # 0 = 自動 (CPU 核心數)
+       # 1 = 單線程
+       # N = N 個線程
+
+性能影響:
+- 4 核心可提升約 3x
+- 8 核心可提升約 5-6x
+- 收益遞減</code></pre>
+
+      <h2>驗證緩存</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>避免重複驗證:
+
+1. 簽名緩存 (Signature Cache)
+   - 緩存已驗證的簽名
+   - 避免重複 ECDSA/Schnorr 運算
+   - 大小約 32 MB
+
+2. 腳本緩存 (Script Cache)
+   - 緩存已驗證的腳本
+   - 包含完整驗證結果
+   - 加速區塊重驗證
+
+3. UTXO 緩存
+   - 熱門 UTXO 在記憶體中
+   - 減少磁碟 I/O
+   - 由 dbcache 配置
+
+緩存命中場景:
+- 交易先在 mempool 驗證
+- 區塊包含同樣交易
+- 可以跳過腳本驗證</code></pre>
+
+      <h2>AssumeValid 優化</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>跳過歷史區塊的腳本驗證:
+
+原理:
+- 假設已知區塊的簽名是有效的
+- 只驗證 UTXO 更新
+- 大幅加速 IBD
+
+配置:
+# 內建在 chainparams.cpp
+assumevalid = 000000000000000000...
+
+# 或手動設置
+# bitcoin.conf
+assumevalid=0  # 禁用，驗證所有腳本
+
+安全性:
+- 仍然驗證 UTXO 規則
+- 仍然驗證區塊結構
+- 只跳過簽名驗證
+- 需要信任 assumevalid 雜湊
+
+性能提升:
+- IBD 速度提升 50-80%
+- 過了 assumevalid 後正常驗證</code></pre>
+
+      <h2>區塊連接流程</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ConnectBlock 函數流程:
+
+def connect_block(block, view):
+    # 1. 檢查區塊頭（已在之前完成）
+
+    # 2. 上下文無關檢查
+    check_block(block)
+
+    # 3. 準備 UTXO 視圖
+    for tx in block.transactions:
+        for input in tx.inputs:
+            view.fetch(input.prevout)
+
+    # 4. 執行交易
+    block_fees = 0
+    for tx in block.transactions:
+        # 檢查輸入
+        tx_fee = check_inputs(tx, view)
+        block_fees += tx_fee
+
+        # 更新 UTXO 視圖
+        spend_inputs(tx, view)
+        add_outputs(tx, view)
+
+    # 5. 驗證 coinbase 金額
+    max_reward = get_block_subsidy(height) + block_fees
+    if coinbase_output > max_reward:
+        reject("Bad coinbase amount")
+
+    # 6. 腳本驗證（可能並行）
+    verify_scripts(block)
+
+    # 7. 提交到數據庫
+    view.flush()
+
+    return True</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>驗證失敗的後果:
+
+1. 無效區塊
+   - 區塊被拒絕
+   - 標記為無效
+   - 可能禁止發送節點
+
+2. 無效區塊鏈
+   - 該區塊及所有後代無效
+   - 觸發鏈重組到有效鏈
+
+3. 孤立區塊
+   - 父區塊未知
+   - 暫時存儲等待父區塊
+   - 有大小限制
+
+錯誤代碼:
+REJECT_MALFORMED     # 格式錯誤
+REJECT_INVALID       # 違反共識規則
+REJECT_OBSOLETE      # 版本過舊
+REJECT_DUPLICATE     # 重複區塊
+REJECT_CHECKPOINT    # 違反檢查點
+
+# 查看拒絕原因
+bitcoin-cli getblock &lt;hash&gt; 2</code></pre>
+
+      <h2>調試驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 啟用詳細日誌
+# bitcoin.conf
+debug=validation
+debug=bench
+
+# 查看驗證時間
+grep "ConnectBlock" ~/.bitcoin/debug.log
+
+# 輸出示例
+ConnectBlock: 0.05s total
+  - Load inputs: 0.01s
+  - SigOps: 5000
+  - Connect: 0.03s
+  - Verify: 0.01s
+  - Index: 0.00s
+
+# 驗證特定區塊
+bitcoin-cli getblockheader &lt;hash&gt;
+bitcoin-cli getblock &lt;hash&gt; 2
+
+# 重新驗證
+bitcoind -reindex-chainstate</code></pre>
+
+      <h2>軟分叉與驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>軟分叉如何影響驗證:
+
+啟用前:
+- 新規則不強制執行
+- 舊節點認為區塊有效
+
+啟用後:
+- 新規則開始強制執行
+- 舊節點可能接受無效區塊
+
+範例 - SegWit 啟用:
+if block_height >= SEGWIT_HEIGHT:
+    flags |= SCRIPT_VERIFY_WITNESS
+    # 開始驗證見證數據
+
+向後兼容:
+- 舊節點仍可同步
+- 但不驗證新規則
+- 安全性降低
+
+建議:
+- 保持節點更新
+- 啟用完整驗證</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Consensus：</strong>共識規則</li>
+        <li><strong>Script Validation：</strong>腳本驗證</li>
+        <li><strong>UTXO Set：</strong>UTXO 集合</li>
+        <li><strong>AssumeValid：</strong>快速同步優化</li>
+        <li><strong>Headers-First：</strong>頭部優先同步</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

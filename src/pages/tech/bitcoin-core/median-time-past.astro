@@ -1,0 +1,264 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Median Time Past"
+  description="了解 MTP（中位時間過去）如何用於時間鎖驗證，防止礦工操縱時間戳。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Median Time Past' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Timelock', href: '/tech/bitcoin-core/timelock' }}
+  nextPage={{ title: 'OP_CLTV', href: '/tech/bitcoin-core/op-cltv' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        中位時間過去（Median Time Past, MTP）是 BIP-113 引入的時間計算方法，
+        使用過去 11 個區塊時間戳的中位數來判斷時間鎖，防止礦工通過操縱時間戳來繞過時間鎖。
+      </p>
+
+      <h2>為什麼需要 MTP？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊時間戳的問題:
+
+礦工可以在一定範圍內設置時間戳:
+- 必須 > 前一區塊的 MTP
+- 必須 &lt; 當前時間 + 2 小時
+
+攻擊場景（無 MTP）:
+1. Alice 發送時間鎖交易: nLockTime = T
+2. 礦工想提前確認這筆交易
+3. 礦工設置區塊時間戳 = T（即使實際時間 &lt; T）
+4. 交易被提前確認，時間鎖失效
+
+MTP 解決方案:
+- 使用過去 11 個區塊的中位時間
+- 礦工需要操縱 6+ 個區塊才能影響 MTP
+- 實際上不可行</code></pre>
+
+      <h2>MTP 計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>計算公式:
+
+MTP = median(block[n-1], block[n-2], ..., block[n-11])
+
+範例:
+假設區塊 100-110 的時間戳:
+[1000, 1005, 1003, 1010, 1008, 1015, 1012, 1020, 1018, 1025, 1022]
+
+排序後:
+[1000, 1003, 1005, 1008, 1010, 1012, 1015, 1018, 1020, 1022, 1025]
+
+MTP = 第 6 個值 = 1012
+
+Python 實現:
+def get_median_time_past(block_index):
+    timestamps = []
+    current = block_index
+    for _ in range(11):
+        if current is None:
+            break
+        timestamps.append(current.timestamp)
+        current = current.prev
+
+    timestamps.sort()
+    return timestamps[len(timestamps) // 2]</code></pre>
+
+      <h2>時間鎖驗證</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-113 之前 vs 之後:
+
+BIP-113 之前:
+if tx.nLockTime >= 500000000:  # 時間模式
+    if block.timestamp &lt; tx.nLockTime:
+        reject("Time lock not satisfied")
+
+BIP-113 之後:
+if tx.nLockTime >= 500000000:  # 時間模式
+    if MTP &lt; tx.nLockTime:
+        reject("Time lock not satisfied")
+
+區別:
+- 之前: 使用區塊時間戳（可被操縱）
+- 之後: 使用 MTP（更安全）
+
+// BIP-113 在 BIP-68/112/113 軟分叉中一起啟用
+// 高度 419328 (2016 年 7 月)</code></pre>
+
+      <h2>對時間鎖的影響</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MTP 導致的時間偏移:
+
+特點:
+- MTP 通常比實際時間晚 1-2 小時
+- 因為它是過去區塊的中位數
+
+影響:
+- 時間鎖會比預期晚生效
+- 設置 nLockTime 時需要考慮這個偏移
+
+範例:
+現在時間: 2024-01-01 12:00:00
+當前 MTP: 2024-01-01 10:30:00 (約晚 1.5 小時)
+
+如果設置 nLockTime = 2024-01-01 12:00:00:
+- 交易實際要到 ~13:30 才能確認
+- 因為 MTP 需要時間追上
+
+建議:
+- 時間鎖減去 2 小時作為緩衝
+- 或使用區塊高度模式（更可預測）</code></pre>
+
+      <h2>區塊時間戳規則</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊時間戳的共識規則:
+
+下限:
+- 必須 > MTP
+- 否則區塊無效
+
+上限:
+- 必須 &lt; 當前網路時間 + 2 小時
+- 網路時間 = 節點時間 + 對等節點偏移
+
+有效範圍:
+MTP &lt; timestamp &lt; now + 2h
+
+範例:
+MTP = 1704067200 (2024-01-01 00:00:00)
+當前時間 = 1704070800 (2024-01-01 01:00:00)
+
+有效範圍: 1704067201 - 1704078000
+(00:00:01 - 03:00:00)
+
+// 礦工通常使用當前時間
+// 但可以在範圍內自由設置</code></pre>
+
+      <h2>查詢 MTP</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
+
+# 查看區塊的 MTP
+bitcoin-cli getblockheader &lt;hash&gt;
+{
+  ...
+  "time": 1704067200,       # 區塊時間戳
+  "mediantime": 1704063600, # MTP
+  ...
+}
+
+# 查看當前鏈的 MTP
+bitcoin-cli getblockchaininfo | jq '.mediantime'
+
+# 計算時間差
+bitcoin-cli getblockheader $(bitcoin-cli getbestblockhash) | \
+  jq '.time - .mediantime'
+# 通常是 3600-7200 秒 (1-2 小時)
+
+# 查看最近 11 個區塊的時間戳
+for i in {0..10}; do
+  hash=$(bitcoin-cli getblockhash $(($(bitcoin-cli getblockcount) - i)))
+  bitcoin-cli getblockheader $hash | jq '.time'
+done</code></pre>
+
+      <h2>在腳本中的使用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CHECKLOCKTIMEVERIFY (CLTV):
+
+腳本:
+&lt;locktime&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP ...
+
+驗證過程:
+1. 檢查 tx.nLockTime >= script_locktime
+2. 如果是時間模式 (>= 500000000):
+   - 檢查 MTP >= script_locktime
+3. 交易被包含在區塊中
+
+OP_CHECKSEQUENCEVERIFY (CSV):
+
+相對時間鎖也使用 MTP:
+- 計算輸入 UTXO 的確認時間
+- 使用 MTP 差值而非區塊時間戳差值
+
+def check_sequence_time(input_height, current_height):
+    input_mtp = get_mtp(input_height)
+    current_mtp = get_mtp(current_height)
+    elapsed = current_mtp - input_mtp
+    # elapsed 用於與 nSequence 比較</code></pre>
+
+      <h2>歷史背景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-113 的歷史:
+
+問題發現:
+- 礦工可以操縱時間戳
+- 時間鎖安全性受威脅
+- 影響閃電網路等協議
+
+解決方案:
+- 使用中位時間而非單一時間戳
+- 11 個區塊提供足夠的安全邊際
+- 需要控制多數算力才能操縱
+
+啟用:
+- 與 BIP-68 (相對時間鎖) 一起啟用
+- 與 BIP-112 (OP_CSV) 一起啟用
+- 2016 年 7 月，高度 419328
+
+// 11 這個數字的選擇:
+// - 奇數，確保中位數唯一
+// - 大約 2 小時的區塊
+// - 足夠防止操縱，又不會太滯後</code></pre>
+
+      <h2>對應用的影響</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>閃電網路：</strong>HTLC 超時使用 MTP，更安全</li>
+          <li><strong>時間鎖合約：</strong>需要考慮 MTP 延遲</li>
+          <li><strong>繼承方案：</strong>實際等待時間比設定稍長</li>
+          <li><strong>原子交換：</strong>超時計算需要考慮 MTP</li>
+        </ul>
+      </div>
+
+      <h2>安全考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MTP 的安全邊際:
+
+要操縱 MTP，攻擊者需要:
+1. 控制 6 個以上的最近區塊
+2. 設置較低的時間戳
+3. 這需要約 50% 的算力
+
+實際風險:
+- 51% 攻擊者有更多有利可圖的攻擊
+- 操縱 MTP 收益有限
+- 會被網路檢測到
+
+殘餘風險:
+- 礦工可以輕微延遲 MTP
+- 但無法大幅提前
+- 對大多數應用影響有限
+
+最佳實踐:
+- 重要合約使用足夠的安全邊際
+- 考慮 MTP 可能的延遲
+- 高價值交易等待更多確認</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Timelock：</strong>時間鎖概述</li>
+        <li><strong>OP_CLTV：</strong>絕對時間鎖操作碼</li>
+        <li><strong>OP_CSV：</strong>相對時間鎖操作碼</li>
+        <li><strong>nSequence：</strong>序列號和相對鎖</li>
+        <li><strong>Block Header：</strong>區塊頭結構</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
