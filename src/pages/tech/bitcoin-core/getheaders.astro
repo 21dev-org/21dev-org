@@ -1,0 +1,337 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Getheaders Message"
+  description="了解 P2P 協議中的 getheaders 消息，用於請求區塊頭實現高效同步。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Getheaders' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Headers-First Sync', href: '/tech/bitcoin-core/headers-first' }}
+  nextPage={{ title: 'Headers Message', href: '/tech/bitcoin-core/headers-message' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Getheaders 消息是比特幣 P2P 協議中用於請求區塊頭的核心消息。
+        它是 Headers-First 同步策略的關鍵組件，允許節點高效地同步區塊鏈狀態。
+      </p>
+
+      <h2>Getheaders 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getheaders 的作用:
+
+Headers-First 同步流程:
+┌─────────┐   getheaders    ┌─────────┐
+│ Node A  │ ─────────────→  │ Node B  │
+│         │    headers      │         │
+│         │ ←─────────────  │         │
+│         │   getheaders    │         │
+│         │ ─────────────→  │         │
+│         │    headers      │         │
+│         │ ←─────────────  │         │
+│         │      ...        │         │
+└─────────┘                 └─────────┘
+
+優點:
+1. 只需 80 字節/區塊頭
+2. 可以快速驗證 PoW
+3. 確定最佳鏈後再下載區塊體
+4. 並行下載區塊體
+
+與 getblocks 的區別:
+- getblocks: 返回 inv 列表
+- getheaders: 直接返回區塊頭數據</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getheaders 消息結構:
+
+┌─────────────────────────────────────────┐
+│ version (4 bytes, uint32)               │
+│ hash_count (varint)                     │
+│ block_locator_hashes (32 × n bytes)     │
+│ hash_stop (32 bytes)                    │
+└─────────────────────────────────────────┘
+
+欄位說明:
+
+version:
+- 協議版本
+- 通常與節點版本相同
+
+hash_count:
+- block_locator 中的雜湊數量
+
+block_locator_hashes:
+- 區塊定位器雜湊列表
+- 用於找到共同祖先
+- 詳見 Block Locator 頁面
+
+hash_stop:
+- 停止返回的區塊雜湊
+- 全零表示返回盡可能多的頭
+
+範例:
+version: 70016
+hash_count: 10
+block_locator: [hash_1, hash_2, ..., hash_10]
+hash_stop: 0x00...00 (繼續到最新)</code></pre>
+
+      <h2>Block Locator</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getheaders 中的 Block Locator:
+
+結構（指數遞減間隔）:
+假設當前高度 100,000:
+
+位置 0:  100,000 (最新)
+位置 1:   99,999
+位置 2:   99,998
+...
+位置 10:  99,990
+位置 11:  99,988 (步長 2)
+位置 12:  99,984 (步長 4)
+位置 13:  99,976 (步長 8)
+...
+最後:         0 (創世區塊)
+
+接收方處理:
+1. 遍歷 locator 中的雜湊
+2. 找到第一個已知的區塊
+3. 從該區塊之後返回 headers
+
+為什麼這樣設計:
+- 大多數情況下分叉很淺
+- 前幾個雜湊就能匹配
+- 深度分叉時也能找到共同祖先</code></pre>
+
+      <h2>回應處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>對 getheaders 的回應:
+
+接收方邏輯:
+def process_getheaders(locator, hash_stop):
+    # 找到共同祖先
+    start = None
+    for hash in locator:
+        if is_known_block(hash):
+            start = get_block(hash)
+            break
+
+    if start is None:
+        start = genesis_block
+
+    # 收集 headers
+    headers = []
+    current = start.next
+    while current and len(headers) &lt; 2000:
+        headers.append(current.header)
+        if current.hash == hash_stop:
+            break
+        current = current.next
+
+    return headers_message(headers)
+
+限制:
+- 最多返回 2000 個 headers
+- 這是協議硬限制
+- 需要多次請求獲取更多
+
+空回應:
+- 如果沒有新 headers
+- 返回空的 headers 消息
+- 表示已同步到最新</code></pre>
+
+      <h2>同步策略</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 getheaders 進行同步:
+
+初始同步 (IBD):
+1. 連接到節點
+2. 發送 getheaders(genesis_locator)
+3. 收到 2000 個 headers
+4. 驗證 headers（PoW、連接性）
+5. 發送 getheaders(new_locator)
+6. 重複直到收到空回應
+
+追趕同步:
+1. 發送 getheaders(current_tip_locator)
+2. 收到缺失的 headers
+3. 驗證並更新鏈狀態
+
+代碼示例:
+def sync_headers():
+    while True:
+        locator = build_locator(chain.tip)
+        send_getheaders(locator, hash_stop=0)
+
+        headers = wait_for_headers()
+        if len(headers) == 0:
+            break  # 同步完成
+
+        for header in headers:
+            if validate_header(header):
+                chain.add_header(header)
+
+// 典型 IBD 需要約 400 次 getheaders 請求</code></pre>
+
+      <h2>與 Sendheaders 的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getheaders vs Sendheaders:
+
+Getheaders (拉取模式):
+- 主動請求 headers
+- 用於初始同步
+- 需要知道要從哪裡開始
+
+Sendheaders (推送模式):
+- 請求對方主動推送新 headers
+- 用於維持同步
+- 新區塊時自動收到通知
+
+典型流程:
+1. IBD 期間使用 getheaders
+2. 同步完成後發送 sendheaders
+3. 之後新區塊通過 headers 消息推送
+4. 偶爾用 getheaders 檢查是否遺漏
+
+組合使用:
+// 初始同步
+while not synced:
+    getheaders()
+
+// 切換到推送模式
+send_sendheaders()
+
+// 後續新區塊自動到達</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getheaders 的錯誤情況:
+
+1. 無效的 locator
+   - 所有雜湊都未知
+   - 從創世區塊開始回應
+
+2. 惡意請求
+   - 頻繁請求同樣的範圍
+   - 可能觸發速率限制
+
+3. 分叉情況
+   - 請求方在不同鏈上
+   - 需要找到共同祖先
+   - 可能返回空（如果完全不同）
+
+4. 修剪節點
+   - 可能沒有舊區塊頭
+   - 返回可用的範圍
+
+防護措施:
+- 驗證收到的 headers
+- 檢查 PoW
+- 檢查連接性
+- 限制處理速率
+
+if headers_invalid:
+    misbehaving(peer, score=20)</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 headers 同步
+
+# 查看同步狀態
+bitcoin-cli getblockchaininfo | jq '{
+  blocks: .blocks,
+  headers: .headers,
+  progress: .verificationprogress
+}'
+
+# headers > blocks 表示正在下載區塊體
+
+# 查看節點同步狀態
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  synced_headers: .synced_headers,
+  synced_blocks: .synced_blocks
+}'
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Sending getheaders to peer=5"
+# "Received 2000 headers from peer=5"
+# "Synchronizing headers, height: 750000 (~93%)"
+
+# 計算同步進度
+headers_synced = 750000
+headers_total = 800000
+progress = headers_synced / headers_total  # 93.75%</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 getheaders
+void PeerManager::SendGetHeaders(CNode& node, const CBlockIndex* pindex) {
+    CBlockLocator locator = chainman.ActiveChain().GetLocator(pindex);
+
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::GETHEADERS,
+                  locator,
+                  uint256()));  // hash_stop = 0
+}
+
+// 處理 getheaders
+void PeerManager::ProcessGetHeaders(CNode& node,
+    const CBlockLocator& locator, const uint256& hashStop)
+{
+    // 找到起始點
+    const CBlockIndex* pindex = nullptr;
+    if (locator.IsNull()) {
+        pindex = chainman.ActiveChain().Genesis();
+    } else {
+        pindex = chainman.m_blockman.FindForkInGlobalIndex(
+            chainman.ActiveChain(), locator);
+    }
+
+    // 收集 headers
+    std::vector&lt;CBlockHeader&gt; vHeaders;
+    while (pindex && vHeaders.size() &lt; MAX_HEADERS_RESULTS) {
+        pindex = chainman.ActiveChain().Next(pindex);
+        if (pindex) {
+            vHeaders.push_back(pindex->GetBlockHeader());
+            if (pindex->GetBlockHash() == hashStop) {
+                break;
+            }
+        }
+    }
+
+    // 發送回應
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::HEADERS, vHeaders));
+}
+
+const size_t MAX_HEADERS_RESULTS = 2000;</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Headers-First Sync：</strong>區塊頭優先同步</li>
+        <li><strong>Headers Message：</strong>區塊頭回應</li>
+        <li><strong>Sendheaders：</strong>區塊頭推送模式</li>
+        <li><strong>Block Locator：</strong>區塊定位器</li>
+        <li><strong>IBD：</strong>初始區塊下載</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

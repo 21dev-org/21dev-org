@@ -1,0 +1,289 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Notfound Message"
+  description="了解 P2P 協議中的 notfound 消息，用於通知請求的數據不可用。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Notfound' },
+  ]}
+  difficulty="beginner"
+  readingTime="6 分鐘"
+  prevPage={{ title: 'Getdata Message', href: '/tech/bitcoin-core/getdata-message' }}
+  nextPage={{ title: 'Message Types', href: '/tech/bitcoin-core/message-types' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Notfound 消息是比特幣 P2P 協議中用於回應 getdata 請求的消息，
+        當請求的交易或區塊不可用時發送。這是正常的協議行為，不表示錯誤。
+      </p>
+
+      <h2>Notfound 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Notfound 的作用:
+
+正常流程:
+┌─────────┐   getdata(txid)  ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │       tx         │         │
+│         │ ←──────────────  │         │
+└─────────┘                  └─────────┘
+
+數據不可用:
+┌─────────┐   getdata(txid)  ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │    notfound      │         │
+│         │ ←──────────────  │         │
+└─────────┘                  └─────────┘
+
+為什麼數據可能不可用:
+1. 交易已確認，不在 mempool
+2. 區塊已被修剪
+3. 從未收到過該數據
+4. 競態條件（剛剛被移除）</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Notfound 消息結構:
+
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ inventory:                              │
+│   ┌─────────────────────────────────┐   │
+│   │ type (4 bytes, uint32)          │   │
+│   │ hash (32 bytes)                 │   │
+│   └─────────────────────────────────┘   │
+│   × count                               │
+└─────────────────────────────────────────┘
+
+與 inv/getdata 格式相同！
+
+庫存類型:
+MSG_TX           = 1
+MSG_BLOCK        = 2
+MSG_WTX          = 5
+MSG_WITNESS_TX   = 0x40000001
+MSG_WITNESS_BLOCK = 0x40000002
+
+範例（交易不存在）:
+count: 1
+type: 1 (MSG_TX)
+hash: abc123... (請求的 txid)</code></pre>
+
+      <h2>觸發條件</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>何時發送 notfound:
+
+1. 交易請求
+   if getdata.type == MSG_TX:
+       tx = mempool.get(hash)
+       if tx is None:
+           # 交易不在 mempool
+           send_notfound(MSG_TX, hash)
+
+   常見原因:
+   - 交易已被確認
+   - 交易被驅逐
+   - 從未收到過
+
+2. 區塊請求
+   if getdata.type == MSG_BLOCK:
+       block = read_block(hash)
+       if block is None:
+           # 區塊不存在
+           send_notfound(MSG_BLOCK, hash)
+
+   常見原因:
+   - 區塊已被修剪
+   - 請求了未知的區塊
+   - 區塊在分叉鏈上
+
+3. 批量請求
+   對於 getdata 中的多個項目:
+   - 可用的直接返回
+   - 不可用的合併到一個 notfound</code></pre>
+
+      <h2>接收方處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>處理收到的 notfound:
+
+def on_notfound(items):
+    for item in items:
+        # 從 in_flight 移除
+        in_flight.remove(item.hash)
+
+        if item.type == MSG_TX:
+            # 交易不可用
+            # 可能嘗試其他節點
+            if want_tx(item.hash):
+                request_from_other_peer(item.hash)
+
+        elif item.type == MSG_BLOCK:
+            # 區塊不可用
+            # 標記此節點沒有該區塊
+            peer.does_not_have(item.hash)
+            # 從其他節點請求
+            request_from_other_peer(item.hash)
+
+重要:
+- notfound 是正常行為
+- 不增加 misbehavior 分數
+- 不應斷開連接</code></pre>
+
+      <h2>與其他消息的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Notfound 在數據獲取流程中的位置:
+
+完整流程:
+inv → getdata → tx/block OR notfound
+
+範例 1: 交易可用
+peer_a: inv(tx_123)
+peer_b: getdata(tx_123)
+peer_a: tx(...)
+
+範例 2: 交易不可用
+peer_a: inv(tx_123)
+# ... 一些時間過去，交易被確認 ...
+peer_b: getdata(tx_123)
+peer_a: notfound(tx_123)
+
+範例 3: 混合回應
+peer_b: getdata([tx_1, tx_2, tx_3])
+peer_a: tx(tx_1)          # 有
+peer_a: tx(tx_2)          # 有
+peer_a: notfound([tx_3])  # 沒有
+
+// notfound 通常在其他數據之後發送</code></pre>
+
+      <h2>常見場景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Notfound 的常見場景:
+
+1. 交易競態
+   時間線:
+   T0: 節點 A 發送 inv(tx)
+   T1: tx 被確認進入區塊
+   T2: 節點 B 發送 getdata(tx)
+   T3: 節點 A 回覆 notfound(tx)
+
+   原因: tx 已從 mempool 移除
+
+2. 修剪節點
+   - 只保留最近 N 個區塊
+   - 請求舊區塊會收到 notfound
+   - 需要從完整節點請求
+
+3. 孤立交易清理
+   - 孤立交易可能被清理
+   - 請求時已不存在
+
+4. Mempool 驅逐
+   - 低費率交易可能被驅逐
+   - 請求時已不在 mempool
+
+// 這些都是正常情況</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 notfound 消息
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Sending notfound for txid abc123 to peer=5"
+# "Received notfound for 2 items from peer=3"
+
+# 查看節點連接狀態
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  addr: .addr,
+  bytesrecv_per_msg: .bytesrecv_per_msg.notfound
+}'
+
+# 如果頻繁收到 notfound:
+# 1. 可能與修剪節點連接
+# 2. 可能網路延遲導致競態
+# 3. 通常不需要擔心
+
+# 檢查是否為修剪節點
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  services: .services
+}'
+# NODE_NETWORK_LIMITED (1024) 表示修剪節點</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 notfound
+void PeerManager::SendNotFound(CNode& node, const std::vector&lt;CInv&gt;& vNotFound) {
+    if (vNotFound.empty()) {
+        return;
+    }
+
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::NOTFOUND, vNotFound));
+}
+
+// 在處理 getdata 時
+void PeerManager::ProcessGetData(CNode& node, std::vector&lt;CInv&gt;& vInv) {
+    std::vector&lt;CInv&gt; vNotFound;
+
+    for (const CInv& inv : vInv) {
+        bool sent = false;
+
+        if (inv.type == MSG_TX || inv.type == MSG_WTX) {
+            auto tx = mempool.get(GetTxIdFromInv(inv));
+            if (tx) {
+                connman.PushMessage(&node,
+                    CNetMsgMaker(node.GetCommonVersion())
+                        .Make(NetMsgType::TX, *tx));
+                sent = true;
+            }
+        } else if (inv.type == MSG_BLOCK) {
+            // 嘗試讀取區塊...
+        }
+
+        if (!sent) {
+            vNotFound.push_back(inv);
+        }
+    }
+
+    // 發送所有找不到的項目
+    SendNotFound(node, vNotFound);
+}
+
+// 處理收到的 notfound
+void PeerManager::ProcessNotFound(CNode& node, std::vector&lt;CInv&gt;& vInv) {
+    for (const CInv& inv : vInv) {
+        // 從 in-flight 移除
+        RemoveFromInFlight(node.GetId(), inv);
+
+        // 可能請求其他節點
+        if (inv.type == MSG_BLOCK) {
+            TryRequestBlockFromOtherPeer(inv.hash);
+        }
+    }
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Getdata Message：</strong>數據請求消息</li>
+        <li><strong>Inv Message：</strong>庫存通告消息</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>Mempool：</strong>交易池</li>
+        <li><strong>Pruning：</strong>區塊鏈修剪</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

@@ -1,0 +1,337 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Headers Message"
+  description="了解 P2P 協議中的 headers 消息，用於傳輸區塊頭數據實現高效同步。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Headers Message' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Getheaders', href: '/tech/bitcoin-core/getheaders' }}
+  nextPage={{ title: 'Sendheaders', href: '/tech/bitcoin-core/sendheaders' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Headers 消息是比特幣 P2P 協議中用於傳輸區塊頭的消息類型。
+        它是 getheaders 請求的回應，也用於在啟用 sendheaders 後主動推送新區塊頭。
+      </p>
+
+      <h2>Headers 消息概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Headers 消息的用途:
+
+1. 回應 getheaders 請求
+┌─────────┐   getheaders    ┌─────────┐
+│ Node A  │ ─────────────→  │ Node B  │
+│         │    headers      │         │
+│         │ ←─────────────  │         │
+└─────────┘                 └─────────┘
+
+2. 主動推送新區塊（sendheaders 模式）
+┌─────────┐    headers      ┌─────────┐
+│ Miner   │ ─────────────→  │ Node    │
+│         │                 │         │
+└─────────┘                 └─────────┘
+
+特點:
+- 只包含區塊頭（80 bytes/個）
+- 不包含交易數據
+- 可以快速驗證 PoW
+- 確定最佳鏈後再下載區塊體</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Headers 消息結構:
+
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ headers:                                │
+│   ┌─────────────────────────────────┐   │
+│   │ version (4 bytes)               │   │
+│   │ prev_block (32 bytes)           │   │
+│   │ merkle_root (32 bytes)          │   │
+│   │ timestamp (4 bytes)             │   │
+│   │ bits (4 bytes)                  │   │
+│   │ nonce (4 bytes)                 │   │
+│   │ txn_count (varint, always 0)    │   │
+│   └─────────────────────────────────┘   │
+│   × count                               │
+└─────────────────────────────────────────┘
+
+每個 header 項:
+- 區塊頭: 80 bytes
+- txn_count: 1 byte（總是 0）
+- 總計: 81 bytes/項
+
+注意:
+- txn_count 總是 0
+- 這是歷史設計決定
+- 原本可能計劃包含交易
+
+限制:
+- 最多 2000 個 headers
+- 大約 162 KB 最大大小</code></pre>
+
+      <h2>區塊頭結構</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>每個區塊頭的詳細結構:
+
+┌────────────────────────────────────────────┐
+│ version (4 bytes, int32_t)                 │
+│   - 區塊版本號                              │
+│   - 包含軟分叉信號位                        │
+├────────────────────────────────────────────┤
+│ prev_block (32 bytes, uint256)             │
+│   - 前一區塊的雜湊                          │
+│   - 建立區塊鏈連接                          │
+├────────────────────────────────────────────┤
+│ merkle_root (32 bytes, uint256)            │
+│   - 交易 Merkle 樹根                        │
+│   - 承諾區塊內所有交易                      │
+├────────────────────────────────────────────┤
+│ timestamp (4 bytes, uint32_t)              │
+│   - 區塊時間戳                              │
+│   - Unix epoch 秒                           │
+├────────────────────────────────────────────┤
+│ bits (4 bytes, uint32_t)                   │
+│   - 難度目標（壓縮格式）                    │
+│   - 決定 PoW 要求                           │
+├────────────────────────────────────────────┤
+│ nonce (4 bytes, uint32_t)                  │
+│   - 隨機數                                  │
+│   - 礦工調整以滿足 PoW                      │
+└────────────────────────────────────────────┘
+
+總計: 80 bytes</code></pre>
+
+      <h2>驗證流程</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>收到 headers 後的驗證:
+
+def process_headers(headers):
+    for header in headers:
+        # 1. 驗證 PoW
+        block_hash = hash256(header)
+        target = bits_to_target(header.bits)
+        if block_hash > target:
+            reject("Invalid PoW")
+
+        # 2. 檢查前一區塊
+        if not have_header(header.prev_block):
+            # 孤立 header，需要請求更多
+            send_getheaders()
+            return
+
+        # 3. 驗證時間戳
+        prev = get_header(header.prev_block)
+        if header.timestamp &lt;= median_time_past(prev):
+            reject("Timestamp too early")
+
+        # 4. 驗證難度
+        expected_bits = calculate_next_work(prev)
+        if header.bits != expected_bits:
+            reject("Invalid difficulty")
+
+        # 5. 接受 header
+        store_header(header)
+
+    # 決定是否請求區塊體
+    update_best_chain()</code></pre>
+
+      <h2>同步過程中的 Headers</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>IBD 期間的 headers 同步:
+
+流程:
+1. 發送 getheaders(locator)
+2. 收到 headers (最多 2000 個)
+3. 驗證所有 headers
+4. 如果收到 2000 個，還有更多
+5. 發送新的 getheaders
+6. 重複直到收到 &lt; 2000 個
+
+代碼示例:
+class HeaderSync:
+    def sync(self):
+        while True:
+            locator = self.build_locator()
+            self.send_getheaders(locator)
+
+            headers = self.wait_for_headers(timeout=60)
+
+            if len(headers) == 0:
+                print("Headers synced!")
+                break
+
+            for header in headers:
+                self.process_header(header)
+
+            if len(headers) &lt; 2000:
+                print("Headers synced!")
+                break
+
+同步 80 萬個區塊:
+- 約 400 次 getheaders 請求
+- 約 64 MB headers 數據
+- 幾分鐘完成（比下載區塊體快得多）</code></pre>
+
+      <h2>新區塊通告</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 headers 通告新區塊:
+
+條件:
+- 對方發送過 sendheaders
+- 新區塊數量 &lt;= 8 個
+
+單個新區塊:
+headers = [new_block.header]
+send_headers(headers)
+
+多個新區塊（追趕）:
+# 對方落後了幾個區塊
+missing = find_missing_since(peer.best_known)
+if len(missing) &lt;= 8:
+    send_headers(missing)
+else:
+    send_inv(missing)  # 太多了
+
+接收方處理:
+def on_headers_announcement(headers):
+    for h in headers:
+        validate_and_store(h)
+
+    # 請求區塊體
+    for h in headers:
+        if should_download(h):
+            request_block(h.hash)</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Headers 消息的錯誤情況:
+
+1. 無效的 PoW
+   - 區塊雜湊不滿足難度
+   - 嚴重錯誤，斷開連接
+
+2. 斷開的鏈
+   - prev_block 未知
+   - 發送 getheaders 請求缺失部分
+
+3. 無效的時間戳
+   - 過早（&lt; MTP）
+   - 過晚（> 當前時間 + 2小時）
+
+4. 錯誤的難度
+   - 不符合難度調整規則
+   - 可能是錯誤或攻擊
+
+5. 過多的 headers
+   - 超過 2000 個
+   - 協議違規
+
+錯誤回應:
+if header_invalid:
+    misbehaving(peer, score=100)  # 嚴重
+    disconnect(peer)
+
+if chain_disconnected:
+    send_getheaders(locator)  # 嘗試修復</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 headers 同步
+
+# 查看 headers 同步進度
+bitcoin-cli getblockchaininfo | jq '{
+  blocks: .blocks,
+  headers: .headers,
+  bestblockhash: .bestblockhash
+}'
+
+# 如果 headers > blocks，正在下載區塊體
+
+# 查看節點的 headers 狀態
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  synced_headers: .synced_headers
+}'
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Received headers from peer=5: 2000 headers"
+# "Processed 2000 headers in 0.5s"
+# "Headers sync progress: 750000/800000 (93.75%)"
+
+# 計算 headers 消息大小
+# count + (81 × n) bytes
+# 2000 headers ≈ 162 KB</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 處理收到的 headers
+void PeerManager::ProcessHeaders(CNode& node,
+    const std::vector&lt;CBlockHeader&gt;& headers)
+{
+    if (headers.empty()) {
+        return;
+    }
+
+    const CBlockIndex* pindexLast = nullptr;
+
+    for (const CBlockHeader& header : headers) {
+        // 驗證 header
+        CValidationState state;
+        if (!chainman.ProcessNewBlockHeaders(
+                {header}, state, &pindexLast)) {
+            if (state.IsInvalid()) {
+                Misbehaving(node.GetId(),
+                    state.GetDoS(),
+                    state.GetRejectReason());
+                return;
+            }
+        }
+    }
+
+    // 更新節點狀態
+    UpdateBlockAvailability(node.GetId(), pindexLast);
+
+    // 可能請求區塊
+    if (pindexLast && pindexLast->nChainWork > chainman.ActiveTip()->nChainWork) {
+        // 新鏈工作量更大，請求區塊
+        RequestBlocksFromPeer(node);
+    }
+}
+
+// 驗證單個 header
+bool CheckBlockHeader(const CBlockHeader& header, CValidationState& state) {
+    // 檢查 PoW
+    if (!CheckProofOfWork(header.GetHash(), header.nBits, params)) {
+        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER,
+            "high-hash", "proof of work failed");
+    }
+    return true;
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Getheaders：</strong>區塊頭請求</li>
+        <li><strong>Sendheaders：</strong>區塊頭推送模式</li>
+        <li><strong>Headers-First Sync：</strong>頭部優先同步</li>
+        <li><strong>Block Header：</strong>區塊頭結構</li>
+        <li><strong>IBD：</strong>初始區塊下載</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

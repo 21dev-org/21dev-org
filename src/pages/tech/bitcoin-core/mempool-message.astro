@@ -1,0 +1,296 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Mempool Message"
+  description="了解 P2P 協議中的 mempool 消息，用於請求對等節點的交易池內容。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Mempool Message' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Mempool', href: '/tech/bitcoin-core/mempool' }}
+  nextPage={{ title: 'Mempool Policy', href: '/tech/bitcoin-core/mempool-policy' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Mempool 消息是比特幣 P2P 協議中用於請求對等節點交易池內容的消息。
+        收到此請求後，節點會回應包含其 mempool 中所有交易 ID 的 inv 消息。
+      </p>
+
+      <h2>Mempool 消息概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Mempool 消息的作用:
+
+請求流程:
+┌─────────┐    mempool      ┌─────────┐
+│ Node A  │ ─────────────→  │ Node B  │
+│         │  inv(tx1,tx2,..)│         │
+│         │ ←─────────────  │         │
+└─────────┘                 └─────────┘
+
+用途:
+1. 啟動時同步 mempool
+2. 發現遺漏的交易
+3. 錢包恢復時找回未確認交易
+4. 調試和分析
+
+特點:
+- 可能返回大量 inv
+- 需要後續 getdata 獲取交易
+- 可以被限制或禁用</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Mempool 消息格式:
+
+┌─────────────────────────────────────────┐
+│ (empty payload - 0 bytes)               │
+└─────────────────────────────────────────┘
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "mempool" (12 bytes, padded)        │
+│ length: 0 (4 bytes)                          │
+│ checksum: 0x5df6e0e2 (4 bytes)               │
+│ payload: (empty)                             │
+└──────────────────────────────────────────────┘
+
+回應:
+- inv 消息
+- 包含所有 mempool 中的交易
+- 使用 MSG_TX 或 MSG_WTX 類型
+
+// 非常簡單的請求消息</code></pre>
+
+      <h2>回應處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>處理 mempool 請求:
+
+def on_mempool_request(peer):
+    # 檢查是否允許
+    if not peer.relay_txes:
+        return  # 對方不接受交易中繼
+
+    # 收集 mempool 中的所有交易
+    txids = []
+    for tx in mempool.get_all():
+        if peer.wants_wtxid:
+            txids.append((MSG_WTX, tx.wtxid))
+        else:
+            txids.append((MSG_TX, tx.txid))
+
+    # 發送 inv
+    # 可能分多個消息（每個最多 50000 項）
+    for batch in chunks(txids, MAX_INV_SZ):
+        send_inv(peer, batch)
+
+限制:
+MAX_INV_SZ = 50000  # 每個 inv 最多項目
+
+如果 mempool 很大:
+- 可能發送多個 inv 消息
+- 接收方需要處理大量 inv</code></pre>
+
+      <h2>使用場景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Mempool 消息的使用場景:
+
+1. 節點啟動
+   - 新啟動的節點 mempool 為空
+   - 發送 mempool 請求獲取交易
+   - 快速填充 mempool
+
+2. 重新連接
+   - 斷線後重新連接
+   - 可能錯過了一些交易
+   - 使用 mempool 請求補齊
+
+3. 錢包恢復
+   - 導入舊錢包
+   - 可能有未確認交易
+   - 請求 mempool 尋找相關交易
+
+4. 分析工具
+   - 區塊鏈分析
+   - 費率估算
+   - 網路監控
+
+5. 礦池
+   - 獲取可打包的交易
+   - 構建區塊模板</code></pre>
+
+      <h2>限制與安全</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Mempool 請求的限制:
+
+1. Bloom Filter 關聯
+   BIP-37 規定:
+   - 如果設置了 bloom filter
+   - mempool 回應會被過濾
+   - 只返回匹配的交易
+
+2. 速率限制
+   - 不應頻繁請求
+   - 可能被視為濫用
+   - 某些節點可能忽略
+
+3. 隱私考量
+   - mempool 內容洩露交易狀態
+   - 可能被用於追蹤
+   - 一些節點禁用此功能
+
+4. 頻寬考量
+   - 大 mempool 可能包含數千交易
+   - 回應可能很大
+   - 後續 getdata 更大
+
+配置選項:
+# bitcoin.conf
+# 禁止 bloom filter（隱含影響 mempool）
+peerbloomfilters=0
+
+// 一些隱私增強配置可能限制 mempool 請求</code></pre>
+
+      <h2>與 Bloom Filter 的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-37 Bloom Filter 與 mempool:
+
+設置 filter 後:
+1. 發送 filterload 設置過濾器
+2. 發送 mempool 請求
+3. 回應只包含匹配的交易
+
+流程:
+┌─────────┐   filterload    ┌─────────┐
+│ SPV     │ ─────────────→  │ Full    │
+│ Wallet  │    mempool      │ Node    │
+│         │ ─────────────→  │         │
+│         │  inv(filtered)  │         │
+│         │ ←─────────────  │         │
+└─────────┘                 └─────────┘
+
+這用於:
+- SPV 錢包查找自己的交易
+- 減少頻寬使用
+- 只獲取相關交易
+
+注意:
+- BIP-37 有隱私問題
+- 已被 BIP-157/158 取代
+- 仍在使用但不推薦</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 mempool 相關活動
+
+# 查看本地 mempool 狀態
+bitcoin-cli getmempoolinfo
+{
+  "loaded": true,
+  "size": 5000,
+  "bytes": 2500000,
+  "usage": 8000000,
+  "total_fee": 0.5,
+  "maxmempool": 300000000,
+  "mempoolminfee": 0.00001,
+  "minrelaytxfee": 0.00001
+}
+
+# 獲取 mempool 中所有交易
+bitcoin-cli getrawmempool
+["txid1", "txid2", ...]
+
+# 日誌設置
+# bitcoin.conf
+debug=mempool
+debug=net
+
+# 日誌輸出:
+# "Received mempool request from peer=5"
+# "Sending 3500 inv items for mempool request"
+
+# 估計 mempool inv 大小
+tx_count = 5000
+inv_size = tx_count * 36  # 180 KB</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 處理 mempool 請求
+void PeerManager::ProcessMempool(CNode& node) {
+    // 檢查是否中繼交易
+    if (!node.m_tx_relay) {
+        return;
+    }
+
+    // 檢查連接是否建立
+    if (!node.fSuccessfullyConnected) {
+        return;
+    }
+
+    // 收集 mempool 交易
+    std::vector&lt;CInv&gt; vtxid;
+    {
+        LOCK(mempool.cs);
+        vtxid.reserve(mempool.size());
+
+        for (const auto& entry : mempool.mapTx) {
+            const uint256& hash = node.m_wtxid_relay ?
+                entry.GetTx().GetWitnessHash() :
+                entry.GetTx().GetHash();
+
+            vtxid.push_back(CInv(
+                node.m_wtxid_relay ? MSG_WTX : MSG_TX,
+                hash));
+        }
+    }
+
+    // 應用 bloom filter（如果有）
+    if (node.m_bloom_filter) {
+        // 過濾...
+    }
+
+    // 發送 inv
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::INV, vtxid));
+}
+
+// 發送 mempool 請求
+void PeerManager::SendMempool(CNode& node) {
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::MEMPOOL));
+}</code></pre>
+
+      <h2>最佳實踐</h2>
+
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
+        <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
+          <li><strong>謹慎使用：</strong>mempool 請求可能返回大量數據</li>
+          <li><strong>啟動時使用：</strong>主要在節點啟動時發送一次</li>
+          <li><strong>不要頻繁請求：</strong>可能被視為濫用</li>
+          <li><strong>處理大回應：</strong>準備處理數千個 inv</li>
+          <li><strong>考慮隱私：</strong>請求可能洩露信息</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Mempool：</strong>交易池</li>
+        <li><strong>Mempool Policy：</strong>交易池策略</li>
+        <li><strong>Inv Message：</strong>庫存通告</li>
+        <li><strong>Bloom Filters：</strong>BIP-37 過濾器</li>
+        <li><strong>Transaction Broadcast：</strong>交易廣播</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

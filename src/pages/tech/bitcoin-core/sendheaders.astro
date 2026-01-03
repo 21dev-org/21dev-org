@@ -1,0 +1,285 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Sendheaders Message"
+  description="了解 P2P 協議中的 sendheaders 消息，啟用區塊頭直接推送模式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Sendheaders' },
+  ]}
+  difficulty="intermediate"
+  readingTime="6 分鐘"
+  prevPage={{ title: 'Headers Message', href: '/tech/bitcoin-core/headers-message' }}
+  nextPage={{ title: 'Compact Blocks', href: '/tech/bitcoin-core/compact-blocks' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Sendheaders（BIP-130）是比特幣 P2P 協議中用於請求區塊頭直接推送的消息。
+        啟用後，對等節點會使用 headers 消息而非 inv 來通告新區塊，減少延遲。
+      </p>
+
+      <h2>Sendheaders 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Sendheaders 的目的:
+
+傳統模式（使用 inv）:
+┌─────────┐    inv(block)    ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │  getheaders      │         │
+│         │ ←──────────────  │         │
+│         │    headers       │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+需要 3 次消息往返
+
+Sendheaders 模式:
+┌─────────┐    headers       ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+└─────────┘                  └─────────┘
+只需 1 次消息
+
+優勢:
+1. 減少往返延遲
+2. 更快的區塊傳播
+3. 簡化通訊流程</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Sendheaders 消息格式:
+
+┌─────────────────────────────────────────┐
+│ (empty payload - 0 bytes)               │
+└─────────────────────────────────────────┘
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "sendheaders" (12 bytes, padded)    │
+│ length: 0 (4 bytes)                          │
+│ checksum: 0x5df6e0e2 (4 bytes)               │
+│ payload: (empty)                             │
+└──────────────────────────────────────────────┘
+
+發送時機:
+- 版本握手完成後
+- 通常在 verack 之後立即發送
+- 只需發送一次
+
+// 非常簡單的消息，只是一個標誌</code></pre>
+
+      <h2>協議行為</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Sendheaders 後的行為變化:
+
+發送 sendheaders 前:
+- 新區塊通過 inv 通告
+- 接收方需要請求 headers
+- 傳統的請求-回應模式
+
+發送 sendheaders 後:
+- 新區塊直接發送 headers
+- 無需額外請求
+- 接收方驗證後請求區塊體
+
+發送方邏輯:
+class Peer:
+    prefer_headers = False
+
+    def on_sendheaders(self):
+        self.prefer_headers = True
+
+    def announce_block(self, block):
+        if self.prefer_headers:
+            # 直接發送 header
+            self.send_headers([block.header])
+        else:
+            # 傳統方式
+            self.send_inv(block.hash)
+
+// 雙向獨立：A 發送 sendheaders 只影響 A 收到的通告</code></pre>
+
+      <h2>Headers 通告</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 headers 通告新區塊:
+
+單個區塊通告:
+┌─────────────────────────────────────────┐
+│ count: 1                                │
+│ headers:                                │
+│   block_header (80 bytes)               │
+│   txn_count: 0                          │
+└─────────────────────────────────────────┘
+
+多個區塊（追趕）:
+┌─────────────────────────────────────────┐
+│ count: 8                                │
+│ headers:                                │
+│   block_header_1 (80 bytes)             │
+│   txn_count: 0                          │
+│   block_header_2 (80 bytes)             │
+│   txn_count: 0                          │
+│   ...                                   │
+└─────────────────────────────────────────┘
+
+規則:
+- 最多發送 8 個連續 headers
+- 如果超過 8 個，回退到 inv 模式
+- 確保不會發送過長的消息
+
+何時回退到 inv:
+if blocks_to_announce > 8:
+    send_inv(blocks)
+else:
+    send_headers(blocks)</code></pre>
+
+      <h2>接收方處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>處理 headers 通告:
+
+def process_headers_announcement(headers):
+    for header in headers:
+        # 驗證 header
+        if not validate_header(header):
+            misbehaving(peer)
+            return
+
+        # 檢查是否已有
+        if have_block(header.hash):
+            continue
+
+        # 檢查父區塊
+        if not have_block(header.prev_hash):
+            # 缺少父區塊，需要同步
+            send_getheaders(locator)
+            return
+
+        # 接受 header
+        add_header(header)
+
+    # 請求區塊體
+    for header in headers:
+        if want_block(header.hash):
+            request_block(header.hash)
+
+注意事項:
+- 驗證 PoW
+- 檢查時間戳
+- 確保連接到已知鏈</code></pre>
+
+      <h2>BIP-130 規範</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-130 詳細規範:
+
+引入版本:
+- 協議版本 70012+
+- Bitcoin Core 0.12.0+
+
+行為定義:
+1. 發送 sendheaders 表示偏好 headers 通告
+2. 接收方應記住此偏好
+3. 新區塊使用 headers 而非 inv 通告
+4. 最多 8 個連續 headers
+5. 超過則使用 inv
+
+與 sendcmpct 的關係:
+- sendheaders: 使用 headers 通告
+- sendcmpct (high bandwidth): 直接發送 cmpctblock
+- 兩者可以共存
+
+優先級:
+if sendcmpct_high_bandwidth:
+    send_cmpctblock()
+elif sendheaders:
+    send_headers()
+else:
+    send_inv()</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 sendheaders 狀態
+
+# Bitcoin Core 不直接暴露 sendheaders 狀態
+# 但可以通過日誌觀察
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Sending sendheaders to peer=5"
+# "peer=3 prefers headers announcements"
+# "Announcing block via headers to peer=5"
+
+# 觀察區塊通告方式
+# 如果看到 "sending headers" 而非 "sending inv"
+# 說明 sendheaders 已啟用
+
+# 檢查節點是否支持
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  version: .version,
+  subver: .subver
+}'
+
+# version >= 70012 支持 sendheaders</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 sendheaders
+void PeerManager::SendSendHeaders(CNode& node) {
+    if (node.GetCommonVersion() >= SENDHEADERS_VERSION) {
+        connman.PushMessage(&node,
+            CNetMsgMaker(node.GetCommonVersion())
+                .Make(NetMsgType::SENDHEADERS));
+    }
+}
+
+// 處理收到的 sendheaders
+void PeerManager::ProcessSendHeaders(CNode& node) {
+    node.fPreferHeaders = true;
+}
+
+// 通告新區塊
+void PeerManager::AnnounceBlock(const CBlockIndex* pindex) {
+    for (auto& node : connman.GetNodes()) {
+        if (node.fPreferHeaders) {
+            // 收集要發送的 headers
+            std::vector&lt;CBlockHeader&gt; vHeaders;
+            // ... 收集連續的 headers ...
+
+            if (vHeaders.size() &lt;= MAX_HEADERS_ANNOUNCE) {
+                // 使用 headers 通告
+                connman.PushMessage(&node,
+                    CNetMsgMaker(node.GetCommonVersion())
+                        .Make(NetMsgType::HEADERS, vHeaders));
+            } else {
+                // 太多了，使用 inv
+                AnnounceBlockViaInv(node, pindex);
+            }
+        } else {
+            AnnounceBlockViaInv(node, pindex);
+        }
+    }
+}
+
+const int SENDHEADERS_VERSION = 70012;
+const size_t MAX_HEADERS_ANNOUNCE = 8;</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Headers Message：</strong>區塊頭消息</li>
+        <li><strong>Getheaders：</strong>區塊頭請求</li>
+        <li><strong>Compact Blocks：</strong>緊湊區塊</li>
+        <li><strong>Inv Message：</strong>庫存通告</li>
+        <li><strong>Headers-First Sync：</strong>頭部優先同步</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
