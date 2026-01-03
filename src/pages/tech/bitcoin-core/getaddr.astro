@@ -1,0 +1,347 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Getaddr & Addr Messages"
+  description="了解 P2P 協議中的地址發現機制，節點如何請求和分享對等節點地址。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Getaddr' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Node Discovery', href: '/tech/bitcoin-core/node-discovery' }}
+  nextPage={{ title: 'AddrMan', href: '/tech/bitcoin-core/addrman' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Getaddr 和 Addr 消息是比特幣 P2P 網路中的地址發現機制。
+        節點通過這些消息交換已知的對等節點地址，維護去中心化的網路拓撲。
+      </p>
+
+      <h2>地址發現概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>地址發現流程:
+
+1. 新節點啟動
+   - 從 DNS seeds 獲取初始地址
+   - 連接到已知節點
+
+2. 請求更多地址
+   ┌─────────┐    getaddr     ┌─────────┐
+   │ Node A  │ ────────────→  │ Node B  │
+   │         │      addr      │         │
+   │         │ ←────────────  │         │
+   └─────────┘                └─────────┘
+
+3. 存儲地址
+   - 保存到 AddrMan
+   - 用於未來連接
+
+4. 地址傳播
+   - 節點分享新發現的地址
+   - 網路自我維護
+
+目的:
+- 發現新節點
+- 維護網路連通性
+- 去中心化的對等發現</code></pre>
+
+      <h2>Getaddr 消息</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getaddr 消息格式:
+
+┌─────────────────────────────────────────┐
+│ (empty payload - 0 bytes)               │
+└─────────────────────────────────────────┘
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "getaddr" (12 bytes, padded)        │
+│ length: 0 (4 bytes)                          │
+│ checksum: 0x5df6e0e2 (4 bytes)               │
+│ payload: (empty)                             │
+└──────────────────────────────────────────────┘
+
+發送時機:
+1. 連接建立後（版本握手完成）
+2. 需要更多對等節點時
+3. AddrMan 地址不足時
+
+限制:
+- 每個連接只回應一次
+- 防止地址抓取攻擊
+- 隨機選擇返回的地址</code></pre>
+
+      <h2>Addr 消息（v1）</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Addr 消息格式:
+
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ addr_list:                              │
+│   ┌─────────────────────────────────┐   │
+│   │ time (4 bytes, uint32)          │   │
+│   │ services (8 bytes, uint64)      │   │
+│   │ IP address (16 bytes)           │   │
+│   │ port (2 bytes, big-endian)      │   │
+│   └─────────────────────────────────┘   │
+│   × count                               │
+└─────────────────────────────────────────┘
+
+欄位說明:
+
+time:
+- 最後一次看到該節點的時間戳
+- Unix epoch seconds
+
+services:
+- 節點提供的服務
+- NODE_NETWORK (1), NODE_BLOOM (4), etc.
+
+IP address:
+- IPv6 格式（16 bytes）
+- IPv4 映射為 ::ffff:x.x.x.x
+
+port:
+- 網路字節序（big-endian）
+- 主網默認 8333
+
+限制:
+- 最多 1000 個地址
+- 超過則分多個消息</code></pre>
+
+      <h2>Addrv2 消息</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Addrv2 (BIP-155) 改進:
+
+支持更多網路類型:
+- IPv4 (4 bytes)
+- IPv6 (16 bytes)
+- Tor v2 (10 bytes) - 已棄用
+- Tor v3 (32 bytes)
+- I2P (32 bytes)
+- CJDNS (16 bytes)
+
+Addrv2 格式:
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ addr_list:                              │
+│   ┌─────────────────────────────────┐   │
+│   │ time (4 bytes, uint32)          │   │
+│   │ services (compact size)         │   │
+│   │ network_id (1 byte)             │   │
+│   │ addr_len (varint)               │   │
+│   │ addr (variable)                 │   │
+│   │ port (2 bytes, big-endian)      │   │
+│   └─────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+
+network_id:
+0x01 = IPv4
+0x02 = IPv6
+0x03 = Tor v2 (deprecated)
+0x04 = Tor v3
+0x05 = I2P
+0x06 = CJDNS
+
+協商:
+- 發送 sendaddrv2 消息表示支持
+- 必須在 verack 之前發送</code></pre>
+
+      <h2>地址中繼</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>地址自動中繼:
+
+接收新地址後:
+1. 驗證地址格式
+2. 更新 AddrMan
+3. 選擇性轉發給其他節點
+
+轉發規則:
+- 不轉發太舊的地址（>10分鐘）
+- 隨機選擇 1-2 個節點轉發
+- 限制轉發頻率
+
+自我廣播:
+- 節點定期廣播自己的地址
+- 通過 addr 消息發送
+- 幫助網路發現自己
+
+限制:
+- 每個節點每 24 小時只接受一個 getaddr
+- 防止地址枚舉攻擊
+- 隨機延遲轉發
+
+Python 偽代碼:
+def on_addr(peer, addresses):
+    for addr in addresses:
+        if addr.time > now() - 10 * 60:  # 10 分鐘內
+            addrman.add(addr)
+
+            # 隨機選擇 1-2 個節點轉發
+            for relay_peer in random_peers(1, 2):
+                relay_peer.send_addr([addr])</code></pre>
+
+      <h2>AddrMan 整合</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>地址如何存儲到 AddrMan:
+
+AddrMan 結構:
+- new 表: 新發現的地址
+- tried 表: 已嘗試連接的地址
+
+接收 addr 後:
+1. 驗證地址
+   - 格式正確
+   - 不是私有地址
+   - 時間戳合理
+
+2. 計算桶位置
+   - 基於來源和地址
+   - 確保分散存儲
+
+3. 插入到 new 表
+   - 如果桶已滿，可能替換舊條目
+   - 隨機選擇替換
+
+4. 後續使用
+   - 需要連接時從 tried 表選擇
+   - 或從 new 表嘗試新地址
+
+代碼流程:
+addr_received → validate() → addrman.Add() → bucket_insert()</code></pre>
+
+      <h2>隱私考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>地址消息的隱私問題:
+
+1. 拓撲洩露
+   問題: 通過地址可以推斷網路結構
+   緩解:
+   - 隨機選擇返回的地址
+   - 限制 getaddr 回應次數
+   - 添加隨機延遲
+
+2. 時間戳攻擊
+   問題: 時間戳可能洩露節點活動
+   緩解:
+   - 更新時間戳有最小間隔
+   - 不精確的時間戳
+
+3. 地址枚舉
+   問題: 攻擊者可能枚舉所有節點
+   緩解:
+   - 每個連接只回應一次 getaddr
+   - 隨機子集
+
+4. Sybil 攻擊
+   問題: 注入假地址佔據 AddrMan
+   緩解:
+   - 桶分散算法
+   - 來源多樣性檢查
+
+// 地址中繼設計平衡了發現性和隱私</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控地址相關活動
+
+# 查看已知地址數量
+bitcoin-cli getnodeaddresses 0 | jq 'length'
+
+# 獲取隨機地址
+bitcoin-cli getnodeaddresses 10
+[
+  {
+    "time": 1704067200,
+    "services": 1033,
+    "address": "1.2.3.4",
+    "port": 8333,
+    "network": "ipv4"
+  },
+  ...
+]
+
+# 查看節點連接
+bitcoin-cli getpeerinfo | jq '.[] | {
+  addr: .addr,
+  services: .services,
+  addr_relay: .addr_relay_enabled
+}'
+
+# 日誌設置
+# bitcoin.conf
+debug=addrman
+debug=net
+
+# 日誌輸出:
+# "Added 23 addresses from peer=5"
+# "Sending getaddr to peer=3"
+# "Received addr: 15 addresses"</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 處理 getaddr
+void PeerManager::ProcessGetAddr(CNode& node) {
+    // 每個連接只回應一次
+    if (node.fSentAddr) {
+        return;
+    }
+    node.fSentAddr = true;
+
+    // 從 AddrMan 獲取隨機地址
+    std::vector&lt;CAddress&gt; vAddr = addrman.GetAddr(
+        MAX_ADDR_TO_SEND,  // 1000
+        MAX_PCT_ADDR_TO_SEND,  // 23%
+        node.GetNetwork()
+    );
+
+    // 發送 addr 或 addrv2
+    if (node.m_wants_addrv2) {
+        connman.PushMessage(&node,
+            CNetMsgMaker(node.GetCommonVersion())
+                .Make(NetMsgType::ADDRV2, vAddr));
+    } else {
+        connman.PushMessage(&node,
+            CNetMsgMaker(node.GetCommonVersion())
+                .Make(NetMsgType::ADDR, vAddr));
+    }
+}
+
+// 處理收到的 addr
+void PeerManager::ProcessAddr(CNode& node, std::vector&lt;CAddress&gt;& vAddr) {
+    // 驗證數量
+    if (vAddr.size() > MAX_ADDR_TO_SEND) {
+        Misbehaving(node.GetId(), 20);
+        return;
+    }
+
+    // 添加到 AddrMan
+    std::vector&lt;CAddress&gt; vAddrOk;
+    for (auto& addr : vAddr) {
+        if (addr.IsValid() && !addr.IsLocal()) {
+            vAddrOk.push_back(addr);
+        }
+    }
+    addrman.Add(vAddrOk, node.addr);
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Node Discovery：</strong>節點發現機制</li>
+        <li><strong>AddrMan：</strong>地址管理器</li>
+        <li><strong>P2P Protocol：</strong>點對點協議</li>
+        <li><strong>Tor Integration：</strong>Tor 網路整合</li>
+        <li><strong>I2P Integration：</strong>I2P 網路整合</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

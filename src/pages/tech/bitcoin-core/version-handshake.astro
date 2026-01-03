@@ -1,0 +1,388 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Version Handshake"
+  description="了解比特幣 P2P 協議的版本握手過程，建立連接時的能力協商機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Version Handshake' },
+  ]}
+  difficulty="intermediate"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Ping Pong', href: '/tech/bitcoin-core/ping-pong' }}
+  nextPage={{ title: 'P2P Protocol', href: '/tech/bitcoin-core/p2p-protocol' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        版本握手是比特幣 P2P 連接建立的第一步。雙方交換 version 和 verack 消息，
+        協商協議版本、交換服務能力、並確認連接成功建立。
+      </p>
+
+      <h2>握手流程概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>完整的版本握手:
+
+┌─────────┐                         ┌─────────┐
+│ Node A  │      TCP Connect        │ Node B  │
+│(initiator)│ ────────────────────→ │(listener)│
+│         │                         │         │
+│         │      version            │         │
+│         │ ────────────────────→   │         │
+│         │      version            │         │
+│         │ ←────────────────────   │         │
+│         │      verack             │         │
+│         │ ────────────────────→   │         │
+│         │      verack             │         │
+│         │ ←────────────────────   │         │
+│         │                         │         │
+│         │  [connection ready]     │         │
+└─────────┘                         └─────────┘
+
+握手完成後:
+- 雙方知道對方的能力
+- 可以開始正常通訊
+- 協議版本已確定</code></pre>
+
+      <h2>Version 消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Version 消息結構:
+
+┌─────────────────────────────────────────────────┐
+│ version (4 bytes, int32)                        │
+│ services (8 bytes, uint64)                      │
+│ timestamp (8 bytes, int64)                      │
+│ addr_recv (26 bytes)                            │
+│ addr_from (26 bytes)                            │
+│ nonce (8 bytes, uint64)                         │
+│ user_agent (variable, string)                   │
+│ start_height (4 bytes, int32)                   │
+│ relay (1 byte, bool) - optional                 │
+└─────────────────────────────────────────────────┘
+
+欄位說明:
+
+version:
+- 協議版本號
+- 當前: 70016
+
+services:
+- 提供的服務位掩碼
+- 詳見下方服務標誌
+
+timestamp:
+- 發送時間（Unix epoch）
+
+addr_recv:
+- 接收方的地址
+
+addr_from:
+- 發送方的地址
+
+nonce:
+- 隨機數，用於檢測自連接
+
+user_agent:
+- 軟件識別字串
+- 如 "/Satoshi:25.0.0/"
+
+start_height:
+- 發送方的區塊高度
+
+relay:
+- 是否想接收交易中繼
+- BIP-37 添加</code></pre>
+
+      <h2>服務標誌</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Services 欄位的位定義:
+
+NODE_NETWORK        = (1 &lt;&lt; 0)   // 1
+  - 完整區塊鏈節點
+  - 可以提供完整區塊
+
+NODE_GETUTXO        = (1 &lt;&lt; 1)   // 2
+  - 支持 getutxo (BIP-64)
+  - 很少使用
+
+NODE_BLOOM          = (1 &lt;&lt; 2)   // 4
+  - 支持 bloom 過濾 (BIP-37)
+  - 用於 SPV 客戶端
+
+NODE_WITNESS        = (1 &lt;&lt; 3)   // 8
+  - 支持 SegWit (BIP-144)
+  - 可以提供見證數據
+
+NODE_COMPACT_FILTERS = (1 &lt;&lt; 6)  // 64
+  - 支持緊湊區塊過濾 (BIP-157/158)
+
+NODE_NETWORK_LIMITED = (1 &lt;&lt; 10) // 1024
+  - 修剪節點
+  - 只有最近 288 個區塊
+
+NODE_P2P_V2         = (1 &lt;&lt; 11)  // 2048
+  - 支持 v2 P2P 協議 (BIP-324)
+
+典型組合:
+完整節點: 1033 = NODE_NETWORK | NODE_WITNESS | NODE_NETWORK_LIMITED
+修剪節點: 1097 = 上述 + NODE_COMPACT_FILTERS</code></pre>
+
+      <h2>Verack 消息</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Verack 消息格式:
+
+┌─────────────────────────────────────────┐
+│ (empty payload - 0 bytes)               │
+└─────────────────────────────────────────┘
+
+作用:
+- 確認收到 version 消息
+- 表示準備好開始通訊
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "verack" (12 bytes, padded)         │
+│ length: 0 (4 bytes)                          │
+│ checksum: 0x5df6e0e2 (4 bytes)               │
+│ payload: (empty)                             │
+└──────────────────────────────────────────────┘
+
+握手狀態機:
+INIT → (send version) → VERSION_SENT
+     → (recv version) → VERSION_RECEIVED
+     → (send verack)  → VERACK_SENT
+     → (recv verack)  → ESTABLISHED</code></pre>
+
+      <h2>協議版本協商</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>版本號的使用:
+
+確定共同版本:
+common_version = min(my_version, peer_version)
+
+版本歷史:
+60001: 添加 ping nonce (BIP-31)
+70001: 添加 relay 欄位 (BIP-37)
+70002: 添加 sendheaders (BIP-130)
+70012: 添加 sendcmpct (BIP-152)
+70013: 添加 feefilter (BIP-133)
+70014: Witness 強制 (BIP-144)
+70015: sendheaders, feefilter 強制
+70016: addrv2, wtxidrelay (BIP-155, 339)
+
+版本檢查:
+if (peer_version &lt; MIN_PEER_PROTO_VERSION) {
+    // 版本太舊，斷開連接
+    disconnect();
+}
+
+MIN_PEER_PROTO_VERSION = 31800  // 非常舊
+
+// 實際上會拒絕不支持 SegWit 的節點</code></pre>
+
+      <h2>握手後的消息</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Verack 之後的初始消息:
+
+在 verack 之前可以發送:
+- wtxidrelay (必須在 verack 前)
+- sendaddrv2 (必須在 verack 前)
+
+Verack 之後立即發送:
+1. sendheaders
+   - 請求使用 headers 通告區塊
+
+2. sendcmpct
+   - 協商緊湊區塊模式
+
+3. feefilter
+   - 發送費率過濾器
+
+4. getaddr
+   - 請求更多節點地址
+
+5. getheaders / getblocks
+   - 開始同步區塊鏈
+
+完整初始化序列:
+version → verack → sendheaders → sendcmpct
+→ feefilter → getaddr → getheaders</code></pre>
+
+      <h2>自連接檢測</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 nonce 檢測自連接:
+
+問題:
+- 節點可能無意中連接到自己
+- 通過 NAT 或代理時可能發生
+- 浪費連接槽位
+
+解決:
+1. 生成隨機 nonce
+2. 發送 version 包含 nonce
+3. 收到 version 時檢查 nonce
+
+檢測邏輯:
+// 發送時
+my_nonce = random64();
+send_version(..., nonce=my_nonce);
+
+// 接收時
+if (received_nonce == my_nonce) {
+    // 自連接！
+    disconnect();
+    return;
+}
+
+// 也檢查其他連接
+for (conn : connections) {
+    if (received_nonce == conn.sent_nonce) {
+        // 多條連接到同一個節點
+        disconnect();
+        return;
+    }
+}</code></pre>
+
+      <h2>錯誤處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>握手失敗的情況:
+
+1. 超時
+   - 未在規定時間內完成握手
+   - 默認超時: 60 秒
+
+2. 版本不兼容
+   - 版本太舊
+   - 服務不兼容
+
+3. 魔數不匹配
+   - 不同網路（主網 vs 測試網）
+   - 損壞的消息
+
+4. 自連接
+   - nonce 匹配
+   - 立即斷開
+
+5. 無效數據
+   - 格式錯誤
+   - 不合理的值
+
+錯誤回應:
+- 早期斷開連接
+- 可能發送 reject 消息（已棄用）
+- 記錄到日誌
+
+// 握手失敗是正常的，不應報警</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控版本握手
+
+# 查看節點版本信息
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  addr: .addr,
+  version: .version,
+  subver: .subver,
+  services: .services,
+  startingheight: .startingheight
+}'
+
+# 查看本節點版本
+bitcoin-cli getnetworkinfo | jq '{
+  version: .version,
+  subversion: .subversion,
+  protocolversion: .protocolversion,
+  localservices: .localservices
+}'
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Added connection peer=5"
+# "Sending version to peer=5"
+# "Received version from peer=5: version 70016, services 1033"
+# "Sending verack to peer=5"
+# "connection established peer=5"
+
+# 常見 user_agent:
+# /Satoshi:25.0.0/     - Bitcoin Core
+# /btcd:0.24.0/        - btcd
+# /Bitcoin Knots:25.0/ - Bitcoin Knots</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 version
+void PeerManager::PushVersion(CNode& node) {
+    int64_t nTime = GetTime();
+    uint64_t nonce = GetRand(std::numeric_limits&lt;uint64_t&gt;::max());
+    int nNodeStartingHeight = chainman.ActiveHeight();
+
+    CService addr_you = node.addr;
+    CService addr_me = GetLocalAddress(&node.addr);
+
+    connman.PushMessage(&node,
+        CNetMsgMaker(INIT_PROTO_VERSION).Make(
+            NetMsgType::VERSION,
+            PROTOCOL_VERSION,
+            nLocalServices,
+            nTime,
+            CAddress(addr_you, NODE_NONE),
+            CAddress(addr_me, nLocalServices),
+            nonce,
+            strSubVersion,
+            nNodeStartingHeight,
+            true  // relay
+        ));
+
+    node.m_local_nonce = nonce;
+}
+
+// 處理 version
+void PeerManager::ProcessVersionMessage(CNode& node, CDataStream& vRecv) {
+    int32_t nVersion;
+    uint64_t nServices;
+    int64_t nTime;
+    // ... 解析欄位 ...
+
+    // 檢查版本
+    if (nVersion &lt; MIN_PEER_PROTO_VERSION) {
+        node.fDisconnect = true;
+        return;
+    }
+
+    // 檢查自連接
+    if (nNonce == node.m_local_nonce) {
+        node.fDisconnect = true;
+        return;
+    }
+
+    // 發送 verack
+    connman.PushMessage(&node,
+        CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERACK));
+
+    node.nVersion = nVersion;
+    node.nServices = nServices;
+    node.fSuccessfullyConnected = true;
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>P2P Protocol：</strong>點對點協議</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>BIP-324：</strong>v2 加密傳輸</li>
+        <li><strong>Node Discovery：</strong>節點發現</li>
+        <li><strong>Peer Management：</strong>節點管理</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

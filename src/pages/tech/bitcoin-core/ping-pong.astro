@@ -1,0 +1,329 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Ping & Pong Messages"
+  description="了解 P2P 協議中的 ping/pong 消息，用於測量延遲和保持連接活躍。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Ping Pong' },
+  ]}
+  difficulty="beginner"
+  readingTime="6 分鐘"
+  prevPage={{ title: 'Message Types', href: '/tech/bitcoin-core/message-types' }}
+  nextPage={{ title: 'Version Handshake', href: '/tech/bitcoin-core/version-handshake' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Ping 和 Pong 消息是比特幣 P2P 協議中用於連接保活和延遲測量的簡單機制。
+        節點定期發送 ping，對方必須回應 pong，這有助於檢測斷開的連接和測量網路延遲。
+      </p>
+
+      <h2>Ping/Pong 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Ping/Pong 的作用:
+
+1. 連接保活
+   - 檢測無回應的連接
+   - 避免防火牆超時斷開
+   - 清理死連接
+
+2. 延遲測量
+   - 測量往返時間 (RTT)
+   - 用於節點評分
+   - 優化連接選擇
+
+3. 存活確認
+   - 確認對方仍在運行
+   - 節點可能崩潰但連接未關閉
+
+交互流程:
+┌─────────┐    ping(nonce)   ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │    pong(nonce)   │         │
+│         │ ←──────────────  │         │
+└─────────┘                  └─────────┘
+
+RTT = pong_received_time - ping_sent_time</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Ping 消息格式:
+
+┌─────────────────────────────────────────┐
+│ nonce (8 bytes, uint64)                 │
+└─────────────────────────────────────────┘
+
+Pong 消息格式:
+
+┌─────────────────────────────────────────┐
+│ nonce (8 bytes, uint64)                 │
+└─────────────────────────────────────────┘
+
+nonce:
+- 隨機生成的 64 位值
+- pong 必須返回相同的 nonce
+- 用於匹配 ping/pong 對
+
+完整 P2P 消息 (ping):
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "ping" (12 bytes, padded)           │
+│ length: 8 (4 bytes)                          │
+│ checksum (4 bytes)                           │
+│ payload: nonce (8 bytes)                     │
+└──────────────────────────────────────────────┘
+
+總大小: 32 bytes (header + payload)</code></pre>
+
+      <h2>Ping 發送策略</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>何時發送 ping:
+
+定時器:
+PING_INTERVAL = 2 分鐘
+
+條件:
+1. 距離上次成功 ping > PING_INTERVAL
+2. 沒有待處理的 ping
+3. 連接處於活躍狀態
+
+Bitcoin Core 邏輯:
+void SendPing(CNode& node) {
+    if (now() - node.m_ping_start > PING_INTERVAL) {
+        if (!node.m_ping_nonce_sent) {
+            uint64_t nonce = GetRand64();
+            node.m_ping_nonce_sent = nonce;
+            node.m_ping_start = now();
+
+            connman.PushMessage(&node,
+                CNetMsgMaker(node.GetCommonVersion())
+                    .Make(NetMsgType::PING, nonce));
+        }
+    }
+}
+
+// 每 2 分鐘發送一次 ping
+// 如果前一個 ping 未回應，不發送新的</code></pre>
+
+      <h2>Pong 處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>處理收到的 ping:
+
+void ProcessPing(CNode& node, uint64_t nonce) {
+    // 立即回應相同的 nonce
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::PONG, nonce));
+}
+
+處理收到的 pong:
+
+void ProcessPong(CNode& node, uint64_t nonce) {
+    // 檢查 nonce 是否匹配
+    if (nonce != node.m_ping_nonce_sent) {
+        // 不匹配，可能是舊的或惡意的
+        return;
+    }
+
+    // 計算 RTT
+    int64_t rtt = now() - node.m_ping_start;
+    node.m_ping_time = rtt;
+
+    // 重置狀態
+    node.m_ping_nonce_sent = 0;
+}
+
+nonce 不匹配的情況:
+1. 延遲到達的舊 pong
+2. 惡意節點發送假 pong
+3. 實現錯誤
+
+// 只接受匹配的 pong</code></pre>
+
+      <h2>超時處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Ping 超時機制:
+
+超時時間:
+TIMEOUT_INTERVAL = 20 分鐘
+
+檢測邏輯:
+void CheckPingTimeout(CNode& node) {
+    if (node.m_ping_nonce_sent != 0) {
+        // 有待處理的 ping
+        int64_t elapsed = now() - node.m_ping_start;
+
+        if (elapsed > TIMEOUT_INTERVAL) {
+            // 超時，斷開連接
+            LogPrint("Ping timeout: peer=%d\n", node.GetId());
+            node.fDisconnect = true;
+        }
+    }
+}
+
+超時後果:
+1. 連接被標記為斷開
+2. 資源被釋放
+3. 嘗試連接其他節點
+
+為什麼需要超時？
+- 對方可能已崩潰
+- 網路可能已斷開
+- TCP 可能未正確關閉</code></pre>
+
+      <h2>延遲統計</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 ping 測量延遲:
+
+節點信息:
+bitcoin-cli getpeerinfo
+[
+  {
+    "id": 1,
+    "pingtime": 0.123,      // 最後一次 ping RTT（秒）
+    "minping": 0.098,       // 最小 ping 時間
+    "pingwait": 0.0,        // 等待 pong 的時間
+    ...
+  }
+]
+
+延遲的用途:
+
+1. 節點評分
+   - 低延遲節點更受青睞
+   - 區塊中繼優先使用快速節點
+
+2. 連接選擇
+   - 斷開慢速連接
+   - 保持高質量連接
+
+3. 調試網路問題
+   - 識別網路瓶頸
+   - 檢測路由問題
+
+統計:
+class NodeStats {
+    double m_ping_time;       // 最後一次 RTT
+    double m_min_ping;        // 歷史最小 RTT
+    std::deque&lt;double&gt; m_ping_samples;  // 歷史樣本
+};
+
+// pingtime 的單位是秒</code></pre>
+
+      <h2>歷史演進</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Ping/Pong 的演進:
+
+早期版本 (BIP-31 之前):
+- ping 消息沒有 payload
+- 無法可靠測量 RTT
+- 只能確認連接存活
+
+BIP-31 改進:
+- 添加 nonce 欄位
+- pong 消息回傳 nonce
+- 可以精確測量 RTT
+- 可以匹配請求和回應
+
+協議版本:
+- 版本 &lt; 60001: ping 無 payload
+- 版本 >= 60001: ping 有 8 字節 nonce
+
+現代節點:
+- 總是使用帶 nonce 的 ping
+- 舊格式已很少見
+
+// 所有現代節點都支持 nonce</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 ping/pong
+
+# 查看所有節點的 ping 時間
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  addr: .addr,
+  pingtime: .pingtime,
+  minping: .minping,
+  pingwait: .pingwait
+}'
+
+# 找出最快的節點
+bitcoin-cli getpeerinfo | jq 'sort_by(.minping) | .[0:5] | .[] | {
+  addr: .addr,
+  minping: .minping
+}'
+
+# 找出有問題的連接 (ping 超過 1 秒)
+bitcoin-cli getpeerinfo | jq '.[] | select(.pingtime > 1) | {
+  id: .id,
+  addr: .addr,
+  pingtime: .pingtime
+}'
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Sending ping to peer=5"
+# "Received pong from peer=5 (123ms)"
+# "Ping timeout on peer=3"</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 ping
+void PeerManager::MaybeSendPing(CNode& node) {
+    // 檢查是否該發送 ping
+    bool pingSend = false;
+    if (node.m_ping_nonce_sent == 0 &&
+        node.m_ping_start + PING_INTERVAL &lt; GetTime&lt;std::chrono::seconds&gt;()) {
+        pingSend = true;
+    }
+
+    if (pingSend) {
+        uint64_t nonce = GetRand(std::numeric_limits&lt;uint64_t&gt;::max());
+        node.m_ping_nonce_sent = nonce;
+        node.m_ping_start = GetTime&lt;std::chrono::microseconds&gt;();
+
+        if (node.GetCommonVersion() > BIP0031_VERSION) {
+            connman.PushMessage(&node,
+                CNetMsgMaker(node.GetCommonVersion())
+                    .Make(NetMsgType::PING, nonce));
+        } else {
+            // 舊版本無 nonce
+            connman.PushMessage(&node,
+                CNetMsgMaker(node.GetCommonVersion())
+                    .Make(NetMsgType::PING));
+        }
+    }
+}
+
+// 處理 pong
+void PeerManager::ProcessPong(CNode& node, uint64_t nonce) {
+    if (node.m_ping_nonce_sent != 0 && nonce == node.m_ping_nonce_sent) {
+        auto ping_time = GetTime&lt;std::chrono::microseconds&gt;() - node.m_ping_start;
+        node.m_ping_time = ping_time.count() / 1e6;
+        node.m_min_ping = std::min(node.m_min_ping, node.m_ping_time);
+        node.m_ping_nonce_sent = 0;
+    }
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Version Handshake：</strong>版本握手</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>Peer Management：</strong>節點管理</li>
+        <li><strong>P2P Protocol：</strong>點對點協議</li>
+        <li><strong>Node Security：</strong>節點安全</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

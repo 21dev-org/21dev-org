@@ -1,0 +1,321 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Inv Message"
+  description="了解 P2P 協議中的 inv 消息，用於通知對等節點有新的交易或區塊可用。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Inv Message' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Message Types', href: '/tech/bitcoin-core/message-types' }}
+  nextPage={{ title: 'Getdata Message', href: '/tech/bitcoin-core/getdata-message' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Inv（Inventory）消息是比特幣 P2P 協議中用於通告新數據的核心消息類型。
+        當節點有新的交易或區塊時，使用 inv 消息通知對等節點，對方可以決定是否請求完整數據。
+      </p>
+
+      <h2>Inv 消息概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Inv 消息的作用:
+
+傳播流程:
+┌─────────┐                  ┌─────────┐
+│ Node A  │   inv(txid)      │ Node B  │
+│ (有新tx)│ ──────────────→  │         │
+│         │   getdata(txid)  │         │
+│         │ ←──────────────  │         │
+│         │      tx          │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+
+優點:
+1. 避免重複發送
+   - 節點可能已有該數據
+   - 先通告，按需請求
+
+2. 節省頻寬
+   - inv 消息很小（~37 bytes/item）
+   - 只在需要時發送完整數據
+
+3. 去重
+   - 節點追蹤已見過的 inv
+   - 不重複請求</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Inv 消息結構:
+
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ inventory:                              │
+│   ┌─────────────────────────────────┐   │
+│   │ type (4 bytes, uint32)          │   │
+│   │ hash (32 bytes)                 │   │
+│   └─────────────────────────────────┘   │
+│   × count                               │
+└─────────────────────────────────────────┘
+
+庫存類型 (type):
+MSG_TX           = 1   // 交易
+MSG_BLOCK        = 2   // 區塊
+MSG_FILTERED_BLOCK = 3 // Merkle 區塊 (BIP-37)
+MSG_CMPCT_BLOCK  = 4   // 緊湊區塊 (BIP-152)
+MSG_WTX          = 5   // 見證交易 (BIP-339)
+MSG_WITNESS_TX   = 0x40000001  // 帶見證的交易
+MSG_WITNESS_BLOCK = 0x40000002 // 帶見證的區塊
+
+範例（通告一個交易）:
+count: 1
+type: 1 (MSG_TX)
+hash: abc123...def456 (txid, 32 bytes)
+
+十六進制:
+01                              // count
+01 00 00 00                     // type = MSG_TX
+abc123...                       // hash (32 bytes)</code></pre>
+
+      <h2>交易通告</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易 Inv 的處理:
+
+發送方:
+1. 新交易進入 mempool
+2. 添加到每個節點的待發送集合
+3. 定期批量發送 inv
+
+接收方:
+1. 收到 inv
+2. 檢查是否已有該交易
+3. 如果沒有，發送 getdata 請求
+4. 收到交易後驗證並加入 mempool
+
+批量處理:
+- 不會立即發送每個 inv
+- 累積一段時間後批量發送
+- 減少消息數量
+
+代碼流程:
+mempool.accept(tx)
+  → for peer in peers:
+      peer.tx_relay.pending_inv.add(tx.GetWitnessHash())
+
+// 定時器觸發
+for peer in peers:
+    inv_items = peer.tx_relay.pending_inv.pop_all()
+    peer.send(inv(inv_items))</code></pre>
+
+      <h2>區塊通告</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊 Inv 的處理:
+
+兩種通告模式:
+
+1. 傳統模式（使用 inv）:
+┌─────────┐    inv(block)    ┌─────────┐
+│ Miner   │ ──────────────→  │ Node    │
+│         │  getdata(block)  │         │
+│         │ ←──────────────  │         │
+│         │      block       │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+
+2. Headers 模式（BIP-130）:
+┌─────────┐    headers       ┌─────────┐
+│ Miner   │ ──────────────→  │ Node    │
+│         │  getdata(block)  │         │
+│         │ ←──────────────  │         │
+│         │      block       │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+
+Headers 模式優點:
+- 不需要額外往返
+- 可以驗證工作量證明
+- 現代節點默認使用
+
+啟用 Headers 模式:
+發送 sendheaders 消息</code></pre>
+
+      <h2>庫存追蹤</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>避免重複請求的機制:
+
+已知庫存集合:
+class Peer {
+    std::set&lt;uint256&gt; known_invs;  // 已發送給對方的
+    std::set&lt;uint256&gt; in_flight;   // 正在請求的
+};
+
+發送 inv 前:
+if (!peer.known_invs.contains(hash)) {
+    peer.send_inv(hash);
+    peer.known_invs.add(hash);
+}
+
+收到 inv 後:
+if (!mempool.contains(hash) &&
+    !in_flight.contains(hash)) {
+    request_queue.add(hash);
+    in_flight.add(hash);
+}
+
+清理:
+- known_invs 定期清理舊條目
+- in_flight 在收到數據或超時後清理
+- 使用 rolling bloom filter 節省記憶體
+
+// 確保高效的數據傳播，不浪費頻寬</code></pre>
+
+      <h2>Inv 與 WTxIdRelay</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 wtxid 的 inv:
+
+傳統（txid）:
+type = MSG_TX (1)
+hash = txid
+
+WTxIdRelay 模式（wtxid）:
+type = MSG_WTX (5)
+hash = wtxid
+
+為什麼使用 wtxid？
+1. 防止延展性攻擊
+2. 精確識別交易
+3. 見證數據包含在 hash 中
+
+協商:
+if (peer.m_wtxid_relay) {
+    send_inv(MSG_WTX, tx.GetWitnessHash());
+} else {
+    send_inv(MSG_TX, tx.GetHash());
+}
+
+// 詳見 WTxIdRelay 頁面</code></pre>
+
+      <h2>批量與限制</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Inv 消息的限制:
+
+數量限制:
+MAX_INV_SZ = 50000  // 每個消息最多項目
+
+如果超過:
+- 分成多個 inv 消息
+- 或觸發連接斷開（如果是攻擊）
+
+頻率限制:
+- 交易 inv 有延遲（隱私）
+- 區塊 inv 立即發送（速度）
+
+交易 inv 延遲:
+- 隨機延遲 0-5 秒
+- 批量累積
+- 防止時間分析
+
+區塊 inv 無延遲:
+- 區塊傳播需要快速
+- 減少孤立區塊
+- 直接發送
+
+代碼:
+// 交易
+next_inv_send_time = now() + random(0, 5s);
+
+// 區塊
+send_inv_immediately(block_hash);</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 inv 活動
+
+# 查看節點連接的 inv 狀態
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  addr: .addr,
+  bytessent_per_msg: .bytessent_per_msg,
+  bytesrecv_per_msg: .bytesrecv_per_msg
+}'
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "received: inv (37 bytes) peer=5"
+# "sending inv to peer=3"
+# "received inv with 15 items"
+
+# 計算 inv 消息大小
+# header: 24 bytes
+# count: 1-3 bytes (varint)
+# per item: 36 bytes (4 + 32)
+
+# 1 個項目: ~61 bytes
+# 10 個項目: ~385 bytes
+# 100 個項目: ~3625 bytes</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 inv
+void PeerManager::SendInv(CNode& node, const CInv& inv) {
+    // 檢查是否已發送
+    if (node.m_tx_relay) {
+        auto& known = node.m_tx_relay->m_tx_inventory_known_filter;
+        if (known.contains(inv.hash)) {
+            return;
+        }
+        known.insert(inv.hash);
+    }
+
+    // 添加到發送隊列
+    node.vInventoryToSend.push_back(inv);
+}
+
+// 處理收到的 inv
+void PeerManager::ProcessInv(CNode& node, std::vector&lt;CInv&gt;& vInv) {
+    std::vector&lt;CInv&gt; vToFetch;
+
+    for (const CInv& inv : vInv) {
+        if (inv.type == MSG_TX || inv.type == MSG_WTX) {
+            // 交易
+            if (!mempool.exists(GetTxIdFromInv(inv))) {
+                vToFetch.push_back(inv);
+            }
+        } else if (inv.type == MSG_BLOCK) {
+            // 區塊
+            if (!HaveBlock(inv.hash)) {
+                vToFetch.push_back(inv);
+            }
+        }
+    }
+
+    // 發送 getdata
+    if (!vToFetch.empty()) {
+        connman.PushMessage(&node,
+            CNetMsgMaker(node.GetCommonVersion())
+                .Make(NetMsgType::GETDATA, vToFetch));
+    }
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Getdata Message：</strong>數據請求消息</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>Transaction Broadcast：</strong>交易廣播</li>
+        <li><strong>Block Relay：</strong>區塊中繼</li>
+        <li><strong>WTxIdRelay：</strong>見證交易 ID 中繼</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

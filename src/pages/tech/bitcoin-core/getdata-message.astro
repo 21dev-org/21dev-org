@@ -1,0 +1,326 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Getdata Message"
+  description="了解 P2P 協議中的 getdata 消息，用於請求交易、區塊等具體數據。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Getdata Message' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Inv Message', href: '/tech/bitcoin-core/inv-message' }}
+  nextPage={{ title: 'Notfound Message', href: '/tech/bitcoin-core/message-types' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Getdata 消息是比特幣 P2P 協議中用於請求具體數據的消息類型。
+        當節點收到 inv 通告後，使用 getdata 請求感興趣的交易或區塊的完整數據。
+      </p>
+
+      <h2>Getdata 消息概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 在數據獲取中的角色:
+
+標準流程:
+┌─────────┐    inv(items)    ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │  getdata(items)  │         │
+│         │ ←──────────────  │         │
+│         │   tx / block     │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+
+特點:
+1. 格式與 inv 相同
+2. 用於請求具體數據
+3. 回應是對應的數據消息
+
+可請求的數據類型:
+- 交易 (tx)
+- 區塊 (block)
+- 緊湊區塊 (cmpctblock)
+- Merkle 區塊 (merkleblock)
+- 見證交易 (witnesstx)</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 消息結構:
+
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ inventory:                              │
+│   ┌─────────────────────────────────┐   │
+│   │ type (4 bytes, uint32)          │   │
+│   │ hash (32 bytes)                 │   │
+│   └─────────────────────────────────┘   │
+│   × count                               │
+└─────────────────────────────────────────┘
+
+與 inv 格式完全相同！
+
+庫存類型 (type):
+MSG_TX            = 1
+MSG_BLOCK         = 2
+MSG_FILTERED_BLOCK = 3  // merkleblock
+MSG_CMPCT_BLOCK   = 4
+MSG_WTX           = 5
+MSG_WITNESS_TX    = 0x40000001
+MSG_WITNESS_BLOCK = 0x40000002
+
+範例（請求一個交易）:
+01                              // count = 1
+01 00 00 00                     // type = MSG_TX
+abc123...                       // txid (32 bytes)</code></pre>
+
+      <h2>請求處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>節點如何回應 getdata:
+
+對於交易請求 (MSG_TX / MSG_WTX):
+1. 檢查 mempool
+2. 如果找到，發送 tx 消息
+3. 如果沒找到，發送 notfound
+
+對於區塊請求 (MSG_BLOCK):
+1. 檢查本地區塊數據
+2. 如果找到，發送 block 消息
+3. 如果沒找到，發送 notfound
+
+對於緊湊區塊請求 (MSG_CMPCT_BLOCK):
+1. 檢查是否支持緊湊區塊
+2. 發送 cmpctblock 消息
+
+對於 Merkle 區塊請求 (MSG_FILTERED_BLOCK):
+1. 檢查是否有 bloom filter
+2. 發送 merkleblock + 匹配的交易
+
+代碼邏輯:
+switch (inv.type) {
+    case MSG_TX:
+        tx = mempool.get(inv.hash);
+        if (tx) send_tx(tx);
+        else send_notfound(inv);
+        break;
+    case MSG_BLOCK:
+        block = ReadBlockFromDisk(inv.hash);
+        if (block) send_block(block);
+        else send_notfound(inv);
+        break;
+}</code></pre>
+
+      <h2>見證數據請求</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>請求帶見證數據的內容:
+
+MSG_WITNESS_TX (0x40000001):
+- 請求帶見證的交易
+- 回應包含完整 SegWit 數據
+- 用於 SegWit 節點之間
+
+MSG_WITNESS_BLOCK (0x40000002):
+- 請求帶見證的區塊
+- 區塊內所有交易包含見證
+- 完整的 SegWit 區塊
+
+服務標誌:
+- NODE_WITNESS (1 &lt;&lt; 3) 表示支持見證數據
+- 檢查對方服務標誌再請求
+
+請求邏輯:
+if (peer.services & NODE_WITNESS) {
+    // 可以請求見證數據
+    getdata(MSG_WITNESS_BLOCK, hash);
+} else {
+    // 只能請求剝離的數據
+    getdata(MSG_BLOCK, hash);
+}
+
+// 見證請求類型 = 基本類型 | MSG_WITNESS_FLAG
+// MSG_WITNESS_FLAG = 1 &lt;&lt; 30</code></pre>
+
+      <h2>請求排隊與超時</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>管理待處理的請求:
+
+請求隊列:
+class Peer {
+    std::map&lt;uint256, int64_t&gt; in_flight;  // hash → 請求時間
+    std::deque&lt;CInv&gt; request_queue;        // 待請求
+};
+
+超時處理:
+GETDATA_TX_TIMEOUT = 60s      // 交易請求超時
+GETDATA_BLOCK_TIMEOUT = 120s  // 區塊請求超時
+
+超時後:
+1. 從 in_flight 移除
+2. 可能向其他節點請求
+3. 可能增加對方的 misbehavior 分數
+
+並發限制:
+MAX_BLOCKS_IN_FLIGHT = 16     // 每個節點最多待處理區塊
+MAX_TX_IN_FLIGHT = 100        // 每個節點最多待處理交易
+
+防止:
+- 單個節點壟斷下載
+- 資源耗盡攻擊
+- 長時間等待</code></pre>
+
+      <h2>Notfound 回應</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>當數據不可用時:
+
+Notfound 消息:
+┌─────────────────────────────────────────┐
+│ count (varint)                          │
+│ inventory: (same as inv/getdata)        │
+└─────────────────────────────────────────┘
+
+觸發條件:
+1. 請求的交易不在 mempool
+2. 請求的區塊未存儲
+3. 數據已被修剪
+
+處理 notfound:
+1. 從 in_flight 移除
+2. 可能向其他節點請求
+3. 不增加 misbehavior（正常情況）
+
+範例場景:
+- 交易已確認，不再在 mempool
+- 請求了修剪節點沒有的舊區塊
+- 競態條件導致數據消失
+
+// notfound 是正常的協議行為，不是錯誤</code></pre>
+
+      <h2>優化策略</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 的優化:
+
+1. 批量請求
+   - 累積多個請求
+   - 一次發送減少往返
+   - 單個 getdata 最多 50000 項
+
+2. 來源選擇
+   - 從多個節點請求不同區塊
+   - 並行下載加速同步
+   - 避免單點瓶頸
+
+3. 優先級
+   - 區塊優先於交易
+   - 鏈頂區塊優先於舊區塊
+   - 緊急數據立即請求
+
+4. 重試策略
+   - 超時後換節點請求
+   - 保持請求歷史
+   - 避免重複請求失敗節點
+
+代碼:
+void ScheduleRequests() {
+    // 按優先級排序
+    sort(requests, by_priority);
+
+    // 分配給不同節點
+    for (auto& req : requests) {
+        auto peer = SelectBestPeer(req);
+        peer.send_getdata(req);
+    }
+}</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 getdata 活動
+
+# 查看節點下載狀態
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  addr: .addr,
+  inflight: .inflight
+}'
+
+# inflight 顯示正在請求的區塊
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "sending getdata (37 bytes) peer=5"
+# "received getdata with 3 items from peer=3"
+# "sending notfound for txid=abc123"
+
+# 查看區塊下載進度
+bitcoin-cli getblockchaininfo | jq '{
+  blocks: .blocks,
+  headers: .headers,
+  verificationprogress: .verificationprogress
+}'</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 getdata
+void PeerManager::SendGetData(CNode& node, std::vector&lt;CInv&gt;& vInv) {
+    if (vInv.empty()) return;
+
+    // 記錄 in_flight
+    for (const auto& inv : vInv) {
+        node.m_tx_relay->m_in_flight.emplace(inv.hash, GetTime());
+    }
+
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::GETDATA, vInv));
+}
+
+// 處理收到的 getdata
+void PeerManager::ProcessGetData(CNode& node, std::vector&lt;CInv&gt;& vInv) {
+    std::vector&lt;CInv&gt; vNotFound;
+
+    for (const CInv& inv : vInv) {
+        bool found = false;
+
+        if (inv.type == MSG_TX || inv.type == MSG_WTX) {
+            auto tx = mempool.get(GetTxIdFromInv(inv));
+            if (tx) {
+                connman.PushMessage(&node,
+                    CNetMsgMaker(node.GetCommonVersion())
+                        .Make(NetMsgType::TX, *tx));
+                found = true;
+            }
+        } else if (inv.type == MSG_BLOCK) {
+            // 讀取區塊...
+        }
+
+        if (!found) {
+            vNotFound.push_back(inv);
+        }
+    }
+
+    if (!vNotFound.empty()) {
+        connman.PushMessage(&node,
+            CNetMsgMaker(node.GetCommonVersion())
+                .Make(NetMsgType::NOTFOUND, vNotFound));
+    }
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Inv Message：</strong>庫存通告消息</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>Block Download：</strong>區塊下載策略</li>
+        <li><strong>Transaction Broadcast：</strong>交易廣播</li>
+        <li><strong>Compact Blocks：</strong>緊湊區塊</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
