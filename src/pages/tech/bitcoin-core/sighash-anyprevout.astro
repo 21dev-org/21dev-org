@@ -1,0 +1,383 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="SIGHASH_ANYPREVOUT"
+  description="了解 SIGHASH_ANYPREVOUT 提案，允許簽名不綁定特定輸入，實現更靈活的協議設計。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'SIGHASH_ANYPREVOUT' },
+  ]}
+  difficulty="advanced"
+  readingTime="12 分鐘"
+  prevPage={{ title: 'Sighash Types', href: '/tech/bitcoin-core/sighash' }}
+  nextPage={{ title: 'OP_CTV', href: '/tech/bitcoin-core/op-ctv' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        SIGHASH_ANYPREVOUT（APO）是一個提議的新簽名雜湊類型，允許簽名不綁定到特定的輸入 UTXO。
+        這對 Eltoo 等閃電網路改進方案至關重要，可以大幅簡化狀態通道協議。
+      </p>
+
+      <h2>APO 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SIGHASH_ANYPREVOUT (APO):
+
+BIP-118 提案
+
+新增兩個 sighash 標誌:
+1. SIGHASH_ANYPREVOUT (0x41)
+   - 不簽名 prevout (txid:vout)
+   - 不簽名 input amount
+   - 不簽名 scriptPubKey
+
+2. SIGHASH_ANYPREVOUTANYSCRIPT (0xc1)
+   - 同上
+   - 額外不簽名 script code
+   - 更大的靈活性
+
+核心思想:
+傳統簽名: 綁定到特定的 UTXO
+APO 簽名: 可以花費任何符合條件的 UTXO
+
+這允許「可重綁定」的交易</code></pre>
+
+      <h2>為什麼需要 APO？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>閃電網路的問題:
+
+當前 LN-Penalty 機制:
+1. 每個狀態需要撤銷密鑰
+2. 必須保存所有舊狀態
+3. 通道存在時間越長，狀態越多
+4. 存儲和監控成本高
+
+狀態數量示例:
+- 每秒 1 筆交易
+- 一天 86,400 筆
+- 一年 3,150 萬個狀態
+- 每個狀態需要保存撤銷數據
+
+APO 如何解決:
+
+使用 Eltoo 協議:
+1. 新狀態可以直接替換舊狀態
+2. 不需要保存所有歷史狀態
+3. 只需保存最新狀態
+4. 大幅減少存儲需求
+
+關鍵: APO 允許同一個簽名花費不同的 UTXO</code></pre>
+
+      <h2>簽名覆蓋範圍</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>不同 Sighash 類型的覆蓋範圍:
+
+SIGHASH_ALL (傳統):
+┌────────────────────────────────────────┐
+│ ✓ 版本                                 │
+│ ✓ 所有輸入的 prevout (txid:vout)       │
+│ ✓ 所有輸入的金額                       │
+│ ✓ 所有輸入的 scriptPubKey              │
+│ ✓ 當前輸入的 sequence                  │
+│ ✓ 所有輸出                             │
+│ ✓ locktime                             │
+└────────────────────────────────────────┘
+
+SIGHASH_ANYPREVOUT:
+┌────────────────────────────────────────┐
+│ ✓ 版本                                 │
+│ ✗ 當前輸入的 prevout                   │
+│ ✗ 當前輸入的金額                       │
+│ ✗ 當前輸入的 scriptPubKey              │
+│ ✓ 其他輸入的 prevout (如有)            │
+│ ✓ 當前輸入的 sequence                  │
+│ ✓ 所有輸出                             │
+│ ✓ locktime                             │
+└────────────────────────────────────────┘
+
+SIGHASH_ANYPREVOUTANYSCRIPT:
+┌────────────────────────────────────────┐
+│ ✓ 版本                                 │
+│ ✗ 當前輸入的 prevout                   │
+│ ✗ 當前輸入的金額                       │
+│ ✗ 當前輸入的 scriptPubKey              │
+│ ✗ tapleaf_hash (腳本)                  │
+│ ✓ 當前輸入的 sequence                  │
+│ ✓ 所有輸出                             │
+│ ✓ locktime                             │
+└────────────────────────────────────────┘</code></pre>
+
+      <h2>Eltoo 協議</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Eltoo 使用 APO 的工作方式:
+
+通道設置:
+1. 開通交易創建 2-of-2 多簽輸出
+2. 雙方簽署更新交易和結算交易
+
+狀態更新 (使用 APO):
+
+Update TX 0 ──→ Update TX 1 ──→ Update TX 2
+     │              │              │
+     ▼              ▼              ▼
+Settlement 0   Settlement 1   Settlement 2
+
+關鍵: 每個 Update TX 都可以花費之前任何 Update TX 的輸出
+
+結構:
+Update TX N:
+- 輸入: 任何之前的 update 輸出 (APO 簽名)
+- 輸出: 新的 update 輸出
+- 時間鎖: 允許被更新版本替換
+
+Settlement TX N:
+- 輸入: Update TX N 的輸出 (時間鎖後)
+- 輸出: 最終餘額分配
+
+優勢:
+- 新狀態可以覆蓋舊狀態
+- 不需要懲罰機制
+- 只需保存最新狀態</code></pre>
+
+      <h2>技術實現</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>APO 的密碼學實現:
+
+公鑰要求:
+- 必須使用特殊前綴的公鑰
+- 防止現有資金意外使用 APO
+
+BIP-118 公鑰格式:
+- 普通 Taproot: 0x02 或 0x03 前綴
+- APO 專用: 0x01 前綴
+- 這確保 APO 簽名不能用於非 APO 腳本
+
+簽名構造:
+
+def sighash_anyprevout(tx, input_idx, sighash_type):
+    # 開始構建 sighash 預映像
+    preimage = b''
+
+    # epoch (0x00 for taproot)
+    preimage += b'\x00'
+
+    # sighash type
+    preimage += bytes([sighash_type])
+
+    # tx version
+    preimage += tx.version.to_bytes(4, 'little')
+
+    # tx locktime
+    preimage += tx.locktime.to_bytes(4, 'little')
+
+    # 跳過 prevouts hash (APO 的關鍵)
+    # 跳過 amounts hash
+    # 跳過 scriptpubkeys hash
+
+    # sequences hash (只有當前輸入)
+    preimage += sha256(tx.inputs[input_idx].sequence)
+
+    # outputs hash
+    if sighash_type & 3 == SIGHASH_ALL:
+        preimage += sha256(serialize_outputs(tx.outputs))
+
+    # input index
+    preimage += input_idx.to_bytes(4, 'little')
+
+    return tagged_hash('TapSighash', preimage)</code></pre>
+
+      <h2>使用場景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>APO 的應用場景:
+
+1. Eltoo 閃電網路
+   - 簡化的通道更新機制
+   - 無需懲罰機制
+   - 減少存儲需求
+
+2. 通道工廠 (Channel Factories)
+   - 多方共享通道
+   - 更高效的狀態更新
+   - 更好的擴展性
+
+3. 虛擬 UTXO (Virtual UTXOs)
+   - 離鏈 UTXO 管理
+   - 批量結算
+
+4. Watchtowers 簡化
+   - 不需要存儲所有狀態
+   - 只需最新的結算交易
+   - 降低運營成本
+
+5. 可重放合約
+   - 同一簽名可用於多個實例
+   - 減少簽名操作
+
+偽代碼 - Eltoo 更新:
+def create_update_tx(state_num, old_output):
+    tx = Transaction()
+
+    # 輸入可以是任何舊狀態
+    tx.add_input(
+        prevout=ANY,  # 由 APO 處理
+        sequence=state_num
+    )
+
+    tx.add_output(
+        script=eltoo_update_script,
+        value=channel_value
+    )
+
+    # 使用 APO 簽名
+    sig = sign(tx, SIGHASH_ANYPREVOUT)
+
+    return tx, sig</code></pre>
+
+      <h2>安全考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>APO 的安全風險:
+
+1. 簽名重放
+   問題: APO 簽名可用於多個 UTXO
+   緩解:
+   - 使用專用公鑰前綴
+   - 輸出結構限制
+   - sequence 編號
+
+2. 意外重綁定
+   問題: 簽名可能被用於非預期的 UTXO
+   緩解:
+   - 嚴格的腳本結構
+   - 金額雖不簽名，但輸出金額固定
+   - 時間鎖保護
+
+3. 第三方利用
+   問題: 他人可能利用公開的 APO 簽名
+   緩解:
+   - APO 交易通常需要多方簽名
+   - 腳本條件限制
+
+最佳實踐:
+
+1. 只在必要時使用 APO
+2. 配合時間鎖使用
+3. 使用多簽保護
+4. 仔細設計輸出條件
+
+// APO 是強大的工具，需謹慎使用</code></pre>
+
+      <h2>與其他 Sighash 比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">Sighash</th>
+                <th class="text-left py-2">綁定輸入</th>
+                <th class="text-left py-2">綁定腳本</th>
+                <th class="text-left py-2">用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">ALL</td>
+                <td class="py-2">是</td>
+                <td class="py-2">是</td>
+                <td class="py-2">標準交易</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">ANYONECANPAY</td>
+                <td class="py-2">是(只當前)</td>
+                <td class="py-2">是</td>
+                <td class="py-2">眾籌</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">ANYPREVOUT</td>
+                <td class="py-2">否</td>
+                <td class="py-2">是</td>
+                <td class="py-2">Eltoo</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">ANYPREVOUTANYSCRIPT</td>
+                <td class="py-2">否</td>
+                <td class="py-2">否</td>
+                <td class="py-2">高級協議</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>提案狀態</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-118 狀態:
+
+歷史:
+- 2017: SIGHASH_NOINPUT 首次提出
+- 2019: 更名為 ANYPREVOUT
+- 2021: 與 Taproot 整合
+- 目前: 草案狀態
+
+要求:
+- 需要軟分叉啟用
+- 僅適用於 Taproot 輸出
+- 需要新的 leaf version
+
+實現考量:
+1. 需要共識層變更
+2. 需要錢包支持
+3. 需要協議層適配 (如 LN)
+
+社區討論:
+- 對 Eltoo 的需求驅動
+- 安全性審查ongoing
+- 與其他提案的協調
+
+// 目前尚未啟用，需等待軟分叉</code></pre>
+
+      <h2>開發準備</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>為 APO 做準備:
+
+1. 理解概念
+   - 學習 Eltoo 協議
+   - 理解狀態通道設計
+   - 熟悉 Taproot 腳本
+
+2. 跟蹤進展
+   - 關注 BIP-118 討論
+   - 測試實現 (當可用時)
+   - 參與社區審查
+
+3. 設計考量
+   - 規劃如何使用 APO
+   - 考慮向後兼容
+   - 評估安全影響
+
+示例 - Eltoo 腳本結構:
+# Update 輸出腳本 (偽代碼)
+OP_IF
+    # 結算路徑 (時間鎖後)
+    &lt;delay&gt; OP_CSV OP_DROP
+    &lt;settlement_key&gt; OP_CHECKSIG
+OP_ELSE
+    # 更新路徑 (APO 簽名)
+    &lt;update_key&gt; OP_CHECKSIG  # 使用 APO
+OP_ENDIF</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Sighash Types：</strong>簽名雜湊類型</li>
+        <li><strong>Taproot：</strong>Taproot 升級</li>
+        <li><strong>Script Path：</strong>腳本路徑花費</li>
+        <li><strong>OP_CTV：</strong>CheckTemplateVerify</li>
+        <li><strong>Lightning Network：</strong>閃電網路</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

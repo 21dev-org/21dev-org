@@ -1,0 +1,347 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Block Locator"
+  description="了解 Block Locator 對象如何幫助節點找到共同祖先區塊，實現高效的區塊同步。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Block Locator' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Headers-First Sync', href: '/tech/bitcoin-core/headers-first' }}
+  nextPage={{ title: 'Block Download', href: '/tech/bitcoin-core/block-download' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Block Locator 是比特幣 P2P 協議中用於找到兩個節點共同祖先區塊的數據結構。
+        它使用指數遞減的區塊雜湊列表，高效地識別鏈分歧點。
+      </p>
+
+      <h2>Block Locator 概念</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Block Locator 的目的:
+
+場景:
+節點 A 想要從節點 B 獲取區塊
+但 A 和 B 可能在不同的鏈分支上
+
+問題:
+- A 需要告訴 B 自己的鏈狀態
+- B 需要找到與 A 的共同祖先
+- 從共同祖先開始發送新區塊
+
+簡單方案 (低效):
+- A 發送所有區塊雜湊
+- 如果鏈有 80 萬個區塊
+- 需要發送 32 × 800,000 = 25.6 MB
+
+Block Locator 方案 (高效):
+- 只發送約 30-50 個區塊雜湊
+- 使用指數遞減的間隔
+- 最近的區塊密集，較早的稀疏</code></pre>
+
+      <h2>Locator 結構</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Block Locator 的構建:
+
+高度: 100,000 的區塊鏈
+Locator 包含這些高度的區塊雜湊:
+
+100,000  (最新)
+ 99,999  (-1)
+ 99,998  (-1)
+ 99,997  (-1)
+ 99,996  (-1)
+ 99,995  (-1)
+ 99,994  (-1)
+ 99,993  (-1)
+ 99,992  (-1)
+ 99,991  (-1)
+ 99,990  (-1)  # 前 10 個連續
+ 99,988  (-2)  # 開始指數增長
+ 99,984  (-4)
+ 99,976  (-8)
+ 99,960  (-16)
+ 99,928  (-32)
+ 99,864  (-64)
+ 99,736  (-128)
+ 99,480  (-256)
+ 98,968  (-512)
+ 97,944  (-1024)
+ 95,896  (-2048)
+ 91,800  (-4096)
+ 83,608  (-8192)
+ 67,224  (-16384)
+ 34,456  (-32768)
+      0  (創世區塊)
+
+結構:
+- 前 10 個區塊連續列出
+- 之後間隔以 2 的冪次增長
+- 總是包含創世區塊</code></pre>
+
+      <h2>構建算法</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Block Locator 構建算法:
+
+def build_locator(chain_tip):
+    locator = []
+    step = 1
+    height = chain_tip.height
+
+    while height >= 0:
+        # 添加當前高度的區塊雜湊
+        block_hash = get_block_hash_at_height(height)
+        locator.append(block_hash)
+
+        # 計算下一個高度
+        if len(locator) >= 10:
+            step *= 2
+
+        height -= step
+
+        # 確保不會跳過創世區塊
+        if height &lt; 0 and locator[-1] != genesis_hash:
+            locator.append(genesis_hash)
+
+    return locator
+
+# 特性:
+# - 時間複雜度: O(log n)
+# - 空間複雜度: O(log n)
+# - 80 萬區塊 ≈ 30 個雜湊
+# - 總大小 ≈ 960 bytes</code></pre>
+
+      <h2>協議使用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Block Locator 在 P2P 協議中的使用:
+
+1. getblocks 消息
+   ┌────────────────────────────────────────┐
+   │ version: 協議版本                      │
+   │ hash_count: locator 中的雜湊數量       │
+   │ block_locator_hashes: 區塊雜湊列表     │
+   │ hash_stop: 停止雜湊 (0 = 無限制)       │
+   └────────────────────────────────────────┘
+   用途: 請求區塊清單 (inv)
+
+2. getheaders 消息
+   ┌────────────────────────────────────────┐
+   │ version: 協議版本                      │
+   │ hash_count: locator 中的雜湊數量       │
+   │ block_locator_hashes: 區塊雜湊列表     │
+   │ hash_stop: 停止雜湊                    │
+   └────────────────────────────────────────┘
+   用途: 請求區塊頭 (headers)
+
+接收方處理:
+1. 遍歷 locator 中的雜湊
+2. 找到第一個已知的區塊
+3. 從該區塊之後開始回應</code></pre>
+
+      <h2>找到共同祖先</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>接收方如何處理 Block Locator:
+
+def find_common_ancestor(locator):
+    for block_hash in locator:
+        if is_block_in_main_chain(block_hash):
+            return get_block(block_hash)
+
+    # 如果沒找到 (不應該發生)
+    # 返回創世區塊
+    return genesis_block
+
+範例:
+
+節點 A 的鏈:    ... ─ 500 ─ 501A ─ 502A ─ 503A
+節點 B 的鏈:    ... ─ 500 ─ 501B ─ 502B ─ 503B ─ 504B
+
+A 的 Locator: [503A, 502A, 501A, 500, ...]
+
+B 處理 Locator:
+1. 503A: 未知
+2. 502A: 未知
+3. 501A: 未知
+4. 500: 已知! 這是共同祖先
+
+B 回應:
+- 從 501B 開始發送區塊頭/inv
+- [501B, 502B, 503B, 504B]</code></pre>
+
+      <h2>指數間隔的優勢</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>為什麼使用指數遞減間隔:
+
+1. 最近的區塊最重要
+   - 分歧通常發生在最近
+   - 需要精確定位
+   - 前 10 個區塊連續列出
+
+2. 較早的區塊概率低
+   - 深度重組很罕見
+   - 大間隔也能找到
+   - 節省傳輸空間
+
+3. 最壞情況保證
+   - 最多需要 O(log n) 個雜湊
+   - 總能找到共同祖先
+   - 創世區塊作為最後手段
+
+效率分析:
+
+區塊高度    所需雜湊數
+─────────────────────────
+    1,000      ~20
+   10,000      ~23
+  100,000      ~27
+  800,000      ~30
+
+相比線性方案 (發送所有雜湊):
+800,000 × 32 bytes = 25.6 MB
+vs
+30 × 32 bytes = 960 bytes
+
+// 壓縮比約 26,000:1</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// src/node/blockstorage.cpp
+CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const
+{
+    int nStep = 1;
+    std::vector&lt;uint256&gt; vHave;
+    vHave.reserve(32);
+
+    if (pindex == nullptr)
+        pindex = Tip();
+
+    while (pindex) {
+        vHave.push_back(pindex->GetBlockHash());
+        // 前 10 個連續，之後指數增長
+        if (vHave.size() > 10)
+            nStep *= 2;
+        pindex = GetAncestor(pindex, pindex->nHeight - nStep);
+    }
+
+    return CBlockLocator(vHave);
+}
+
+// 查找共同祖先
+CBlockIndex* FindForkInGlobalIndex(
+    const CChain& chain,
+    const CBlockLocator& locator)
+{
+    for (const uint256& hash : locator.vHave) {
+        CBlockIndex* pindex = LookupBlockIndex(hash);
+        if (pindex) {
+            if (chain.Contains(pindex))
+                return pindex;
+        }
+    }
+    return chain.Genesis();
+}</code></pre>
+
+      <h2>使用場景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Block Locator 的使用場景:
+
+1. 初始區塊下載 (IBD)
+   - 新節點連接到網路
+   - 發送只有創世區塊的 locator
+   - 對方回應整個區塊鏈
+
+2. 追趕同步
+   - 節點離線一段時間
+   - 發送當前 tip 的 locator
+   - 對方發送缺失的區塊
+
+3. 鏈重組後
+   - 檢測到更長的鏈
+   - 找到分叉點
+   - 獲取新鏈的區塊
+
+4. 區塊頭同步
+   - Headers-first 模式
+   - 先同步區塊頭
+   - 再下載完整區塊
+
+// Locator 是區塊同步的基礎機制</code></pre>
+
+      <h2>網路效率</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>減少往返次數:
+
+場景: 同步 1000 個缺失的區塊
+
+傳統方式 (無 locator):
+1. 節點 A: "你有區塊 1000 嗎？"
+2. 節點 B: "是的"
+3. 重複 1000 次...
+
+使用 Locator:
+1. 節點 A: 發送 locator [1000, 999, 998, ...]
+2. 節點 B: 找到 1000，發送 2000 個區塊頭
+3. 一次往返完成同步
+
+最大回應:
+- getblocks: 最多 500 個 inv
+- getheaders: 最多 2000 個 headers
+
+如果需要更多:
+- 用最後收到的區塊構建新 locator
+- 重複請求</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看區塊同步狀態
+
+# 獲取當前區塊頭
+bitcoin-cli getblockchaininfo
+{
+  "blocks": 800000,
+  "headers": 800000,
+  "bestblockhash": "...",
+  ...
+}
+
+# 如果 headers > blocks，正在下載區塊體
+
+# 查看節點同步狀態
+bitcoin-cli getpeerinfo
+[
+  {
+    "synced_headers": 800000,
+    "synced_blocks": 795000,
+    ...
+  }
+]
+
+# 日誌中的同步信息
+# ~/.bitcoin/debug.log
+# "Synchronizing blockheaders, height: 750000 (~92.00%)"
+# "Downloading blocks | 795000 / 800000 (99.4%)"
+
+# Locator 相關的調試
+# 通常不直接暴露
+# 可以通過 getpeerinfo 間接觀察</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Headers-First Sync：</strong>區塊頭優先同步</li>
+        <li><strong>Block Download：</strong>區塊下載策略</li>
+        <li><strong>IBD：</strong>初始區塊下載</li>
+        <li><strong>P2P Protocol：</strong>點對點協議</li>
+        <li><strong>Orphan Blocks：</strong>孤立區塊處理</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

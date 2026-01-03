@@ -1,0 +1,380 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Tagged Hashes"
+  description="了解 BIP-340 引入的標籤雜湊函數，為不同用途提供域分離的安全雜湊。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Tagged Hashes' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Schnorr Signatures', href: '/tech/bitcoin-core/schnorr' }}
+  nextPage={{ title: 'X-Only Pubkeys', href: '/tech/bitcoin-core/x-only-pubkeys' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        標籤雜湊（Tagged Hash）是 BIP-340 為 Schnorr 簽名引入的雜湊函數設計，
+        通過在雜湊輸入前添加特定標籤，實現不同用途之間的域分離，防止跨域攻擊。
+      </p>
+
+      <h2>Tagged Hash 概念</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Tagged Hash 定義:
+
+tagged_hash(tag, msg) = SHA256(SHA256(tag) || SHA256(tag) || msg)
+
+結構:
+┌──────────────────────────────────────────┐
+│ SHA256(tag)  │ SHA256(tag)  │    msg     │
+│   32 bytes   │   32 bytes   │  variable  │
+└──────────────────────────────────────────┘
+              ↓
+         SHA256(...)
+              ↓
+         32-byte hash
+
+為什麼重複 SHA256(tag) 兩次？
+- 總共 64 字節的前綴
+- 正好是 SHA256 的一個區塊大小
+- 允許預計算優化
+
+優化:
+SHA256(tag) 可以預先計算並重複使用
+只需要對消息進行增量雜湊</code></pre>
+
+      <h2>為什麼需要 Tagged Hash？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>域分離 (Domain Separation):
+
+問題場景:
+假設兩個不同的系統都使用 SHA256:
+- 系統 A: hash = SHA256(data)
+- 系統 B: hash = SHA256(data)
+
+如果兩個系統的輸入碰巧相同，
+輸出也會相同 → 潛在的混淆攻擊
+
+範例攻擊:
+1. 攻擊者構造特定數據
+2. 數據在系統 A 中有一個含義
+3. 相同雜湊在系統 B 中有不同含義
+4. 攻擊者利用這種混淆
+
+Tagged Hash 解決方案:
+- 系統 A: hash = tagged_hash("SystemA", data)
+- 系統 B: hash = tagged_hash("SystemB", data)
+
+即使 data 相同:
+- 因為標籤不同
+- 雜湊結果完全不同
+- 無法跨域利用</code></pre>
+
+      <h2>BIP-340 定義的標籤</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Schnorr 簽名使用的標籤:
+
+1. "BIP0340/aux"
+   用途: 輔助隨機數處理
+   輸入: 32 字節輔助隨機數據
+   場景: 增強 nonce 生成的隨機性
+
+2. "BIP0340/nonce"
+   用途: 計算簽名 nonce
+   輸入: 私鑰 || 公鑰 || 消息
+   場景: 確定性 nonce 生成
+
+3. "BIP0340/challenge"
+   用途: 計算簽名挑戰值
+   輸入: R || P || m
+   場景: Schnorr 簽名的 e 值
+
+Python 實現:
+import hashlib
+
+def tagged_hash(tag: str, msg: bytes) -> bytes:
+    tag_hash = hashlib.sha256(tag.encode()).digest()
+    return hashlib.sha256(tag_hash + tag_hash + msg).digest()
+
+# 使用範例
+challenge = tagged_hash("BIP0340/challenge", R + P + message)</code></pre>
+
+      <h2>Taproot 使用的標籤</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot (BIP-341/342) 的標籤:
+
+1. "TapTweak"
+   用途: 計算公鑰調整值
+   輸入: 內部公鑰 || Merkle 根
+   公式: t = tagged_hash("TapTweak", P || m)
+   結果: Q = P + t·G
+
+2. "TapLeaf"
+   用途: 計算葉子雜湊
+   輸入: leaf_version || script_length || script
+   場景: 腳本樹的葉子節點
+
+3. "TapBranch"
+   用途: 計算分支雜湊
+   輸入: left_hash || right_hash (排序後)
+   場景: 合併兩個子節點
+
+4. "TapSighash"
+   用途: 計算 Taproot 簽名雜湊
+   輸入: epoch || sighash_type || tx_data...
+   場景: 簽名前的消息雜湊
+
+範例 - TapLeaf 計算:
+leaf_hash = tagged_hash("TapLeaf",
+    bytes([0xc0]) +           # leaf version
+    compact_size(script) +    # script length
+    script                    # script content
+)</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>高效實現:
+
+// 預計算標籤雜湊 (C++)
+class TaggedHash {
+private:
+    CSHA256 hasher;
+
+public:
+    TaggedHash(const std::string& tag) {
+        // 預計算 SHA256(tag)
+        uint8_t tag_hash[32];
+        CSHA256().Write((uint8_t*)tag.data(), tag.size())
+                 .Finalize(tag_hash);
+
+        // 初始化 hasher，預填充 tag_hash || tag_hash
+        hasher.Write(tag_hash, 32);
+        hasher.Write(tag_hash, 32);
+    }
+
+    void Write(const uint8_t* data, size_t len) {
+        hasher.Write(data, len);
+    }
+
+    void Finalize(uint8_t hash[32]) {
+        hasher.Finalize(hash);
+    }
+};
+
+// 使用
+TaggedHash hasher("TapTweak");
+hasher.Write(internal_pubkey, 32);
+hasher.Write(merkle_root, 32);
+hasher.Finalize(tweak);
+
+// 預計算的優勢:
+// - 標籤雜湊只計算一次
+// - 之後每次使用只需添加消息
+// - 64 字節前綴正好是一個 SHA256 區塊</code></pre>
+
+      <h2>完整標籤列表</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">標籤</th>
+                <th class="text-left py-2">BIP</th>
+                <th class="text-left py-2">用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">BIP0340/aux</td>
+                <td class="py-2">340</td>
+                <td class="py-2">輔助隨機數</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">BIP0340/nonce</td>
+                <td class="py-2">340</td>
+                <td class="py-2">Nonce 生成</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">BIP0340/challenge</td>
+                <td class="py-2">340</td>
+                <td class="py-2">簽名挑戰</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">TapTweak</td>
+                <td class="py-2">341</td>
+                <td class="py-2">公鑰調整</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">TapLeaf</td>
+                <td class="py-2">341</td>
+                <td class="py-2">葉子雜湊</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">TapBranch</td>
+                <td class="py-2">341</td>
+                <td class="py-2">分支雜湊</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">TapSighash</td>
+                <td class="py-2">341</td>
+                <td class="py-2">簽名雜湊</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">KeyAgg list</td>
+                <td class="py-2">MuSig2</td>
+                <td class="py-2">公鑰聚合</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">KeyAgg coefficient</td>
+                <td class="py-2">MuSig2</td>
+                <td class="py-2">聚合係數</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>安全性分析</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Tagged Hash 的安全屬性:
+
+1. 域分離
+   - 不同標籤產生不同的雜湊空間
+   - 無法在不同域之間轉換雜湊
+   - 防止跨協議攻擊
+
+2. 抗碰撞
+   - 繼承 SHA256 的碰撞抵抗性
+   - 標籤不會減弱安全性
+   - 128 位安全級別
+
+3. 抗原像
+   - 無法從雜湊反推輸入
+   - 256 位安全級別
+
+4. 確定性
+   - 相同標籤和消息總是產生相同雜湊
+   - 可預測和可驗證
+
+潛在攻擊與緩解:
+
+Q: 如果攻擊者控制標籤？
+A: 標籤是硬編碼的，不由用戶控制
+
+Q: 長度擴展攻擊？
+A: SHA256 的標準屬性，標籤不影響
+
+Q: 標籤碰撞？
+A: 標籤本身也經過 SHA256，極難碰撞</code></pre>
+
+      <h2>程式範例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># Python 完整實現
+import hashlib
+
+class TaggedHasher:
+    """可重用的 Tagged Hash 計算器"""
+
+    # 預計算常用標籤
+    _tag_hashes = {}
+
+    @classmethod
+    def get_tag_hash(cls, tag: str) -> bytes:
+        if tag not in cls._tag_hashes:
+            cls._tag_hashes[tag] = hashlib.sha256(tag.encode()).digest()
+        return cls._tag_hashes[tag]
+
+    @classmethod
+    def hash(cls, tag: str, data: bytes) -> bytes:
+        tag_hash = cls.get_tag_hash(tag)
+        return hashlib.sha256(tag_hash + tag_hash + data).digest()
+
+
+# 使用範例
+
+# 1. Schnorr 挑戰值
+def compute_challenge(R: bytes, P: bytes, msg: bytes) -> bytes:
+    return TaggedHasher.hash("BIP0340/challenge", R + P + msg)
+
+# 2. TapTweak
+def compute_tweak(internal_pubkey: bytes, merkle_root: bytes) -> bytes:
+    if merkle_root:
+        return TaggedHasher.hash("TapTweak", internal_pubkey + merkle_root)
+    else:
+        return TaggedHasher.hash("TapTweak", internal_pubkey)
+
+# 3. TapLeaf
+def compute_leaf_hash(version: int, script: bytes) -> bytes:
+    # Compact size encoding
+    if len(script) &lt; 0xfd:
+        size_bytes = bytes([len(script)])
+    elif len(script) &lt;= 0xffff:
+        size_bytes = b'\xfd' + len(script).to_bytes(2, 'little')
+    else:
+        size_bytes = b'\xfe' + len(script).to_bytes(4, 'little')
+
+    return TaggedHasher.hash("TapLeaf",
+        bytes([version]) + size_bytes + script)
+
+# 4. TapBranch
+def compute_branch_hash(left: bytes, right: bytes) -> bytes:
+    # 排序確保一致性
+    if left &lt; right:
+        return TaggedHasher.hash("TapBranch", left + right)
+    else:
+        return TaggedHasher.hash("TapBranch", right + left)</code></pre>
+
+      <h2>驗證與測試</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># BIP-340 測試向量
+
+# 預計算的標籤雜湊
+assert sha256(b"BIP0340/challenge").hex() == \
+    "7bb52d7a9fef58323eb1bf7a407db382d2f3f2d81bb1224f49fe518f6d48d37c"
+
+# 完整 tagged hash 測試
+def test_tagged_hash():
+    # 空消息
+    result = tagged_hash("BIP0340/challenge", b"")
+    # 驗證結果符合預期
+
+    # 非空消息
+    msg = bytes.fromhex("...")
+    result = tagged_hash("TapTweak", msg)
+    # 驗證結果
+
+# Taproot 測試向量
+test_vectors = [
+    {
+        "internal_pubkey": "...",
+        "merkle_root": "...",
+        "expected_tweak": "...",
+        "expected_output_pubkey": "..."
+    },
+    # ...
+]
+
+for vec in test_vectors:
+    tweak = compute_tweak(
+        bytes.fromhex(vec["internal_pubkey"]),
+        bytes.fromhex(vec["merkle_root"])
+    )
+    assert tweak.hex() == vec["expected_tweak"]</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Schnorr Signatures：</strong>Schnorr 簽名</li>
+        <li><strong>Taproot：</strong>Taproot 升級</li>
+        <li><strong>X-Only Pubkeys：</strong>X-Only 公鑰</li>
+        <li><strong>MuSig2：</strong>多方簽名聚合</li>
+        <li><strong>Key Path：</strong>密鑰路徑花費</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

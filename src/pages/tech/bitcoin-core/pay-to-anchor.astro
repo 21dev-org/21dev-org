@@ -1,0 +1,360 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Pay-to-Anchor (P2A)"
+  description="了解 Pay-to-Anchor 輸出類型，為 CPFP 提供標準化的費用追加機制。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Pay-to-Anchor' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Anchor Outputs', href: '/tech/bitcoin-core/anchor-outputs' }}
+  nextPage={{ title: 'V3 Transactions', href: '/tech/bitcoin-core/v3-transactions' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Pay-to-Anchor（P2A）是一種新的標準輸出類型，專為 CPFP（Child Pays For Parent）
+        費用追加設計。它提供了一個任何人都可以花費的輸出，使交易費用調整更加靈活。
+      </p>
+
+      <h2>P2A 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Pay-to-Anchor 輸出:
+
+scriptPubKey:
+OP_1 &lt;4e73&gt;  (4 bytes total)
+
+結構:
+- OP_1 (0x51): SegWit 版本 1
+- 0x024e73: 推送 2 字節數據 "N" + "s"
+- 4e73 = "Ns" (anchor 的縮寫)
+
+特點:
+1. 任何人都可以花費
+2. 金額必須為 0（粉塵免除）
+3. 不需要簽名或證明
+4. 專為 CPFP 設計
+
+花費方式:
+witness = []  # 空見證即可花費</code></pre>
+
+      <h2>為什麼需要 P2A？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統 Anchor Output 的問題:
+
+1. 需要特定密鑰
+   - 閃電網路 anchor 需要參與者簽名
+   - 限制了誰可以追加費用
+
+2. 粉塵問題
+   - 傳統 anchor 需要 330+ satoshis
+   - 浪費區塊空間和資金
+
+3. 複雜性
+   - 需要預定義花費條件
+   - 增加協議複雜度
+
+P2A 的解決方案:
+
+1. 無需密鑰
+   - 任何人都可以花費
+   - 簡化費用追加流程
+
+2. 零金額
+   - 允許 0 satoshi 輸出
+   - 無粉塵限制
+
+3. 標準化
+   - 統一的 CPFP anchor 格式
+   - 減少協議複雜度</code></pre>
+
+      <h2>技術規格</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>P2A 輸出規則:
+
+scriptPubKey 格式:
+51 02 4e73
+│  │  └── 數據: "Ns" (0x4e = 'N', 0x73 = 's')
+│  └── 推送 2 字節
+└── OP_1 (SegWit v1)
+
+交易規則:
+1. 金額必須為 0
+2. 每筆交易最多一個 P2A 輸出
+3. 必須與 TRUC (v3) 交易一起使用
+4. 子交易必須花費此 anchor
+
+見證規則:
+- 花費時見證為空
+- 不需要任何簽名
+- 任何人都可以花費
+
+scriptPubKey 大小:
+- 總共 4 字節
+- 最小可能的輸出腳本之一</code></pre>
+
+      <h2>與 TRUC 交易的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>P2A 與 V3/TRUC 交易:
+
+TRUC (Topologically Restricted Until Confirmation):
+- 新的交易版本 (nVersion = 3)
+- 限制拓撲結構
+- 解決交易釘住問題
+
+P2A 在 TRUC 中的角色:
+
+父交易 (v3):
+┌─────────────────────────────────────────┐
+│ Input: 原始 UTXO                        │
+│ Output 0: 主要輸出 (1 BTC)              │
+│ Output 1: P2A anchor (0 sat)            │
+└─────────────────────────────────────────┘
+
+子交易 (v3):
+┌─────────────────────────────────────────┐
+│ Input 0: P2A anchor from parent         │
+│ Input 1: 費用來源 UTXO                   │
+│ Output: 找零 (扣除費用)                  │
+└─────────────────────────────────────────┘
+
+優勢:
+- 父交易可以 0 費率
+- 子交易提供全部費用
+- 解決預簽名交易的費率問題</code></pre>
+
+      <h2>閃電網路應用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>LN 承諾交易中的 P2A:
+
+傳統方式 (複雜):
+Commitment TX:
+├── to_local output
+├── to_remote output
+├── HTLC outputs
+├── anchor_local (330 sat, 需要 local 簽名)
+└── anchor_remote (330 sat, 需要 remote 簽名)
+
+P2A 方式 (簡化):
+Commitment TX:
+├── to_local output
+├── to_remote output
+├── HTLC outputs
+└── P2A anchor (0 sat, 任何人可花費)
+
+優勢:
+1. 節省 660 satoshis 的 anchor 資金
+2. 減少輸出數量
+3. 雙方都可以追加費用
+4. 簡化錢包實現
+
+使用場景:
+- 單方關閉時追加費用
+- HTLC 超時交易追加費用
+- 懲罰交易追加費用</code></pre>
+
+      <h2>交易範例</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 創建帶 P2A 的交易
+
+# 父交易 (v3, 低費率或零費率)
+{
+  "version": 3,
+  "vin": [{
+    "txid": "abc...",
+    "vout": 0
+  }],
+  "vout": [
+    {
+      "value": 0.01000000,
+      "scriptPubKey": {
+        "type": "witness_v1_taproot",
+        "address": "bc1p..."
+      }
+    },
+    {
+      "value": 0.00000000,
+      "scriptPubKey": {
+        "type": "anchor",
+        "asm": "1 4e73",
+        "hex": "5102ae73"
+      }
+    }
+  ]
+}
+
+# 子交易 (花費 P2A，提供費用)
+{
+  "version": 3,
+  "vin": [
+    {
+      "txid": "parent_txid",
+      "vout": 1,  // P2A output
+      "scriptSig": "",
+      "txinwitness": []  // 空見證
+    },
+    {
+      "txid": "fee_source",
+      "vout": 0
+    }
+  ],
+  "vout": [{
+    "value": 0.00099000,  // 費用 1000 sat
+    "scriptPubKey": {...}
+  }]
+}</code></pre>
+
+      <h2>安全考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>P2A 的安全性:
+
+為什麼任何人可花費是安全的？
+
+1. 零金額
+   - 輸出沒有價值可偷
+   - 花費它只是為了追加費用
+
+2. 必須追加費用
+   - 花費者必須提供費用來源
+   - 沒有免費獲利的方式
+
+3. TRUC 規則保護
+   - 父子關係受限
+   - 防止惡意替換
+
+潛在攻擊:
+Q: 攻擊者能搶先花費 P2A 嗎？
+A: 可以，但：
+   - 他們必須支付費用
+   - 這實際上幫助了交易確認
+   - 沒有經濟激勵進行攻擊
+
+Q: 如果沒人花費 P2A 怎麼辦？
+A:
+   - 父交易可能永遠不確認
+   - 設計上父交易應該有足夠費用
+   - P2A 是備用機制</code></pre>
+
+      <h2>與傳統 Anchor 比較</h2>
+
+      <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border-default)]">
+                <th class="text-left py-2">特性</th>
+                <th class="text-left py-2">傳統 Anchor</th>
+                <th class="text-left py-2">P2A</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">最小金額</td>
+                <td class="py-2">330+ sat</td>
+                <td class="py-2">0 sat</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">花費條件</td>
+                <td class="py-2">需要特定簽名</td>
+                <td class="py-2">任何人</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">腳本大小</td>
+                <td class="py-2">~34 bytes</td>
+                <td class="py-2">4 bytes</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">見證大小</td>
+                <td class="py-2">~64+ bytes</td>
+                <td class="py-2">0 bytes</td>
+              </tr>
+              <tr class="border-b border-[var(--border-default)]">
+                <td class="py-2">複雜度</td>
+                <td class="py-2">較高</td>
+                <td class="py-2">簡單</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>實現狀態</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 實現:
+
+版本要求:
+- Bitcoin Core 28.0+
+- 需要啟用 TRUC (v3) 交易
+
+相關 BIP:
+- BIP-431: Pay to Anchor
+
+策略規則:
+- P2A 輸出不受粉塵規則限制
+- 必須與 v3 交易一起使用
+- 每筆交易最多一個 P2A
+
+# 檢查節點是否支持
+bitcoin-cli getnetworkinfo
+# 查看 localservicesnames 中是否有相關服務
+
+# 創建 P2A 輸出的原始交易
+# 目前需要手動構建十六進制</code></pre>
+
+      <h2>開發者指南</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用 P2A 的最佳實踐:
+
+1. 創建父交易
+   - 使用 nVersion = 3
+   - 添加一個 P2A 輸出
+   - 設置合理的基礎費率
+
+2. 監控確認
+   - 如果父交易未確認
+   - 創建子交易花費 P2A
+   - 提供足夠的費用
+
+3. 費用計算
+   - 計算父交易的 vsize
+   - 計算子交易的 vsize
+   - 子交易費用 = (父 vsize + 子 vsize) × 目標費率
+
+4. 錢包集成
+   - 追蹤未確認的 P2A 父交易
+   - 準備 UTXO 用於追加費用
+   - 自動創建 CPFP 子交易
+
+偽代碼:
+def bump_with_p2a(parent_tx, target_feerate):
+    p2a_outpoint = find_p2a_output(parent_tx)
+    fee_utxo = select_utxo_for_fee()
+
+    child_tx = create_transaction(
+        version=3,
+        inputs=[p2a_outpoint, fee_utxo],
+        outputs=[change_output]
+    )
+
+    required_fee = (parent_tx.vsize + child_tx.vsize) * target_feerate
+    child_tx.adjust_change(required_fee)
+
+    return sign_and_broadcast(child_tx)</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Anchor Outputs：</strong>閃電網路錨點輸出</li>
+        <li><strong>V3 Transactions：</strong>TRUC 交易策略</li>
+        <li><strong>CPFP：</strong>子交易支付父交易費用</li>
+        <li><strong>Transaction Pinning：</strong>交易釘住攻擊</li>
+        <li><strong>Package Relay：</strong>交易包中繼</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

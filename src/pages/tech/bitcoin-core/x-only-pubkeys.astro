@@ -1,0 +1,333 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="X-Only Public Keys"
+  description="了解 Taproot 使用的 32 字節 X-Only 公鑰格式，節省空間並簡化協議。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'X-Only Pubkeys' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Tagged Hashes', href: '/tech/bitcoin-core/tagged-hashes' }}
+  nextPage={{ title: 'Taproot', href: '/tech/bitcoin-core/taproot' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        X-Only 公鑰是 BIP-340 Schnorr 簽名引入的 32 字節公鑰格式，只包含橢圓曲線點的 x 座標。
+        這種格式比傳統的 33 字節壓縮公鑰更緊湊，並在 Taproot 中被廣泛使用。
+      </p>
+
+      <h2>公鑰格式比較</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>橢圓曲線公鑰格式:
+
+1. 非壓縮格式 (65 bytes):
+┌────────┬─────────────────┬─────────────────┐
+│ 0x04   │ x coordinate    │ y coordinate    │
+│ 1 byte │ 32 bytes        │ 32 bytes        │
+└────────┴─────────────────┴─────────────────┘
+- 包含完整的 (x, y) 座標
+- 最大但最直接
+
+2. 壓縮格式 (33 bytes):
+┌────────┬─────────────────┐
+│ prefix │ x coordinate    │
+│ 1 byte │ 32 bytes        │
+└────────┴─────────────────┘
+- prefix: 0x02 (y 是偶數) 或 0x03 (y 是奇數)
+- y 可以從 x 計算得出
+
+3. X-Only 格式 (32 bytes):
+┌─────────────────┐
+│ x coordinate    │
+│ 32 bytes        │
+└─────────────────┘
+- 沒有前綴
+- 假定 y 是偶數（如果不是則取反）
+- Taproot 和 Schnorr 使用此格式</code></pre>
+
+      <h2>為什麼使用 X-Only？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>X-Only 公鑰的優勢:
+
+1. 節省空間
+   - 每個公鑰節省 1 字節
+   - 在區塊鏈上累積可觀
+   - Taproot 輸出更小
+
+2. 簡化協議
+   - 無需處理前綴
+   - 公鑰格式統一
+   - 減少解析複雜度
+
+3. 數學簡潔
+   - secp256k1 曲線上每個 x 對應兩個 y
+   - 選擇偶數 y 是確定性的
+   - 沒有信息損失
+
+橢圓曲線特性:
+y² = x³ + 7 (mod p)
+
+對於每個有效的 x:
+- 存在 y 和 -y (mod p) 兩個解
+- 其中一個是偶數，一個是奇數
+- 我們約定使用偶數 y
+
+// 這種約定使得公鑰可以唯一地從 x 恢復</code></pre>
+
+      <h2>Y 座標處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>確定 Y 座標的過程:
+
+給定 x 座標:
+1. 計算 y² = x³ + 7 (mod p)
+2. 計算 y = sqrt(y²) (mod p)
+3. 如果 y 是奇數，取 y = p - y (偶數)
+4. 返回點 (x, y)
+
+Python 實現:
+def lift_x(x: int) -> tuple:
+    """從 x 座標恢復完整公鑰點"""
+    p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+
+    # y² = x³ + 7
+    y_sq = (pow(x, 3, p) + 7) % p
+
+    # 計算 y = sqrt(y²) mod p
+    # 對於 secp256k1: y = y_sq^((p+1)/4) mod p
+    y = pow(y_sq, (p + 1) // 4, p)
+
+    # 驗證
+    if pow(y, 2, p) != y_sq:
+        return None  # x 不在曲線上
+
+    # 確保 y 是偶數
+    if y % 2 != 0:
+        y = p - y
+
+    return (x, y)
+
+# 使用
+x = int.from_bytes(x_only_pubkey, 'big')
+point = lift_x(x)</code></pre>
+
+      <h2>對簽名的影響</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>X-Only 對 Schnorr 簽名的影響:
+
+簽名生成時:
+1. 如果公鑰 P 的 y 是奇數
+   - 必須使用 -d (取反的私鑰) 進行簽名
+   - 這樣公開的 x-only P 對應偶數 y
+
+2. R 點也使用 x-only
+   - 同樣確保 R 的 y 是偶數
+   - 如果不是，nonce 取反
+
+簽名格式:
+sig = (r, s) 其中:
+- r: R 的 x 座標 (32 bytes)
+- s: 簽名值 (32 bytes)
+- 總共 64 bytes
+
+驗證時:
+1. 從 r 恢復 R 點 (假設偶數 y)
+2. 從 P 的 x 座標恢復 P 點 (偶數 y)
+3. 驗證 s·G = R + e·P
+
+關鍵洞察:
+如果 y 的奇偶性錯誤，簽名會驗證失敗
+這保證了系統的一致性</code></pre>
+
+      <h2>在 Taproot 中的應用</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 輸出使用 X-Only:
+
+P2TR 輸出結構:
+OP_1 &lt;32-byte x-only pubkey&gt;
+
+相比 P2WPKH:
+OP_0 &lt;20-byte pubkey hash&gt;
+
+Taproot 更直接地使用公鑰:
+- 不用 hash160
+- 直接嵌入 x-only 公鑰
+- 驗證時直接使用
+
+公鑰調整 (Tweaking):
+Q = P + t·G
+
+其中:
+- P: 內部公鑰 (x-only)
+- t: 調整值 = tagged_hash("TapTweak", P || merkle_root)
+- Q: 輸出公鑰 (x-only)
+
+處理 y 座標:
+1. 從 P 的 x-only 恢復點 (偶數 y)
+2. 計算 Q = P + t·G
+3. 如果 Q 的 y 是奇數:
+   - 調整私鑰: d' = n - (d + t)
+   - 其中 n 是曲線階數</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>轉換函數:
+
+# 壓縮公鑰 → X-Only
+def to_x_only(compressed_pubkey: bytes) -> bytes:
+    """將 33 字節壓縮公鑰轉為 32 字節 x-only"""
+    assert len(compressed_pubkey) == 33
+    # 直接取 x 座標部分
+    return compressed_pubkey[1:]
+
+# X-Only → 壓縮公鑰
+def from_x_only(x_only: bytes, parity: int = 0) -> bytes:
+    """將 x-only 轉為壓縮公鑰"""
+    assert len(x_only) == 32
+    # parity: 0 = 偶數 y (0x02), 1 = 奇數 y (0x03)
+    prefix = bytes([0x02 + parity])
+    return prefix + x_only
+
+# 私鑰調整
+def adjust_privkey_for_xonly(privkey: int, pubkey_point) -> int:
+    """確保對應的公鑰有偶數 y"""
+    n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+    if pubkey_point.y % 2 != 0:
+        # y 是奇數，取反私鑰
+        return n - privkey
+    return privkey
+
+# 完整的簽名準備
+def prepare_for_signing(privkey: bytes) -> tuple:
+    """準備私鑰和公鑰用於 Schnorr 簽名"""
+    d = int.from_bytes(privkey, 'big')
+
+    # 計算公鑰點
+    P = d * G  # 橢圓曲線乘法
+
+    # 調整私鑰
+    d = adjust_privkey_for_xonly(d, P)
+
+    # 獲取 x-only 公鑰
+    x_only_pubkey = P.x.to_bytes(32, 'big')
+
+    return d, x_only_pubkey</code></pre>
+
+      <h2>控制塊中的奇偶性</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot Script Path 的控制塊:
+
+控制塊結構:
+┌─────────────────────────────────────────┐
+│ leaf_version | parity (1 byte)          │
+│ internal_pubkey (32 bytes)              │
+│ merkle_path (32 bytes × n)              │
+└─────────────────────────────────────────┘
+
+第一個字節編碼:
+- 位 0: 輸出公鑰 Q 的 y 奇偶性
+- 位 1-7: 葉子版本 (0xc0 或 0xc1)
+
+編碼方式:
+control_byte = leaf_version | parity
+
+範例:
+- 0xc0: 葉子版本 0, Q 的 y 是偶數
+- 0xc1: 葉子版本 0, Q 的 y 是奇數
+
+為什麼需要奇偶性？
+1. 控制塊包含內部公鑰 P (x-only)
+2. 驗證時需要計算 Q = P + t·G
+3. 但需要知道 Q 應該有什麼 y
+4. 奇偶性位提供這個信息
+
+驗證流程:
+1. 解析控制塊獲取 parity
+2. 恢復 P (假設偶數 y)
+3. 計算 Q' = P + t·G
+4. 如果 Q' 的 y 奇偶性與 parity 不匹配
+   - 取 Q' 的 negation
+5. 比較 Q' 與輸出公鑰</code></pre>
+
+      <h2>批量驗證優化</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>X-Only 對批量驗證的影響:
+
+Schnorr 批量驗證:
+∑(s_i · G) = ∑(R_i) + ∑(e_i · P_i)
+
+使用 x-only 時:
+1. 所有 R_i 和 P_i 都從 x 座標恢復
+2. 假設所有 y 都是偶數
+3. 如果原始 y 是奇數，簽名生成時已取反
+
+批量驗證優勢:
+- 統一的點恢復過程
+- 無需處理不同的前綴
+- 點運算可以並行化
+
+性能考量:
+- lift_x 需要模平方根
+- 可以預計算或快取
+- 批量操作時成本攤薄
+
+// X-Only 格式使批量驗證更加整潔</code></pre>
+
+      <h2>兼容性考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>X-Only 與傳統系統的兼容:
+
+ECDSA 簽名:
+- 仍使用 33 字節壓縮公鑰
+- X-Only 僅用於 Schnorr/Taproot
+
+混合使用:
+- P2WPKH: 使用壓縮公鑰
+- P2TR: 使用 x-only 公鑰
+- 同一私鑰可以導出兩種格式
+
+錢包實現:
+# BIP-86 路徑
+m/86'/0'/0'/0/0  → Taproot (x-only)
+
+# BIP-84 路徑
+m/84'/0'/0'/0/0  → SegWit (壓縮)
+
+轉換示例:
+private_key = derive_key(path)
+compressed_pubkey = private_key.get_public_key()  # 33 bytes
+x_only_pubkey = compressed_pubkey[1:]  # 32 bytes
+
+# 但注意私鑰可能需要調整
+if needs_negation(compressed_pubkey):
+    signing_key = negate(private_key)</code></pre>
+
+      <h2>安全注意事項</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>私鑰調整：</strong>簽名前必須正確處理 y 座標奇偶性</li>
+          <li><strong>點恢復：</strong>確保 x 座標在曲線上有效</li>
+          <li><strong>一致性：</strong>公鑰導出和簽名必須使用相同的約定</li>
+          <li><strong>測試：</strong>使用官方測試向量驗證實現</li>
+        </ul>
+      </div>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Tagged Hashes：</strong>標籤雜湊函數</li>
+        <li><strong>Schnorr Signatures：</strong>Schnorr 簽名</li>
+        <li><strong>Taproot：</strong>Taproot 升級</li>
+        <li><strong>Key Path：</strong>密鑰路徑花費</li>
+        <li><strong>Script Path：</strong>腳本路徑花費</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
