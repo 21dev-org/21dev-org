@@ -215,11 +215,11 @@ echo "5468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e2062
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <pre
-        class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// Bitcoin Core 中的創世區塊處理
+        class="text-sm overflow-x-auto"><code is:raw>// Bitcoin Core 中的創世區塊處理
 // src/chainparams.cpp
 
 static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce,
-    uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+    uint32_t nBits, int32_t nVersion, const CAmount&amp; genesisReward)
 {
     const char* pszTimestamp = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
 
@@ -230,13 +230,13 @@ static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce,
     txNew.vout.resize(1);
 
     // ScriptSig 包含報紙標題
-    txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4)
-        << std::vector<unsigned char>((const unsigned char*)pszTimestamp,
+    txNew.vin[0].scriptSig = CScript() &lt;&lt; 486604799 &lt;&lt; CScriptNum(4)
+        &lt;&lt; std::vector&lt;unsigned char&gt;((const unsigned char*)pszTimestamp,
            (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
 
     // 輸出到中本聰的公鑰
     txNew.vout[0].nValue = genesisReward;  // 50 BTC
-    txNew.vout[0].scriptPubKey = CScript() << ParseHex("04678a...") << OP_CHECKSIG;
+    txNew.vout[0].scriptPubKey = CScript() &lt;&lt; ParseHex("04678a...") &lt;&lt; OP_CHECKSIG;
 
     // 創建區塊
     CBlock genesis;
@@ -284,21 +284,21 @@ Regtest：
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <pre
-        class="text-sm overflow-x-auto"><code class="language-python" is:raw>import hashlib
+        class="text-sm overflow-x-auto"><code is:raw>import hashlib
 import struct
 
 def double_sha256(data):
     return hashlib.sha256(hashlib.sha256(data).digest()).digest()
 
 # 創世區塊頭（小端序）
-version = struct.pack('<I', 1)
+version = struct.pack('&lt;I', 1)
 prev_block = bytes(32)  # 全零
 merkle_root = bytes.fromhex(
     '3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a'
 )[::-1]  # 反轉為小端序
-timestamp = struct.pack('<I', 1231006505)
-bits = struct.pack('<I', 0x1d00ffff)
-nonce = struct.pack('<I', 2083236893)
+timestamp = struct.pack('&lt;I', 1231006505)
+bits = struct.pack('&lt;I', 0x1d00ffff)
+nonce = struct.pack('&lt;I', 2083236893)
 
 header = version + prev_block + merkle_root + timestamp + bits + nonce
 
