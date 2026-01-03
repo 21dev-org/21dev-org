@@ -246,6 +246,72 @@
       list.classList.remove('hidden');
     }
 
+    // Category mapping for URL paths
+    const categoryMap: Record<string, { label: string; color: string }> = {
+      'bips': { label: 'BIP 提案', color: '#3B82F6' },
+      'tech/bitcoin-core': { label: 'Bitcoin Core', color: '#F7931A' },
+      'tech/lightning': { label: '閃電網路', color: '#FACC15' },
+      'tech/nostr': { label: 'Nostr', color: '#8B5CF6' },
+      'learn/basics': { label: '入門基礎', color: '#22C55E' },
+      'learn/intermediate': { label: '進階知識', color: '#3B82F6' },
+      'learn/advanced': { label: '高級技術', color: '#EF4444' },
+      'learn/lightning': { label: '閃電網路學習', color: '#FACC15' },
+      'books': { label: '推薦書籍', color: '#EC4899' },
+      'notable-figures': { label: '重要人物', color: '#F7931A' },
+      'events': { label: '活動', color: '#14B8A6' },
+    };
+
+    function getCategoryFromUrl(url: string): { label: string; color: string } | null {
+      for (const [path, category] of Object.entries(categoryMap)) {
+        if (url.includes('/' + path + '/')) {
+          return category;
+        }
+      }
+      return null;
+    }
+
+    function groupResultsByCategory(results: any[]): Map<string, any[]> {
+      const grouped = new Map<string, any[]>();
+
+      for (const result of results) {
+        const category = getCategoryFromUrl(result.url);
+        const key = category ? category.label : '其他';
+
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key)!.push({ ...result, category });
+      }
+
+      return grouped;
+    }
+
+    // Recent searches storage
+    const RECENT_SEARCHES_KEY = 'recent-searches';
+    const MAX_RECENT_SEARCHES = 5;
+
+    function getRecentSearches(): string[] {
+      try {
+        const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRecentSearch(query: string) {
+      if (!query.trim()) return;
+      try {
+        let recent = getRecentSearches();
+        recent = recent.filter(q => q !== query);
+        recent.unshift(query);
+        recent = recent.slice(0, MAX_RECENT_SEARCHES);
+        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
     async function performSearch(query: string) {
       if (!query.trim()) {
         showInitial();
@@ -265,27 +331,49 @@
         return;
       }
 
+      // Save to recent searches
+      saveRecentSearch(query);
+
       // Load result data
-      const resultsData = await Promise.all(search.results.slice(0, 10).map((r: any) => r.data()));
+      const resultsData = await Promise.all(search.results.slice(0, 15).map((r: any) => r.data()));
 
-      // Render results
-      list.innerHTML = resultsData
-        .map(
-          (result: any, index: number) => `
-        <li>
-          <a
-            href="${result.url}"
-            class="search-result block px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors ${index === selectedIndex ? 'bg-[var(--bg-secondary)]' : ''}"
-            data-index="${index}"
-          >
-            <div class="font-medium text-[var(--text-primary)]">${result.meta?.title || 'Untitled'}</div>
-            <div class="text-sm text-[var(--text-secondary)] line-clamp-2 mt-1">${result.excerpt}</div>
-          </a>
-        </li>
-      `
-        )
-        .join('');
+      // Group results by category
+      const grouped = groupResultsByCategory(resultsData);
 
+      // Render grouped results
+      let html = '';
+      let globalIndex = 0;
+
+      for (const [categoryLabel, categoryResults] of grouped) {
+        const category = categoryResults[0]?.category;
+        const color = category?.color || '#78716C';
+
+        html += `
+          <li class="px-4 py-2 bg-[var(--bg-secondary)] border-b border-[var(--border-default)]">
+            <span class="text-xs font-semibold uppercase tracking-wider" style="color: ${color}">
+              ${categoryLabel} (${categoryResults.length})
+            </span>
+          </li>
+        `;
+
+        for (const result of categoryResults) {
+          html += `
+            <li>
+              <a
+                href="${result.url}"
+                class="search-result block px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors ${globalIndex === selectedIndex ? 'bg-[var(--bg-secondary)]' : ''}"
+                data-index="${globalIndex}"
+              >
+                <div class="font-medium text-[var(--text-primary)]">${result.meta?.title || 'Untitled'}</div>
+                <div class="text-sm text-[var(--text-secondary)] line-clamp-2 mt-1">${result.excerpt}</div>
+              </a>
+            </li>
+          `;
+          globalIndex++;
+        }
+      }
+
+      list.innerHTML = html;
       showResults();
       selectedIndex = -1;
     }
