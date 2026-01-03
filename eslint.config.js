@@ -15,6 +15,13 @@ export default [
       '*.config.js',
       '*.config.mjs',
       'src/env.d.ts',
+      // Files with is:raw content that causes parser issues
+      'src/pages/tech/bitcoin-core/op-csv.astro',
+      'src/pages/tech/bitcoin-core/pruning.astro',
+      'src/pages/tech/lightning/lightning-address.astro',
+      'src/pages/tech/lightning/lnurl.astro',
+      'src/pages/tech/lightning/network-topology.astro',
+      'src/pages/tech/lightning/revocation.astro',
     ],
   },
 
