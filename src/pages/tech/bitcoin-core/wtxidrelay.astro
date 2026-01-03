@@ -1,0 +1,333 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="WTxIdRelay"
+  description="了解 BIP-339 WTxIdRelay 協議，使用見證交易 ID 進行交易中繼以解決延展性問題。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'WTxIdRelay' },
+  ]}
+  difficulty="intermediate"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'WTXID', href: '/tech/bitcoin-core/wtxid' }}
+  nextPage={{ title: 'Transaction Broadcast', href: '/tech/bitcoin-core/transaction-broadcast' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        WTxIdRelay（BIP-339）是比特幣 P2P 協議的擴展，允許節點使用見證交易 ID（wtxid）
+        而非傳統交易 ID（txid）來中繼交易，解決了 SegWit 交易的延展性相關問題。
+      </p>
+
+      <h2>WTxIdRelay 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>WTxIdRelay 解決的問題:
+
+問題背景:
+SegWit 交易有兩個 ID:
+- txid: 不包含見證數據的雜湊
+- wtxid: 包含見證數據的雜湊
+
+傳統中繼使用 txid:
+1. 節點 A 廣播 inv(txid)
+2. 節點 B 回覆 getdata(txid)
+3. A 發送交易
+
+問題:
+- 相同 txid 可能有不同的 wtxid
+- 惡意節點可以修改見證數據
+- 導致下載無效交易
+
+WTxIdRelay 解決方案:
+1. 使用 wtxid 識別交易
+2. 無法修改見證後仍匹配
+3. 確保下載的是期望的交易
+
+BIP-339 定義:
+- 2020 年引入
+- Bitcoin Core 0.21.0 實現</code></pre>
+
+      <h2>協議機制</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>WTxIdRelay 協商:
+
+版本握手後:
+┌─────────┐                  ┌─────────┐
+│ Node A  │    wtxidrelay    │ Node B  │
+│         │ ──────────────→  │         │
+│         │    wtxidrelay    │         │
+│         │ ←──────────────  │         │
+└─────────┘                  └─────────┘
+
+wtxidrelay 消息:
+- 空的 payload（0 字節）
+- 必須在 verack 之前發送
+- 雙方都發送後才啟用
+
+啟用後的交易中繼:
+┌─────────┐   inv(wtxid)     ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │  getdata(wtxid)  │         │
+│         │ ←──────────────  │         │
+│         │       tx         │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+
+注意: inv 和 getdata 使用新的消息類型
+MSG_WTX (0x00000005) 而非 MSG_TX (0x00000001)</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>wtxidrelay 消息:
+
+┌─────────────────────────────────────────┐
+│ (empty payload - 0 bytes)               │
+└─────────────────────────────────────────┘
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "wtxidrelay" (12 bytes, padded)     │
+│ length: 0 (4 bytes)                          │
+│ checksum: 0x5df6e0e2 (4 bytes)               │
+│ payload: (empty)                             │
+└──────────────────────────────────────────────┘
+
+使用 wtxid 的 inv:
+┌─────────────────────────────────────────┐
+│ count: 1                                │
+│ type: MSG_WTX (0x00000005)              │
+│ hash: wtxid (32 bytes)                  │
+└─────────────────────────────────────────┘
+
+使用 wtxid 的 getdata:
+┌─────────────────────────────────────────┐
+│ count: 1                                │
+│ type: MSG_WTX (0x00000005)              │
+│ hash: wtxid (32 bytes)                  │
+└─────────────────────────────────────────┘</code></pre>
+
+      <h2>TXID vs WTXID</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>兩種交易 ID 的區別:
+
+TXID (傳統):
+- 雜湊範圍: 版本 + 輸入 + 輸出 + locktime
+- 不包含: marker, flag, 見證數據
+- SegWit 前後計算方式相同
+
+WTXID (見證):
+- 雜湊範圍: 整個序列化交易
+- 包含: 所有數據包括見證
+- 只對 SegWit 交易有意義
+
+計算:
+txid = SHA256(SHA256(
+    version || inputs || outputs || locktime
+))
+
+wtxid = SHA256(SHA256(
+    version || marker || flag ||
+    inputs || outputs || witness || locktime
+))
+
+特殊情況:
+- 非 SegWit 交易: txid == wtxid
+- Coinbase: wtxid 定義為全 0
+
+範例:
+交易原始數據不同部分:
+- 基本數據相同 → txid 相同
+- 見證數據不同 → wtxid 不同</code></pre>
+
+      <h2>延展性問題</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>WTxIdRelay 如何防止延展性攻擊:
+
+攻擊場景（使用 txid）:
+
+1. 節點 A 廣播 inv(txid1)
+2. 節點 B 請求 getdata(txid1)
+3. 惡意節點 M 攔截請求
+4. M 修改見證數據，創建 tx1'
+   - txid(tx1') == txid1 (相同)
+   - wtxid(tx1') != wtxid(tx1) (不同)
+5. M 發送 tx1' 給 B
+6. B 驗證失敗（無效簽名）
+7. B 誤以為 txid1 是無效交易
+8. 真正的 tx1 被阻止傳播
+
+使用 WTxIdRelay:
+
+1. 節點 A 廣播 inv(wtxid1)
+2. 節點 B 請求 getdata(wtxid1)
+3. 惡意節點 M 無法匹配
+   - 修改後的交易有不同 wtxid
+   - 無法響應 getdata(wtxid1)
+4. B 繼續等待正確的交易
+5. 攻擊被防止</code></pre>
+
+      <h2>向後兼容</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>WTxIdRelay 的兼容性處理:
+
+協商結果:
+
+雙方都支持:
+- 使用 wtxid 中繼
+- MSG_WTX 消息類型
+
+只有一方支持:
+- 回退到 txid 中繼
+- MSG_TX 消息類型
+
+實現邏輯:
+class Peer {
+    bool m_wtxid_relay = false;
+
+    void OnWtxidRelay() {
+        if (state == BEFORE_VERACK) {
+            m_wants_wtxid_relay = true;
+        }
+    }
+
+    void OnVerack() {
+        if (m_wants_wtxid_relay && m_we_support_wtxid) {
+            m_wtxid_relay = true;
+        }
+    }
+
+    void RelayTransaction(const CTransaction& tx) {
+        if (m_wtxid_relay) {
+            SendInv(MSG_WTX, tx.GetWitnessHash());
+        } else {
+            SendInv(MSG_TX, tx.GetHash());
+        }
+    }
+};
+
+// 現代節點都支持 wtxidrelay</code></pre>
+
+      <h2>Orphan 交易處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>WTxIdRelay 對孤立交易的影響:
+
+孤立交易:
+- 父交易尚未確認
+- 暫時無法驗證
+- 需要追蹤和重試
+
+使用 txid（舊方式）:
+orphan_map[txid] = tx
+// 問題: 相同 txid 可能是不同的交易
+
+使用 wtxid（新方式）:
+orphan_map[wtxid] = tx
+// 優勢: 精確識別特定交易
+
+孤立解析:
+// 父交易到達後
+for (auto& orphan : orphans_by_prev) {
+    if (orphan.parent_txid == new_tx.txid) {
+        // 嘗試驗證
+        ValidateOrphan(orphan);
+    }
+}
+
+優化:
+- 按父交易的 txid 索引孤立交易
+- 收到父交易後可以快速找到孤立交易
+- wtxid 用於精確追蹤</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 WTxIdRelay 狀態
+
+# 查看節點連接信息
+bitcoin-cli getpeerinfo
+[
+  {
+    "id": 1,
+    "addr": "...",
+    "services": "...",
+    "relaytxes": true,
+    "wtxidrelay": true,  // 是否啟用 wtxidrelay
+    ...
+  }
+]
+
+# 檢查所有節點的 wtxidrelay 狀態
+bitcoin-cli getpeerinfo | jq '.[] | {id: .id, wtxid: .wtxidrelay}'
+
+# 日誌設置
+# bitcoin.conf
+debug=net
+
+# 日誌輸出:
+# "Negotiated wtxidrelay with peer=5"
+# "Sending wtxidrelay to peer=3"
+
+# 計算交易的 txid 和 wtxid
+bitcoin-cli decoderawtransaction &lt;hex&gt;
+{
+  "txid": "abc123...",
+  "hash": "def456...",  // 這是 wtxid
+  ...
+}</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 wtxidrelay
+void PeerManager::SendWtxidRelay(CNode& node) {
+    // 必須在 verack 之前
+    if (node.GetCommonVersion() >= WTXID_RELAY_VERSION) {
+        connman.PushMessage(&node,
+            CNetMsgMaker(node.GetCommonVersion())
+                .Make(NetMsgType::WTXIDRELAY));
+    }
+}
+
+// 處理 wtxidrelay
+void PeerManager::ProcessWtxidRelay(CNode& node) {
+    if (node.fSuccessfullyConnected) {
+        // 太晚了，必須在 verack 之前
+        Misbehaving(node.GetId(), 1);
+        return;
+    }
+    node.m_wtxid_relay = true;
+}
+
+// 中繼交易
+void PeerManager::RelayTransaction(const uint256& txid, const uint256& wtxid) {
+    for (auto& node : connman.GetNodes()) {
+        if (!node.fRelayTxes) continue;
+
+        if (node.m_wtxid_relay) {
+            // 使用 wtxid
+            node.PushInventory(CInv(MSG_WTX, wtxid));
+        } else {
+            // 回退到 txid
+            node.PushInventory(CInv(MSG_TX, txid));
+        }
+    }
+}
+
+const int WTXID_RELAY_VERSION = 70016;</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>WTXID：</strong>見證交易識別碼</li>
+        <li><strong>TX Malleability：</strong>交易延展性</li>
+        <li><strong>Transaction Broadcast：</strong>交易廣播機制</li>
+        <li><strong>SegWit：</strong>隔離見證</li>
+        <li><strong>Orphan Transactions：</strong>孤立交易處理</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

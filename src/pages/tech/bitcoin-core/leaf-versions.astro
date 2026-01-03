@@ -1,0 +1,337 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot Leaf Versions"
+  description="了解 Taproot 腳本樹的葉子版本機制，實現未來腳本升級的軟分叉兼容性。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Leaf Versions' },
+  ]}
+  difficulty="advanced"
+  readingTime="10 分鐘"
+  prevPage={{ title: 'Script Path', href: '/tech/bitcoin-core/script-path' }}
+  nextPage={{ title: 'Taproot Annex', href: '/tech/bitcoin-core/taproot-annex' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Taproot 葉子版本（Leaf Version）是嵌入在腳本樹葉子中的版本號，
+        允許在不改變輸出格式的情況下引入新的腳本語義，為未來升級提供軟分叉路徑。
+      </p>
+
+      <h2>葉子版本概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 葉子版本機制:
+
+TapLeaf 結構:
+┌─────────────────────────────────────────┐
+│ leaf_version (1 byte)                   │
+│ script_length (varint)                  │
+│ script (variable)                       │
+└─────────────────────────────────────────┘
+
+葉子雜湊計算:
+leaf_hash = tagged_hash("TapLeaf",
+    leaf_version || compact_size(script) || script)
+
+當前定義的版本:
+- 0xc0: TapScript（當前唯一有效版本）
+- 其他: 保留給未來升級
+
+版本字節結構:
+位 0: 必須為 0（保留給奇偶性）
+位 1-7: 實際版本號
+
+有效版本必須是偶數且 &lt;= 0xfe</code></pre>
+
+      <h2>TapScript（版本 0xc0）</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>TapScript 是當前唯一定義的葉子版本:
+
+版本號: 0xc0 (192)
+二進制: 11000000
+
+TapScript 特性:
+1. 基於 SegWit v0 腳本
+2. 使用 Schnorr 簽名 (64 bytes)
+3. OP_CHECKSIGADD 取代 OP_CHECKMULTISIG
+4. 無 201 操作碼限制
+5. 有 sigops 預算限制
+
+與 SegWit v0 的差異:
+
+相同:
+- 大多數操作碼語義相同
+- 基本腳本結構相同
+
+改進:
+- OP_SUCCESS 操作碼（允許未來升級）
+- OP_CHECKSIGADD（高效多簽）
+- 簽名格式變更（Schnorr）
+- 資源限制不同</code></pre>
+
+      <h2>控制塊中的版本</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>控制塊結構:
+
+┌─────────────────────────────────────────┐
+│ control_byte (1 byte)                   │
+│   = leaf_version | output_parity        │
+│ internal_pubkey (32 bytes)              │
+│ merkle_path (32 bytes × depth)          │
+└─────────────────────────────────────────┘
+
+control_byte 解析:
+leaf_version = control_byte & 0xfe
+output_parity = control_byte & 0x01
+
+範例:
+control_byte = 0xc0  → version 0xc0, parity 0
+control_byte = 0xc1  → version 0xc0, parity 1
+
+驗證過程:
+1. 提取 leaf_version
+2. 檢查版本是否有效
+3. 如果版本未知 → 視為 OP_SUCCESS
+4. 如果版本已知 → 按該版本規則執行</code></pre>
+
+      <h2>OP_SUCCESS 機制</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_SUCCESS 與葉子版本的關係:
+
+OP_SUCCESS 操作碼:
+- 0x50, 0x62, 0x89-0x8a, 0x8d-0x8e
+- 0x95-0x99, 0xbb-0xfe
+
+當遇到 OP_SUCCESS:
+1. 整個腳本立即成功
+2. 不執行任何驗證
+3. 允許未來賦予新語義
+
+葉子版本的類似作用:
+
+未知葉子版本:
+1. 節點不理解該版本
+2. 將整個腳本視為成功
+3. 未來軟分叉可定義新規則
+
+這提供了兩層升級路徑:
+1. 新操作碼 → 使用 OP_SUCCESS 預留的碼
+2. 新腳本語義 → 使用新葉子版本
+
+// 兩者都是軟分叉兼容的</code></pre>
+
+      <h2>版本號設計</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>葉子版本的設計考量:
+
+為什麼使用 0xc0 作為初始版本？
+
+歷史原因:
+- 早期設計使用不同的編碼
+- 0xc0 是經過調整後的結果
+- 確保與其他數據的可區分性
+
+版本空間:
+有效版本: 偶數 0x00-0xfe
+共 128 個可能的版本
+
+預留策略:
+- 0xc0: TapScript（當前）
+- 0xc2-0xfe: 未來腳本版本
+- 0x00-0xbe: 也可用於未來
+
+為什麼要求偶數？
+位 0 用於輸出公鑰的 y 座標奇偶性
+這允許在控制塊中編碼兩個信息
+
+control_byte = leaf_version | parity
+- leaf_version 是偶數（位 0 = 0）
+- parity 提供位 0</code></pre>
+
+      <h2>未來升級場景</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用新葉子版本的升級:
+
+場景 1: 新簽名方案
+leaf_version = 0xc2
+- 使用後量子密碼學
+- 新的簽名驗證規則
+- 不影響 0xc0 腳本
+
+場景 2: 新腳本語言
+leaf_version = 0xc4
+- 完全不同的腳本語義
+- 可能是 Simplicity
+- 與現有腳本共存
+
+場景 3: 性能優化
+leaf_version = 0xc6
+- 優化的操作碼集
+- 更高效的驗證
+- 保持向後兼容
+
+軟分叉過程:
+1. 新版本定義新規則
+2. 舊節點視未知版本為 OP_SUCCESS
+3. 新節點按新規則驗證
+4. 軟分叉保持網路共識
+
+// 這種設計使升級更加平滑</code></pre>
+
+      <h2>腳本樹中的多版本</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>同一棵樹中可以有不同版本的葉子:
+
+腳本樹結構:
+           [Root]
+          /      \
+     [Branch]    [Leaf C: v0xc4]
+     /      \
+[Leaf A]  [Leaf B]
+ v0xc0     v0xc2
+
+Leaf A: TapScript (0xc0)
+  - 使用當前規則
+
+Leaf B: 未來版本 (0xc2)
+  - 舊節點視為成功
+  - 新節點使用新規則
+
+Leaf C: 另一個未來版本 (0xc4)
+  - 可能是完全不同的語言
+
+使用場景:
+- 漸進式遷移到新版本
+- 提供備用執行路徑
+- 實驗性功能測試
+
+每個葉子的版本獨立:
+- 不影響其他葉子
+- 不影響 key path
+- 完全自包含</code></pre>
+
+      <h2>驗證實現</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的版本處理:
+
+// 驗證葉子版本
+bool VerifyTaprootLeaf(
+    const CScript& script,
+    uint8_t leaf_version,
+    const XOnlyPubKey& internal_key,
+    const std::vector&lt;uint8_t&gt;& control,
+    ScriptError* serror)
+{
+    // 檢查版本有效性
+    if (leaf_version & 1) {
+        // 奇數版本無效
+        return set_error(serror, SCRIPT_ERR_TAPROOT_VERSION);
+    }
+
+    // 計算葉子雜湊
+    uint256 leaf_hash = ComputeTapleafHash(leaf_version, script);
+
+    // 驗證 Merkle 證明
+    if (!VerifyTaprootCommitment(control, internal_key, leaf_hash)) {
+        return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+    }
+
+    // 根據版本執行腳本
+    if (leaf_version == TAPROOT_LEAF_TAPSCRIPT) {
+        // 0xc0: 執行 TapScript
+        return ExecuteTapScript(script, ...);
+    } else {
+        // 未知版本: 視為成功（軟分叉預留）
+        return true;
+    }
+}
+
+// 葉子雜湊計算
+uint256 ComputeTapleafHash(uint8_t version, const CScript& script) {
+    CHashWriter ss(HASHER_TAPLEAF);
+    ss &lt;&lt; version;
+    ss &lt;&lt; script;
+    return ss.GetSHA256();
+}</code></pre>
+
+      <h2>安全考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>葉子版本的安全性:
+
+1. 版本混淆攻擊
+   風險: 攻擊者使用錯誤版本提交腳本
+   緩解: 版本嵌入葉子雜湊，無法篡改
+
+2. 未知版本風險
+   風險: 使用未知版本可能被任何人花費
+   緩解:
+   - 錢包不應創建未知版本
+   - 僅在軟分叉啟用後使用新版本
+
+3. 軟分叉過渡期
+   風險: 新舊節點驗證結果不同
+   緩解:
+   - 等待足夠確認
+   - 礦工升級後再使用
+
+最佳實踐:
+
+1. 只使用已知版本（目前只有 0xc0）
+2. 不要創建使用保留版本的輸出
+3. 驗證錢包軟件正確處理版本
+4. 關注軟分叉升級公告</code></pre>
+
+      <h2>開發者指南</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>使用葉子版本的最佳實踐:
+
+# Python 範例
+
+TAPROOT_LEAF_TAPSCRIPT = 0xc0
+
+def create_tapleaf(script: bytes, version: int = TAPROOT_LEAF_TAPSCRIPT):
+    """創建 TapLeaf"""
+    if version & 1:
+        raise ValueError("Leaf version must be even")
+    if version > 0xfe:
+        raise ValueError("Leaf version out of range")
+
+    # 目前只支持 TapScript
+    if version != TAPROOT_LEAF_TAPSCRIPT:
+        raise ValueError("Only TapScript (0xc0) is currently defined")
+
+    return {
+        'version': version,
+        'script': script
+    }
+
+def compute_tapleaf_hash(leaf):
+    """計算葉子雜湊"""
+    version = leaf['version']
+    script = leaf['script']
+
+    # TapLeaf tagged hash
+    data = bytes([version]) + compact_size(script) + script
+    return tagged_hash("TapLeaf", data)
+
+def create_control_block(internal_pubkey, leaf_version, merkle_path, output_parity):
+    """創建控制塊"""
+    control_byte = leaf_version | output_parity
+    return bytes([control_byte]) + internal_pubkey + b''.join(merkle_path)</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Script Path：</strong>腳本路徑花費</li>
+        <li><strong>Taproot Annex：</strong>附加數據欄位</li>
+        <li><strong>Tagged Hashes：</strong>標籤雜湊函數</li>
+        <li><strong>Soft Fork Activation：</strong>軟分叉啟用</li>
+        <li><strong>OP_SUCCESS：</strong>成功操作碼</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

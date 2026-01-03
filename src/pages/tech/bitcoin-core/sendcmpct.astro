@@ -1,0 +1,329 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Sendcmpct Message"
+  description="了解 P2P 協議中的 sendcmpct 消息，用於協商緊湊區塊中繼模式。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Sendcmpct' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Feefilter', href: '/tech/bitcoin-core/feefilter' }}
+  nextPage={{ title: 'Compact Blocks', href: '/tech/bitcoin-core/compact-blocks' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Sendcmpct（BIP-152）是比特幣 P2P 協議中用於協商緊湊區塊（Compact Blocks）
+        傳輸的消息。它允許節點選擇高頻寬模式或低頻寬模式，優化區塊傳播效率。
+      </p>
+
+      <h2>Sendcmpct 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Sendcmpct 消息目的:
+
+傳統區塊中繼:
+1. 節點 A 發現新區塊
+2. A 發送 inv 給 B
+3. B 回覆 getdata
+4. A 發送完整區塊 (~1-2 MB)
+
+緊湊區塊中繼:
+1. 節點 A 發現新區塊
+2. A 直接發送緊湊區塊 (~20 KB)
+3. B 重建區塊（使用 mempool 中的交易）
+4. 如果缺少交易，請求補充
+
+優勢:
+- 減少 95%+ 的頻寬
+- 加快區塊傳播
+- 減少孤立區塊
+
+Sendcmpct 作用:
+- 協商使用緊湊區塊
+- 選擇高/低頻寬模式
+- 指定協議版本</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Sendcmpct 消息結構:
+
+┌─────────────────────────────────────────┐
+│ announce (1 byte, bool)                 │
+│ version (8 bytes, uint64_t)             │
+└─────────────────────────────────────────┘
+
+欄位說明:
+
+announce:
+- 0: 低頻寬模式 (Low Bandwidth)
+- 1: 高頻寬模式 (High Bandwidth)
+
+version:
+- 1: 原始緊湊區塊
+- 2: 支持 SegWit
+
+消息範例:
+
+高頻寬模式，版本 2:
+01 02 00 00 00 00 00 00 00
+
+低頻寬模式，版本 2:
+00 02 00 00 00 00 00 00 00
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "sendcmpct" (12 bytes, padded)      │
+│ length: 9 (4 bytes)                          │
+│ checksum (4 bytes)                           │
+│ payload: announce + version (9 bytes)        │
+└──────────────────────────────────────────────┘</code></pre>
+
+      <h2>高頻寬 vs 低頻寬模式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>兩種模式的區別:
+
+高頻寬模式 (announce = 1):
+┌─────────┐    cmpctblock    ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+└─────────┘                  └─────────┘
+
+- A 收到新區塊後立即發送 cmpctblock
+- 不等待 B 的請求
+- 最低延遲
+- 可能浪費頻寬（如果 B 已有區塊）
+
+低頻寬模式 (announce = 0):
+┌─────────┐      inv         ┌─────────┐
+│ Node A  │ ──────────────→  │ Node B  │
+│         │  getdata(cmpct)  │         │
+│         │ ←──────────────  │         │
+│         │    cmpctblock    │         │
+│         │ ──────────────→  │         │
+└─────────┘                  └─────────┘
+
+- A 先發送 inv
+- B 請求緊湊區塊
+- 節省頻寬
+- 多一次往返延遲
+
+選擇策略:
+- 只對少數幾個節點使用高頻寬（通常 3 個）
+- 其他節點使用低頻寬
+- 礦工節點優先使用高頻寬</code></pre>
+
+      <h2>協議版本</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>緊湊區塊協議版本:
+
+Version 1:
+- BIP-152 原始版本
+- 不支持 SegWit
+- 使用 txid 識別交易
+
+Version 2:
+- 支持 SegWit
+- 使用 wtxid 識別交易
+- 包含見證數據
+
+版本協商:
+1. A 發送 sendcmpct(announce=1, version=2)
+2. B 發送 sendcmpct(announce=0, version=2)
+3. 雙方使用共同支持的最高版本
+
+Bitcoin Core 行為:
+- 只對高頻寬連接發送 version 2
+- 低頻寬連接也支持 version 2
+- 不再使用 version 1（SegWit 已啟用）
+
+// 當前所有節點都應該使用 version 2</code></pre>
+
+      <h2>協商流程</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>完整的緊湊區塊協商:
+
+連接建立後:
+┌─────────┐                  ┌─────────┐
+│ Node A  │     version      │ Node B  │
+│         │ ──────────────→  │         │
+│         │     verack       │         │
+│         │ ←──────────────  │         │
+│         │     version      │         │
+│         │ ←──────────────  │         │
+│         │     verack       │         │
+│         │ ──────────────→  │         │
+│         │                  │         │
+│         │  sendcmpct(1,2)  │  (HB)   │
+│         │ ──────────────→  │         │
+│         │  sendcmpct(0,2)  │  (LB)   │
+│         │ ←──────────────  │         │
+└─────────┘                  └─────────┘
+
+說明:
+- A 請求 B 以高頻寬模式發送
+- B 請求 A 以低頻寬模式發送
+- 雙方獨立選擇發送模式
+- 可以隨時更新偏好
+
+更新偏好:
+- 可以多次發送 sendcmpct
+- 最新的消息覆蓋之前的
+- 用於動態調整</code></pre>
+
+      <h2>高頻寬節點選擇</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 的高頻寬策略:
+
+選擇標準:
+1. 最多 3 個高頻寬連接
+2. 優先選擇最快發送區塊的節點
+3. 動態調整
+
+實現:
+class BlockRelay {
+    std::set&lt;NodeId&gt; high_bandwidth_peers;
+    const size_t MAX_HB_PEERS = 3;
+
+    void UpdateHBPeers() {
+        // 排名最快的區塊提供者
+        auto ranked = RankPeersBySpeed();
+
+        // 選擇前 3 個
+        high_bandwidth_peers.clear();
+        for (int i = 0; i &lt; MAX_HB_PEERS && i &lt; ranked.size(); i++) {
+            high_bandwidth_peers.insert(ranked[i]);
+            SendMessage(ranked[i], sendcmpct(true, 2));
+        }
+
+        // 其他設為低頻寬
+        for (auto peer : all_peers) {
+            if (!high_bandwidth_peers.count(peer)) {
+                SendMessage(peer, sendcmpct(false, 2));
+            }
+        }
+    }
+};
+
+評估指標:
+- 區塊到達時間
+- 連接延遲
+- 成功重建率</code></pre>
+
+      <h2>與緊湊區塊的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Sendcmpct 啟用的消息流程:
+
+高頻寬模式:
+1. sendcmpct(1, 2)  -- 協商
+2. cmpctblock       -- 緊湊區塊
+3. getblocktxn      -- 請求缺失交易（如果需要）
+4. blocktxn         -- 補充交易
+
+低頻寬模式:
+1. sendcmpct(0, 2)  -- 協商
+2. inv              -- 區塊通知
+3. getdata(MSG_CMPCT_BLOCK) -- 請求緊湊區塊
+4. cmpctblock       -- 緊湊區塊
+5. getblocktxn      -- 請求缺失交易（如果需要）
+6. blocktxn         -- 補充交易
+
+相關消息類型:
+- sendcmpct: 協商緊湊區塊
+- cmpctblock: 緊湊區塊數據
+- getblocktxn: 請求缺失交易
+- blocktxn: 補充交易數據</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控緊湊區塊狀態
+
+# 查看節點連接的緊湊區塊狀態
+bitcoin-cli getpeerinfo
+[
+  {
+    "id": 1,
+    "addr": "...",
+    "services": "...",
+    "bip152_hb_to": true,   // 對方請求高頻寬
+    "bip152_hb_from": false, // 我們請求低頻寬
+    ...
+  }
+]
+
+# 日誌中的緊湊區塊消息
+# bitcoin.conf
+debug=cmpctblock
+
+# 日誌輸出:
+# "Requesting cmpctblock from peer=5"
+# "Reconstructed block with 2 missing txs"
+# "Successfully reconstructed block"
+
+# 統計信息
+bitcoin-cli getpeerinfo | jq '.[] | {
+  id: .id,
+  hb_to: .bip152_hb_to,
+  hb_from: .bip152_hb_from
+}'</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 sendcmpct
+void PeerManager::SendCompactBlockAnnouncement(CNode& node, bool high_bandwidth) {
+    uint64_t version = 2;  // SegWit 版本
+
+    connman.PushMessage(&node,
+        CNetMsgMaker(node.GetCommonVersion())
+            .Make(NetMsgType::SENDCMPCT, high_bandwidth, version));
+
+    node.m_bip152_highbandwidth_to = high_bandwidth;
+}
+
+// 處理收到的 sendcmpct
+void PeerManager::ProcessSendCmpct(CNode& node, CDataStream& vRecv) {
+    bool announce;
+    uint64_t version;
+    vRecv >> announce >> version;
+
+    // 驗證版本
+    if (version &lt; 1 || version > 2) {
+        return;
+    }
+
+    // 記錄對方的偏好
+    node.m_bip152_highbandwidth_from = announce;
+    node.m_bip152_version = std::min(version, (uint64_t)2);
+}
+
+// 發送區塊時檢查
+void PeerManager::SendBlockAnnouncement(const CBlock& block) {
+    for (auto& node : connman.GetNodes()) {
+        if (node.m_bip152_highbandwidth_from) {
+            // 高頻寬: 直接發送緊湊區塊
+            SendCmpctBlock(node, block);
+        } else {
+            // 低頻寬: 發送 inv
+            SendInv(node, block.GetHash());
+        }
+    }
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Compact Blocks：</strong>緊湊區塊</li>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>Block Relay：</strong>區塊中繼</li>
+        <li><strong>Block Download：</strong>區塊下載</li>
+        <li><strong>P2P Protocol：</strong>點對點協議</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

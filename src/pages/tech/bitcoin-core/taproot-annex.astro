@@ -1,0 +1,346 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Taproot Annex"
+  description="了解 Taproot 見證中的 Annex 欄位，為未來擴展預留的數據空間。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Taproot Annex' },
+  ]}
+  difficulty="advanced"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Leaf Versions', href: '/tech/bitcoin-core/leaf-versions' }}
+  nextPage={{ title: 'Key Path', href: '/tech/bitcoin-core/key-path' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Taproot Annex 是見證堆疊中可選的附加數據欄位，以 0x50 字節開頭。
+        它被設計為未來擴展的預留空間，目前任何使用 annex 的交易都是非標準的。
+      </p>
+
+      <h2>Annex 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot Annex 結構:
+
+見證堆疊（有 annex）:
+┌─────────────────────────────────────────┐
+│ [0]: script argument 1                  │
+│ [1]: script argument 2                  │
+│ ...                                     │
+│ [n-2]: script                           │
+│ [n-1]: control block                    │
+│ [n]: annex (以 0x50 開頭)               │
+└─────────────────────────────────────────┘
+
+Annex 識別:
+- 見證堆疊最後一個元素
+- 第一個字節是 0x50
+- 長度至少 1 字節
+
+Annex 結構:
+┌────────┬─────────────────┐
+│ 0x50   │ annex data      │
+│ 1 byte │ variable        │
+└────────┴─────────────────┘
+
+// 0x50 是 OP_RESERVED，用作標識符</code></pre>
+
+      <h2>為什麼使用 0x50？</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>選擇 0x50 的原因:
+
+1. 與控制塊區分
+   控制塊以葉子版本開頭:
+   - 0xc0, 0xc1 (TapScript)
+   - 其他偶數/奇數版本
+
+   Annex 以 0x50 開頭:
+   - 0x50 不是有效的葉子版本
+   - 可以明確區分兩者
+
+2. 檢測邏輯
+   if last_element[0] == 0x50:
+       annex = last_element
+       control_block = second_last_element
+   else:
+       annex = None
+       control_block = last_element
+
+3. 向後兼容
+   - 0x50 是 OP_RESERVED
+   - 在傳統腳本中會失敗
+   - 不會與任何現有結構衝突
+
+Key Path 中的 Annex:
+見證只有簽名時:
+- 如果簽名以 0x50 開頭 → 無效
+- 如果見證有兩個元素且最後一個以 0x50 開頭 → 那是 annex</code></pre>
+
+      <h2>Sighash 計算中的 Annex</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Annex 參與簽名雜湊計算:
+
+BIP-341 Sighash:
+
+spend_type 編碼:
+spend_type = (ext_flag × 2) + annex_present
+
+其中:
+- ext_flag: 0 (key path) 或 1 (script path)
+- annex_present: 1 如果有 annex，否則 0
+
+如果有 annex:
+sighash_data += sha256(compact_size(annex) || annex)
+
+這意味著:
+1. Annex 被簽名承諾
+2. 修改 annex 會使簽名無效
+3. Annex 不能在簽名後添加
+
+為什麼要簽名 annex？
+- 防止第三方添加數據
+- 確保交易完整性
+- 為未來語義做準備</code></pre>
+
+      <h2>當前狀態</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Annex 的當前限制:
+
+共識規則:
+- Annex 可以存在於 Taproot 見證中
+- 必須以 0x50 開頭
+- 沒有大小限制（除了區塊限制）
+
+策略規則（非標準）:
+- 任何包含 annex 的交易都是非標準的
+- 不會被中繼或挖礦
+- 需要直接提交給礦工
+
+原因:
+1. Annex 語義尚未定義
+2. 防止濫用區塊空間
+3. 為未來升級保留靈活性
+
+檢查交易:
+bitcoin-cli testmempoolaccept '[\"&lt;raw_tx_with_annex&gt;\"]'
+{
+  "allowed": false,
+  "reject-reason": "non-standard (annex)"
+}
+
+// 目前不建議使用 annex</code></pre>
+
+      <h2>潛在用途</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Annex 的可能未來用途:
+
+1. 見證簽名雜湊擴展
+   - 添加額外的 sighash 數據
+   - 支持新的簽名模式
+   - 類似 SIGHASH_ANYPREVOUT 的擴展
+
+2. 腳本執行上下文
+   - 傳遞數據給腳本
+   - 無需在腳本中硬編碼
+   - 類似環境變量
+
+3. 費用相關數據
+   - 費用市場信息
+   - 動態費用調整
+   - 礦工提示
+
+4. 零知識證明
+   - 額外的證明數據
+   - 不在腳本中驗證
+   - 鏈下驗證
+
+5. 交易元數據
+   - 不影響執行
+   - 可被第三方讀取
+   - 輔助索引
+
+提案討論:
+- SIGHASH_GROUP (使用 annex)
+- 見證擴展提案
+- 內省操作碼支持</code></pre>
+
+      <h2>技術細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Annex 處理的實現:
+
+// 解析見證中的 annex
+std::optional&lt;std::vector&lt;uint8_t&gt;&gt; ParseAnnex(
+    const CScriptWitness& witness)
+{
+    if (witness.stack.empty()) {
+        return std::nullopt;
+    }
+
+    const auto& last = witness.stack.back();
+    if (!last.empty() && last[0] == ANNEX_TAG) {
+        return last;
+    }
+
+    return std::nullopt;
+}
+
+// 計算 sighash 時處理 annex
+void ComputeTaprootSighash(
+    const CTransaction& tx,
+    size_t input_index,
+    uint8_t hash_type,
+    const std::optional&lt;std::vector&lt;uint8_t&gt;&gt;& annex,
+    uint256& sighash)
+{
+    CHashWriter ss(HASHER_TAPSIGHASH);
+
+    // ... 其他 sighash 數據 ...
+
+    // spend_type
+    uint8_t spend_type = ext_flag * 2;
+    if (annex) {
+        spend_type |= 1;
+    }
+    ss &lt;&lt; spend_type;
+
+    // 如果有 annex，添加其雜湊
+    if (annex) {
+        CHashWriter sha_annex(SER_GETHASH);
+        sha_annex &lt;&lt; *annex;
+        ss &lt;&lt; sha_annex.GetSHA256();
+    }
+
+    // ...
+}
+
+const uint8_t ANNEX_TAG = 0x50;</code></pre>
+
+      <h2>Key Path 與 Annex</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Key Path 花費中的 Annex:
+
+標準 Key Path 見證:
+witness = [signature]  # 64 或 65 bytes
+
+帶 Annex 的 Key Path:
+witness = [signature, annex]
+
+識別邏輯:
+if len(witness) == 1:
+    # 只有簽名，無 annex
+    signature = witness[0]
+    annex = None
+elif len(witness) == 2 and witness[1][0] == 0x50:
+    # 有 annex
+    signature = witness[0]
+    annex = witness[1]
+else:
+    # 無效的 key path 見證
+    fail
+
+注意事項:
+1. 簽名本身不能以 0x50 開頭
+   - Schnorr 簽名的 r 值不會是 0x50...
+   - 因為 r 是曲線點的 x 座標
+
+2. 見證大小
+   - 無 annex: 1 個元素
+   - 有 annex: 2 個元素
+   - 更多元素: 無效</code></pre>
+
+      <h2>Script Path 與 Annex</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Script Path 花費中的 Annex:
+
+標準 Script Path 見證:
+witness = [
+    script_arg_1,
+    script_arg_2,
+    ...,
+    script,
+    control_block
+]
+
+帶 Annex 的 Script Path:
+witness = [
+    script_arg_1,
+    script_arg_2,
+    ...,
+    script,
+    control_block,
+    annex
+]
+
+識別邏輯:
+# 最後一個元素
+last = witness[-1]
+
+if last[0] == 0x50:
+    # 有 annex
+    annex = last
+    control_block = witness[-2]
+    script = witness[-3]
+    args = witness[:-3]
+else:
+    # 無 annex
+    annex = None
+    control_block = last
+    script = witness[-2]
+    args = witness[:-2]
+
+# 驗證 control_block 的第一個字節
+# 確保它是有效的葉子版本（不是 0x50）</code></pre>
+
+      <h2>安全與最佳實踐</h2>
+
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg my-6">
+        <ul class="text-yellow-800 dark:text-yellow-200 space-y-2 mb-0">
+          <li><strong>不要使用 Annex：</strong>目前任何使用 annex 的交易都是非標準的</li>
+          <li><strong>等待規範：</strong>annex 語義尚未定義，使用可能導致問題</li>
+          <li><strong>簽名包含 Annex：</strong>修改 annex 會使簽名無效</li>
+          <li><strong>監控提案：</strong>關注未來 BIP 對 annex 的定義</li>
+        </ul>
+      </div>
+
+      <h2>未來展望</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Annex 的發展方向:
+
+短期:
+- 保持非標準狀態
+- 社區討論具體用途
+- 可能的 BIP 提案
+
+中期:
+- 定義第一個 annex 用途
+- 軟分叉啟用
+- 工具支持
+
+長期:
+- 多種 annex 應用
+- 版本化的 annex 格式
+- 廣泛的生態系統支持
+
+注意:
+- Annex 已經在共識層預留
+- 添加新功能只需策略層變更
+- 設計使升級盡可能簡單
+
+// Annex 是 Taproot 未來擴展的重要機制</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Leaf Versions：</strong>葉子版本機制</li>
+        <li><strong>Key Path：</strong>密鑰路徑花費</li>
+        <li><strong>Script Path：</strong>腳本路徑花費</li>
+        <li><strong>Sighash Types：</strong>簽名雜湊類型</li>
+        <li><strong>Taproot：</strong>Taproot 升級概述</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>

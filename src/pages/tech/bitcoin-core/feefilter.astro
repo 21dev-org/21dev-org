@@ -1,0 +1,333 @@
+---
+import ArticleLayout from '@/layouts/ArticleLayout.astro';
+---
+
+<ArticleLayout
+  title="Feefilter Message"
+  description="了解 P2P 協議中的 feefilter 消息，減少低費率交易的無效中繼。"
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
+    { label: 'Feefilter' },
+  ]}
+  difficulty="intermediate"
+  readingTime="8 分鐘"
+  prevPage={{ title: 'Message Types', href: '/tech/bitcoin-core/message-types' }}
+  nextPage={{ title: 'Sendcmpct', href: '/tech/bitcoin-core/sendcmpct' }}
+>
+  <section class="space-y-8">
+    <div class="prose prose-lg max-w-none">
+      <p class="lead">
+        Feefilter（BIP-133）是比特幣 P2P 協議中的消息類型，允許節點告知對等節點
+        自己的最低費率要求，從而減少無法被接受的交易的中繼，節省網路頻寬。
+      </p>
+
+      <h2>Feefilter 概述</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Feefilter 消息目的:
+
+問題:
+1. 節點 A 廣播交易給節點 B
+2. 交易費率低於 B 的 mempool 最低要求
+3. B 拒絕交易
+4. 頻寬被浪費
+
+解決方案:
+1. B 發送 feefilter 給 A
+2. 告知 A 自己的最低費率
+3. A 不再發送低於此費率的交易
+4. 節省雙方頻寬
+
+BIP-133 定義:
+- 2016 年引入
+- Bitcoin Core 0.13.0 實現
+- 現在廣泛支持</code></pre>
+
+      <h2>消息格式</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Feefilter 消息結構:
+
+┌─────────────────────────────────────────┐
+│ feerate (8 bytes, little-endian)        │
+└─────────────────────────────────────────┘
+
+feerate:
+- 單位: satoshis per 1000 bytes
+- 類型: uint64_t
+- 範例: 1000 = 1 sat/vB
+
+消息範例:
+feerate = 1000 (0x00000000000003e8)
+
+十六進制:
+e8 03 00 00 00 00 00 00
+
+這表示:
+- 最低費率 1000 sat/kvB
+- 等於 1 sat/vB
+- 低於此費率的交易不要發送
+
+完整 P2P 消息:
+┌──────────────────────────────────────────────┐
+│ magic (4 bytes)                              │
+│ command: "feefilter" (12 bytes, padded)      │
+│ length: 8 (4 bytes)                          │
+│ checksum (4 bytes)                           │
+│ payload: feerate (8 bytes)                   │
+└──────────────────────────────────────────────┘</code></pre>
+
+      <h2>何時發送 Feefilter</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>觸發 Feefilter 的情況:
+
+1. 連接建立後
+   - 初始握手完成
+   - 發送當前的最低費率
+   - 通常接近 0（mempool 未滿）
+
+2. Mempool 達到容量
+   - 開始驅逐低費率交易
+   - 最低費率上升
+   - 發送更新的 feefilter
+
+3. Mempool 清空
+   - 區塊確認後
+   - 最低費率下降
+   - 發送更新的 feefilter
+
+4. 配置變更
+   - minrelaytxfee 改變
+   - 手動調整閾值
+
+Bitcoin Core 的策略:
+- 避免頻繁發送
+- 費率變化超過閾值才更新
+- 防止洩露 mempool 狀態</code></pre>
+
+      <h2>接收方處理</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>收到 Feefilter 後的處理:
+
+1. 記錄對等節點的費率要求
+peer.feefilter = received_feerate
+
+2. 過濾出站交易
+for tx in pending_relay:
+    if tx.feerate &lt; peer.feefilter:
+        skip_relay(tx, peer)
+    else:
+        relay(tx, peer)
+
+3. 動態調整
+- 對方可能多次發送 feefilter
+- 總是使用最新的值
+- 0 表示無限制
+
+實現範例:
+class Peer:
+    def __init__(self):
+        self.fee_filter = 0  # 初始無限制
+
+    def on_feefilter(self, feerate):
+        self.fee_filter = feerate
+
+    def should_relay_tx(self, tx):
+        if self.fee_filter == 0:
+            return True
+        return tx.get_feerate() >= self.fee_filter</code></pre>
+
+      <h2>費率計算</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>費率單位與轉換:
+
+Feefilter 使用:
+- satoshis per 1000 virtual bytes (sat/kvB)
+
+常見表示:
+- sat/vB (satoshis per virtual byte)
+- BTC/kvB (比特幣 per 1000 virtual bytes)
+
+轉換:
+1 sat/vB = 1000 sat/kvB
+1 BTC/kvB = 100,000,000 sat/kvB = 100,000 sat/vB
+
+範例:
+feefilter = 1000 → 1 sat/vB
+feefilter = 5000 → 5 sat/vB
+feefilter = 10000 → 10 sat/vB
+
+計算交易費率:
+tx_feerate = (tx_fee_in_sats × 1000) / tx_vsize
+
+範例:
+tx_fee = 500 sats
+tx_vsize = 250 vB
+tx_feerate = (500 × 1000) / 250 = 2000 sat/kvB = 2 sat/vB
+
+比較:
+if tx_feerate >= feefilter:
+    relay_allowed = True</code></pre>
+
+      <h2>隱私考量</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Feefilter 的隱私影響:
+
+問題:
+- Feefilter 洩露 mempool 狀態
+- 可以推斷節點的交易量
+- 可能被用於指紋識別
+
+緩解措施:
+
+1. 量化費率
+   - 不發送精確值
+   - 使用離散的費率級別
+   - 減少信息洩露
+
+2. 延遲更新
+   - 不立即響應 mempool 變化
+   - 批量更新
+   - 添加隨機延遲
+
+3. 最大/最小限制
+   - 設置合理的範圍
+   - 避免極端值
+
+Bitcoin Core 實現:
+// 費率量化
+CFeeRate GetMinFeeFilter() {
+    CFeeRate rate = ...;
+    // 向上取整到特定精度
+    return rate.RoundUp(...);
+}
+
+// 更新頻率限制
+if (now - last_feefilter_sent &lt; MIN_FEEFILTER_INTERVAL) {
+    return;  // 不要太頻繁發送
+}</code></pre>
+
+      <h2>與其他機制的關係</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Feefilter 與相關機制:
+
+1. minrelaytxfee
+   - 節點的靜態最低中繼費率
+   - 配置文件設置
+   - Feefilter 可能更高（mempool 滿時）
+
+2. mempoolminfee
+   - Mempool 的動態最低費率
+   - 根據容量調整
+   - Feefilter 基於此值
+
+3. incrementalrelayfee
+   - RBF 替換的增量要求
+   - 與 feefilter 獨立
+
+關係:
+feefilter >= max(minrelaytxfee, mempoolminfee)
+
+配置選項:
+# bitcoin.conf
+minrelaytxfee=0.00001  # 1 sat/vB
+maxmempool=300  # MB
+
+命令查詢:
+bitcoin-cli getmempoolinfo
+{
+  "mempoolminfee": 0.00001,
+  "minrelaytxfee": 0.00001,
+  ...
+}</code></pre>
+
+      <h2>調試與監控</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 feefilter 活動
+
+# 查看節點的 mempool 狀態
+bitcoin-cli getmempoolinfo
+{
+  "loaded": true,
+  "size": 5000,
+  "bytes": 2500000,
+  "usage": 8000000,
+  "total_fee": 0.5,
+  "maxmempool": 300000000,
+  "mempoolminfee": 0.00001,
+  "minrelaytxfee": 0.00001
+}
+
+# 查看對等節點信息
+bitcoin-cli getpeerinfo
+[
+  {
+    "id": 1,
+    "minfeefilter": 0.00001000,
+    ...
+  }
+]
+
+# 日誌中的 feefilter 消息
+# ~/.bitcoin/debug.log
+# grep feefilter debug.log
+
+# 設置日誌級別
+# bitcoin.conf
+debug=net
+
+# 輸出範例:
+# "Received feefilter of 0.00001000 from peer=5"
+# "Sending feefilter of 0.00002000 to peer=3"</code></pre>
+
+      <h2>實現細節</h2>
+
+      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+
+// 發送 feefilter
+void PeerManager::MaybeSendFeefilter(CNode& node) {
+    if (!node.IsAddrRelayPeer()) return;
+
+    CAmount currentFilter = ...;  // 計算當前過濾器值
+
+    // 檢查是否需要更新
+    if (currentFilter != node.m_fee_filter_sent) {
+        if (/* 過濾器變化足夠大 */) {
+            connman.PushMessage(&node,
+                CNetMsgMaker(node.GetCommonVersion())
+                    .Make(NetMsgType::FEEFILTER, currentFilter));
+            node.m_fee_filter_sent = currentFilter;
+        }
+    }
+}
+
+// 處理收到的 feefilter
+void PeerManager::ProcessFeefilter(CNode& node, CDataStream& vRecv) {
+    CAmount newFeeFilter;
+    vRecv >> newFeeFilter;
+
+    // 驗證
+    if (newFeeFilter &lt; 0 || newFeeFilter > MAX_MONEY) {
+        return;  // 無效值
+    }
+
+    node.m_fee_filter_received = newFeeFilter;
+}
+
+// 中繼交易時檢查
+bool PeerManager::ShouldRelayTx(const CTransaction& tx, CNode& node) {
+    CFeeRate txFeeRate = GetTxFeeRate(tx);
+    return txFeeRate.GetFeePerK() >= node.m_fee_filter_received;
+}</code></pre>
+
+      <h2>相關概念</h2>
+
+      <ul>
+        <li><strong>Message Types：</strong>P2P 消息類型</li>
+        <li><strong>Mempool Policy：</strong>交易池策略</li>
+        <li><strong>Transaction Fees：</strong>交易手續費</li>
+        <li><strong>Fee Estimation：</strong>費用估算</li>
+        <li><strong>Mempool Eviction：</strong>交易驅逐</li>
+      </ul>
+    </div>
+  </section>
+</ArticleLayout>
