@@ -12,6 +12,22 @@ export default {
       '2xl': '1536px',
     },
     extend: {
+      // Semantic text colors using CSS variables
+      textColor: {
+        'primary': 'var(--text-primary)',
+        'secondary': 'var(--text-secondary)',
+        'tertiary': 'var(--text-tertiary)',
+      },
+      // Semantic border colors using CSS variables
+      borderColor: {
+        'default': 'var(--border-default)',
+        'strong': 'var(--border-strong)',
+      },
+      // Semantic background colors using CSS variables
+      backgroundColor: {
+        'surface': 'var(--surface-elevated)',
+        'secondary': 'var(--bg-secondary)',
+      },
       colors: {
         // Bitcoin Orange
         bitcoin: {

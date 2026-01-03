@@ -11,6 +11,7 @@ import ShareButtons from '@/components/ui/ShareButtons.astro';
 import ReadingTracker from '@/components/ui/ReadingTracker.astro';
 import AutoRelatedContent from '@/components/blocks/AutoRelatedContent.astro';
 import { generateBreadcrumbSchema, generateTechArticleSchema } from '@/utils/schema';
+import { difficultyLabels, difficultyVariants, type Difficulty } from '@/data/constants';
 
 interface BreadcrumbItem {
   label: string;
@@ -23,7 +24,7 @@ interface Props {
   ogImage?: string;
   breadcrumbs: BreadcrumbItem[];
   tags?: string[];
-  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  difficulty?: Difficulty;
   readingTime?: string;
   author?: string;
   date?: Date;
@@ -46,18 +47,6 @@ const {
   nextPage,
   showToc = true,
 } = Astro.props;
-
-const difficultyLabels = {
-  beginner: '入門',
-  intermediate: '進階',
-  advanced: '高級',
-};
-
-const difficultyVariants = {
-  beginner: 'success' as const,
-  intermediate: 'bitcoin' as const,
-  advanced: 'warning' as const,
-};
 
 // Generate structured data schemas
 const currentUrl = Astro.url.pathname;
