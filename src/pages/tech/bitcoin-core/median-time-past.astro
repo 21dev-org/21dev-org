@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        中位時間過去（Median Time Past, MTP）是 BIP-113 引入的時間計算方法，
-        使用過去 11 個區塊時間戳的中位數來判斷時間鎖，防止礦工通過操縱時間戳來繞過時間鎖。
+        中位時間過去（Median Time Past, MTP）是 BIP-113 引入的時間計算方法， 使用過去 11
+        個區塊時間戳的中位數來判斷時間鎖，防止礦工通過操縱時間戳來繞過時間鎖。
       </p>
 
       <h2>為什麼需要 MTP？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊時間戳的問題:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊時間戳的問題:
 
 礦工可以在一定範圍內設置時間戳:
 - 必須 > 前一區塊的 MTP
@@ -43,7 +44,8 @@ MTP 解決方案:
 
       <h2>MTP 計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>計算公式:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>計算公式:
 
 MTP = median(block[n-1], block[n-2], ..., block[n-11])
 
@@ -71,7 +73,8 @@ def get_median_time_past(block_index):
 
       <h2>時間鎖驗證</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-113 之前 vs 之後:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-113 之前 vs 之後:
 
 BIP-113 之前:
 if tx.nLockTime >= 500000000:  # 時間模式
@@ -92,7 +95,8 @@ if tx.nLockTime >= 500000000:  # 時間模式
 
       <h2>對時間鎖的影響</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MTP 導致的時間偏移:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MTP 導致的時間偏移:
 
 特點:
 - MTP 通常比實際時間晚 1-2 小時
@@ -116,7 +120,8 @@ if tx.nLockTime >= 500000000:  # 時間模式
 
       <h2>區塊時間戳規則</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊時間戳的共識規則:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊時間戳的共識規則:
 
 下限:
 - 必須 > MTP
@@ -141,7 +146,8 @@ MTP = 1704067200 (2024-01-01 00:00:00)
 
       <h2>查詢 MTP</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
 
 # 查看區塊的 MTP
 bitcoin-cli getblockheader &lt;hash&gt;
@@ -168,7 +174,8 @@ done</code></pre>
 
       <h2>在腳本中的使用</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CHECKLOCKTIMEVERIFY (CLTV):
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CHECKLOCKTIMEVERIFY (CLTV):
 
 腳本:
 &lt;locktime&gt; OP_CHECKLOCKTIMEVERIFY OP_DROP ...
@@ -193,7 +200,8 @@ def check_sequence_time(input_height, current_height):
 
       <h2>歷史背景</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-113 的歷史:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-113 的歷史:
 
 問題發現:
 - 礦工可以操縱時間戳
@@ -228,7 +236,8 @@ def check_sequence_time(input_height, current_height):
 
       <h2>安全考量</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MTP 的安全邊際:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MTP 的安全邊際:
 
 要操縱 MTP，攻擊者需要:
 1. 控制 6 個以上的最近區塊

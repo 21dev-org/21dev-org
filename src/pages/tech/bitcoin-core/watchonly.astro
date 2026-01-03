@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Wallet Encryption', href: '/tech/bitcoin-core/wallet-encryption' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Watch-Only 錢包？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Watch-Only 錢包？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Watch-Only 錢包允許你監控比特幣地址的餘額和交易，而不需要持有私鑰。
       這對於冷存儲、多簽錢包監控和會計審計非常有用。
@@ -48,10 +50,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="create" class="text-2xl font-bold text-[var(--text-primary)]">創建 Watch-Only 錢包</h2>
 
-    <h3 id="descriptor-wallet" class="text-xl font-semibold text-[var(--text-primary)]">使用描述符（推薦）</h3>
+    <h3 id="descriptor-wallet" class="text-xl font-semibold text-[var(--text-primary)]">
+      使用描述符（推薦）
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建空的描述符錢包（無私鑰）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建空的描述符錢包（無私鑰）
 bitcoin-cli createwallet "watchonly" true true "" false true
 
 # 參數說明：
@@ -83,10 +88,13 @@ bitcoin-cli -rpcwallet=watchonly importdescriptors '[
 ]'</code></pre>
     </div>
 
-    <h3 id="legacy-import" class="text-xl font-semibold text-[var(--text-primary)]">導入單個地址（舊版）</h3>
+    <h3 id="legacy-import" class="text-xl font-semibold text-[var(--text-primary)]">
+      導入單個地址（舊版）
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建舊版錢包
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建舊版錢包
 bitcoin-cli createwallet "watchonly-legacy" true true "" false false
 
 # 導入地址（觸發重新掃描）
@@ -117,7 +125,8 @@ bitcoin-cli -rpcwallet=watchonly-legacy importmulti '[
     <h2 id="operations" class="text-2xl font-bold text-[var(--text-primary)]">錢包操作</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看餘額
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看餘額
 bitcoin-cli -rpcwallet=watchonly getbalance
 
 # 列出未花費輸出
@@ -152,7 +161,8 @@ bitcoin-cli -rpcwallet=watchonly getwalletinfo
     <h2 id="unsigned-tx" class="text-2xl font-bold text-[var(--text-primary)]">創建未簽名交易</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 PSBT 創建未簽名交易
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 PSBT 創建未簽名交易
 # 1. 創建 PSBT
 bitcoin-cli -rpcwallet=watchonly walletcreatefundedpsbt \
   '[]' \
@@ -190,7 +200,8 @@ bitcoin-cli analyzepsbt "cHNidP8BAH..."
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Watch-Only 交易流程：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Watch-Only 交易流程：
 
 ┌─────────────────────────────────────────────────────────────┐
 │  在線電腦（Watch-Only 錢包）                                │
@@ -217,10 +228,13 @@ bitcoin-cli analyzepsbt "cHNidP8BAH..."
   </section>
 
   <section class="space-y-6">
-    <h2 id="xpub" class="text-2xl font-bold text-[var(--text-primary)]">導入 Extended Public Key</h2>
+    <h2 id="xpub" class="text-2xl font-bold text-[var(--text-primary)]">
+      導入 Extended Public Key
+    </h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從 xpub 創建描述符
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 從 xpub 創建描述符
 # BIP-84 (Native SegWit)
 XPUB="xpub6..."
 
@@ -262,7 +276,8 @@ bitcoin-cli -rpcwallet=watchonly importdescriptors '[
     <h2 id="rescan" class="text-2xl font-bold text-[var(--text-primary)]">重新掃描區塊鏈</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導入地址時自動重新掃描
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 導入地址時自動重新掃描
 # （最後一個參數 true 表示 rescan）
 bitcoin-cli -rpcwallet=watchonly importaddress "bc1q..." "label" true
 
@@ -290,7 +305,8 @@ bitcoin-cli -rpcwallet=watchonly abortrescan</code></pre>
     <h2 id="multisig" class="text-2xl font-bold text-[var(--text-primary)]">多簽 Watch-Only</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建 2-of-3 多簽 watch-only 錢包
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建 2-of-3 多簽 watch-only 錢包
 
 # 1. 創建錢包
 bitcoin-cli createwallet "multisig-watch" true true "" false true
@@ -320,7 +336,8 @@ bitcoin-cli -rpcwallet=multisig-watch walletcreatefundedpsbt \
     <h2 id="hwi" class="text-2xl font-bold text-[var(--text-primary)]">硬體錢包整合</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 HWI（Hardware Wallet Interface）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 HWI（Hardware Wallet Interface）
 
 # 1. 安裝 HWI
 pip install hwi
@@ -346,23 +363,34 @@ bitcoin-cli sendrawtransaction "hex"</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">安全監控：</strong>監控餘額而不暴露私鑰</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">安全監控：</strong
+            >監控餘額而不暴露私鑰</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">描述符支持：</strong>使用 xpub 監控完整錢包</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">描述符支持：</strong>使用 xpub 監控完整錢包</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">PSBT 整合：</strong>創建未簽名交易用於冷簽名</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">PSBT 整合：</strong
+            >創建未簽名交易用於冷簽名</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">隱私：</strong>注意保護 xpub 的隱私</span>
+          <span><strong class="text-[var(--text-primary)]">隱私：</strong>注意保護 xpub 的隱私</span
+          >
         </li>
       </ul>
     </div>

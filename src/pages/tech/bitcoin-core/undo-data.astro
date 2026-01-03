@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Fee Estimation', href: '/tech/bitcoin-core/fee-estimation' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Undo Data？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Undo Data？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Undo Data 是 Bitcoin Core 為每個區塊儲存的回滾資訊，記錄了該區塊花費的所有 UTXO。
       當發生區塊鏈重組時，節點使用這些數據來恢復 UTXO 集到之前的狀態。
@@ -49,7 +51,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="file-structure" class="text-2xl font-bold text-[var(--text-primary)]">檔案結構</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Undo 檔案位置
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Undo 檔案位置
 ~/.bitcoin/blocks/rev00000.dat
 ~/.bitcoin/blocks/rev00001.dat
 ...
@@ -67,7 +70,8 @@ ls -lh ~/.bitcoin/blocks/rev*.dat | head -5
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Undo 檔案格式：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Undo 檔案格式：
 
 ┌────────────────────────────────────────────────────┐
 │  Undo Block 1                                      │
@@ -94,7 +98,8 @@ ls -lh ~/.bitcoin/blocks/rev*.dat | head -5
     <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface SpentCoin {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface SpentCoin {
   height: number;       // 創建這個 UTXO 的區塊高度
   coinbase: boolean;    // 是否來自 coinbase
   value: bigint;        // 金額（satoshis）
@@ -170,7 +175,8 @@ class UndoManager {
     <h2 id="reorg" class="text-2xl font-bold text-[var(--text-primary)]">區塊重組流程</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊重組示例：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊重組示例：
 
 原始鏈：
   Block 100 → Block 101 → Block 102A → Block 103A
@@ -189,7 +195,8 @@ class UndoManager {
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ChainState {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ChainState {
   async reorganize(
     oldTip: BlockIndex,
     newTip: BlockIndex
@@ -244,13 +251,14 @@ class UndoManager {
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">重要：</strong>
-        即使啟用 pruning，Bitcoin Core 仍會保留最近區塊的 undo 數據，
-        以支持可能的重組。預設保留約 288 個區塊（約 2 天）的數據。
+        即使啟用 pruning，Bitcoin Core 仍會保留最近區塊的 undo 數據， 以支持可能的重組。預設保留約 288
+        個區塊（約 2 天）的數據。
       </p>
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Pruning 模式下的數據保留
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># Pruning 模式下的數據保留
 # 保留最近 550 MB 的區塊和 undo 數據
 bitcoind -prune=550
 
@@ -265,7 +273,8 @@ bitcoind -prune=550
     <h2 id="verification" class="text-2xl font-bold text-[var(--text-primary)]">驗證與一致性</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Undo 數據的驗證
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Undo 數據的驗證
 class UndoVerifier {
   // 驗證 undo 數據與區塊匹配
   verify(block: Block, undo: BlockUndo): boolean {
@@ -299,23 +308,34 @@ class UndoVerifier {
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">用途：</strong>儲存被花費的 UTXO 以支持區塊回滾</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">用途：</strong>儲存被花費的 UTXO
+            以支持區塊回滾</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">檔案：</strong>rev*.dat 與 blk*.dat 對應</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">檔案：</strong>rev*.dat 與 blk*.dat 對應</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">重組：</strong>使用 undo 數據恢復 UTXO 集</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">重組：</strong>使用 undo 數據恢復 UTXO 集</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">Pruning：</strong>仍保留最近區塊的 undo 數據</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">Pruning：</strong>仍保留最近區塊的 undo 數據</span
+          >
         </li>
       </ul>
     </div>

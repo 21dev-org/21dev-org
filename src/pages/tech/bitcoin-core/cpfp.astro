@@ -18,7 +18,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 CPFP？</h2>
     <p class="text-[var(--text-secondary)]">
-      Child Pays For Parent（CPFP）是一種手續費提升技術，允許交易接收者透過創建一個高手續費的子交易，
+      Child Pays For
+      Parent（CPFP）是一種手續費提升技術，允許交易接收者透過創建一個高手續費的子交易，
       來加速低手續費父交易的確認。這對於無法使用 RBF 的情況特別有用。
     </p>
 
@@ -50,13 +51,16 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="how-it-works" class="text-2xl font-bold text-[var(--text-primary)]">運作原理</h2>
 
-    <h3 id="ancestor-fee-rate" class="text-xl font-semibold text-[var(--text-primary)]">祖先費率計算</h3>
+    <h3 id="ancestor-fee-rate" class="text-xl font-semibold text-[var(--text-primary)]">
+      祖先費率計算
+    </h3>
     <p class="text-[var(--text-secondary)]">
       礦工在選擇交易時，會計算整個交易「包」的平均費率，而不是單個交易的費率：
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>祖先費率 (Ancestor Fee Rate) = 祖先總費用 / 祖先總大小
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>祖先費率 (Ancestor Fee Rate) = 祖先總費用 / 祖先總大小
 
 例如：
 父交易 (Parent):
@@ -75,10 +79,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 礦工會將父子交易一起打包，因為它們的組合費率夠高</code></pre>
     </div>
 
-    <h3 id="mining-algorithm" class="text-xl font-semibold text-[var(--text-primary)]">礦工打包算法</h3>
+    <h3 id="mining-algorithm" class="text-xl font-semibold text-[var(--text-primary)]">
+      礦工打包算法
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface MempoolTransaction {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface MempoolTransaction {
   txid: string;
   fee: number;
   vsize: number;
@@ -154,10 +161,13 @@ function selectTransactionsForBlock(
   <section class="space-y-6">
     <h2 id="fee-calculation" class="text-2xl font-bold text-[var(--text-primary)]">費用計算</h2>
 
-    <h3 id="how-much-to-pay" class="text-xl font-semibold text-[var(--text-primary)]">需要多少費用？</h3>
+    <h3 id="how-much-to-pay" class="text-xl font-semibold text-[var(--text-primary)]">
+      需要多少費用？
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CpfpCalculation {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CpfpCalculation {
   parentTxid: string;
   parentSize: number;    // vBytes
   parentFee: number;     // sats
@@ -208,8 +218,8 @@ console.log(result);
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">成本分析：</strong>
-        CPFP 會產生額外成本，因為你需要為父交易「補貼」費用。
-        如果可能，RBF 通常是更經濟的選擇。CPFP 主要用於接收者無法讓發送者使用 RBF 的情況。
+        CPFP 會產生額外成本，因為你需要為父交易「補貼」費用。 如果可能，RBF 通常是更經濟的選擇。CPFP 主要用於接收者無法讓發送者使用
+        RBF 的情況。
       </p>
     </div>
   </section>
@@ -217,13 +227,16 @@ console.log(result);
   <section class="space-y-6">
     <h2 id="carve-out" class="text-2xl font-bold text-[var(--text-primary)]">CPFP Carve-Out</h2>
 
-    <h3 id="ancestor-limits" class="text-xl font-semibold text-[var(--text-primary)]">祖先限制問題</h3>
+    <h3 id="ancestor-limits" class="text-xl font-semibold text-[var(--text-primary)]">
+      祖先限制問題
+    </h3>
     <p class="text-[var(--text-secondary)]">
       Bitcoin Core 對交易的祖先數量有限制（預設 25 個交易，101 kvB）。這可能阻止 CPFP：
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>問題場景（Lightning Network）：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>問題場景（Lightning Network）：
 
 Alice 和 Bob 有一個 Lightning 通道
 通道關閉交易有兩個輸出：
@@ -237,13 +250,16 @@ Bob 就無法使用 CPFP 提升關閉交易的費用！
 （因為祖先限制已被 Alice 消耗）</code></pre>
     </div>
 
-    <h3 id="carve-out-rule" class="text-xl font-semibold text-[var(--text-primary)]">Carve-Out 規則</h3>
+    <h3 id="carve-out-rule" class="text-xl font-semibold text-[var(--text-primary)]">
+      Carve-Out 規則
+    </h3>
     <p class="text-[var(--text-secondary)]">
       CPFP Carve-Out（BIP-331 的前身）允許一個額外的小型子交易，即使已達到祖先限制：
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Carve-Out 條件：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Carve-Out 條件：
 1. 子交易只有一個未確認的祖先
 2. 子交易大小 ≤ 10,000 vBytes
 3. 祖先數量超過限制最多 1 個
@@ -258,10 +274,13 @@ Bob 輸出 → 1 個 CPFP 交易（carve-out 允許！）</code></pre>
   <section class="space-y-6">
     <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現示例</h2>
 
-    <h3 id="bitcoin-cli" class="text-xl font-semibold text-[var(--text-primary)]">使用 Bitcoin CLI</h3>
+    <h3 id="bitcoin-cli" class="text-xl font-semibold text-[var(--text-primary)]">
+      使用 Bitcoin CLI
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 查看卡住的交易
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 查看卡住的交易
 bitcoin-cli getmempoolentry <parent_txid>
 
 # 2. 查看輸出（找到你控制的輸出）
@@ -288,7 +307,8 @@ bitcoin-cli getmempoolentry <txid> | jq '{ancestorcount, ancestorsize, ancestorf
     <h3 id="programmatic" class="text-xl font-semibold text-[var(--text-primary)]">程式化實現</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CpfpParams {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CpfpParams {
   parentTxid: string;
   parentVout: number;
   parentValue: number;  // sats
@@ -357,8 +377,8 @@ console.log('CPFP transaction:', cpfpTx);</code></pre>
       <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
         <h4 class="font-semibold text-[var(--text-primary)] mb-2">Lightning Network</h4>
         <p class="text-sm text-[var(--text-secondary)]">
-          通道關閉交易可能因手續費過低而卡住。雙方都可以使用 CPFP 來加速確認，
-          這對時間敏感的 HTLC 超時特別重要。
+          通道關閉交易可能因手續費過低而卡住。雙方都可以使用 CPFP 來加速確認， 這對時間敏感的 HTLC
+          超時特別重要。
         </p>
       </div>
       <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
@@ -410,23 +430,37 @@ console.log('CPFP transaction:', cpfpTx);</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">接收者工具：</strong>CPFP 讓接收者可以加速交易，無需發送者配合</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">接收者工具：</strong>CPFP
+            讓接收者可以加速交易，無需發送者配合</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">祖先費率：</strong>礦工按整個交易包的平均費率選擇交易</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">祖先費率：</strong
+            >礦工按整個交易包的平均費率選擇交易</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">Carve-Out：</strong>特殊規則允許 Lightning 雙方都能使用 CPFP</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">Carve-Out：</strong>特殊規則允許 Lightning
+            雙方都能使用 CPFP</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">額外成本：</strong>需要為父交易補貼費用，比 RBF 更貴</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">額外成本：</strong>需要為父交易補貼費用，比
+            RBF 更貴</span
+          >
         </li>
       </ul>
     </div>

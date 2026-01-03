@@ -81,7 +81,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       <h2>各欄位詳解</h2>
 
       <h3>Version（版本）</h3>
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, little-endian
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, little-endian
 版本歷史:
 - 1: 原始版本
 - 2: BIP-34（區塊高度在 coinbase）
@@ -95,7 +96,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 示例: 0x20000002 表示版本 2 + 某個信號位</code></pre>
 
       <h3>Previous Block Hash（前區塊雜湊）</h3>
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 32 bytes, 內部存儲為 little-endian
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 32 bytes, 內部存儲為 little-endian
 // 顯示時通常反轉為 big-endian
 
 創世區塊的 prev_block:
@@ -105,7 +107,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 每個區塊都引用其父區塊的雜湊值</code></pre>
 
       <h3>Merkle Root（Merkle 根）</h3>
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 32 bytes
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 32 bytes
 // 區塊中所有交易 TXID 的 Merkle 樹根
 
 計算過程:
@@ -118,7 +121,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 - 確保交易集合的完整性</code></pre>
 
       <h3>Timestamp（時間戳）</h3>
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, Unix 時間戳（秒）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, Unix 時間戳（秒）
 
 驗證規則:
 1. 必須 > 前 11 個區塊的中位數時間（MTP）
@@ -132,7 +136,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 注意: 時間戳不保證精確，礦工可在一定範圍內調整</code></pre>
 
       <h3>Bits（難度目標）</h3>
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, 緊湊格式的難度目標
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, 緊湊格式的難度目標
 
 格式: [exponent (1 byte)][coefficient (3 bytes)]
 
@@ -147,7 +152,8 @@ target = 0x00ffff × 256^26
 區塊雜湊必須 &lt; target 才有效</code></pre>
 
       <h3>Nonce（隨機數）</h3>
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, 礦工可自由調整
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 4 bytes, 礦工可自由調整
 
 挖礦過程:
 1. 組裝區塊頭
@@ -164,7 +170,8 @@ target = 0x00ffff × 256^26
 
       <h2>區塊雜湊計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
 
 def calculate_block_hash(header_bytes):
     """計算區塊雜湊（雙 SHA-256）"""
@@ -187,7 +194,8 @@ def serialize_header(version, prev_block, merkle_root,
 
       <h2>RPC 查詢</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取區塊頭
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取區塊頭
 bitcoin-cli getblockheader &lt;blockhash&gt;
 {
   "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
@@ -212,7 +220,8 @@ bitcoin-cli getblockheader &lt;blockhash&gt; false</code></pre>
 
       <h2>創世區塊頭</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>創世區塊頭（hex）:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>創世區塊頭（hex）:
 01000000  // version = 1
 00000000000000000000000000000000
 00000000000000000000000000000000  // prev_block (全零)
@@ -239,11 +248,12 @@ ffff001d  // bits = 0x1d00ffff
 
       <h2>區塊頭在 SPV 中的應用</h2>
       <p>
-        輕客戶端只需下載區塊頭（80 bytes/block）即可驗證最長鏈。
-        完整區塊鏈的所有區塊頭約需 60 MB（截至 2024 年）。
+        輕客戶端只需下載區塊頭（80 bytes/block）即可驗證最長鏈。 完整區塊鏈的所有區塊頭約需 60
+        MB（截至 2024 年）。
       </p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// SPV 驗證流程
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// SPV 驗證流程
 1. 下載所有區塊頭
 2. 驗證每個區塊頭的 PoW
 3. 驗證區塊頭形成連續的鏈

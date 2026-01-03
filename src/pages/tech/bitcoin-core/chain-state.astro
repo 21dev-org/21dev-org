@@ -16,15 +16,19 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Block Download', href: '/tech/bitcoin-core/block-download' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Chain State？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Chain State？
+    </h2>
     <p class="text-[var(--text-secondary)]">
-      Chain State（鏈狀態）是 Bitcoin Core 維護的當前區塊鏈狀態，主要包含 UTXO 集合。
-      它儲存在 <code>chainstate/</code> 目錄中，使用 LevelDB 資料庫。
+      Chain State（鏈狀態）是 Bitcoin Core 維護的當前區塊鏈狀態，主要包含 UTXO 集合。 它儲存在 <code
+        >chainstate/</code
+      > 目錄中，使用 LevelDB 資料庫。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">資料目錄結構</h3>
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/
 ├── blocks/
 │   ├── blk00000.dat      # 原始區塊數據
 │   ├── blk00001.dat
@@ -48,7 +52,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="utxo-set" class="text-2xl font-bold text-[var(--text-primary)]">UTXO 集合</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// UTXO 集合中的每個條目
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// UTXO 集合中的每個條目
 interface UTXOEntry {
   // 鍵：txid + vout
   key: {
@@ -80,7 +85,8 @@ interface ChainStateStats {
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 UTXO 集統計
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 UTXO 集統計
 bitcoin-cli gettxoutsetinfo
 
 # 輸出
@@ -110,7 +116,8 @@ bitcoin-cli gettxoutsetinfo "muhash"</code></pre>
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CCoinsViewCache {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CCoinsViewCache {
   // 快取的 UTXO
   private cacheCoins: Map<OutPoint, CCoin>;
 
@@ -174,7 +181,8 @@ bitcoin-cli gettxoutsetinfo "muhash"</code></pre>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">快取層次</h4>
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>UTXO 存取層次：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>UTXO 存取層次：
 
 ┌─────────────────────────────────────────┐
 │         CCoinsViewCache                 │  ← 記憶體快取（最快）
@@ -199,7 +207,8 @@ bitcoin-cli gettxoutsetinfo "muhash"</code></pre>
     <h2 id="block-index" class="text-2xl font-bold text-[var(--text-primary)]">區塊索引</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊索引條目
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊索引條目
 interface CBlockIndex {
   // 區塊頭數據
   hash: Buffer;           // 區塊雜湊
@@ -233,7 +242,8 @@ enum BlockStatus {
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 區塊索引存儲在 blocks/index/
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 區塊索引存儲在 blocks/index/
 ls -la ~/.bitcoin/blocks/index/
 
 # 查看區塊資訊
@@ -251,7 +261,8 @@ bitcoin-cli getblockchaininfo</code></pre>
     <h2 id="validation" class="text-2xl font-bold text-[var(--text-primary)]">區塊驗證</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class BlockValidator {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class BlockValidator {
   private chainstate: CCoinsViewCache;
 
   // 驗證並連接區塊
@@ -315,7 +326,8 @@ bitcoin-cli getblockchaininfo</code></pre>
     <h2 id="reorg" class="text-2xl font-bold text-[var(--text-primary)]">鏈重組</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ChainReorganizer {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class ChainReorganizer {
   // 處理區塊鏈重組
   async reorganize(newTip: CBlockIndex): Promise<boolean> {
     const currentTip = this.chainstate.getBestBlock();
@@ -368,7 +380,8 @@ bitcoin-cli getblockchaininfo</code></pre>
     <h2 id="maintenance" class="text-2xl font-bold text-[var(--text-primary)]">維護命令</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 chainstate 大小
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 chainstate 大小
 du -sh ~/.bitcoin/chainstate/
 
 # 驗證區塊鏈
@@ -398,11 +411,15 @@ bitcoin-cli getmemoryinfo
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">UTXO 集合：</strong>當前所有未花費輸出</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">UTXO 集合：</strong>當前所有未花費輸出</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
@@ -414,7 +431,10 @@ bitcoin-cli getmemoryinfo
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">重建：</strong>使用 -reindex-chainstate 修復損壞</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">重建：</strong>使用 -reindex-chainstate
+            修復損壞</span
+          >
         </li>
       </ul>
     </div>

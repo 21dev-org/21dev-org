@@ -16,11 +16,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Banlist', href: '/tech/bitcoin-core/banlist' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 DbCache？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 DbCache？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       DbCache 是 Bitcoin Core 用於快取 UTXO 集（Unspent Transaction Output Set）的記憶體緩衝區。
-      增加 dbcache 可以顯著提升初始區塊下載（IBD）和區塊驗證的效能，
-      因為更多的 UTXO 查詢可以在記憶體中完成，而不需要讀取磁碟。
+      增加 dbcache 可以顯著提升初始區塊下載（IBD）和區塊驗證的效能， 因為更多的 UTXO
+      查詢可以在記憶體中完成，而不需要讀取磁碟。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
@@ -49,10 +51,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
 
-    <h3 id="dbcache-option" class="text-xl font-semibold text-[var(--text-primary)]">-dbcache 參數</h3>
+    <h3 id="dbcache-option" class="text-xl font-semibold text-[var(--text-primary)]">
+      -dbcache 參數
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行設定（單位：MB）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行設定（單位：MB）
 bitcoind -dbcache=4096  # 4GB
 bitcoind -dbcache=8192  # 8GB
 
@@ -136,8 +141,8 @@ bitcoin-cli getmemoryinfo | jq '.locked.used'</code></pre>
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        dbcache 值應該根據可用記憶體設定，留出足夠空間給作業系統和其他應用程式。
-        IBD 完成後可以降低 dbcache 以釋放記憶體。
+        dbcache 值應該根據可用記憶體設定，留出足夠空間給作業系統和其他應用程式。 IBD 完成後可以降低 dbcache
+        以釋放記憶體。
       </p>
     </div>
   </section>
@@ -148,7 +153,8 @@ bitcoin-cli getmemoryinfo | jq '.locked.used'</code></pre>
     <h3 id="utxo-cache" class="text-xl font-semibold text-[var(--text-primary)]">UTXO 快取結構</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CachedCoin {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CachedCoin {
   txid: string;
   vout: number;
   coin: {
@@ -250,10 +256,13 @@ class CoinsCache {
 }</code></pre>
     </div>
 
-    <h3 id="memory-management" class="text-xl font-semibold text-[var(--text-primary)]">記憶體管理</h3>
+    <h3 id="memory-management" class="text-xl font-semibold text-[var(--text-primary)]">
+      記憶體管理
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CoinsCacheManager {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class CoinsCacheManager {
   private cache: CoinsCache;
   private flushThreshold: number;
 
@@ -288,10 +297,14 @@ class CoinsCache {
   <section class="space-y-6">
     <h2 id="performance" class="text-2xl font-bold text-[var(--text-primary)]">效能影響</h2>
 
-    <h3 id="ibd-performance" class="text-xl font-semibold text-[var(--text-primary)]">初始區塊下載（IBD）</h3>
+    <h3 id="ibd-performance" class="text-xl font-semibold text-[var(--text-primary)]">
+      初始區塊下載（IBD）
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">不同 dbcache 的 IBD 時間</h4>
+      <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">
+        不同 dbcache 的 IBD 時間
+      </h4>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -330,15 +343,14 @@ class CoinsCache {
           </tbody>
         </table>
       </div>
-      <p class="text-xs text-[var(--text-secondary)] mt-2">
-        * 時間因 CPU、網路和具體磁碟型號而異
-      </p>
+      <p class="text-xs text-[var(--text-secondary)] mt-2">* 時間因 CPU、網路和具體磁碟型號而異</p>
     </div>
 
     <h3 id="flush-frequency" class="text-xl font-semibold text-[var(--text-primary)]">刷新頻率</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>dbcache 大小與刷新頻率的關係：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>dbcache 大小與刷新頻率的關係：
 
 450 MB（預設）：
   - 約每 1,000-2,000 個區塊刷新一次
@@ -363,7 +375,8 @@ class CoinsCache {
     <h3 id="memory-info" class="text-xl font-semibold text-[var(--text-primary)]">記憶體資訊</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看記憶體使用情況
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看記憶體使用情況
 bitcoin-cli getmemoryinfo
 
 # 輸出示例
@@ -388,7 +401,8 @@ bitcoin-cli getblockchaininfo</code></pre>
     <h3 id="debug-log" class="text-xl font-semibold text-[var(--text-primary)]">調試日誌</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 監控快取刷新
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 監控快取刷新
 tail -f ~/.bitcoin/debug.log | grep -E "(cache|flush|Flushing)"
 
 # 典型的刷新日誌
@@ -424,7 +438,8 @@ tail -f ~/.bitcoin/debug.log | grep -E "(cache|flush|Flushing)"
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">IBD 優化配置示例</h4>
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - IBD 優化配置
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf - IBD 優化配置
 # 根據可用記憶體調整
 dbcache=4096
 
@@ -442,23 +457,35 @@ maxuploadtarget=0</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">作用：</strong>快取 UTXO 集，減少磁碟 I/O</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">作用：</strong>快取 UTXO 集，減少磁碟 I/O</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">預設值：</strong>450 MB，可增加到 16 GB</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">預設值：</strong>450 MB，可增加到 16 GB</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">IBD 優化：</strong>增加 dbcache 可顯著加快同步</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">IBD 優化：</strong>增加 dbcache
+            可顯著加快同步</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">注意：</strong>需根據系統記憶體合理設定</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">注意：</strong
+            >需根據系統記憶體合理設定</span
+          >
         </li>
       </ul>
     </div>

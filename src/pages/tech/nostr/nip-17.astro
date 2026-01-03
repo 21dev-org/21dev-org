@@ -23,9 +23,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 >
   <h2 id="overview">概述</h2>
   <p>
-    NIP-17 定義了 Nostr 的私密直接訊息標準，取代了舊的 NIP-04。
-    它結合 NIP-44 加密和 NIP-59 禮物包裝機制，不僅加密訊息內容，
-    還隱藏發送者身份、接收者身份和發送時間等中繼資料。
+    NIP-17 定義了 Nostr 的私密直接訊息標準，取代了舊的 NIP-04。 它結合 NIP-44 加密和 NIP-59
+    禮物包裝機制，不僅加密訊息內容， 還隱藏發送者身份、接收者身份和發送時間等中繼資料。
   </p>
 
   <div class="p-4 bg-green-500/10 border border-green-500/30 rounded-lg my-6">
@@ -92,7 +91,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
         <tr>
           <td class="border border-[var(--border-default)] p-3">內容加密</td>
           <td class="border border-[var(--border-default)] p-3 text-yellow-600">AES-CBC</td>
-          <td class="border border-[var(--border-default)] p-3 text-green-600">NIP-44 (XChaCha20)</td>
+          <td class="border border-[var(--border-default)] p-3 text-green-600"
+            >NIP-44 (XChaCha20)</td
+          >
         </tr>
         <tr>
           <td class="border border-[var(--border-default)] p-3">發送者隱私</td>
@@ -177,32 +178,38 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="space-y-4 my-6">
     <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
       <div class="flex items-center gap-3 mb-2">
-        <span class="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">1</span>
+        <span
+          class="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm"
+          >1</span
+        >
         <h4 class="font-semibold text-[var(--text-primary)]">Rumor（謠言）</h4>
       </div>
       <p class="text-sm text-[var(--text-secondary)] ml-11">
-        未簽名的 kind 14/15 事件，包含實際訊息內容。
-        沒有 <code>id</code> 和 <code>sig</code> 欄位，提供可否認性。
+        未簽名的 kind 14/15 事件，包含實際訊息內容。 沒有 <code>id</code> 和 <code>sig</code> 欄位，提供可否認性。
       </p>
     </div>
     <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
       <div class="flex items-center gap-3 mb-2">
-        <span class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">2</span>
+        <span
+          class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm"
+          >2</span
+        >
         <h4 class="font-semibold text-[var(--text-primary)]">Seal（密封）- Kind 13</h4>
       </div>
       <p class="text-sm text-[var(--text-secondary)] ml-11">
-        由發送者簽名，內容是 NIP-44 加密的 Rumor。
-        時間戳隨機化，無標籤洩露資訊。
+        由發送者簽名，內容是 NIP-44 加密的 Rumor。 時間戳隨機化，無標籤洩露資訊。
       </p>
     </div>
     <div class="p-4 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)]">
       <div class="flex items-center gap-3 mb-2">
-        <span class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">3</span>
+        <span
+          class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm"
+          >3</span
+        >
         <h4 class="font-semibold text-[var(--text-primary)]">Gift Wrap（禮物包裝）- Kind 1059</h4>
       </div>
       <p class="text-sm text-[var(--text-secondary)] ml-11">
-        由隨機一次性密鑰簽名，內容是 NIP-44 加密的 Seal。
-        只有 <code>p</code> 標籤暴露接收者。
+        由隨機一次性密鑰簽名，內容是 NIP-44 加密的 Seal。 只有 <code>p</code> 標籤暴露接收者。
       </p>
     </div>
   </div>
@@ -395,9 +402,7 @@ function unwrapGiftWrap(
 }`}</code></pre>
 
   <h2 id="dm-relays">私訊中繼器 (Kind 10050)</h2>
-  <p>
-    用戶應該發布 kind 10050 事件，指定接收私訊的中繼器：
-  </p>
+  <p>用戶應該發布 kind 10050 事件，指定接收私訊的中繼器：</p>
 
   <pre><code class="language-typescript" is:raw>{`// 發布私訊中繼器列表
 function publishDMRelays(
@@ -434,8 +439,7 @@ async function getDMRelays(
 
   <h2 id="chat-rooms">聊天室識別</h2>
   <p>
-    聊天室由發送者公鑰加上所有 <code>p</code> 標籤的組合來識別。
-    添加或移除參與者會建立新的聊天室。
+    聊天室由發送者公鑰加上所有 <code>p</code> 標籤的組合來識別。 添加或移除參與者會建立新的聊天室。
   </p>
 
   <pre><code class="language-typescript" is:raw>{`// 計算聊天室 ID
@@ -521,8 +525,7 @@ function subscribeToMessages(
 
   <h2 id="relay-protection">中繼器保護</h2>
   <p>
-    支援 NIP-42 認證的中繼器可以只向 <code>p</code> 標籤中的用戶提供 kind 1059 事件，
-    進一步保護隱私：
+    支援 NIP-42 認證的中繼器可以只向 <code>p</code> 標籤中的用戶提供 kind 1059 事件， 進一步保護隱私：
   </p>
 
   <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg my-6">
@@ -554,8 +557,8 @@ function subscribeToMessages(
   <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg my-6">
     <p class="text-amber-700 dark:text-amber-300 font-medium mb-2">注意</p>
     <p class="text-[var(--text-secondary)] text-sm">
-      對於需要前向保密（Forward Secrecy）的高度敏感通訊，
-      考慮使用支援 PFS 的專用協議。NIP-17 適合一般私訊需求。
+      對於需要前向保密（Forward Secrecy）的高度敏感通訊， 考慮使用支援 PFS 的專用協議。NIP-17
+      適合一般私訊需求。
     </p>
   </div>
 
@@ -570,8 +573,21 @@ function subscribeToMessages(
 
   <h2 id="resources">參考資源</h2>
   <ul>
-    <li><a href="https://github.com/nostr-protocol/nips/blob/master/17.md" target="_blank" rel="noopener">NIP-17 規範原文</a></li>
-    <li><a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener">nostr-tools 函式庫</a></li>
-    <li><a href="https://github.com/nostr-protocol/nips/blob/master/59.md" target="_blank" rel="noopener">NIP-59 禮物包裝規範</a></li>
+    <li>
+      <a
+        href="https://github.com/nostr-protocol/nips/blob/master/17.md"
+        target="_blank"
+        rel="noopener">NIP-17 規範原文</a>
+    </li>
+    <li>
+      <a href="https://github.com/nbd-wtf/nostr-tools" target="_blank" rel="noopener"
+        >nostr-tools 函式庫</a>
+    </li>
+    <li>
+      <a
+        href="https://github.com/nostr-protocol/nips/blob/master/59.md"
+        target="_blank"
+        rel="noopener">NIP-59 禮物包裝規範</a>
+    </li>
   </ul>
 </ArticleLayout>

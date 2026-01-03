@@ -16,10 +16,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Tor Integration', href: '/tech/bitcoin-core/tor' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Pruning？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Pruning？
+    </h2>
     <p class="text-[var(--text-secondary)]">
-      Pruning（修剪）是 Bitcoin Core 的一項功能，允許節點在完成驗證後刪除舊的區塊數據，只保留 UTXO 集合和最近的區塊。
-      這讓用戶可以在有限的硬碟空間下運行完整驗證節點。
+      Pruning（修剪）是 Bitcoin Core 的一項功能，允許節點在完成驗證後刪除舊的區塊數據，只保留 UTXO
+      集合和最近的區塊。 這讓用戶可以在有限的硬碟空間下運行完整驗證節點。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
@@ -72,7 +74,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h3 id="pruning-process" class="text-xl font-semibold text-[var(--text-primary)]">修剪流程</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>初始區塊下載（IBD）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>初始區塊下載（IBD）
         ↓
 接收區塊 → 完整驗證 → 更新 UTXO → 寫入磁碟
                                       ↓
@@ -93,7 +96,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 最小修剪（550 MiB 區塊數據）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 最小修剪（550 MiB 區塊數據）
 bitcoind -prune=550
 
 # 建議設定（2 GB 區塊數據）
@@ -149,7 +153,8 @@ echo "prune=2000" >> ~/.bitcoin/bitcoin.conf</code></pre>
     <h3 id="manual-pruning" class="text-xl font-semibold text-[var(--text-primary)]">手動修剪</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用手動修剪模式
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用手動修剪模式
 bitcoind -prune=1
 
 # 手動修剪到指定高度
@@ -164,10 +169,13 @@ bitcoin-cli pruneblockchain 800000
 bitcoin-cli getblockchaininfo | grep prune</code></pre>
     </div>
 
-    <h3 id="rpc-commands" class="text-xl font-semibold text-[var(--text-primary)]">相關 RPC 命令</h3>
+    <h3 id="rpc-commands" class="text-xl font-semibold text-[var(--text-primary)]">
+      相關 RPC 命令
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊鏈資訊
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊鏈資訊
 bitcoin-cli getblockchaininfo
 # {
 #   "pruned": true,
@@ -225,7 +233,9 @@ bitcoin-cli gettxoutsetinfo
       </ul>
     </div>
 
-    <h3 id="still-possible" class="text-xl font-semibold text-[var(--text-primary)]">仍然可行的功能</h3>
+    <h3 id="still-possible" class="text-xl font-semibold text-[var(--text-primary)]">
+      仍然可行的功能
+    </h3>
 
     <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
       <ul class="text-sm text-[var(--text-secondary)] space-y-2">
@@ -248,7 +258,8 @@ bitcoin-cli gettxoutsetinfo
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/blocks/
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/blocks/
 ├── blk00000.dat      # 區塊數據
 ├── blk00001.dat
 ├── ...
@@ -262,10 +273,13 @@ bitcoin-cli gettxoutsetinfo
     └── ...</code></pre>
     </div>
 
-    <h3 id="pruning-algorithm" class="text-xl font-semibold text-[var(--text-primary)]">修剪演算法</h3>
+    <h3 id="pruning-algorithm" class="text-xl font-semibold text-[var(--text-primary)]">
+      修剪演算法
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface PruneState {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface PruneState {
   pruneTarget: number;      // 目標保留大小（位元組）
   currentSize: number;      // 當前區塊數據大小
   pruneHeight: number;      // 已修剪到的高度
@@ -352,13 +366,16 @@ class FileBasedPruner {
   <section class="space-y-6">
     <h2 id="network-impact" class="text-2xl font-bold text-[var(--text-primary)]">網路影響</h2>
 
-    <h3 id="serving-blocks" class="text-xl font-semibold text-[var(--text-primary)]">區塊服務能力</h3>
+    <h3 id="serving-blocks" class="text-xl font-semibold text-[var(--text-primary)]">
+      區塊服務能力
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <p class="text-[var(--text-secondary)] mb-4">
         修剪節點會在 P2P 網路中廣播其能提供的區塊範圍：
       </p>
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>服務標誌位：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>服務標誌位：
 - NODE_NETWORK (1)        : 可以提供完整區塊歷史
 - NODE_NETWORK_LIMITED (1024) : 只能提供最近的區塊
 
@@ -368,14 +385,19 @@ class FileBasedPruner {
 - 仍然可以中繼新交易和區塊</code></pre>
     </div>
 
-    <h3 id="ibd-peers" class="text-xl font-semibold text-[var(--text-primary)]">IBD 對等節點選擇</h3>
+    <h3 id="ibd-peers" class="text-xl font-semibold text-[var(--text-primary)]">
+      IBD 對等節點選擇
+    </h3>
     <p class="text-[var(--text-secondary)]">
-      新節點在進行初始區塊下載時，會優先連接具有 NODE_NETWORK 標誌的完整節點，因為修剪節點無法提供完整歷史。
+      新節點在進行初始區塊下載時，會優先連接具有 NODE_NETWORK
+      標誌的完整節點，因為修剪節點無法提供完整歷史。
     </p>
   </section>
 
   <section class="space-y-6">
-    <h2 id="wallet-considerations" class="text-2xl font-bold text-[var(--text-primary)]">錢包注意事項</h2>
+    <h2 id="wallet-considerations" class="text-2xl font-bold text-[var(--text-primary)]">
+      錢包注意事項
+    </h2>
 
     <h3 id="new-wallet" class="text-xl font-semibold text-[var(--text-primary)]">新錢包</h3>
     <p class="text-[var(--text-secondary)]">
@@ -389,7 +411,8 @@ class FileBasedPruner {
       <p class="text-sm text-[var(--text-secondary)] mb-4">
         如果導入一個有歷史交易的密鑰，修剪節點可能無法找到相關交易：
       </p>
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 這可能不會找到所有歷史交易
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 這可能不會找到所有歷史交易
 bitcoin-cli importprivkey "your-private-key"
 
 # 解決方案 1：使用 rescanblockchain 掃描保留的區塊
@@ -407,7 +430,9 @@ bitcoin-cli importdescriptors '[{
   </section>
 
   <section class="space-y-6">
-    <h2 id="vs-alternatives" class="text-2xl font-bold text-[var(--text-primary)]">與其他方案比較</h2>
+    <h2 id="vs-alternatives" class="text-2xl font-bold text-[var(--text-primary)]">
+      與其他方案比較
+    </h2>
 
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -463,7 +488,8 @@ bitcoin-cli importdescriptors '[{
     <h3 id="fresh-install" class="text-xl font-semibold text-[var(--text-primary)]">全新安裝</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 創建配置文件
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 創建配置文件
 mkdir -p ~/.bitcoin
 cat > ~/.bitcoin/bitcoin.conf << 'EOF'
 # 啟用修剪，保留 2 GB 區塊數據
@@ -481,10 +507,13 @@ bitcoind
 bitcoin-cli getblockchaininfo</code></pre>
     </div>
 
-    <h3 id="convert-existing" class="text-xl font-semibold text-[var(--text-primary)]">轉換現有節點</h3>
+    <h3 id="convert-existing" class="text-xl font-semibold text-[var(--text-primary)]">
+      轉換現有節點
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 停止節點
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 停止節點
 bitcoin-cli stop
 
 # 2. 編輯配置文件
@@ -502,8 +531,7 @@ bitcoind
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        如果之前啟用了 txindex，需要在轉換前禁用它，否則節點會報錯。
-        禁用 txindex 後需要重新建立索引或刪除索引文件。
+        如果之前啟用了 txindex，需要在轉換前禁用它，否則節點會報錯。 禁用 txindex 後需要重新建立索引或刪除索引文件。
       </p>
     </div>
   </section>
@@ -536,23 +564,37 @@ bitcoind
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">完整驗證：</strong>修剪節點驗證所有交易和區塊，安全性與完整節點相同</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">完整驗證：</strong
+            >修剪節點驗證所有交易和區塊，安全性與完整節點相同</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">低存儲需求：</strong>只需約 10 GB 即可運行完整驗證節點</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">低存儲需求：</strong>只需約 10 GB
+            即可運行完整驗證節點</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">保留 UTXO：</strong>所有未花費輸出都被保留，支援正常交易</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">保留 UTXO：</strong
+            >所有未花費輸出都被保留，支援正常交易</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">有限服務：</strong>無法為其他節點提供歷史區塊，無法使用 txindex</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">有限服務：</strong
+            >無法為其他節點提供歷史區塊，無法使用 txindex</span
+          >
         </li>
       </ul>
     </div>

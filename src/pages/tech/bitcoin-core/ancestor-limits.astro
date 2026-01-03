@@ -24,7 +24,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>基本概念</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>祖先（Ancestors）:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>祖先（Ancestors）:
 當前交易依賴的所有未確認交易
 
     TX_A (祖先)
@@ -86,7 +87,8 @@ TX_A 的後代: TX_B, TX_C</code></pre>
 
       <h2>限制的計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 接受新交易時的檢查
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 接受新交易時的檢查
 
 bool CheckAncestorLimits(const CTxMemPool& pool, const CTransaction& tx)
 {
@@ -122,7 +124,8 @@ bool CheckAncestorLimits(const CTxMemPool& pool, const CTransaction& tx)
 
       <h3>1. CPFP 鏈長度限制</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 多次 CPFP 提速
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 多次 CPFP 提速
 
 TX_1 (低費率) ← 卡住
   ↓
@@ -143,7 +146,8 @@ TX_26 ← 被拒絕！"too-long-mempool-chain"
 
       <h3>2. 批量支付限制</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 交易所批量提款
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 交易所批量提款
 
 TX_batch:
   - output 1: user_1
@@ -168,7 +172,8 @@ TX_batch
 
       <h3>3. 閃電網路影響</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 通道關閉和 HTLC
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: 通道關閉和 HTLC
 
 承諾交易 (1 個)
   ├→ to_local 輸出的花費
@@ -181,11 +186,10 @@ TX_batch
 這限制了同時處理的 HTLC 數量</code></pre>
 
       <h2>CPFP Carve-out</h2>
-      <p>
-        為了幫助閃電網路，Bitcoin Core 實現了一個例外：
-      </p>
+      <p>為了幫助閃電網路，Bitcoin Core 實現了一個例外：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CPFP Carve-out 規則 (BIP-331 部分)
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CPFP Carve-out 規則 (BIP-331 部分)
 
 條件:
 1. 父交易只有 2 個輸出（典型的 LN 承諾交易）
@@ -202,7 +206,8 @@ TX_batch
 
       <h2>配置調整</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf
 
 # 增加限制（不推薦，可能導致 DoS）
 limitancestorcount=50
@@ -221,7 +226,8 @@ bitcoin-cli getmempoolinfo
 
       <h2>錯誤處理</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 發送交易時可能遇到的錯誤
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 發送交易時可能遇到的錯誤
 
 bitcoin-cli sendrawtransaction &lt;hex&gt;
 
@@ -246,8 +252,8 @@ bitcoin-cli getmempoolentry &lt;txid&gt;
         <h4 class="text-blue-800 dark:text-blue-200 font-semibold mb-2">Cluster Mempool</h4>
         <p class="text-blue-800 dark:text-blue-200 mb-0">
           正在開發的 Cluster Mempool 將用「cluster 限制」替代祖先/後代限制。
-          這提供了更靈活的拓撲，同時保持 DoS 保護。新的限制將基於整個
-          connected component 而不是單個交易的視角。
+          這提供了更靈活的拓撲，同時保持 DoS 保護。新的限制將基於整個 connected component
+          而不是單個交易的視角。
         </p>
       </div>
 

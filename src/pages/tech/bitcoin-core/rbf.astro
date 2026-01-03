@@ -54,7 +54,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF 信號條件：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF 信號條件：
 任一輸入的 nSequence < 0xFFFFFFFE (4294967294)
 
 常見設定：
@@ -67,40 +68,57 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 （即使 B 本身沒有 RBF 信號）</code></pre>
     </div>
 
-    <h3 id="replacement-rules" class="text-xl font-semibold text-[var(--text-primary)]">替換規則</h3>
+    <h3 id="replacement-rules" class="text-xl font-semibold text-[var(--text-primary)]">
+      替換規則
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <ul class="space-y-4 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >1</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">原始交易必須有 RBF 信號</strong>
             <p class="text-sm">至少一個輸入的 nSequence &lt; 0xFFFFFFFE</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >2</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">替換交易必須花費相同的輸入</strong>
             <p class="text-sm">至少花費一個與原始交易相同的輸入</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >3</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">更高的絕對手續費</strong>
             <p class="text-sm">替換交易的手續費必須高於被替換的所有交易總和</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >4</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">支付中繼費用</strong>
             <p class="text-sm">額外手續費至少要覆蓋替換交易的最小中繼費用</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">5</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >5</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">替換數量限制</strong>
             <p class="text-sm">最多替換 100 個交易（包括子交易）</p>
@@ -113,10 +131,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
 
-    <h3 id="creating-rbf" class="text-xl font-semibold text-[var(--text-primary)]">創建 RBF 交易</h3>
+    <h3 id="creating-rbf" class="text-xl font-semibold text-[var(--text-primary)]">
+      創建 RBF 交易
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface TxInput {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface TxInput {
   txid: string;
   vout: number;
   sequence: number;
@@ -192,10 +213,13 @@ function canReplace(
 }</code></pre>
     </div>
 
-    <h3 id="bitcoin-cli" class="text-xl font-semibold text-[var(--text-primary)]">使用 Bitcoin CLI</h3>
+    <h3 id="bitcoin-cli" class="text-xl font-semibold text-[var(--text-primary)]">
+      使用 Bitcoin CLI
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建啟用 RBF 的交易
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建啟用 RBF 的交易
 bitcoin-cli createrawtransaction \
   '[{"txid":"abc...","vout":0,"sequence":4294967293}]' \
   '{"bc1q...":0.01}'
@@ -222,10 +246,12 @@ bitcoin-cli getmempoolentry <txid> | jq '.bip125-replaceable'</code></pre>
   <section class="space-y-6">
     <h2 id="full-rbf" class="text-2xl font-bold text-[var(--text-primary)]">Full RBF</h2>
 
-    <h3 id="what-is-full-rbf" class="text-xl font-semibold text-[var(--text-primary)]">什麼是 Full RBF？</h3>
+    <h3 id="what-is-full-rbf" class="text-xl font-semibold text-[var(--text-primary)]">
+      什麼是 Full RBF？
+    </h3>
     <p class="text-[var(--text-secondary)]">
-      Full RBF 允許替換任何未確認交易，即使它沒有明確的 RBF 信號。
-      這在 Bitcoin Core 24.0 中引入，預設為禁用。
+      Full RBF 允許替換任何未確認交易，即使它沒有明確的 RBF 信號。 這在 Bitcoin Core 24.0
+      中引入，預設為禁用。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
@@ -265,10 +291,13 @@ bitcoin-cli getmempoolentry <txid> | jq '.bip125-replaceable'</code></pre>
       </div>
     </div>
 
-    <h3 id="enable-full-rbf" class="text-xl font-semibold text-[var(--text-primary)]">啟用 Full RBF</h3>
+    <h3 id="enable-full-rbf" class="text-xl font-semibold text-[var(--text-primary)]">
+      啟用 Full RBF
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
 bitcoind -mempoolfullrbf=1
 
 # 配置文件
@@ -281,8 +310,8 @@ bitcoin-cli getmempoolinfo | jq '.fullrbf'</code></pre>
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        Full RBF 仍有爭議。它提高了礦工收益和用戶手續費提升的靈活性，
-        但破壞了某些依賴 0-conf 的商業模式。大多數礦工已啟用 Full RBF。
+        Full RBF 仍有爭議。它提高了礦工收益和用戶手續費提升的靈活性， 但破壞了某些依賴 0-conf 的商業模式。大多數礦工已啟用
+        Full RBF。
       </p>
     </div>
   </section>
@@ -290,10 +319,13 @@ bitcoin-cli getmempoolinfo | jq '.fullrbf'</code></pre>
   <section class="space-y-6">
     <h2 id="fee-bumping" class="text-2xl font-bold text-[var(--text-primary)]">手續費提升策略</h2>
 
-    <h3 id="when-to-bump" class="text-xl font-semibold text-[var(--text-primary)]">何時提升手續費</h3>
+    <h3 id="when-to-bump" class="text-xl font-semibold text-[var(--text-primary)]">
+      何時提升手續費
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface MempoolStatus {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface MempoolStatus {
   txid: string;
   fee: number;
   vsize: number;
@@ -376,10 +408,13 @@ function calculateBumpCost(
       </ul>
     </div>
 
-    <h3 id="detecting-rbf" class="text-xl font-semibold text-[var(--text-primary)]">檢測 RBF 交易</h3>
+    <h3 id="detecting-rbf" class="text-xl font-semibold text-[var(--text-primary)]">
+      檢測 RBF 交易
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>function checkRbfStatus(tx: Transaction): 'rbf' | 'no-rbf' | 'inherited' {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>function checkRbfStatus(tx: Transaction): 'rbf' | 'no-rbf' | 'inherited' {
   // 直接 RBF 信號
   const hasDirectSignal = tx.inputs.some(
     input => input.sequence < 0xFFFFFFFE
@@ -451,23 +486,37 @@ async function isPaymentSafe(txid: string): Promise<boolean> {
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">手續費提升：</strong>RBF 允許在交易未確認前提高手續費</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">手續費提升：</strong>RBF
+            允許在交易未確認前提高手續費</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">信號機制：</strong>nSequence &lt; 0xFFFFFFFE 表示交易可被替換</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">信號機制：</strong>nSequence &lt; 0xFFFFFFFE
+            表示交易可被替換</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">繼承性：</strong>花費 RBF 輸出的交易也被視為可替換</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">繼承性：</strong>花費 RBF
+            輸出的交易也被視為可替換</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">0-conf 風險：</strong>RBF 交易可以被替換，不應信任未確認狀態</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">0-conf 風險：</strong>RBF
+            交易可以被替換，不應信任未確認狀態</span
+          >
         </li>
       </ul>
     </div>

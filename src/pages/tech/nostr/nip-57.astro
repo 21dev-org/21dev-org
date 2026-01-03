@@ -25,15 +25,17 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
     <p class="text-sm text-yellow-700 dark:text-yellow-400">
       <strong>前置要求：</strong>
-      Zaps 需要收款方設定支援 NIP-57 的閃電網路地址（Lightning Address），
-      以及發送方需要有閃電網路錢包。
+      Zaps 需要收款方設定支援 NIP-57 的閃電網路地址（Lightning Address）， 以及發送方需要有閃電網路錢包。
     </p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">運作流程</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`1. 發送方請求 Zap
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`1. 發送方請求 Zap
    └─> 客戶端從收款方的 kind 0 取得 lud16（Lightning Address）
 
 2. 取得發票
@@ -57,8 +59,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     由發送方建立，嵌入在 LNURL 請求中：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`{
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`{
   "kind": 9734,
   "content": "Great post! ⚡",  // 可選的 Zap 訊息
   "tags": [
@@ -76,11 +81,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">Zap 收據（kind 9735）</h3>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    由 LNURL 伺服器在收到付款後發布：
-  </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`{
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">由 LNURL 伺服器在收到付款後發布：</p>
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`{
   "kind": 9735,
   "content": "",
   "tags": [
@@ -100,9 +106,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">設定接收 Zaps</h2>
 
-  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">1. 設定 Lightning Address</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 在 kind 0 (metadata) 中設定
+  <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">
+    1. 設定 Lightning Address
+  </h3>
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 在 kind 0 (metadata) 中設定
 {
   "kind": 0,
   "content": JSON.stringify({
@@ -120,8 +131,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     LNURL 伺服器必須支援 NIP-57 才能正確處理 Zaps：
   </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// LNURL-pay 回應必須包含
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// LNURL-pay 回應必須包含
 {
   "callback": "https://...",
   "minSendable": 1000,
@@ -134,8 +148,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發送 Zap</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`import { nip57 } from 'nostr-tools'
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`import { nip57 } from 'nostr-tools'
 
 async function sendZap({
   recipientPubkey,
@@ -186,8 +203,11 @@ async function sendZap({
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">驗證 Zap 收據</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`import { nip57, verifyEvent } from 'nostr-tools'
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`import { nip57, verifyEvent } from 'nostr-tools'
 
 function validateZapReceipt(zapReceipt, expectedLnurlPubkey) {
   // 1. 驗證簽名
@@ -229,8 +249,11 @@ function validateZapReceipt(zapReceipt, expectedLnurlPubkey) {
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">訂閱 Zaps</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 訂閱收到的 Zaps
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 訂閱收到的 Zaps
 function subscribeToMyZaps(relay, myPubkey) {
   return relay.subscribe([{
     kinds: [9735],
@@ -311,11 +334,12 @@ async function getTotalZaps(relay, eventId) {
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">匿名 Zaps</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    發送方可以選擇不公開身份：
-  </p>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 匿名 Zap：使用一次性密鑰對簽署 zap request
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">發送方可以選擇不公開身份：</p>
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 匿名 Zap：使用一次性密鑰對簽署 zap request
 import { generateSecretKey, getPublicKey } from 'nostr-tools'
 
 function createAnonymousZapRequest(params) {
@@ -354,9 +378,15 @@ function isAnonymousZap(zapReceipt) {
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">單位</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">換算</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-57 中</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >單位</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >換算</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >NIP-57 中</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -403,8 +433,10 @@ function isAnonymousZap(zapReceipt) {
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
       <strong>延伸閱讀：</strong>
-      Zaps 建立在 LNURL-pay 協議之上。若要深入了解，
-      可以參考 <a href="/tech/lightning/" class="underline">閃電網路技術文檔</a>。
+      Zaps 建立在 LNURL-pay 協議之上。若要深入了解， 可以參考 <a
+        href="/tech/lightning/"
+        class="underline">閃電網路技術文檔</a
+      >。
     </p>
   </div>
 </ArticleLayout>

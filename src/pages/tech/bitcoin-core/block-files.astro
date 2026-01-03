@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">區塊文件概覽</h2>
     <p class="text-[var(--text-secondary)]">
-      Bitcoin Core 將區塊鏈數據存儲在 <code>blocks/</code> 目錄中。
-      區塊數據存儲在 blk*.dat 文件中，而對應的撤銷數據存儲在 rev*.dat 文件中。
+      Bitcoin Core 將區塊鏈數據存儲在 <code>blocks/</code> 目錄中。 區塊數據存儲在 blk*.dat 文件中，而對應的撤銷數據存儲在
+      rev*.dat 文件中。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">目錄結構</h3>
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/blocks/
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/blocks/
 ├── blk00000.dat      # 區塊數據文件 #0
 ├── blk00001.dat      # 區塊數據文件 #1
 ├── blk00002.dat      # ...
@@ -52,7 +53,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="blk-format" class="text-2xl font-bold text-[var(--text-primary)]">blk*.dat 格式</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>blk*.dat 文件格式：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>blk*.dat 文件格式：
 
 ┌────────────────────────────────────────────────────────────┐
 │ Block 1                                                    │
@@ -79,7 +81,8 @@ Magic Numbers:
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 讀取 blk 文件
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 讀取 blk 文件
 interface BlockFileEntry {
   magic: Buffer;      // 4 bytes
   size: number;       // 4 bytes
@@ -122,7 +125,8 @@ function readBlockFile(path: string): Block[] {
     <h2 id="rev-format" class="text-2xl font-bold text-[var(--text-primary)]">rev*.dat 格式</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>rev*.dat 文件格式（Undo Data）：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>rev*.dat 文件格式（Undo Data）：
 
 ┌────────────────────────────────────────────────────────────┐
 │ Block Undo 1                                               │
@@ -149,7 +153,8 @@ function readBlockFile(path: string): Block[] {
     <h2 id="index" class="text-2xl font-bold text-[var(--text-primary)]">區塊索引</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// blocks/index/ 存儲的索引數據
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// blocks/index/ 存儲的索引數據
 interface BlockIndex {
   // 'b' + blockhash -> CBlockIndex
   blockIndex: Map<Buffer, CBlockIndex>;
@@ -199,7 +204,8 @@ interface CBlockFileInfo {
     <h2 id="management" class="text-2xl font-bold text-[var(--text-primary)]">文件管理</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊文件
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看區塊文件
 ls -lh ~/.bitcoin/blocks/blk*.dat | head -10
 
 # 查看總大小
@@ -222,7 +228,8 @@ bitcoin-cli getblockchaininfo | jq '.size_on_disk'</code></pre>
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊文件分配策略
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊文件分配策略
 class BlockFileManager {
   // 最大文件大小（約 128 MB）
   private readonly MAX_BLOCKFILE_SIZE = 0x8000000;
@@ -262,7 +269,8 @@ class BlockFileManager {
     <h2 id="pruning" class="text-2xl font-bold text-[var(--text-primary)]">Pruning 模式</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用 pruning（保留 550 MB）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用 pruning（保留 550 MB）
 bitcoind -prune=550
 
 # 或在配置文件中
@@ -298,7 +306,8 @@ bitcoin-cli getblockchaininfo | jq '{pruned, pruneheight, size_on_disk}'
     <h2 id="reindex" class="text-2xl font-bold text-[var(--text-primary)]">重建索引</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 重建所有索引（從 blk 文件重新驗證）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 重建所有索引（從 blk 文件重新驗證）
 bitcoind -reindex
 
 # 只重建 chainstate（不重新驗證區塊）
@@ -324,7 +333,8 @@ bitcoind -reindex-chainstate
     <h2 id="tools" class="text-2xl font-bold text-[var(--text-primary)]">實用工具</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># Python 腳本：讀取 blk 文件
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-python" is:raw># Python 腳本：讀取 blk 文件
 import struct
 
 MAGIC = bytes.fromhex('F9BEB4D9')  # mainnet
@@ -364,15 +374,23 @@ for block in read_blocks('~/.bitcoin/blocks/blk00000.dat'):
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">blk*.dat：</strong>原始區塊數據，約 128 MB/文件</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">blk*.dat：</strong>原始區塊數據，約 128
+            MB/文件</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">rev*.dat：</strong>撤銷數據，用於區塊重組</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">rev*.dat：</strong
+            >撤銷數據，用於區塊重組</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
@@ -380,7 +398,10 @@ for block in read_blocks('~/.bitcoin/blocks/blk00000.dat'):
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">Pruning：</strong>可刪除舊區塊文件節省空間</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">Pruning：</strong
+            >可刪除舊區塊文件節省空間</span
+          >
         </li>
       </ul>
     </div>

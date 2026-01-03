@@ -19,17 +19,17 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <div class="prose prose-lg max-w-none">
       <p class="lead">
         Transaction Pinning（交易釘住）是一種攻擊技術，攻擊者通過創建低手續費率但
-        高絕對手續費的交易，阻止受害者的交易被確認或替換。這對閃電網路等 Layer 2
-        協議構成嚴重威脅。
+        高絕對手續費的交易，阻止受害者的交易被確認或替換。這對閃電網路等 Layer 2 協議構成嚴重威脅。
       </p>
 
       <h2>什麼是 Pinning 攻擊？</h2>
       <p>
-        在需要時間敏感交易確認的場景中（如閃電網路的 HTLC 超時），攻擊者可以利用
-        mempool 的規則來「釘住」交易，使其難以被替換或確認。
+        在需要時間敏感交易確認的場景中（如閃電網路的 HTLC 超時），攻擊者可以利用 mempool
+        的規則來「釘住」交易，使其難以被替換或確認。
       </p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
 Alice 廣播 TX_A (手續費: 1000 sat, 1 sat/vB)
 Alice 可以用 RBF 替換為更高手續費的版本
 
@@ -45,11 +45,10 @@ TX_M: 手續費 100,000 sat，但大小 100,000 vB (1 sat/vB)
       <h2>Pinning 的類型</h2>
 
       <h3>1. BIP-125 Rule 3 Pinning</h3>
-      <p>
-        RBF 規則要求替換交易支付比所有被替換交易更高的絕對手續費。
-      </p>
+      <p>RBF 規則要求替換交易支付比所有被替換交易更高的絕對手續費。</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// BIP-125 Rule 3
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// BIP-125 Rule 3
 replacement_fee > sum(replaced_tx_fees)
 
 攻擊:
@@ -60,11 +59,10 @@ TX_M: 99,000 sat (Mallory 的大型低費率子交易)
 即使新交易只有 200 vB，仍需 500+ sat/vB</code></pre>
 
       <h3>2. BIP-125 Rule 5 Pinning</h3>
-      <p>
-        RBF 規則限制被替換交易的後代數量（最多 100 個）。
-      </p>
+      <p>RBF 規則限制被替換交易的後代數量（最多 100 個）。</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// BIP-125 Rule 5
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// BIP-125 Rule 5
 evicted_descendants <= 100
 
 攻擊:
@@ -74,11 +72,10 @@ Mallory 創建 100 個小型子交易花費 TX_A
 Alice 的 RBF 嘗試將因超出限制而失敗</code></pre>
 
       <h3>3. CPFP Carve-out Pinning</h3>
-      <p>
-        即使有 CPFP carve-out 例外，仍有 pinning 攻擊向量。
-      </p>
+      <p>即使有 CPFP carve-out 例外，仍有 pinning 攻擊向量。</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CPFP Carve-out (用於 LN anchor outputs)
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CPFP Carve-out (用於 LN anchor outputs)
 允許額外一個 1000 vWU 的子交易
 
 攻擊:
@@ -88,7 +85,8 @@ Alice 無法再使用 carve-out</code></pre>
 
       <h2>對閃電網路的影響</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>閃電網路 HTLC 超時場景:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>閃電網路 HTLC 超時場景:
 
 1. Alice 發送 1 BTC 給 Bob (HTLC)
 2. 如果 Bob 不揭示 preimage，Alice 在超時後可取回資金
@@ -105,11 +103,10 @@ Alice 無法再使用 carve-out</code></pre>
       <h2>緩解方案</h2>
 
       <h3>1. Anchor Outputs</h3>
-      <p>
-        在承諾交易中添加可被 CPFP 的小額輸出。
-      </p>
+      <p>在承諾交易中添加可被 CPFP 的小額輸出。</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>承諾交易輸出:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>承諾交易輸出:
 - to_local: Alice 的餘額
 - to_remote: Bob 的餘額
 - anchor_local: 330 sat (Alice 可用 CPFP)
@@ -118,11 +115,10 @@ Alice 無法再使用 carve-out</code></pre>
 雙方都可以獨立加速交易</code></pre>
 
       <h3>2. V3 Transactions (TRUC)</h3>
-      <p>
-        BIP-431 引入嚴格的拓撲限制：
-      </p>
+      <p>BIP-431 引入嚴格的拓撲限制：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>V3 交易規則:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>V3 交易規則:
 - 最多 1 個未確認父交易
 - 最多 1 個未確認子交易
 - 子交易最大 1000 vB
@@ -134,11 +130,10 @@ Alice 無法再使用 carve-out</code></pre>
 - 替換成本可預測</code></pre>
 
       <h3>3. Package RBF</h3>
-      <p>
-        允許以 package 為單位進行 RBF：
-      </p>
+      <p>允許以 package 為單位進行 RBF：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Package RBF
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Package RBF
 submitpackage([parent_tx, child_tx])
 
 如果 package 費率高於現有衝突交易的 package 費率，
@@ -147,11 +142,10 @@ submitpackage([parent_tx, child_tx])
 這允許低手續費父交易通過高手續費子交易被確認</code></pre>
 
       <h3>4. Ephemeral Anchors</h3>
-      <p>
-        提議中的零值 anchor 輸出：
-      </p>
+      <p>提議中的零值 anchor 輸出：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Ephemeral Anchor:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Ephemeral Anchor:
 - 輸出值: 0 sat
 - scriptPubKey: OP_TRUE (任何人可花費)
 - 必須在同一 package 中被花費
@@ -163,7 +157,8 @@ submitpackage([parent_tx, child_tx])
 
       <h2>Bitcoin Core 的保護措施</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 現有限制
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 現有限制
 MAX_PACKAGE_COUNT = 25          // 最大 package 大小
 MAX_ANCESTORS = 25              // 最大祖先數量
 MAX_DESCENDANTS = 25            // 最大後代數量
@@ -197,8 +192,8 @@ MAX_DESCENDANT_SIZE = 101 KB    // 最大後代總大小
 
       <h2>未來發展</h2>
       <p>
-        Pinning 問題的完整解決需要多項協議改進配合。Cluster Mempool 重構
-        有望提供更好的 package 費率計算和 RBF 規則，進一步緩解 pinning 攻擊。
+        Pinning 問題的完整解決需要多項協議改進配合。Cluster Mempool 重構 有望提供更好的 package
+        費率計算和 RBF 規則，進一步緩解 pinning 攻擊。
       </p>
     </div>
   </section>

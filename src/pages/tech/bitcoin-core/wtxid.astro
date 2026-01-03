@@ -66,7 +66,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>計算方式</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// TXID 計算（不含見證數據）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// TXID 計算（不含見證數據）
 TXID = SHA256(SHA256(
     version ||
     inputs ||
@@ -86,11 +87,10 @@ WTXID = SHA256(SHA256(
 ))</code></pre>
 
       <h2>交易序列化格式</h2>
-      <p>
-        SegWit 交易有兩種序列化格式：
-      </p>
+      <p>SegWit 交易有兩種序列化格式：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 傳統格式（用於 TXID 計算）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 傳統格式（用於 TXID 計算）
 [version][input count][inputs][output count][outputs][locktime]
 
 // 見證格式（用於 WTXID 計算和網路傳輸）
@@ -105,11 +105,10 @@ WTXID = SHA256(SHA256(
       </div>
 
       <h2>Witness Merkle Tree</h2>
-      <p>
-        區塊中有兩棵 Merkle 樹：傳統的 TXID 樹和 WTXID 樹。
-      </p>
+      <p>區塊中有兩棵 Merkle 樹：傳統的 TXID 樹和 WTXID 樹。</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊頭
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>區塊頭
 ├── merkle_root (TXID 樹的根)
 │   ├── coinbase_txid
 │   ├── tx1_txid
@@ -123,11 +122,10 @@ Coinbase 的 OP_RETURN
         └── tx2_wtxid</code></pre>
 
       <h2>Witness Commitment</h2>
-      <p>
-        WTXID Merkle 根被嵌入在 coinbase 交易的輸出中：
-      </p>
+      <p>WTXID Merkle 根被嵌入在 coinbase 交易的輸出中：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Witness commitment 結構
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Witness commitment 結構
 OP_RETURN
   0xaa21a9ed  // commitment 標識符
   SHA256(SHA256(witness_root || witness_reserved_value))
@@ -145,7 +143,8 @@ uint256 ComputeWitnessMerkleRoot(const std::vector<CTransactionRef>& vtx)
 
       <h2>RPC 查詢</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取交易的 TXID 和 WTXID
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取交易的 TXID 和 WTXID
 bitcoin-cli getrawtransaction &lt;txid&gt; true
 
 # 返回結果包含
@@ -164,7 +163,8 @@ bitcoin-cli getblock &lt;blockhash&gt; 2 | jq '.tx[0].vout[] | select(.scriptPub
 
       <h2>編程示例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
 
 def double_sha256(data):
     return hashlib.sha256(hashlib.sha256(data).digest()).digest()
@@ -195,11 +195,10 @@ def compute_wtxid(tx_bytes):
       </ul>
 
       <h2>BIP-339: WTXID Relay</h2>
-      <p>
-        BIP-339 引入了基於 WTXID 的交易中繼，提高了效率並減少了頻寬浪費：
-      </p>
+      <p>BIP-339 引入了基於 WTXID 的交易中繼，提高了效率並減少了頻寬浪費：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 握手時宣告支持
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 握手時宣告支持
 version message
   -> services: NODE_WITNESS
 
@@ -211,9 +210,7 @@ INV: MSG_WTX (0x05) + wtxid
 GETDATA: MSG_WTX (0x05) + wtxid</code></pre>
 
       <h2>為什麼需要兩種 ID？</h2>
-      <p>
-        保留 TXID 是為了向後兼容：
-      </p>
+      <p>保留 TXID 是為了向後兼容：</p>
 
       <ul>
         <li>現有錢包和交易所使用 TXID 追蹤交易</li>

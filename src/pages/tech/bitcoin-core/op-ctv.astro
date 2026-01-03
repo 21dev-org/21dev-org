@@ -25,11 +25,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>什麼是 Covenant？</h2>
       <p>
-        Covenant 是對比特幣花費方式的限制。傳統上，比特幣腳本只驗證「誰」可以花費，
-        而 covenant 可以限制「如何」花費：
+        Covenant 是對比特幣花費方式的限制。傳統上，比特幣腳本只驗證「誰」可以花費， 而 covenant
+        可以限制「如何」花費：
       </p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統腳本:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統腳本:
 "只有持有這個私鑰的人可以花費"
 
 Covenant:
@@ -37,11 +38,10 @@ Covenant:
  而且必須發送到這些特定的地址"</code></pre>
 
       <h2>CTV 工作原理</h2>
-      <p>
-        CTV 通過驗證花費交易的「模板雜湊」來工作：
-      </p>
+      <p>CTV 通過驗證花費交易的「模板雜湊」來工作：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CTV 腳本
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// CTV 腳本
 &lt;template_hash&gt; OP_CHECKTEMPLATEVERIFY
 
 // 驗證邏輯
@@ -59,9 +59,7 @@ template_hash = SHA256(
 如果花費交易的 template_hash 匹配，驗證通過</code></pre>
 
       <h2>承諾的內容</h2>
-      <p>
-        CTV 雜湊承諾了交易的大部分內容，但有一些例外：
-      </p>
+      <p>CTV 雜湊承諾了交易的大部分內容，但有一些例外：</p>
 
       <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
         <div class="overflow-x-auto">
@@ -117,11 +115,10 @@ template_hash = SHA256(
       <h2>應用場景</h2>
 
       <h3>1. 擁塞控制（Congestion Control）</h3>
-      <p>
-        允許交易所在高手續費時批量發送，低手續費時展開：
-      </p>
+      <p>允許交易所在高手續費時批量發送，低手續費時展開：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 階段 1: 高手續費時期
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 階段 1: 高手續費時期
 交易所創建單個 CTV 輸出，承諾未來的展開交易
 
 TX_commit:
@@ -142,11 +139,10 @@ TX_expand:
 優勢: 節省鏈上空間，用戶確認無需等待</code></pre>
 
       <h3>2. 金庫（Vaults）</h3>
-      <p>
-        實現帶有時間延遲的安全存儲：
-      </p>
+      <p>實現帶有時間延遲的安全存儲：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 金庫結構
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 金庫結構
 vault_script:
   IF
     &lt;hot_key&gt; CHECKSIG              // 立即取消
@@ -164,11 +160,10 @@ delayed_script:
 3. 24 小時後用冷鑰匙完成提款</code></pre>
 
       <h3>3. 支付池（Payment Pools）</h3>
-      <p>
-        多方共享 UTXO，可獨立退出：
-      </p>
+      <p>多方共享 UTXO，可獨立退出：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡化的 4 人支付池
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡化的 4 人支付池
 pool_output:
   A+B+C+D 多簽 OR
   &lt;ctv_split_AB_CD&gt; OP_CTV
@@ -183,11 +178,10 @@ split_tx:
 // 繼續分割直到個人輸出</code></pre>
 
       <h3>4. 非交互式通道</h3>
-      <p>
-        無需在線即可接收閃電網路支付：
-      </p>
+      <p>無需在線即可接收閃電網路支付：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Alice 離線，Bob 想支付給她
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Alice 離線，Bob 想支付給她
 // Alice 預先發布 CTV 地址
 
 alice_ctv_address:
@@ -199,7 +193,8 @@ alice_ctv_address:
 
       <h2>計算 CTV 雜湊</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
 
 def compute_ctv_hash(tx, input_index):
     """計算 CTV 模板雜湊"""
@@ -300,7 +295,8 @@ def compute_ctv_hash(tx, input_index):
 
       <h2>測試網實驗</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 在 Signet 上測試 CTV（如果啟用）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 在 Signet 上測試 CTV（如果啟用）
 # 使用 bitcoin-inquisition 客戶端
 
 # 創建 CTV 輸出
@@ -310,9 +306,8 @@ bitcoin-cli -signet createrawtransaction \
 
       <h2>當前狀態</h2>
       <p>
-        截至目前，BIP-119 尚未被 Bitcoin Core 採納。社區對是否以及何時啟用
-        仍在討論中。開發者可以在 Bitcoin Inquisition（Signet 軟分叉測試環境）
-        中進行實驗。
+        截至目前，BIP-119 尚未被 Bitcoin Core 採納。社區對是否以及何時啟用 仍在討論中。開發者可以在
+        Bitcoin Inquisition（Signet 軟分叉測試環境） 中進行實驗。
       </p>
     </div>
   </section>

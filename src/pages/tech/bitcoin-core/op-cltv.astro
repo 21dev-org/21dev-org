@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        OP_CHECKLOCKTIMEVERIFY (OP_CLTV) 是 BIP-65 引入的絕對時間鎖操作碼，
-        允許在腳本中強制執行 nLockTime，確保輸出在特定時間或區塊高度之前無法花費。
+        OP_CHECKLOCKTIMEVERIFY (OP_CLTV) 是 BIP-65 引入的絕對時間鎖操作碼， 允許在腳本中強制執行
+        nLockTime，確保輸出在特定時間或區塊高度之前無法花費。
       </p>
 
       <h2>基本概念</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CLTV 功能:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CLTV 功能:
 - 驗證交易的 nLockTime >= 腳本指定值
 - 確保交易在指定時間/高度之前無效
 - 與 nLockTime 協同工作
@@ -40,7 +41,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>時間類型</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nLockTime 有兩種模式:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nLockTime 有兩種模式:
 
 區塊高度模式 (值 < 500000000):
 - 值表示區塊高度
@@ -61,7 +63,8 @@ Unix 時間戳模式 (值 >= 500000000):
 
       <h3>簡單時間鎖</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 在區塊 850000 之後才能花費
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 在區塊 850000 之後才能花費
 &lt;850000&gt;
 OP_CHECKLOCKTIMEVERIFY
 OP_DROP
@@ -81,7 +84,8 @@ OP_CHECKSIG
 
       <h3>Unix 時間戳鎖</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 2025-01-01 之後才能花費
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 2025-01-01 之後才能花費
 // Unix timestamp: 1735689600
 
 &lt;1735689600&gt;
@@ -96,7 +100,8 @@ OP_CHECKSIG
 
       <h3>帶備用路徑的時間鎖</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 雙路徑: 立即多簽或延遲單簽
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 雙路徑: 立即多簽或延遲單簽
 OP_IF
     // 路徑 A: 2-of-3 多簽可立即花費
     2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; 3 OP_CHECKMULTISIG
@@ -115,7 +120,8 @@ OP_ENDIF
 
       <h2>HTLC 中的應用</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Hash Time Locked Contract
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Hash Time Locked Contract
 
 OP_IF
     // Hash 路徑: 知道原像可領取
@@ -139,7 +145,8 @@ OP_CHECKSIG
 
       <h2>驗證規則</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CLTV 驗證邏輯:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CLTV 驗證邏輯:
 
 1. 堆疊檢查
    - 堆疊不能為空
@@ -180,7 +187,8 @@ def verify_cltv(stack_top, tx):
 
       <h2>與 nLockTime 的關係</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nLockTime 和 OP_CLTV 的區別:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nLockTime 和 OP_CLTV 的區別:
 
 nLockTime (交易級別):
 - 交易字段
@@ -203,7 +211,8 @@ OP_CLTV (腳本級別):
 
       <h3>支付通道超時</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡單支付通道退款機制
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡單支付通道退款機制
 
 資金鎖定腳本:
 OP_IF
@@ -225,7 +234,8 @@ OP_ENDIF
 
       <h3>繼承計劃</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 數字遺產規劃
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 數字遺產規劃
 
 繼承腳本:
 OP_IF
@@ -249,7 +259,8 @@ OP_ENDIF
 
       <h2>編程示例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python: 創建 CLTV 腳本
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python: 創建 CLTV 腳本
 
 from bitcoin.core.script import *
 import struct
@@ -303,7 +314,8 @@ tx.vin[0].nSequence = 0xFFFFFFFE  # 啟用 nLockTime</code></pre>
 
       <h2>歷史背景</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-65 歷史:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-65 歷史:
 
 2014 年: Peter Todd 提出 BIP-65
 2015 年 12 月: 軟分叉啟用 (區塊 388381)

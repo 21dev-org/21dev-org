@@ -251,19 +251,20 @@ export function generateCourseSchema(course: CourseData) {
     ...(course.keywords && {
       keywords: course.keywords.join(', '),
     }),
-    ...(course.modules && course.modules.length > 0 && {
-      hasCourseInstance: {
-        '@type': 'CourseInstance',
-        courseMode: 'online',
-        courseWorkload: `${course.modules.length} modules`,
-      },
-      syllabusSections: course.modules.map((module, index) => ({
-        '@type': 'Syllabus',
-        position: index + 1,
-        name: module.name,
-        ...(module.description && { description: module.description }),
-      })),
-    }),
+    ...(course.modules &&
+      course.modules.length > 0 && {
+        hasCourseInstance: {
+          '@type': 'CourseInstance',
+          courseMode: 'online',
+          courseWorkload: `${course.modules.length} modules`,
+        },
+        syllabusSections: course.modules.map((module, index) => ({
+          '@type': 'Syllabus',
+          position: index + 1,
+          name: module.name,
+          ...(module.description && { description: module.description }),
+        })),
+      }),
   };
 }
 
@@ -271,7 +272,9 @@ export function generateCourseSchema(course: CourseData) {
  * 生成 ItemList schema
  * 用於課程列表頁面，展示多個學習路徑
  */
-export function generateCourseListSchema(courses: { name: string; url: string; description: string }[]) {
+export function generateCourseListSchema(
+  courses: { name: string; url: string; description: string }[]
+) {
   const baseUrl = siteConfig.url;
 
   return {

@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Block-Relay-Only', href: '/tech/bitcoin-core/block-relay-only' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 AddrMan？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 AddrMan？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       AddrMan（Address Manager）是 Bitcoin Core 的地址管理系統，負責發現、儲存和選擇對等節點地址。
       它使用精心設計的數據結構來抵抗 Eclipse 攻擊，確保節點能夠連接到真實的比特幣網路。
@@ -49,7 +51,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="data-structure" class="text-2xl font-bold text-[var(--text-primary)]">雙表架構</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>AddrMan 結構：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>AddrMan 結構：
 
 ┌──────────────────────────────────────────────────────┐
 │  New Table (1024 buckets × 64 entries)               │
@@ -65,7 +68,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface AddrInfo {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface AddrInfo {
   addr: NetAddress;      // IP:Port
   source: NetAddress;    // 誰告訴我們這個地址
   lastTry: number;       // 最後嘗試連接時間
@@ -107,7 +111,9 @@ class AddrMan {
   </section>
 
   <section class="space-y-6">
-    <h2 id="eclipse-prevention" class="text-2xl font-bold text-[var(--text-primary)]">Eclipse 攻擊防護</h2>
+    <h2 id="eclipse-prevention" class="text-2xl font-bold text-[var(--text-primary)]">
+      Eclipse 攻擊防護
+    </h2>
 
     <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
       <h4 class="font-semibold text-red-400 mb-3">什麼是 Eclipse 攻擊？</h4>
@@ -125,28 +131,40 @@ class AddrMan {
       <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">防禦機制</h4>
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >1</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">基於來源的 Bucket 分配</strong>
             <p class="text-sm">單一來源無法填滿所有 bucket</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >2</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">隨機密鑰 (nKey)</strong>
             <p class="text-sm">每個節點不同，攻擊者無法預測 bucket</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >3</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">網段多樣性</strong>
             <p class="text-sm">出站連接確保來自不同的 /16 網段</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >4</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">錨定連接</strong>
             <p class="text-sm">重啟時優先連接最後成功的節點</p>
@@ -160,7 +178,8 @@ class AddrMan {
     <h2 id="persistence" class="text-2xl font-bold text-[var(--text-primary)]">持久化</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 地址數據庫
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 地址數據庫
 ~/.bitcoin/peers.dat
 
 # 錨定檔案（重啟時優先連接）
@@ -181,7 +200,8 @@ bitcoin-cli getpeerinfo | jq '.[].addr'</code></pre>
     <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置選項</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
 
 # 手動指定節點
 addnode=192.168.1.100:8333
@@ -203,19 +223,30 @@ maxconnections=125</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">雙表架構：</strong>New 表存新地址，Tried 表存驗證過的地址</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">雙表架構：</strong>New 表存新地址，Tried
+            表存驗證過的地址</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">Eclipse 防護：</strong>基於來源分組、隨機密鑰、網段多樣性</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">Eclipse 防護：</strong
+            >基於來源分組、隨機密鑰、網段多樣性</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">錨定連接：</strong>重啟時優先連接已知可信節點</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">錨定連接：</strong
+            >重啟時優先連接已知可信節點</span
+          >
         </li>
       </ul>
     </div>

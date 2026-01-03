@@ -24,7 +24,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>攻擊原理</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
 區塊 N: 包含高手續費交易 (總手續費: 5 BTC)
 區塊 N+1: 礦工 A 正在挖掘
 
@@ -41,7 +42,8 @@ Fee Sniping 攻擊:
 
       <h2>為什麼是問題？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 經濟激勵可能導致不穩定
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 經濟激勵可能導致不穩定
 
 假設:
 - 區塊 N 手續費: 10 BTC
@@ -60,11 +62,10 @@ Fee Sniping 攻擊:
 // 大礦工或礦池可能有足夠高的成功率</code></pre>
 
       <h2>nLockTime 防護</h2>
-      <p>
-        Bitcoin Core 創建的交易默認設置 nLockTime 為當前區塊高度：
-      </p>
+      <p>Bitcoin Core 創建的交易默認設置 nLockTime 為當前區塊高度：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 設置策略
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 設置策略
 
 交易創建時:
 if (current_height > 0) {
@@ -84,7 +85,8 @@ if (current_height > 0) {
 
       <h2>工作原理</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景:
 當前區塊高度: 840000
 交易 TX 創建，nLockTime = 840000
 
@@ -103,7 +105,8 @@ TX 不能被包含在區塊 839999
 
       <h2>nSequence 的作用</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 只在 nSequence &lt; 0xffffffff 時生效
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 只在 nSequence &lt; 0xffffffff 時生效
 
 Bitcoin Core 的設置:
 - 如果啟用 RBF: nSequence = 0xfffffffd
@@ -117,7 +120,8 @@ Bitcoin Core 的設置:
 
       <h2>為什麼只是部分解決？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 防護的局限性
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nLockTime 防護的局限性
 
 1. 只保護新交易
    - 舊交易（已在 mempool 中的）沒有這個保護
@@ -137,7 +141,8 @@ Bitcoin Core 的設置:
 
       <h2>未來考慮</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 隨著區塊獎勵減少，手續費比例增加
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 隨著區塊獎勵減少，手續費比例增加
 
 2024 年:
 - 區塊獎勵: 3.125 BTC
@@ -156,7 +161,8 @@ Bitcoin Core 的設置:
 
       <h2>錢包實現</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 檢查錢包是否正確設置 nLockTime
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 檢查錢包是否正確設置 nLockTime
 
 # 創建交易
 bitcoin-cli createrawtransaction '[...]' '{...}'
@@ -190,7 +196,8 @@ bitcoin-cli decoderawtransaction &lt;hex&gt;
 
       <h2>程序示例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import random
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import random
 
 def set_anti_fee_sniping(tx, current_height):
     """設置 nLockTime 以防止 fee sniping"""

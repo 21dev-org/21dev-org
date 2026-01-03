@@ -18,25 +18,29 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-96？</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
     NIP-96 定義了 Nostr 生態系統中的檔案上傳標準。它提供統一的 HTTP API，
-    讓客戶端可以上傳圖片、影片、音訊和其他檔案到相容的伺服器，
-    並獲得可在 Nostr 事件中使用的 URL。
+    讓客戶端可以上傳圖片、影片、音訊和其他檔案到相容的伺服器， 並獲得可在 Nostr 事件中使用的 URL。
   </p>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
       <strong>為什麼需要 NIP-96？</strong>
-      Nostr 事件本身不適合儲存大型二進位檔案。NIP-96 提供標準化的方式
-      將媒體檔案上傳到專用伺服器，然後在事件中引用 URL。
+      Nostr 事件本身不適合儲存大型二進位檔案。NIP-96 提供標準化的方式 將媒體檔案上傳到專用伺服器，然後在事件中引用
+      URL。
     </p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">服務發現</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    NIP-96 伺服器通過 <code class="px-1.5 py-0.5 bg-[var(--bg-secondary)] rounded text-sm">/.well-known/nostr/nip96.json</code> 端點公開其配置：
+    NIP-96 伺服器通過 <code class="px-1.5 py-0.5 bg-[var(--bg-secondary)] rounded text-sm"
+      >/.well-known/nostr/nip96.json</code
+    > 端點公開其配置：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// GET https://nostr.build/.well-known/nostr/nip96.json
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// GET https://nostr.build/.well-known/nostr/nip96.json
 {
   "api_url": "https://nostr.build/api/v2/nip96/upload",
   "download_url": "https://media.nostr.build",
@@ -82,8 +86,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">欄位</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >欄位</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >說明</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -120,8 +128,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     大多數 NIP-96 伺服器要求使用 NIP-98 HTTP 認證。這是一個簽名的 Nostr 事件作為 Bearer token：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// NIP-98 認證事件（kind 27235）
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// NIP-98 認證事件（kind 27235）
 {
   "kind": 27235,
   "created_at": 1704067200,
@@ -142,8 +153,11 @@ Authorization: Nostr <base64 encoded event JSON>`}</code></pre>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">上傳流程</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`1. 服務發現
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`1. 服務發現
    └─> GET /.well-known/nostr/nip96.json
    └─> 獲取 api_url 和支援的格式
 
@@ -163,8 +177,11 @@ Authorization: Nostr <base64 encoded event JSON>`}</code></pre>
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">完整上傳流程</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`import { finalizeEvent, getPublicKey } from 'nostr-tools'
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`import { finalizeEvent, getPublicKey } from 'nostr-tools'
 
 class Nip96Uploader {
   constructor(serverUrl) {
@@ -268,8 +285,11 @@ console.log('上傳成功:', result.nip94_event.tags)
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">上傳回應格式</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 成功回應
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 成功回應
 {
   "status": "success",
   "message": "File uploaded successfully",
@@ -295,8 +315,11 @@ console.log('上傳成功:', result.nip94_event.tags)
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">在貼文中使用上傳的媒體</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function createPostWithImage(content, imageFile) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function createPostWithImage(content, imageFile) {
   // 上傳圖片
   const uploader = new Nip96Uploader('https://nostr.build')
   const uploadResult = await uploader.upload(imageFile)
@@ -333,8 +356,11 @@ console.log('上傳成功:', result.nip94_event.tags)
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">刪除檔案</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function deleteFile(serverUrl, fileHash) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function deleteFile(serverUrl, fileHash) {
   const uploader = new Nip96Uploader(serverUrl)
   await uploader.discover()
 
@@ -387,8 +413,11 @@ await deleteFile('https://nostr.build', 'sha256hash...')`}</code></pre>
     在事件中引用媒體時，建議使用 imeta 標籤提供中繼資料：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`{
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`{
   "kind": 1,
   "content": "看看這張照片！ https://media.nostr.build/abc.jpg",
   "tags": [
@@ -415,12 +444,13 @@ await deleteFile('https://nostr.build', 'sha256hash...')`}</code></pre>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">媒體轉換</h2>
-  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
-    部分伺服器支援即時媒體轉換：
-  </p>
+  <p class="text-[var(--text-secondary)] leading-relaxed mb-4">部分伺服器支援即時媒體轉換：</p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 調整圖片大小
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 調整圖片大小
 https://media.nostr.build/abc.jpg?w=800&h=600
 
 // 格式轉換
@@ -468,9 +498,15 @@ https://media.nostr.build/abc.jpg?thumb=true
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">NIP-96</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Blossom</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >特性</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >NIP-96</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >Blossom</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -501,8 +537,7 @@ https://media.nostr.build/abc.jpg?thumb=true
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
       <strong>提示：</strong>
-      許多 Nostr 客戶端已內建 NIP-96 支援，用戶無需手動處理上傳流程。
-      開發者可以使用現有的程式庫簡化整合。
+      許多 Nostr 客戶端已內建 NIP-96 支援，用戶無需手動處理上傳流程。 開發者可以使用現有的程式庫簡化整合。
     </p>
   </div>
 </ArticleLayout>

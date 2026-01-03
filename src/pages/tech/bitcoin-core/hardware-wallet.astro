@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'PSBT', href: '/tech/bitcoin-core/psbt' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">硬體錢包整合概覽</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      硬體錢包整合概覽
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Bitcoin Core 可以通過 Hardware Wallet Interface (HWI) 與各種硬體錢包整合，
       實現私鑰離線存儲的同時使用 Core 的完整節點驗證功能。
@@ -55,7 +57,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="architecture" class="text-2xl font-bold text-[var(--text-primary)]">架構</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>硬體錢包整合架構：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>硬體錢包整合架構：
 
 ┌─────────────────────────────────────────────────────────────┐
 │                     Bitcoin Core                             │
@@ -91,7 +94,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="hwi-install" class="text-2xl font-bold text-[var(--text-primary)]">安裝 HWI</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 安裝 HWI
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 安裝 HWI
 pip3 install hwi
 
 # 或從源碼安裝
@@ -128,7 +132,8 @@ hwi enumerate
     <h2 id="setup" class="text-2xl font-bold text-[var(--text-primary)]">設置流程</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 步驟 1：獲取硬體錢包的 xpub
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 步驟 1：獲取硬體錢包的 xpub
 
 # 獲取設備指紋
 hwi enumerate
@@ -182,7 +187,8 @@ bitcoin-cli -rpcwallet=hww importdescriptors '[
     <h2 id="receive" class="text-2xl font-bold text-[var(--text-primary)]">接收比特幣</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 生成接收地址
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 生成接收地址
 bitcoin-cli -rpcwallet=hww getnewaddress
 
 # 輸出
@@ -212,7 +218,8 @@ bitcoin-cli -rpcwallet=hww listtransactions</code></pre>
     <h2 id="send" class="text-2xl font-bold text-[var(--text-primary)]">發送比特幣</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 步驟 1：創建 PSBT
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 步驟 1：創建 PSBT
 
 bitcoin-cli -rpcwallet=hww walletcreatefundedpsbt \
   '[]' \
@@ -256,7 +263,8 @@ bitcoin-cli sendrawtransaction "0200000001..."</code></pre>
     <h2 id="multisig" class="text-2xl font-bold text-[var(--text-primary)]">多簽配置</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 2-of-3 多簽設置（3 個硬體錢包）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 2-of-3 多簽設置（3 個硬體錢包）
 
 # 步驟 1：獲取每個設備的 xpub
 hwi -f device1_fp getxpub "m/48h/0h/0h/2h"  # P2WSH 多簽路徑
@@ -305,7 +313,8 @@ bitcoin-cli finalizepsbt "$psbt"</code></pre>
     <h2 id="gui" class="text-2xl font-bold text-[var(--text-primary)]">GUI 整合</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Bitcoin Core GUI 硬體錢包支持：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Bitcoin Core GUI 硬體錢包支持：
 
 設置 external_signer：
 1. 確保 HWI 在 PATH 中
@@ -326,7 +335,8 @@ bitcoin-cli finalizepsbt "$psbt"</code></pre>
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 配置
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 配置
 
 # 指定外部簽名器
 signer=/usr/local/bin/hwi
@@ -344,7 +354,8 @@ signer=/home/user/hwi-wrapper.sh
     <h2 id="airgapped" class="text-2xl font-bold text-[var(--text-primary)]">氣隙方案</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>完全氣隙（Air-gapped）工作流：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>完全氣隙（Air-gapped）工作流：
 
 ┌─────────────────┐     ┌─────────────────┐
 │  在線電腦        │     │  離線電腦        │
@@ -418,7 +429,8 @@ signer=/home/user/hwi-wrapper.sh
     <h2 id="troubleshooting" class="text-2xl font-bold text-[var(--text-primary)]">故障排除</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 設備未識別
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 設備未識別
 # 1. 檢查 udev 規則（Linux）
 # 2. 確認設備已解鎖
 # 3. 確認 Bitcoin 應用已打開（Ledger）
@@ -443,7 +455,9 @@ bitcoin-cli -rpcwallet=hww rescanblockchain 700000</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
@@ -459,7 +473,8 @@ bitcoin-cli -rpcwallet=hww rescanblockchain 700000</code></pre>
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">驗證：</strong>務必在設備螢幕上確認</span>
+          <span><strong class="text-[var(--text-primary)]">驗證：</strong>務必在設備螢幕上確認</span
+          >
         </li>
       </ul>
     </div>

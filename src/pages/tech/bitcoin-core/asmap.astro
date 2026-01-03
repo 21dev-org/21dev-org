@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        ASMap（Autonomous System Map）是 Bitcoin Core 的一項功能，使用自治系統號碼
-        來識別 IP 地址的網路歸屬，從而更好地分散對等連接，增強對日蝕攻擊的抵抗力。
+        ASMap（Autonomous System Map）是 Bitcoin Core 的一項功能，使用自治系統號碼 來識別 IP
+        地址的網路歸屬，從而更好地分散對等連接，增強對日蝕攻擊的抵抗力。
       </p>
 
       <h2>為什麼需要 ASMap？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統方法的問題:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統方法的問題:
 
 Bitcoin Core 默認使用 /16 網段來分散連接:
 - 每個 /16 網段最多 2 個出站連接
@@ -46,7 +47,8 @@ Bitcoin Core 默認使用 /16 網段來分散連接:
 
       <h2>自治系統 (AS)</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>什麼是自治系統？
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>什麼是自治系統？
 
 AS (Autonomous System):
 - 網際網路的路由單位
@@ -68,7 +70,8 @@ AS 的特點:
 
       <h2>ASMap 工作原理</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ASMap 文件:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ASMap 文件:
 - 包含 IP 前綴到 ASN 的映射
 - 壓縮的二進制格式
 - 約 1-2 MB 大小
@@ -90,7 +93,8 @@ AS 的特點:
 
       <h2>啟用 ASMap</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 1. 獲取 ASMap 文件
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 1. 獲取 ASMap 文件
 # Bitcoin Core 不包含 ASMap，需要自行獲取或生成
 
 # 官方工具生成
@@ -120,7 +124,8 @@ bitcoin-cli getpeerinfo | jq '.[].mapped_as'</code></pre>
 
       <h2>生成 ASMap</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 從 RPKI/BGP 數據生成 ASMap
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 從 RPKI/BGP 數據生成 ASMap
 
 # 方法 1: 使用 Bitcoin Core 工具
 cd bitcoin/contrib/asmap
@@ -146,7 +151,8 @@ python3 asmap-tool.py diff old.dat new.dat
 
       <h2>安全考量</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ASMap 的信任問題:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>ASMap 的信任問題:
 
 1. 數據來源
    - RIR (區域網際網路註冊機構) 數據
@@ -170,7 +176,8 @@ python3 asmap-tool.py diff old.dat new.dat
 
       <h2>與 AddrMan 的整合</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>AddrMan 使用 ASMap:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>AddrMan 使用 ASMap:
 
 地址管理器的桶分配:
 Without ASMap:
@@ -196,7 +203,8 @@ With ASMap:
 
       <h2>對日蝕攻擊的影響</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>日蝕攻擊成本對比:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>日蝕攻擊成本對比:
 
 Without ASMap:
 - 攻擊者需要: 多個 /16 網段的 IP
@@ -230,7 +238,8 @@ With ASMap:
 
       <h2>實際效果</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查連接的 AS 多樣性
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查連接的 AS 多樣性
 
 bitcoin-cli getpeerinfo | jq '[.[].mapped_as] | unique | length'
 # 顯示連接了多少個不同的 AS
@@ -248,7 +257,8 @@ bitcoin-cli getpeerinfo | jq '.[] | {addr: .addr, as: .mapped_as}'
 
       <h2>未來發展</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>可能的改進:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>可能的改進:
 
 1. 內建 ASMap
    - Bitcoin Core 包含預設 ASMap
@@ -272,7 +282,10 @@ bitcoin-cli getpeerinfo | jq '.[] | {addr: .addr, as: .mapped_as}'
       <h2>相關資源</h2>
 
       <ul>
-        <li><a href="https://github.com/bitcoin/bitcoin/blob/master/contrib/asmap/README.md">Bitcoin Core ASMap 文檔</a></li>
+        <li>
+          <a href="https://github.com/bitcoin/bitcoin/blob/master/contrib/asmap/README.md"
+            >Bitcoin Core ASMap 文檔</a>
+        </li>
         <li><a href="https://bgp.he.net/">Hurricane Electric BGP 查詢</a></li>
         <li><a href="https://www.cidr-report.org/">CIDR Report</a></li>
       </ul>

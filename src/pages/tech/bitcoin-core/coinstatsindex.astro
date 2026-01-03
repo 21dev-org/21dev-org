@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'AssumeUTXO', href: '/tech/bitcoin-core/assumeutxo' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 CoinStatsIndex？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 CoinStatsIndex？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       CoinStatsIndex 是 Bitcoin Core 22.0 引入的可選索引，用於追蹤每個區塊高度的 UTXO 集統計資訊。
       它提供快速的 UTXO 集查詢功能，支援 MuHash 驗證，是 AssumeUTXO 功能的重要基礎。
@@ -51,7 +53,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h3 id="enable" class="text-xl font-semibold text-[var(--text-primary)]">啟用索引</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
 bitcoind -coinstatsindex
 
 # 配置文件
@@ -64,15 +67,15 @@ echo "coinstatsindex=1" >> ~/.bitcoin/bitcoin.conf
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        建立索引需要掃描整個區塊鏈。在 SSD 上約需 2-4 小時，
-        HDD 可能需要更長時間。索引大小約 2-3 GB。
+        建立索引需要掃描整個區塊鏈。在 SSD 上約需 2-4 小時， HDD 可能需要更長時間。索引大小約 2-3 GB。
       </p>
     </div>
 
     <h3 id="storage" class="text-xl font-semibold text-[var(--text-primary)]">儲存位置</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 索引儲存在
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 索引儲存在
 ~/.bitcoin/indexes/coinstats/
 
 # 檔案結構
@@ -88,10 +91,13 @@ du -sh ~/.bitcoin/indexes/coinstats/</code></pre>
   <section class="space-y-6">
     <h2 id="rpc-commands" class="text-2xl font-bold text-[var(--text-primary)]">RPC 命令</h2>
 
-    <h3 id="gettxoutsetinfo" class="text-xl font-semibold text-[var(--text-primary)]">gettxoutsetinfo</h3>
+    <h3 id="gettxoutsetinfo" class="text-xl font-semibold text-[var(--text-primary)]">
+      gettxoutsetinfo
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 基本用法（沒有 coinstatsindex 也可用，但較慢）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 基本用法（沒有 coinstatsindex 也可用，但較慢）
 bitcoin-cli gettxoutsetinfo
 
 # 使用 coinstatsindex（快速）
@@ -124,7 +130,9 @@ bitcoin-cli gettxoutsetinfo muhash '"800000"'
 }</code></pre>
     </div>
 
-    <h3 id="output-fields" class="text-xl font-semibold text-[var(--text-primary)]">輸出欄位說明</h3>
+    <h3 id="output-fields" class="text-xl font-semibold text-[var(--text-primary)]">
+      輸出欄位說明
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <div class="overflow-x-auto">
@@ -165,14 +173,17 @@ bitcoin-cli gettxoutsetinfo muhash '"800000"'
   <section class="space-y-6">
     <h2 id="muhash" class="text-2xl font-bold text-[var(--text-primary)]">MuHash 原理</h2>
 
-    <h3 id="what-is-muhash" class="text-xl font-semibold text-[var(--text-primary)]">什麼是 MuHash？</h3>
+    <h3 id="what-is-muhash" class="text-xl font-semibold text-[var(--text-primary)]">
+      什麼是 MuHash？
+    </h3>
     <p class="text-[var(--text-secondary)]">
-      MuHash（Multiplicative Hash）是一種可增量更新的集合哈希函數。
-      它允許高效地計算 UTXO 集的密碼學承諾，而不需要遍歷整個集合。
+      MuHash（Multiplicative Hash）是一種可增量更新的集合哈希函數。 它允許高效地計算 UTXO
+      集的密碼學承諾，而不需要遍歷整個集合。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// MuHash 的數學原理
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// MuHash 的數學原理
 // 基於有限域上的乘法
 
 class MuHash {
@@ -220,33 +231,47 @@ class MuHash {
 }</code></pre>
     </div>
 
-    <h3 id="muhash-properties" class="text-xl font-semibold text-[var(--text-primary)]">MuHash 特性</h3>
+    <h3 id="muhash-properties" class="text-xl font-semibold text-[var(--text-primary)]">
+      MuHash 特性
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >1</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">可交換性</strong>
             <p class="text-sm">元素的添加順序不影響結果</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >2</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">可增量更新</strong>
             <p class="text-sm">添加或刪除元素的複雜度為 O(1)</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >3</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">可合併性</strong>
             <p class="text-sm">兩個 MuHash 可以高效合併</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >4</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">抗碰撞</strong>
             <p class="text-sm">基於離散對數假設的安全性</p>
@@ -262,7 +287,8 @@ class MuHash {
     <h3 id="index-structure" class="text-xl font-semibold text-[var(--text-primary)]">索引結構</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CoinStatsEntry {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface CoinStatsEntry {
   height: number;
   blockHash: string;
 
@@ -351,16 +377,20 @@ class CoinStatsIndex {
   </section>
 
   <section class="space-y-6">
-    <h2 id="assumeutxo" class="text-2xl font-bold text-[var(--text-primary)]">與 AssumeUTXO 的關係</h2>
+    <h2 id="assumeutxo" class="text-2xl font-bold text-[var(--text-primary)]">
+      與 AssumeUTXO 的關係
+    </h2>
 
-    <h3 id="assumeutxo-verification" class="text-xl font-semibold text-[var(--text-primary)]">AssumeUTXO 驗證</h3>
+    <h3 id="assumeutxo-verification" class="text-xl font-semibold text-[var(--text-primary)]">
+      AssumeUTXO 驗證
+    </h3>
     <p class="text-[var(--text-secondary)]">
-      CoinStatsIndex 的 MuHash 是 AssumeUTXO 功能的核心。
-      它允許快速驗證預設的 UTXO 集快照是否正確。
+      CoinStatsIndex 的 MuHash 是 AssumeUTXO 功能的核心。 它允許快速驗證預設的 UTXO 集快照是否正確。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// AssumeUTXO 驗證流程
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// AssumeUTXO 驗證流程
 class AssumeUTXOVerifier {
   async verifySnapshot(
     snapshot: UTXOSnapshot,
@@ -418,10 +448,13 @@ const ASSUME_UTXO_DATA = {
       </div>
     </div>
 
-    <h3 id="supply-auditing" class="text-xl font-semibold text-[var(--text-primary)]">供應量審計</h3>
+    <h3 id="supply-auditing" class="text-xl font-semibold text-[var(--text-primary)]">
+      供應量審計
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 驗證比特幣總供應量
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 驗證比特幣總供應量
 bitcoin-cli gettxoutsetinfo muhash | jq '{
   total_amount,
   total_unspendable_amount,
@@ -472,23 +505,37 @@ bitcoin-cli gettxoutsetinfo muhash | jq '.block_info.unspendables'</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">UTXO 統計：</strong>每個高度的 UTXO 集統計資訊</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">UTXO 統計：</strong>每個高度的 UTXO
+            集統計資訊</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">MuHash：</strong>可增量更新的 UTXO 集密碼學承諾</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">MuHash：</strong>可增量更新的 UTXO
+            集密碼學承諾</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">AssumeUTXO：</strong>驗證 UTXO 快照的重要基礎</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">AssumeUTXO：</strong>驗證 UTXO
+            快照的重要基礎</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">資源：</strong>需要額外 2-3 GB 磁碟空間和初始建立時間</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">資源：</strong>需要額外 2-3 GB
+            磁碟空間和初始建立時間</span
+          >
         </li>
       </ul>
     </div>

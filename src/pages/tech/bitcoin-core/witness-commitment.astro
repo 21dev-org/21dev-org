@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        見證承諾（Witness Commitment）是 SegWit 升級的關鍵組件，將區塊中所有交易的
-        見證數據摘要嵌入 Coinbase 交易的輸出中，確保見證數據的完整性和可驗證性。
+        見證承諾（Witness Commitment）是 SegWit 升級的關鍵組件，將區塊中所有交易的 見證數據摘要嵌入
+        Coinbase 交易的輸出中，確保見證數據的完整性和可驗證性。
       </p>
 
       <h2>為什麼需要見證承諾？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 的向後兼容設計:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 的向後兼容設計:
 
 舊節點視角:
 - 區塊頭的 Merkle Root 只包含交易（不含見證）
@@ -42,7 +43,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>承諾結構</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證承諾位於 Coinbase 交易的一個 OP_RETURN 輸出:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證承諾位於 Coinbase 交易的一個 OP_RETURN 輸出:
 
 輸出腳本格式:
 OP_RETURN &lt;commitment&gt;
@@ -61,7 +63,8 @@ commitment (38 字節):
 
       <h2>承諾計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證承諾計算過程:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證承諾計算過程:
 
 1. 計算見證 Merkle Root
    - 使用 WTXID 而非 TXID
@@ -93,7 +96,8 @@ def calculate_witness_commitment(block):
 
       <h2>雙 Merkle 樹結構</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 區塊有兩棵 Merkle 樹:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 區塊有兩棵 Merkle 樹:
 
 1. 交易 Merkle 樹 (區塊頭中):
    - 使用 TXID
@@ -119,7 +123,8 @@ def calculate_witness_commitment(block):
 
       <h2>Coinbase 見證</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Coinbase 交易的特殊見證:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Coinbase 交易的特殊見證:
 
 SegWit 前:
 - Coinbase 沒有真正的輸入
@@ -149,7 +154,8 @@ SegWit 後:
 
       <h2>驗證過程</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>完整節點驗證見證承諾:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>完整節點驗證見證承諾:
 
 1. 找到 Coinbase 的見證承諾輸出
    - 搜索 OP_RETURN 輸出
@@ -185,7 +191,8 @@ def verify_witness_commitment(block):
 
       <h2>查看實際區塊</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取區塊的 Coinbase 交易
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取區塊的 Coinbase 交易
 bitcoin-cli getblock &lt;blockhash&gt; 2 | jq '.tx[0]'
 
 # 查看見證承諾輸出
@@ -218,7 +225,8 @@ aa21a9ed = 見證承諾標識符
 
       <h2>見證保留值的用途</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證保留值 (witness reserved value):
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證保留值 (witness reserved value):
 
 當前用途:
 - 通常設為 32 字節的零
@@ -241,7 +249,8 @@ aa21a9ed = 見證承諾標識符
 
       <h2>與 SPV 的關係</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SPV 節點和見證承諾:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SPV 節點和見證承諾:
 
 傳統 SPV:
 - 只下載區塊頭
@@ -263,7 +272,8 @@ SegWit SPV:
 
       <h2>程式實現</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>import hashlib
 
 def sha256d(data):
     return hashlib.sha256(hashlib.sha256(data).digest()).digest()
@@ -323,7 +333,8 @@ def verify_witness_commitment(block):
 
       <h2>歷史演進</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證承諾的發展:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證承諾的發展:
 
 BIP-141 (SegWit):
 - 定義了見證承諾格式

@@ -16,14 +16,18 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Transaction Fees', href: '/tech/bitcoin-core/fees' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Coin Control？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Coin Control？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Coin Control 允許用戶手動選擇哪些 UTXO 作為交易輸入，而不是讓錢包自動選擇。
       這對於優化隱私、管理手續費和整合零散 UTXO 非常有用。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">為什麼使用 Coin Control？</h3>
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
+        為什麼使用 Coin Control？
+      </h3>
       <div class="grid md:grid-cols-2 gap-4">
         <div class="p-4 bg-[var(--bg-primary)] rounded-lg">
           <h4 class="font-semibold text-[var(--text-primary)] mb-2">隱私保護</h4>
@@ -49,7 +53,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="list-utxos" class="text-2xl font-bold text-[var(--text-primary)]">列出可用 UTXO</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 列出所有未花費輸出
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 列出所有未花費輸出
 bitcoin-cli listunspent
 
 # 輸出示例
@@ -82,10 +87,13 @@ bitcoin-cli listunspent | jq '.[] | {txid, vout, amount, confirmations, label}'<
   </section>
 
   <section class="space-y-6">
-    <h2 id="manual-selection" class="text-2xl font-bold text-[var(--text-primary)]">手動選擇輸入</h2>
+    <h2 id="manual-selection" class="text-2xl font-bold text-[var(--text-primary)]">
+      手動選擇輸入
+    </h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1: 使用 createrawtransaction + fundrawtransaction
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1: 使用 createrawtransaction + fundrawtransaction
 
 # 創建原始交易（指定輸入）
 bitcoin-cli createrawtransaction '[
@@ -118,7 +126,8 @@ bitcoin-cli walletcreatefundedpsbt '[
     <h2 id="send-options" class="text-2xl font-bold text-[var(--text-primary)]">Send 命令選項</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># send 命令的完整選項
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># send 命令的完整選項
 bitcoin-cli send \
   '[{"bc1qrecipient...": 0.5}]' \
   6 \                    # conf_target（確認目標區塊數）
@@ -144,7 +153,8 @@ bitcoin-cli send \
     <h2 id="privacy" class="text-2xl font-bold text-[var(--text-primary)]">隱私考慮</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coin Control 隱私策略：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coin Control 隱私策略：
 
 1. 避免混合不同來源
    ┌─────────────────────────────────────────────────────┐
@@ -181,7 +191,8 @@ bitcoin-cli send \
     <h2 id="consolidation" class="text-2xl font-bold text-[var(--text-primary)]">UTXO 整合</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 整合小額 UTXO
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 整合小額 UTXO
 
 # 1. 找出小額 UTXO
 bitcoin-cli listunspent | jq '[.[] | select(.amount < 0.001)] | length'
@@ -208,7 +219,8 @@ bitcoin-cli sendall '["bc1qconsolidation..."]' null "unset" null '{
     <h2 id="labels" class="text-2xl font-bold text-[var(--text-primary)]">標籤管理</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 為地址設置標籤
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 為地址設置標籤
 bitcoin-cli setlabel "bc1q..." "exchange-deposit"
 
 # 查看特定標籤的 UTXO
@@ -227,7 +239,8 @@ bitcoin-cli send '[{"bc1q...": 1.0}]' null "unset" null "{\"inputs\": $INPUTS}"<
     <h2 id="avoid-reuse" class="text-2xl font-bold text-[var(--text-primary)]">避免地址重用</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用避免重用功能
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 啟用避免重用功能
 bitcoin-cli createwallet "privacy-wallet" false false "" false false true
 #                                                              ^^ avoid_reuse
 
@@ -248,7 +261,8 @@ bitcoin-cli getwalletinfo | jq '.avoid_reuse'
     <h2 id="example" class="text-2xl font-bold text-[var(--text-primary)]">完整範例</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 場景：從特定來源發送精確金額，無找零
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 場景：從特定來源發送精確金額，無找零
 
 # 1. 列出符合條件的 UTXO
 bitcoin-cli listunspent | jq '.[] | select(.label == "salary" and .amount >= 0.5)'
@@ -285,23 +299,33 @@ bitcoin-cli walletcreatefundedpsbt '[
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">手動選擇：</strong>精確控制交易輸入</span>
+          <span><strong class="text-[var(--text-primary)]">手動選擇：</strong>精確控制交易輸入</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">隱私增強：</strong>避免不必要的地址關聯</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">隱私增強：</strong
+            >避免不必要的地址關聯</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">費用優化：</strong>選擇合適大小的 UTXO</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">費用優化：</strong>選擇合適大小的 UTXO</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">注意：</strong>需要理解 UTXO 模型和隱私影響</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">注意：</strong>需要理解 UTXO 模型和隱私影響</span
+          >
         </li>
       </ul>
     </div>

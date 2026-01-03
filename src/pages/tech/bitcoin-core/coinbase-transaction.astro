@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Transaction', href: '/tech/bitcoin-core/transaction' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">Coinbase 交易概覽</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      Coinbase 交易概覽
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Coinbase 交易是每個區塊的第一筆交易，由礦工創建用於領取區塊獎勵和交易手續費。
       它是比特幣發行的唯一方式，也是新幣進入流通的途徑。
@@ -51,7 +53,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="structure" class="text-2xl font-bold text-[var(--text-primary)]">交易結構</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 交易結構：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 交易結構：
 
 ┌─────────────────────────────────────────────────────────────┐
 │ 輸入（只有一個）                                             │
@@ -80,7 +83,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="coinbase-data" class="text-2xl font-bold text-[var(--text-primary)]">Coinbase 數據</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>ScriptSig（Coinbase Data）結構：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>ScriptSig（Coinbase Data）結構：
 
 必須包含（BIP-34，高度 227,931+）：
 ├── 區塊高度（壓縮格式）
@@ -109,7 +113,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看最新區塊的 Coinbase
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看最新區塊的 Coinbase
 HASH=$(bitcoin-cli getbestblockhash)
 BLOCK=$(bitcoin-cli getblock $HASH 2)
 echo $BLOCK | jq '.tx[0]'
@@ -129,7 +134,8 @@ echo $((16#$(echo $HEIGHT_HEX | fold -w2 | tac | tr -d '\n')))</code></pre>
     <h2 id="block-reward" class="text-2xl font-bold text-[var(--text-primary)]">區塊獎勵</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊獎勵減半歷史：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>區塊獎勵減半歷史：
 
 ┌──────────────────────────────────────────────────────────────┐
 │ 高度範圍           │ 獎勵      │ 時間                        │
@@ -152,7 +158,8 @@ reward = 50 * 10^8 / (2 ^ (height / 210000)) satoshis
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw>def get_block_subsidy(height: int) -> int:
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-python" is:raw>def get_block_subsidy(height: int) -> int:
     """計算區塊獎勵（satoshis）"""
     INITIAL_REWARD = 50 * 100_000_000  # 50 BTC
     HALVING_INTERVAL = 210_000
@@ -174,7 +181,8 @@ print(f"高度 840000: {get_block_subsidy(840000) / 1e8} BTC")  # 3.125</code></
     <h2 id="maturity" class="text-2xl font-bold text-[var(--text-primary)]">成熟度要求</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 成熟度規則：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 成熟度規則：
 
 100 個區塊確認要求：
 ├── Coinbase 輸出需要 100 個確認才能花費
@@ -199,7 +207,8 @@ print(f"高度 840000: {get_block_subsidy(840000) / 1e8} BTC")  # 3.125</code></
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 Coinbase 是否成熟
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 檢查 Coinbase 是否成熟
 bitcoin-cli listunspent 0 9999999 '[]' true '{"include_immature_coinbase": true}'
 
 # 查看錢包的不成熟餘額
@@ -218,10 +227,13 @@ bitcoin-cli getbalances
   </section>
 
   <section class="space-y-6">
-    <h2 id="witness-commitment" class="text-2xl font-bold text-[var(--text-primary)]">Witness Commitment</h2>
+    <h2 id="witness-commitment" class="text-2xl font-bold text-[var(--text-primary)]">
+      Witness Commitment
+    </h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>SegWit Witness Commitment：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>SegWit Witness Commitment：
 
 位置：Coinbase 交易的一個輸出
 格式：OP_RETURN + 0x24 + 0xaa21a9ed + commitment
@@ -250,7 +262,8 @@ Commitment 計算：
     <h2 id="pool-identification" class="text-2xl font-bold text-[var(--text-primary)]">礦池標識</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>常見礦池標識：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>常見礦池標識：
 
 ┌─────────────────────────────────────────────────────────────┐
 │ 礦池            │ Coinbase 標識                             │
@@ -272,7 +285,8 @@ Commitment 計算：
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 提取最近區塊的礦池標識
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 提取最近區塊的礦池標識
 for i in {0..9}; do
   HASH=$(bitcoin-cli getblockhash $(($(bitcoin-cli getblockcount) - i)))
   COINBASE=$(bitcoin-cli getblock $HASH 2 | jq -r '.tx[0].vin[0].coinbase')
@@ -285,7 +299,8 @@ done</code></pre>
     <h2 id="extra-nonce" class="text-2xl font-bold text-[var(--text-primary)]">Extra Nonce</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Extra Nonce 的作用：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Extra Nonce 的作用：
 
 區塊頭中的 Nonce 只有 32 位：
 ├── 最多 4,294,967,296 種組合
@@ -313,7 +328,8 @@ done</code></pre>
     <h2 id="validation" class="text-2xl font-bold text-[var(--text-primary)]">驗證規則</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 交易驗證規則：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Coinbase 交易驗證規則：
 
 1. 結構檢查
    ├── 必須是區塊的第一筆交易
@@ -342,23 +358,35 @@ done</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">新幣發行：</strong>唯一的比特幣發行方式</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">新幣發行：</strong
+            >唯一的比特幣發行方式</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">獎勵減半：</strong>每 210,000 區塊減半</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">獎勵減半：</strong>每 210,000 區塊減半</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">成熟度：</strong>需要 100 個確認才能花費</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">成熟度：</strong>需要 100 個確認才能花費</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">數據：</strong>可包含礦池標識和任意消息</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">數據：</strong
+            >可包含礦池標識和任意消息</span
+          >
         </li>
       </ul>
     </div>

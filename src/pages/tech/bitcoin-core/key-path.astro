@@ -18,14 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        Taproot key path 是最簡單和最高效的 Taproot 花費方式。
-        當所有參與者同意時，只需提供一個 Schnorr 簽名即可花費輸出，
-        無需揭露任何腳本，最大化隱私和效率。
+        Taproot key path 是最簡單和最高效的 Taproot 花費方式。 當所有參與者同意時，只需提供一個
+        Schnorr 簽名即可花費輸出， 無需揭露任何腳本，最大化隱私和效率。
       </p>
 
       <h2>Key Path 概述</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 輸出結構:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 輸出結構:
 
 P2TR 輸出:
 OP_1 &lt;32-byte-x-only-pubkey&gt;
@@ -44,7 +44,8 @@ Key Path 花費:
 
       <h2>為什麼使用 Key Path？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Key Path 的優勢:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Key Path 的優勢:
 
 1. 效率最高
    - 見證數據最小（64 字節簽名）
@@ -67,7 +68,8 @@ Key Path 花費:
 
       <h2>創建 Key Path 輸出</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>步驟 1: 生成內部公鑰
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>步驟 1: 生成內部公鑰
 
 # 從私鑰生成公鑰
 internal_privkey = random_256_bits()
@@ -99,7 +101,8 @@ address = bech32m_encode("bc", 1, Q.x)
 
       <h2>花費 Key Path 輸出</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>花費 Key Path 只需要簽名:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>花費 Key Path 只需要簽名:
 
 步驟 1: 計算調整後的私鑰
 
@@ -129,7 +132,8 @@ witness = [signature]  # 只有一個元素
 
       <h2>Sighash 類型</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 簽名雜湊類型:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Taproot 簽名雜湊類型:
 
 SIGHASH_DEFAULT (0x00):
 - Taproot 專用
@@ -156,7 +160,8 @@ SIGHASH_ANYONECANPAY (0x80):
 
       <h2>MuSig2 與 Key Path</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MuSig2 多簽聚合:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>MuSig2 多簽聚合:
 
 傳統 2-of-2 多簽:
 - 見證: 2 個簽名 + 2 個公鑰 + 腳本
@@ -182,7 +187,8 @@ MuSig2 Key Path:
 
       <h2>程式實現</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python 示例（使用 bitcoinlib）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python 示例（使用 bitcoinlib）
 
 from bitcoin import SelectParams
 from bitcoin.core import *
@@ -218,7 +224,8 @@ tweaked_privkey = (internal_privkey.secret + tweak) % SECP256K1_ORDER</code></pr
 
       <h2>與 Script Path 的選擇</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>何時使用 Key Path:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>何時使用 Key Path:
 
 ✓ 單一所有者
   - 最簡單的情況
@@ -248,7 +255,8 @@ tweaked_privkey = (internal_privkey.secret + tweak) % SECP256K1_ORDER</code></pr
 
       <h2>交易示例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看 Key Path 花費交易
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看 Key Path 花費交易
 
 bitcoin-cli getrawtransaction &lt;txid&gt; true
 {

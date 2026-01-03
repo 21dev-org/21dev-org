@@ -18,14 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        交易權重（Transaction Weight）是 SegWit 引入的新計量單位，
-        取代了傳統的字節大小。見證數據按 1/4 的權重計算，
-        這為 SegWit 交易提供了手續費優惠。
+        交易權重（Transaction Weight）是 SegWit 引入的新計量單位， 取代了傳統的字節大小。見證數據按
+        1/4 的權重計算， 這為 SegWit 交易提供了手續費優惠。
       </p>
 
       <h2>權重計算公式</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易權重計算:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>交易權重計算:
 
 weight = (base_size × 4) + witness_size
        = (非見證數據 × 4) + 見證數據
@@ -48,7 +48,8 @@ MAX_BLOCK_WEIGHT = 4,000,000 WU
 
       <h2>計算示例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>範例 1: 傳統 P2PKH 交易（無 SegWit）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>範例 1: 傳統 P2PKH 交易（無 SegWit）
 
 結構:
 - 版本: 4 bytes
@@ -69,7 +70,8 @@ vsize = 900 / 4 = 225 vB
 
 // 傳統交易: vsize = size</code></pre>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>範例 2: Native SegWit P2WPKH 交易
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>範例 2: Native SegWit P2WPKH 交易
 
 結構:
 - 版本: 4 bytes
@@ -148,7 +150,8 @@ vsize = ceil(547 / 4) = 137 vB
 
       <h2>為什麼見證數據有折扣？</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證折扣的理由:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>見證折扣的理由:
 
 1. UTXO 集合影響
    - 非見證數據影響 UTXO 集合
@@ -172,7 +175,8 @@ vsize = ceil(547 / 4) = 137 vB
 
       <h2>手續費計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>手續費基於 vBytes 計算:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>手續費基於 vBytes 計算:
 
 fee = fee_rate × vsize
     = fee_rate × ceil(weight / 4)
@@ -195,7 +199,8 @@ bitcoin-cli estimatesmartfee 6
 
       <h2>查詢交易權重</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># RPC 命令
 
 # 解碼交易查看權重
 bitcoin-cli decoderawtransaction &lt;hex&gt;
@@ -223,7 +228,8 @@ bitcoin-cli testmempoolaccept '["&lt;hex&gt;"]'
 
       <h2>程式計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python 計算交易權重
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python 計算交易權重
 
 def calculate_weight(tx_hex):
     tx_bytes = bytes.fromhex(tx_hex)
@@ -259,7 +265,8 @@ print(f"vSize: {result['vsize']} vB")</code></pre>
 
       <h2>區塊權重分析</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看區塊權重使用
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看區塊權重使用
 
 bitcoin-cli getblock &lt;hash&gt;
 {

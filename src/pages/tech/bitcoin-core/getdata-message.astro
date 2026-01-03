@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        Getdata 消息是比特幣 P2P 協議中用於請求具體數據的消息類型。
-        當節點收到 inv 通告後，使用 getdata 請求感興趣的交易或區塊的完整數據。
+        Getdata 消息是比特幣 P2P 協議中用於請求具體數據的消息類型。 當節點收到 inv 通告後，使用
+        getdata 請求感興趣的交易或區塊的完整數據。
       </p>
 
       <h2>Getdata 消息概述</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 在數據獲取中的角色:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 在數據獲取中的角色:
 
 標準流程:
 ┌─────────┐    inv(items)    ┌─────────┐
@@ -49,7 +50,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>消息格式</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 消息結構:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 消息結構:
 
 ┌─────────────────────────────────────────┐
 │ count (varint)                          │
@@ -79,7 +81,8 @@ abc123...                       // txid (32 bytes)</code></pre>
 
       <h2>請求處理</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>節點如何回應 getdata:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>節點如何回應 getdata:
 
 對於交易請求 (MSG_TX / MSG_WTX):
 1. 檢查 mempool
@@ -115,7 +118,8 @@ switch (inv.type) {
 
       <h2>見證數據請求</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>請求帶見證數據的內容:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>請求帶見證數據的內容:
 
 MSG_WITNESS_TX (0x40000001):
 - 請求帶見證的交易
@@ -145,7 +149,8 @@ if (peer.services & NODE_WITNESS) {
 
       <h2>請求排隊與超時</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>管理待處理的請求:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>管理待處理的請求:
 
 請求隊列:
 class Peer {
@@ -173,7 +178,8 @@ MAX_TX_IN_FLIGHT = 100        // 每個節點最多待處理交易
 
       <h2>Notfound 回應</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>當數據不可用時:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>當數據不可用時:
 
 Notfound 消息:
 ┌─────────────────────────────────────────┐
@@ -200,7 +206,8 @@ Notfound 消息:
 
       <h2>優化策略</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 的優化:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Getdata 的優化:
 
 1. 批量請求
    - 累積多個請求
@@ -236,7 +243,8 @@ void ScheduleRequests() {
 
       <h2>調試與監控</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 getdata 活動
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 監控 getdata 活動
 
 # 查看節點下載狀態
 bitcoin-cli getpeerinfo | jq '.[] | {
@@ -265,7 +273,8 @@ bitcoin-cli getblockchaininfo | jq '{
 
       <h2>實現細節</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Bitcoin Core 中的實現:
 
 // 發送 getdata
 void PeerManager::SendGetData(CNode& node, std::vector&lt;CInv&gt;& vInv) {

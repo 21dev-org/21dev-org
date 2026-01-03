@@ -16,10 +16,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'DbCache', href: '/tech/bitcoin-core/dbcache' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Reindex？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Reindex？
+    </h2>
     <p class="text-[var(--text-secondary)]">
-      Reindex 是 Bitcoin Core 的重建索引功能，用於從本地區塊文件重新處理所有區塊，
-      重建 UTXO 集、區塊索引和其他資料庫。當資料庫損壞或需要驗證完整性時特別有用。
+      Reindex 是 Bitcoin Core 的重建索引功能，用於從本地區塊文件重新處理所有區塊， 重建 UTXO
+      集、區塊索引和其他資料庫。當資料庫損壞或需要驗證完整性時特別有用。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
@@ -54,7 +56,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 完整重建索引
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 完整重建索引
 bitcoind -reindex
 
 # 配合其他選項
@@ -65,28 +68,40 @@ bitcoind -reindex -dbcache=4096 -txindex</code></pre>
       <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">-reindex 過程</h4>
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">1</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >1</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">清除資料庫</strong>
             <p class="text-sm">刪除 chainstate（UTXO 集）和 blocks/index</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">2</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >2</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">掃描區塊文件</strong>
             <p class="text-sm">讀取 blocks/blk*.dat 文件找出所有區塊</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">3</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >3</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">重建區塊索引</strong>
             <p class="text-sm">按順序排列區塊，建立 blocks/index</p>
           </div>
         </li>
         <li class="flex items-start gap-3">
-          <span class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0">4</span>
+          <span
+            class="w-6 h-6 rounded-full bg-bitcoin-500 text-white flex items-center justify-center text-sm flex-shrink-0"
+            >4</span
+          >
           <div>
             <strong class="text-[var(--text-primary)]">處理每個區塊</strong>
             <p class="text-sm">驗證交易並更新 UTXO 集</p>
@@ -95,13 +110,16 @@ bitcoind -reindex -dbcache=4096 -txindex</code></pre>
       </ul>
     </div>
 
-    <h3 id="reindex-chainstate" class="text-xl font-semibold text-[var(--text-primary)]">-reindex-chainstate</h3>
+    <h3 id="reindex-chainstate" class="text-xl font-semibold text-[var(--text-primary)]">
+      -reindex-chainstate
+    </h3>
     <p class="text-[var(--text-secondary)]">
       僅重建 UTXO 集（chainstate），保留區塊索引。比完整 reindex 更快。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 僅重建 chainstate
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 僅重建 chainstate
 bitcoind -reindex-chainstate
 
 # 適用於 chainstate 損壞但區塊索引完好的情況</code></pre>
@@ -156,7 +174,8 @@ bitcoind -reindex-chainstate
     <h3 id="block-scanning" class="text-xl font-semibold text-[var(--text-primary)]">區塊掃描</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊文件結構
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 區塊文件結構
 interface BlockFile {
   path: string;  // blocks/blk00000.dat
   size: number;
@@ -215,10 +234,13 @@ async function scanBlockFile(
 }</code></pre>
     </div>
 
-    <h3 id="chainstate-rebuild" class="text-xl font-semibold text-[var(--text-primary)]">Chainstate 重建</h3>
+    <h3 id="chainstate-rebuild" class="text-xl font-semibold text-[var(--text-primary)]">
+      Chainstate 重建
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface UTXO {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface UTXO {
   txid: string;
   vout: number;
   value: number;
@@ -298,7 +320,8 @@ class ChainstateRebuilder {
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 4GB dbcache（推薦用於 reindex）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 使用 4GB dbcache（推薦用於 reindex）
 bitcoind -reindex -dbcache=4096
 
 # 使用 8GB dbcache（如果有足夠記憶體）
@@ -344,10 +367,13 @@ bitcoind -reindex -dbcache=8192
       </div>
     </div>
 
-    <h3 id="other-options" class="text-xl font-semibold text-[var(--text-primary)]">其他優化選項</h3>
+    <h3 id="other-options" class="text-xl font-semibold text-[var(--text-primary)]">
+      其他優化選項
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 組合優化選項
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 組合優化選項
 bitcoind -reindex \
   -dbcache=4096 \
   -par=0 \          # 使用所有 CPU 核心進行腳本驗證
@@ -365,7 +391,8 @@ bitcoind -reindex \
 
     <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
       <h4 class="font-semibold text-red-400 mb-3">常見錯誤訊息</h4>
-      <pre class="text-sm overflow-x-auto text-[var(--text-secondary)]"><code is:raw>Error: Error opening block database.
+      <pre
+        class="text-sm overflow-x-auto text-[var(--text-secondary)]"><code is:raw>Error: Error opening block database.
 Error: Corrupted block database detected.
 Error: A fatal internal error occurred, see debug.log for details
 LevelDB error: Corruption: block checksum mismatch</code></pre>
@@ -373,7 +400,8 @@ LevelDB error: Corruption: block checksum mismatch</code></pre>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">修復步驟</h4>
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 停止 Bitcoin Core
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 1. 停止 Bitcoin Core
 bitcoin-cli stop
 
 # 2. 備份錢包（重要！）
@@ -390,10 +418,13 @@ rm -rf ~/.bitcoin/blocks ~/.bitcoin/chainstate
 bitcoind</code></pre>
     </div>
 
-    <h3 id="enable-txindex" class="text-xl font-semibold text-[var(--text-primary)]">啟用 txindex</h3>
+    <h3 id="enable-txindex" class="text-xl font-semibold text-[var(--text-primary)]">
+      啟用 txindex
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 首次啟用 txindex 需要 reindex
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 首次啟用 txindex 需要 reindex
 bitcoind -txindex -reindex
 
 # 或者添加到配置文件
@@ -409,8 +440,7 @@ bitcoind -reindex</code></pre>
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">提示：</strong>
-        升級前請閱讀發布說明。大多數小版本升級不需要 reindex，
-        但某些涉及資料庫格式變更的升級可能需要。
+        升級前請閱讀發布說明。大多數小版本升級不需要 reindex， 但某些涉及資料庫格式變更的升級可能需要。
       </p>
     </div>
   </section>
@@ -419,7 +449,8 @@ bitcoind -reindex</code></pre>
     <h2 id="monitoring" class="text-2xl font-bold text-[var(--text-primary)]">監控進度</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 reindex 進度
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看 reindex 進度
 tail -f ~/.bitcoin/debug.log | grep -E "(Reindexing|progress=)"
 
 # 使用 RPC 查看區塊鏈資訊
@@ -434,7 +465,8 @@ watch -n 5 'bitcoin-cli getblockchaininfo | jq "{blocks, headers, verificationpr
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-3">日誌輸出示例</h4>
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Reindexing block file blk00000.dat...
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Reindexing block file blk00000.dat...
 Reindexing block file blk00001.dat...
 ...
 UpdateTip: new best=0000000000000000000... height=800000 progress=0.999854
@@ -445,23 +477,36 @@ Pre-allocating up to position 0x8000000 in blk02345.dat</code></pre>
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">-reindex：</strong>完整重建區塊索引和 UTXO 集</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">-reindex：</strong>完整重建區塊索引和 UTXO
+            集</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">-reindex-chainstate：</strong>僅重建 UTXO 集，更快</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">-reindex-chainstate：</strong>僅重建 UTXO
+            集，更快</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">效能優化：</strong>增加 dbcache 可顯著加快 reindex</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">效能優化：</strong>增加 dbcache 可顯著加快
+            reindex</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">注意：</strong>Reindex 前請務必備份錢包</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">注意：</strong>Reindex 前請務必備份錢包</span
+          >
         </li>
       </ul>
     </div>

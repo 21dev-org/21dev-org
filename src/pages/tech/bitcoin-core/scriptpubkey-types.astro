@@ -18,8 +18,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        ScriptPubKey 定義了花費比特幣輸出所需的條件。隨著比特幣的發展，
-        出現了多種標準的 scriptPubKey 類型，每種都有其特點和用途。
+        ScriptPubKey 定義了花費比特幣輸出所需的條件。隨著比特幣的發展， 出現了多種標準的
+        scriptPubKey 類型，每種都有其特點和用途。
       </p>
 
       <h2>標準類型概覽</h2>
@@ -78,11 +78,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       </div>
 
       <h2>P2PK (Pay to Public Key)</h2>
-      <p>
-        最早的輸出類型，直接使用公鑰：
-      </p>
+      <p>最早的輸出類型，直接使用公鑰：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
 &lt;pubkey&gt; OP_CHECKSIG
 
 scriptSig:
@@ -97,11 +96,10 @@ scriptSig:
 大小: 35 或 67 bytes (壓縮/非壓縮公鑰)</code></pre>
 
       <h2>P2PKH (Pay to Public Key Hash)</h2>
-      <p>
-        使用公鑰雜湊，提高隱私和安全性：
-      </p>
+      <p>使用公鑰雜湊，提高隱私和安全性：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
 OP_DUP OP_HASH160 &lt;pubkey_hash&gt; OP_EQUALVERIFY OP_CHECKSIG
 
 scriptSig:
@@ -117,11 +115,10 @@ scriptSig:
 - 遺留格式，仍被廣泛支持</code></pre>
 
       <h2>P2SH (Pay to Script Hash)</h2>
-      <p>
-        支持任意腳本，由 BIP-16 引入：
-      </p>
+      <p>支持任意腳本，由 BIP-16 引入：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
 OP_HASH160 &lt;script_hash&gt; OP_EQUAL
 
 scriptSig:
@@ -142,7 +139,8 @@ scriptSig:
 
       <h3>P2SH 多簽示例</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 2-of-3 多重簽名
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 2-of-3 多重簽名
 
 redeemScript:
 OP_2 &lt;pubkey1&gt; &lt;pubkey2&gt; &lt;pubkey3&gt; OP_3 OP_CHECKMULTISIG
@@ -154,11 +152,10 @@ scriptSig:
 OP_0 &lt;sig1&gt; &lt;sig2&gt; &lt;redeemScript&gt;</code></pre>
 
       <h2>P2WPKH (Pay to Witness Public Key Hash)</h2>
-      <p>
-        原生 SegWit 單簽地址：
-      </p>
+      <p>原生 SegWit 單簽地址：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
 OP_0 &lt;20-byte pubkey_hash&gt;
 
 witness:
@@ -175,11 +172,10 @@ witness:
 - 原生 SegWit，最高效率</code></pre>
 
       <h2>P2WSH (Pay to Witness Script Hash)</h2>
-      <p>
-        原生 SegWit 腳本雜湊：
-      </p>
+      <p>原生 SegWit 腳本雜湊：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
 OP_0 &lt;32-byte script_hash&gt;
 
 witness:
@@ -196,11 +192,10 @@ witness:
 - 比 P2SH 更便宜（見證折扣）</code></pre>
 
       <h2>P2TR (Pay to Taproot)</h2>
-      <p>
-        Taproot 輸出，支持 key path 和 script path：
-      </p>
+      <p>Taproot 輸出，支持 key path 和 script path：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>scriptPubKey:
 OP_1 &lt;32-byte tweaked_pubkey&gt;
 
 // Key path spend (最常見)
@@ -222,11 +217,10 @@ witness:
 - 使用 Schnorr 簽名</code></pre>
 
       <h2>嵌套 SegWit</h2>
-      <p>
-        為了向後兼容，SegWit 可以嵌套在 P2SH 中：
-      </p>
+      <p>為了向後兼容，SegWit 可以嵌套在 P2SH 中：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// P2SH-P2WPKH
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// P2SH-P2WPKH
 
 scriptPubKey:
 OP_HASH160 &lt;script_hash&gt; OP_EQUAL
@@ -254,7 +248,8 @@ witness:
 
       <h2>識別 scriptPubKey 類型</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def identify_scriptpubkey(script_hex):
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def identify_scriptpubkey(script_hex):
     """識別 scriptPubKey 類型"""
     script = bytes.fromhex(script_hex)
 
@@ -286,7 +281,8 @@ witness:
 
       <h2>RPC 查詢</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 解碼交易查看 scriptPubKey 類型
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 解碼交易查看 scriptPubKey 類型
 bitcoin-cli decoderawtransaction &lt;hex&gt; | jq '.vout[].scriptPubKey'
 {
   "asm": "0 751e76e8199196d454941c45d1b3a323f1433bd6",

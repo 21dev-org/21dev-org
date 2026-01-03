@@ -18,13 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        當 mempool 達到容量上限時，Bitcoin Core 需要驅逐低費率的交易以騰出空間。
-        驅逐策略確保 mempool 保留最有價值的交易，同時防止記憶體耗盡。
+        當 mempool 達到容量上限時，Bitcoin Core 需要驅逐低費率的交易以騰出空間。 驅逐策略確保
+        mempool 保留最有價值的交易，同時防止記憶體耗盡。
       </p>
 
       <h2>Mempool 容量限制</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>默認配置:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>默認配置:
 maxmempool = 300 MB  # 默認 mempool 大小
 mempoolexpiry = 336  # 交易過期時間（小時，14天）
 
@@ -50,7 +51,8 @@ bitcoin-cli getmempoolinfo
 
       <h2>驅逐策略</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>驅逐優先級（從低到高）:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>驅逐優先級（從低到高）:
 
 1. 祖先費率（Ancestor Fee Rate）
    - 考慮整個交易包的費率
@@ -72,7 +74,8 @@ bitcoin-cli getmempoolinfo
 
       <h2>動態最低費率</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// mempool 滿時自動提高最低費率
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// mempool 滿時自動提高最低費率
 
 當 mempool 接近滿載:
 1. 計算「驅逐費率」
@@ -93,7 +96,8 @@ bitcoin-cli getmempoolinfo | jq '.mempoolminfee'
 
       <h2>費率計算細節</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>祖先費率計算:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>祖先費率計算:
 
 單交易費率:
 fee_rate = fee / vsize
@@ -119,7 +123,8 @@ B 的祖先費率:
 
       <h2>驅逐示例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: mempool 滿載，需要驅逐 1 MB
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>場景: mempool 滿載，需要驅逐 1 MB
 
 交易池中的交易:
 TX_A: 500 vB, ancestor_fee_rate = 1 sat/vB
@@ -139,7 +144,8 @@ TX_E: 400 vB, ancestor_fee_rate = 1.5 sat/vB
 
       <h2>後代限制</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>防止過長的交易鏈:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>防止過長的交易鏈:
 
 默認限制:
 MAX_ANCESTORS = 25      # 最大祖先數量
@@ -162,7 +168,8 @@ bitcoin-cli getmempoolentry &lt;txid&gt; | jq '.fees'</code></pre>
 
       <h2>RBF 與驅逐的互動</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>RBF 替換 vs 驅逐:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>RBF 替換 vs 驅逐:
 
 RBF 替換:
 - 主動替換，由用戶發起
@@ -189,7 +196,8 @@ RBF 替換:
 
       <h2>時間過期</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>除了費率驅逐，還有時間過期:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>除了費率驅逐，還有時間過期:
 
 默認: mempoolexpiry = 336 小時 (14 天)
 
@@ -209,7 +217,8 @@ RBF 替換:
 
       <h2>監控與調試</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看 mempool 統計
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 查看 mempool 統計
 bitcoin-cli getmempoolinfo
 
 # 查看費率分佈

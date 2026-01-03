@@ -8,7 +8,15 @@ export interface NIP {
   title: string;
   titleZh: string;
   status: 'Draft' | 'Final' | 'Deprecated' | 'Optional' | 'Recommended';
-  category: 'core' | 'identity' | 'messaging' | 'content' | 'relay' | 'client' | 'payment' | 'other';
+  category:
+    | 'core'
+    | 'identity'
+    | 'messaging'
+    | 'content'
+    | 'relay'
+    | 'client'
+    | 'payment'
+    | 'other';
   summary: string;
   importance?: 'fundamental' | 'critical' | 'important' | 'standard';
 }
@@ -88,7 +96,7 @@ export const nips: NIP[] = [
   },
   {
     number: 10,
-    title: 'Conventions for clients\' use of e and p tags',
+    title: "Conventions for clients' use of e and p tags",
     titleZh: '回覆標記規範',
     status: 'Final',
     category: 'core',

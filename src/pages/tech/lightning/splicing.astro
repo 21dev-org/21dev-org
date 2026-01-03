@@ -25,8 +25,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="not-prose mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
     <p class="text-sm text-yellow-700 dark:text-yellow-400">
       <strong>核心優勢：</strong>
-      傳統上，調整通道容量需要關閉舊通道再開新通道，產生兩筆鏈上交易。
-      Splicing 只需要一筆交易，節省手續費並保持通道連續可用。
+      傳統上，調整通道容量需要關閉舊通道再開新通道，產生兩筆鏈上交易。 Splicing 只需要一筆交易，節省手續費並保持通道連續可用。
     </p>
   </div>
 
@@ -35,16 +34,22 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="grid md:grid-cols-2 gap-6 mb-8">
     <div class="p-6 rounded-xl border border-green-500/30 bg-green-500/10">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        <div
+          class="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
           </svg>
         </div>
         <h3 class="text-lg font-semibold text-green-700 dark:text-green-400">Splice-In</h3>
       </div>
-      <p class="text-sm text-[var(--text-secondary)] mb-3">
-        向現有通道添加資金，增加通道容量
-      </p>
+      <p class="text-sm text-[var(--text-secondary)] mb-3">向現有通道添加資金，增加通道容量</p>
       <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
         <li>• 從鏈上 UTXO 添加資金</li>
         <li>• 增加本地餘額</li>
@@ -55,15 +60,19 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <div class="p-6 rounded-xl border border-blue-500/30 bg-blue-500/10">
       <div class="flex items-center gap-3 mb-4">
         <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
           </svg>
         </div>
         <h3 class="text-lg font-semibold text-blue-700 dark:text-blue-400">Splice-Out</h3>
       </div>
-      <p class="text-sm text-[var(--text-secondary)] mb-3">
-        從通道提取資金到鏈上地址
-      </p>
+      <p class="text-sm text-[var(--text-secondary)] mb-3">從通道提取資金到鏈上地址</p>
       <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
         <li>• 將通道資金發送到鏈上</li>
         <li>• 減少通道容量</li>
@@ -81,7 +90,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     {
       [
         { step: '1', title: '協商 Splice', desc: '雙方同意進行 splice 操作，協商新的通道容量' },
-        { step: '2', title: '構建交易', desc: '創建新的 funding tx，花費原 funding output + 新資金（splice-in）或產生鏈上輸出（splice-out）' },
+        {
+          step: '2',
+          title: '構建交易',
+          desc: '創建新的 funding tx，花費原 funding output + 新資金（splice-in）或產生鏈上輸出（splice-out）',
+        },
         { step: '3', title: '並行狀態', desc: '在新 funding tx 確認前，同時維護舊和新的承諾交易' },
         { step: '4', title: '簽名交換', desc: '雙方交換新 funding tx 和對應承諾交易的簽名' },
         { step: '5', title: '廣播確認', desc: '廣播新 funding tx，等待確認後切換到新狀態' },
@@ -101,8 +114,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">Splice 交易結構</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code># Splice-In 交易
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code># Splice-In 交易
 Inputs:
   - 原 funding output (2-of-2 multisig)
   - 新增 UTXO（Alice 的鏈上資金）
@@ -148,9 +164,15 @@ Outputs:
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">操作</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">傳統方式</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Splicing</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >操作</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >傳統方式</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >Splicing</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -224,9 +246,15 @@ Outputs:
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">實現</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">狀態</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">備註</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >實現</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >狀態</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >備註</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -254,7 +282,9 @@ Outputs:
     </table>
   </div>
 
-  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">未來展望：Splicing + Taproot</h2>
+  <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">
+    未來展望：Splicing + Taproot
+  </h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
     結合 Taproot 通道後，Splicing 將獲得額外優勢：
   </p>
@@ -262,15 +292,21 @@ Outputs:
   <ul class="space-y-2 text-[var(--text-secondary)] mb-6">
     <li class="flex items-start gap-2">
       <span class="text-yellow-500 font-bold">•</span>
-      <span><strong class="text-[var(--text-primary)]">更小的交易</strong>：Schnorr 簽名更緊湊</span>
+      <span><strong class="text-[var(--text-primary)]">更小的交易</strong>：Schnorr 簽名更緊湊</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-yellow-500 font-bold">•</span>
-      <span><strong class="text-[var(--text-primary)]">更好的隱私</strong>：無法區分 splice 和普通交易</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">更好的隱私</strong>：無法區分 splice 和普通交易</span
+      >
     </li>
     <li class="flex items-start gap-2">
       <span class="text-yellow-500 font-bold">•</span>
-      <span><strong class="text-[var(--text-primary)]">批量操作</strong>：可以將多個 splice 合併為單筆交易</span>
+      <span
+        ><strong class="text-[var(--text-primary)]">批量操作</strong>：可以將多個 splice
+        合併為單筆交易</span
+      >
     </li>
   </ul>
 </ArticleLayout>

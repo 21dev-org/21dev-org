@@ -18,14 +18,14 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-8">
     <div class="prose prose-lg max-w-none">
       <p class="lead">
-        OP_CHECKSEQUENCEVERIFY (OP_CSV) 是 BIP-112 引入的相對時間鎖操作碼，
-        允許腳本驗證輸入的 nSequence 值，實現相對於交易確認時間的延遲機制。
-        這是閃電網路等二層協議的關鍵基礎設施。
+        OP_CHECKSEQUENCEVERIFY (OP_CSV) 是 BIP-112 引入的相對時間鎖操作碼， 允許腳本驗證輸入的
+        nSequence 值，實現相對於交易確認時間的延遲機制。 這是閃電網路等二層協議的關鍵基礎設施。
       </p>
 
       <h2>基本概念</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CSV vs OP_CLTV:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CSV vs OP_CLTV:
 
 OP_CHECKLOCKTIMEVERIFY (CLTV):
 - 絕對時間鎖
@@ -43,7 +43,8 @@ OP_CHECKSEQUENCEVERIFY (CSV):
 
       <h2>BIP-68 和 BIP-112</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-68: nSequence 的相對時間鎖語義
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>BIP-68: nSequence 的相對時間鎖語義
 - 定義 nSequence 如何編碼相對時間鎖
 - 共識層面的強制執行
 
@@ -60,7 +61,8 @@ BIP-113: 中位時間過去 (MTP)
 
       <h2>nSequence 編碼</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nSequence 是 32 位整數:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>nSequence 是 32 位整數:
 
 位元 31 (禁用標誌):
   0 = 啟用相對時間鎖
@@ -88,7 +90,8 @@ BIP-113: 中位時間過去 (MTP)
 
       <h3>基本相對時間鎖</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 144 區塊（約 1 天）後才能花費
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 144 區塊（約 1 天）後才能花費
 OP_144
 OP_CHECKSEQUENCEVERIFY
 OP_DROP
@@ -104,7 +107,8 @@ OP_CHECKSIG
 
       <h3>閃電網路承諾交易</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 本地輸出（to_local）腳本
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 本地輸出（to_local）腳本
 OP_IF
     // 撤銷路徑：對方可以使用撤銷密鑰立即花費
     &lt;revocationpubkey&gt;
@@ -122,7 +126,8 @@ OP_CHECKSIG
 
       <h3>HTLC (Hash Time Locked Contract)</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// HTLC 腳本示例
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// HTLC 腳本示例
 OP_IF
     // Hash 路徑：知道 preimage 可以立即領取
     OP_HASH160 &lt;payment_hash&gt; OP_EQUALVERIFY
@@ -142,7 +147,8 @@ OP_CHECKSIG
 
       <h2>時間類型比較</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 區塊數 vs 時間
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 區塊數 vs 時間
 
 區塊數模式 (位元 22 = 0):
 優點:
@@ -167,7 +173,8 @@ OP_CHECKSIG
 
       <h2>驗證規則</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CSV 驗證邏輯:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>OP_CSV 驗證邏輯:
 
 1. 檢查堆疊頂部值
    - 如果 < 0，失敗
@@ -203,7 +210,8 @@ def verify_csv(stack_value, nSequence):
 
       <h2>與交易版本的關係</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 交易版本要求
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 交易版本要求
 
 BIP-68 相對時間鎖只在交易版本 >= 2 時啟用
 
@@ -228,7 +236,8 @@ bitcoin-cli decoderawtransaction &lt;hex&gt;
 
       <h3>閃電網路通道</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>閃電網路使用 CSV 的場景:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>閃電網路使用 CSV 的場景:
 
 1. 承諾交易 to_local 輸出
    - 防止單方面關閉後立即提款
@@ -248,7 +257,8 @@ bitcoin-cli decoderawtransaction &lt;hex&gt;
 
       <h3>保管庫 (Vault)</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡單保管庫設計
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 簡單保管庫設計
 // 提款需要兩步，中間有延遲
 
 解鎖腳本:
@@ -272,7 +282,8 @@ OP_ENDIF
 
       <h2>程式實現</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python: 編碼相對時間鎖
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Python: 編碼相對時間鎖
 
 def encode_sequence_blocks(blocks):
     """編碼區塊數相對時間鎖"""
@@ -329,7 +340,8 @@ print(encode_sequence_time(86400))  # 0x004000A8 (1天)</code></pre>
 
       <h2>與 RBF 的互動</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nSequence 的多重用途
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nSequence 的多重用途
 
 nSequence < 0xFFFFFFFE:
 - 啟用 RBF（可替換）

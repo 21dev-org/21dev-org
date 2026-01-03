@@ -17,23 +17,25 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 >
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">什麼是 NIP-94？</h2>
   <p class="text-[var(--text-secondary)] leading-relaxed mb-6">
-    NIP-94 定義了描述檔案中繼資料的標準格式。它使用 kind 1063 事件來儲存檔案的
-    URL、MIME 類型、檔案大小、雜湊值、圖片尺寸等資訊。這個標準讓客戶端可以
+    NIP-94 定義了描述檔案中繼資料的標準格式。它使用 kind 1063 事件來儲存檔案的 URL、MIME
+    類型、檔案大小、雜湊值、圖片尺寸等資訊。這個標準讓客戶端可以
     在下載前了解檔案詳情，並驗證檔案完整性。
   </p>
 
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
       <strong>與 NIP-96 的關係：</strong>
-      NIP-96 檔案上傳伺服器會在回應中返回 NIP-94 格式的中繼資料，
-      讓客戶端可以直接使用這些資訊。
+      NIP-96 檔案上傳伺服器會在回應中返回 NIP-94 格式的中繼資料， 讓客戶端可以直接使用這些資訊。
     </p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`{
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`{
   "kind": 1063,
   "content": "這是我的照片描述",
   "tags": [
@@ -62,9 +64,15 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標籤</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">必須</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">說明</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >標籤</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >必須</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >說明</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -168,8 +176,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">建立檔案中繼資料事件</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function createFileMetadataEvent(fileInfo) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function createFileMetadataEvent(fileInfo) {
   const {
     url,
     mimeType,
@@ -225,8 +236,11 @@ const fileEvent = await createFileMetadataEvent({
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">解析檔案中繼資料</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`function parseFileMetadata(event) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`function parseFileMetadata(event) {
   if (event.kind !== 1063) {
     throw new Error('Not a file metadata event')
   }
@@ -271,8 +285,11 @@ function getFileType(mimeType) {
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">驗證檔案完整性</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function verifyFileIntegrity(metadata) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function verifyFileIntegrity(metadata) {
   const { url, hash, size } = metadata
 
   // 下載檔案
@@ -318,8 +335,11 @@ if (!result.valid) {
     BlurHash 是一種將圖片編碼為短字串的演算法，用於在圖片載入前顯示模糊預覽：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`import { decode } from 'blurhash'
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`import { decode } from 'blurhash'
 
 function renderBlurhash(blurhash, width, height, canvas) {
   // 解碼 blurhash
@@ -383,8 +403,11 @@ function ImageWithBlurhash({ url, blurhash, width, height, alt }) {
     使用 imeta 標籤在貼文中內嵌 NIP-94 風格的中繼資料：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 在 kind 1 貼文中嵌入媒體中繼資料
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 在 kind 1 貼文中嵌入媒體中繼資料
 {
   "kind": 1,
   "content": "今天拍的照片！ https://media.nostr.build/abc.jpg",
@@ -417,8 +440,11 @@ function ImageWithBlurhash({ url, blurhash, width, height, alt }) {
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢檔案事件</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢特定用戶上傳的所有檔案
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 查詢特定用戶上傳的所有檔案
 function getUserFiles(relay, pubkey, limit = 50) {
   return new Promise((resolve) => {
     const files = []
@@ -496,8 +522,7 @@ const videos = await getFilesByType(relay, 'video/', 10)`}</code></pre>
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
       <strong>提示：</strong>
-      NIP-94 中繼資料通常由 NIP-96 伺服器自動生成。
-      當你使用支援的客戶端上傳檔案時，這些標籤會自動填入。
+      NIP-94 中繼資料通常由 NIP-96 伺服器自動生成。 當你使用支援的客戶端上傳檔案時，這些標籤會自動填入。
     </p>
   </div>
 </ArticleLayout>

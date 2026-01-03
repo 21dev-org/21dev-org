@@ -24,15 +24,17 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <div class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
     <p class="text-sm text-purple-700 dark:text-purple-400">
       <strong>核心概念：</strong>
-      Kind 10002 事件包含用戶的中繼器偏好，區分「讀取」和「寫入」中繼器，
-      讓 Nostr 網路更有效率地路由訊息。
+      Kind 10002 事件包含用戶的中繼器偏好，區分「讀取」和「寫入」中繼器， 讓 Nostr 網路更有效率地路由訊息。
     </p>
   </div>
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">事件結構</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`{
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`{
   "kind": 10002,
   "pubkey": "<user-pubkey>",
   "content": "",
@@ -53,10 +55,18 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">標記</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">讀取</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">寫入</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">用途</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >標記</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >讀取</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >寫入</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >用途</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -120,8 +130,11 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">程式碼範例</h2>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發布中繼器列表</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function publishRelayList(relays) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function publishRelayList(relays) {
   const event = {
     kind: 10002,
     created_at: Math.floor(Date.now() / 1000),
@@ -152,8 +165,11 @@ await publishRelayList([
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">查詢用戶的中繼器列表</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function getUserRelays(pubkey) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function getUserRelays(pubkey) {
   return new Promise((resolve) => {
     const sub = relay.subscribe([{
       kinds: [10002],
@@ -201,8 +217,11 @@ console.log('寫入中繼器:', relays.write)`}</code></pre>
   </div>
 
   <h3 class="text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3">發送事件到用戶的中繼器</h3>
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`async function sendToUser(event, targetPubkey) {
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`async function sendToUser(event, targetPubkey) {
   // 1. 獲取目標用戶的中繼器列表
   const userRelays = await getUserRelays(targetPubkey)
 
@@ -231,8 +250,11 @@ await sendToUser(encryptedDM, recipientPubkey)`}</code></pre>
     NIP-65 實現了「Outbox 模型」，讓訊息路由更有效率：
   </p>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`# Outbox 模型原理
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`# Outbox 模型原理
 
 Alice 的設定：
   write: [relay1, relay2]  // Alice 發布到這裡
@@ -255,9 +277,15 @@ Bob 想發私訊給 Alice：
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-[var(--border-default)]">
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">特性</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 3（關注列表）</th>
-          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col">Kind 10002（中繼器列表）</th>
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >特性</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >Kind 3（關注列表）</th
+          >
+          <th class="text-left py-3 px-4 font-semibold text-[var(--text-primary)]" scope="col"
+            >Kind 10002（中繼器列表）</th
+          >
         </tr>
       </thead>
       <tbody class="text-[var(--text-secondary)]">
@@ -310,8 +338,11 @@ Bob 想發私訊給 Alice：
 
   <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4">查詢示例</h2>
 
-  <div class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto">
-    <pre class="text-[var(--text-secondary)]"><code>{`// 查詢單個用戶的中繼器列表
+  <div
+    class="not-prose mb-6 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] font-mono text-sm overflow-x-auto"
+  >
+    <pre
+      class="text-[var(--text-secondary)]"><code>{`// 查詢單個用戶的中繼器列表
 ["REQ", "relay-list", {
   "kinds": [10002],
   "authors": ["<pubkey>"],
@@ -331,8 +362,7 @@ Bob 想發私訊給 Alice：
   <div class="not-prose mb-8 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
     <p class="text-sm text-blue-700 dark:text-blue-400">
       <strong>客戶端建議：</strong>
-      實作 NIP-65 可以大幅提升訊息送達率。當用戶關注某人時，
-      查詢他們的中繼器列表，並優先連接到這些中繼器。
+      實作 NIP-65 可以大幅提升訊息送達率。當用戶關注某人時， 查詢他們的中繼器列表，並優先連接到這些中繼器。
     </p>
   </div>
 </ArticleLayout>

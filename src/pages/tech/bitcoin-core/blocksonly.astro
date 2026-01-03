@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'CoinStatsIndex', href: '/tech/bitcoin-core/coinstatsindex' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Blocks Only 模式？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Blocks Only 模式？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Blocks Only 模式讓 Bitcoin Core 只接收和驗證區塊，不參與未確認交易的中繼。
       這大幅減少頻寬使用，適合網路連線受限或只需要驗證區塊鏈的場景。
@@ -51,7 +53,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h3 id="enable" class="text-xl font-semibold text-[var(--text-primary)]">啟用 Blocks Only</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 命令行啟用
 bitcoind -blocksonly
 
 # 配置文件
@@ -64,7 +67,8 @@ echo "blocksonly=1" >> ~/.bitcoin/bitcoin.conf
     <h3 id="related-options" class="text-xl font-semibold text-[var(--text-primary)]">相關選項</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf
 
 # 啟用 blocks only 模式
 blocksonly=1
@@ -83,8 +87,7 @@ listen=0</code></pre>
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        Blocks only 模式仍然會驗證區塊中的所有交易，確保完整的安全性。
-        只是不參與未確認交易的傳播。
+        Blocks only 模式仍然會驗證區塊中的所有交易，確保完整的安全性。 只是不參與未確認交易的傳播。
       </p>
     </div>
   </section>
@@ -148,7 +151,8 @@ listen=0</code></pre>
     <h3 id="mempool" class="text-xl font-semibold text-[var(--text-primary)]">Mempool 行為</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Blocks only 模式下的 mempool 行為
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Blocks only 模式下的 mempool 行為
 class MempoolBlocksOnly {
   // 不接收來自 P2P 的交易
   onTxMessage(peer: Peer, tx: Transaction): void {
@@ -213,12 +217,12 @@ class MempoolBlocksOnly {
 
     <h3 id="satellite" class="text-xl font-semibold text-[var(--text-primary)]">衛星節點</h3>
     <p class="text-[var(--text-secondary)]">
-      Blockstream Satellite 用戶特別適合使用 blocks only 模式，
-      因為衛星連接是單向的且頻寬受限。
+      Blockstream Satellite 用戶特別適合使用 blocks only 模式， 因為衛星連接是單向的且頻寬受限。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 衛星節點配置示例
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 衛星節點配置示例
 blocksonly=1
 listen=0
 maxconnections=4
@@ -240,7 +244,8 @@ whitelist=192.168.1.100</code></pre>
       <p class="text-sm text-[var(--text-secondary)] mb-4">
         由於沒有 mempool 數據，estimatesmartfee 命令將返回錯誤或不準確的結果。
       </p>
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 在 blocks only 模式下
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 在 blocks only 模式下
 bitcoin-cli estimatesmartfee 6
 {
   "errors": ["Insufficient data or no feerate found"]
@@ -289,7 +294,8 @@ bitcoin-cli estimatesmartfee 6
     <h3 id="p2p-changes" class="text-xl font-semibold text-[var(--text-primary)]">P2P 協議變化</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class P2PNodeBlocksOnly {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>class P2PNodeBlocksOnly {
   private blocksOnly: boolean;
 
   // 發送 version 消息時設定
@@ -333,10 +339,13 @@ bitcoin-cli estimatesmartfee 6
 }</code></pre>
     </div>
 
-    <h3 id="bandwidth-savings" class="text-xl font-semibold text-[var(--text-primary)]">頻寬計算</h3>
+    <h3 id="bandwidth-savings" class="text-xl font-semibold text-[var(--text-primary)]">
+      頻寬計算
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>正常模式的日均流量：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>正常模式的日均流量：
 - 交易廣播：~20-40 GB（雙向）
 - 區塊傳輸：~150 MB
 - 其他協議開銷：~500 MB
@@ -354,13 +363,16 @@ Blocks Only 模式的日均流量：
   <section class="space-y-6">
     <h2 id="alternatives" class="text-2xl font-bold text-[var(--text-primary)]">替代方案</h2>
 
-    <h3 id="maxuploadtarget" class="text-xl font-semibold text-[var(--text-primary)]">maxuploadtarget</h3>
+    <h3 id="maxuploadtarget" class="text-xl font-semibold text-[var(--text-primary)]">
+      maxuploadtarget
+    </h3>
     <p class="text-[var(--text-secondary)]">
       如果只想限制上傳流量而不完全禁用交易中繼，可以使用 maxuploadtarget。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 限制每天上傳 1 GB
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 限制每天上傳 1 GB
 bitcoind -maxuploadtarget=1024
 
 # 達到限制後：
@@ -369,10 +381,13 @@ bitcoind -maxuploadtarget=1024
 # - 繼續正常交易中繼</code></pre>
     </div>
 
-    <h3 id="pruning-combo" class="text-xl font-semibold text-[var(--text-primary)]">與 Pruning 結合</h3>
+    <h3 id="pruning-combo" class="text-xl font-semibold text-[var(--text-primary)]">
+      與 Pruning 結合
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 最小資源配置
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># 最小資源配置
 blocksonly=1
 prune=550         # 最小 550 MB
 maxconnections=10
@@ -388,23 +403,35 @@ listen=0
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">頻寬節省：</strong>減少約 99% 的網路流量</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">頻寬節省：</strong>減少約 99% 的網路流量</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">安全性：</strong>仍然完整驗證所有區塊</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">安全性：</strong>仍然完整驗證所有區塊</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">適用場景：</strong>頻寬受限、備份節點、區塊鏈分析</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">適用場景：</strong
+            >頻寬受限、備份節點、區塊鏈分析</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">限制：</strong>無手續費估算、無未確認交易通知</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">限制：</strong
+            >無手續費估算、無未確認交易通知</span
+          >
         </li>
       </ul>
     </div>

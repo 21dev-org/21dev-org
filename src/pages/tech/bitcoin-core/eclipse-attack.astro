@@ -24,7 +24,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>攻擊原理</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>正常情況:
                     ┌─────────────┐
                     │ 比特幣網路  │
                     └──────┬──────┘
@@ -59,7 +60,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h3>1. 雙重支付</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
 1. 攻擊者日蝕商家節點
 2. 向商家發送支付 TX1（支付商品）
 3. 向真實網路發送 TX2（回到自己地址）
@@ -70,7 +72,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h3>2. 0-conf 攻擊</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
 1. 日蝕商家節點
 2. 向商家廣播 TX1（支付）
 3. 隱藏 TX2（衝突的雙重支付）
@@ -80,7 +83,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h3>3. 算力竊取（針對礦工）</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>攻擊流程:
 1. 日蝕目標礦池或礦工
 2. 向目標提供陳舊的區塊鏈視圖
 3. 礦工在舊區塊上浪費算力
@@ -93,7 +97,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <h2>攻擊實施方法</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 階段 1: 地址污染
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 階段 1: 地址污染
 攻擊者運行大量節點，向目標 ADDR 表注入惡意地址
 
 for each attacker_node:
@@ -118,7 +123,8 @@ for each attacker_node:
 
       <h3>AddrMan 改進</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 地址儲存桶設計
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 地址儲存桶設計
 AddrMan 使用兩個表:
 - tried: 成功連接過的地址
 - new: 新學習到的地址
@@ -133,7 +139,8 @@ AddrMan 使用兩個表:
 
       <h3>連接多樣性</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core 的保護
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Bitcoin Core 的保護
 
 1. 出站連接保護
    - 8 個全中繼出站連接
@@ -156,7 +163,8 @@ AddrMan 使用兩個表:
 
       <h3>入站連接保護</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 入站連接驅逐策略
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 入站連接驅逐策略
 當入站槽位滿時:
 1. 保護最後發送區塊的連接
 2. 保護最後發送交易的連接
@@ -171,7 +179,8 @@ AddrMan 使用兩個表:
 
       <h2>配置建議</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf
 
 # 添加可信節點
 addnode=trusted-node.example.com:8333
@@ -194,7 +203,8 @@ blocksonly=0  # 不要啟用，會減少保護</code></pre>
 
       <h2>檢測日蝕攻擊</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查連接多樣性
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 檢查連接多樣性
 bitcoin-cli getpeerinfo | jq '[.[].addr | split(":")[0] | split(".")[0:2] | join(".")] | unique | length'
 
 # 如果結果遠小於連接數，可能存在問題
@@ -226,8 +236,14 @@ bitcoin-cli getblockcount
       <h2>相關研究</h2>
 
       <ul>
-        <li><a href="https://eprint.iacr.org/2015/263.pdf">Eclipse Attacks on Bitcoin's Peer-to-Peer Network (2015)</a></li>
-        <li><a href="https://www.usenix.org/conference/usenixsecurity18/presentation/apostolaki">Hijacking Bitcoin (2018)</a></li>
+        <li>
+          <a href="https://eprint.iacr.org/2015/263.pdf"
+            >Eclipse Attacks on Bitcoin's Peer-to-Peer Network (2015)</a>
+        </li>
+        <li>
+          <a href="https://www.usenix.org/conference/usenixsecurity18/presentation/apostolaki"
+            >Hijacking Bitcoin (2018)</a>
+        </li>
         <li>Bitcoin Core PR #8282: 錨點連接</li>
         <li>Bitcoin Core PR #16702: 僅區塊中繼連接</li>
       </ul>

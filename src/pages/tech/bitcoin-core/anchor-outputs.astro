@@ -16,16 +16,18 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Package Relay', href: '/tech/bitcoin-core/package-relay' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Anchor Outputs？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 Anchor Outputs？
+    </h2>
     <p class="text-[var(--text-secondary)]">
-      Anchor Outputs 是閃電網路的一項改進，在承諾交易中添加特殊的小額輸出，
-      允許任一方使用 CPFP（Child Pays For Parent）來提高交易手續費，
-      解決預簽名交易無法調整手續費的問題。
+      Anchor Outputs 是閃電網路的一項改進，在承諾交易中添加特殊的小額輸出， 允許任一方使用
+      CPFP（Child Pays For Parent）來提高交易手續費， 解決預簽名交易無法調整手續費的問題。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
       <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">問題背景</h3>
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路承諾交易的手續費問題：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路承諾交易的手續費問題：
 
 1. 承諾交易是預簽名的
    - 在通道開啟時就決定了手續費
@@ -49,7 +51,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="design" class="text-2xl font-bold text-[var(--text-primary)]">Anchor Output 設計</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>帶 Anchor Outputs 的承諾交易：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>帶 Anchor Outputs 的承諾交易：
 
 ┌─────────────────────────────────────────────────────────────┐
 │  Commitment Transaction                                     │
@@ -74,7 +77,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Anchor Output 腳本
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// Anchor Output 腳本
 // 任一方可立即花費（用於 CPFP）
 // 或 16 個區塊後任何人可花費（清理）
 
@@ -106,7 +110,8 @@ interface AnchorOutput {
     <h2 id="cpfp-flow" class="text-2xl font-bold text-[var(--text-primary)]">CPFP 流程</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>使用 Anchor Output 進行 CPFP：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>使用 Anchor Output 進行 CPFP：
 
 1. 廣播承諾交易（低手續費）
    ┌─────────────────────────────────┐
@@ -132,7 +137,8 @@ interface AnchorOutput {
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// CPFP 子交易創建
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// CPFP 子交易創建
 function createCPFPTransaction(
   anchorOutpoint: OutPoint,
   anchorAmount: number,
@@ -171,18 +177,20 @@ function createCPFPTransaction(
   </section>
 
   <section class="space-y-6">
-    <h2 id="package-relay" class="text-2xl font-bold text-[var(--text-primary)]">與 Package Relay 的關係</h2>
+    <h2 id="package-relay" class="text-2xl font-bold text-[var(--text-primary)]">
+      與 Package Relay 的關係
+    </h2>
 
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">重要：</strong>
-        Anchor Outputs 依賴 Bitcoin Core 的 CPFP 機制。Package Relay（BIP-331）
-        將進一步改善這一功能，允許同時提交父子交易。
+        Anchor Outputs 依賴 Bitcoin Core 的 CPFP 機制。Package Relay（BIP-331） 將進一步改善這一功能，允許同時提交父子交易。
       </p>
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>當前限制（無 Package Relay）：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>當前限制（無 Package Relay）：
 
 問題：如果承諾交易手續費低於 mempool 最小值
 ┌─────────────────────────────────────────────────────────────┐
@@ -219,7 +227,8 @@ Package Relay 解決方案：
     <h2 id="mempool-policy" class="text-2xl font-bold text-[var(--text-primary)]">Mempool 政策</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Bitcoin Core 對 Anchor Outputs 的特殊處理：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Bitcoin Core 對 Anchor Outputs 的特殊處理：
 
 1. CPFP Carve-out（BIP-125 擴展）
    - 允許一個額外的子交易繞過祖先限制
@@ -238,7 +247,8 @@ Package Relay 解決方案：
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 相關設置
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-ini" is:raw># bitcoin.conf 相關設置
 
 # 祖先數量限制
 limitancestorcount=25
@@ -257,7 +267,8 @@ limitdescendantcount=25
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>零手續費 Anchor Outputs（BOLT-3 更新）：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>零手續費 Anchor Outputs（BOLT-3 更新）：
 
 特點：
 - 承諾交易手續費為 0
@@ -328,23 +339,35 @@ limitdescendantcount=25
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">解決問題：</strong>預簽名交易的手續費調整</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">解決問題：</strong
+            >預簽名交易的手續費調整</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">機制：</strong>使用 CPFP 子交易提高手續費</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">機制：</strong>使用 CPFP 子交易提高手續費</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">Carve-out：</strong>確保雙方都能進行 CPFP</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">Carve-out：</strong>確保雙方都能進行 CPFP</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">依賴：</strong>Package Relay 將進一步改善體驗</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">依賴：</strong>Package Relay
+            將進一步改善體驗</span
+          >
         </li>
       </ul>
     </div>

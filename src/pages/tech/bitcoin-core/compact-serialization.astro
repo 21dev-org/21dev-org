@@ -65,7 +65,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
         </div>
       </div>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 編碼示例
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 編碼示例
 100      -> [0x64]                           // 1 byte
 255      -> [0xFD][0xFF][0x00]               // 3 bytes
 65535    -> [0xFD][0xFF][0xFF]               // 3 bytes
@@ -90,7 +91,8 @@ void WriteCompactSize(std::vector<unsigned char>& data, uint64_t nSize)
 
       <h2>Python 解碼範例</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def read_compact_size(stream):
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def read_compact_size(stream):
     """從位元組流讀取 CompactSize"""
     first = stream.read(1)[0]
 
@@ -115,11 +117,10 @@ def write_compact_size(value):
         return bytes([0xFF]) + value.to_bytes(8, 'little')</code></pre>
 
       <h2>交易序列化</h2>
-      <p>
-        交易使用 CompactSize 來表示可變長度欄位：
-      </p>
+      <p>交易使用 CompactSize 來表示可變長度欄位：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Transaction 序列化:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Transaction 序列化:
 ├── version (4 bytes, LE)
 ├── [marker=0x00, flag=0x01]  // SegWit only
 ├── input_count (CompactSize)
@@ -143,11 +144,10 @@ def write_compact_size(value):
 └── locktime (4 bytes, LE)</code></pre>
 
       <h2>nBits (Compact Target)</h2>
-      <p>
-        區塊頭中的難度目標使用特殊的緊湊格式：
-      </p>
+      <p>區塊頭中的難度目標使用特殊的緊湊格式：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nBits 格式
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// nBits 格式
 // [exponent (1 byte)][coefficient (3 bytes)]
 
 // 轉換公式
@@ -176,11 +176,10 @@ def nbits_to_target(nbits):
     return target</code></pre>
 
       <h2>Compact Block Short IDs</h2>
-      <p>
-        BIP-152 使用 6 位元組的短 ID 來表示交易：
-      </p>
+      <p>BIP-152 使用 6 位元組的短 ID 來表示交易：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 短 ID 計算
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 短 ID 計算
 short_id = SipHash-2-4(k0, k1, wtxid) & 0xffffffffffff
 
 // k0, k1 來自區塊頭和 nonce
@@ -192,11 +191,10 @@ k1 = key[8:16]
 // 在大多數情況下不會發生碰撞</code></pre>
 
       <h2>Script 數字編碼</h2>
-      <p>
-        比特幣腳本使用特殊的數字表示法：
-      </p>
+      <p>比特幣腳本使用特殊的數字表示法：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 小整數優化
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 小整數優化
 OP_0         -> 0
 OP_1..OP_16  -> 1..16
 OP_1NEGATE   -> -1
@@ -235,11 +233,10 @@ def encode_script_number(n):
     return bytes(result)</code></pre>
 
       <h2>Bech32 五位元編碼</h2>
-      <p>
-        Bech32 地址使用 5-bit 分組：
-      </p>
+      <p>Bech32 地址使用 5-bit 分組：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 8-bit 到 5-bit 轉換
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 8-bit 到 5-bit 轉換
 // 每 8 個 bytes 變成 13 個 5-bit 值
 
 def convertbits(data, frombits, tobits):
@@ -265,11 +262,10 @@ witness_program = bytes.fromhex("751e76e8...")
 five_bit = convertbits(witness_program, 8, 5)</code></pre>
 
       <h2>PSBT 鍵值編碼</h2>
-      <p>
-        PSBT（BIP-174）使用鍵值對格式：
-      </p>
+      <p>PSBT（BIP-174）使用鍵值對格式：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>PSBT 結構:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>PSBT 結構:
 ├── magic: "psbt" + 0xff
 ├── global_map
 │   └── key-value pairs
@@ -291,7 +287,9 @@ map 結束符: 0x00</code></pre>
 
       <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
         <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
-          <li><strong>位元組序：</strong>大多數值是小端序（Little Endian），但雜湊值顯示為大端序</li>
+          <li>
+            <strong>位元組序：</strong>大多數值是小端序（Little Endian），但雜湊值顯示為大端序
+          </li>
           <li><strong>非規範編碼：</strong>CompactSize 應使用最小編碼，否則可能被拒絕</li>
           <li><strong>符號處理：</strong>Script 數字使用符號-量值表示法</li>
           <li><strong>長度限制：</strong>某些欄位有最大長度限制（如腳本 10,000 bytes）</li>

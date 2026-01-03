@@ -23,11 +23,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       </p>
 
       <h2>現有架構的問題</h2>
-      <p>
-        當前的 mempool 實現存在多個問題：
-      </p>
+      <p>當前的 mempool 實現存在多個問題：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>問題 1: 祖先/後代費率計算不準確
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>問題 1: 祖先/後代費率計算不準確
 
 TX_A (1 sat/vB, 100 vB) → TX_B (10 sat/vB, 100 vB)
                        → TX_C (10 sat/vB, 100 vB)
@@ -47,11 +46,10 @@ TX_C 的祖先費率 = (100 + 1000) / 200 = 5.5 sat/vB
 - 難以處理複雜的依賴關係</code></pre>
 
       <h2>Cluster 概念</h2>
-      <p>
-        Cluster 是一組相互連接的交易，形成一個連通的依賴圖：
-      </p>
+      <p>Cluster 是一組相互連接的交易，形成一個連通的依賴圖：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Cluster 示例:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Cluster 示例:
 
 Cluster 1:          Cluster 2:
     A                   D
@@ -67,11 +65,10 @@ Cluster 1:          Cluster 2:
 - 新交易可能合併多個 cluster</code></pre>
 
       <h2>線性化（Linearization）</h2>
-      <p>
-        每個 cluster 都有一個「線性化」順序，定義了最優的挖礦順序：
-      </p>
+      <p>每個 cluster 都有一個「線性化」順序，定義了最優的挖礦順序：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Cluster: A → B → C (A 是父交易)
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>Cluster: A → B → C (A 是父交易)
 
 可能的線性化:
 1. [A, B, C] - 按依賴順序
@@ -97,11 +94,10 @@ C: 2 sat/vB, 100 vB
 [A, B, C] 更好（更早達到高費率）</code></pre>
 
       <h2>Chunk 和費率圖</h2>
-      <p>
-        線性化產生的「chunks」定義了交易的實際挖礦優先級：
-      </p>
+      <p>線性化產生的「chunks」定義了交易的實際挖礦優先級：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>費率圖示例:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>費率圖示例:
 
 費率 ↑
      │    ┌───┐
@@ -120,11 +116,10 @@ Chunk: 線性化中費率遞減的連續段
 - Chunk 費率 = chunk 總費用 / chunk 總大小</code></pre>
 
       <h2>新的 RBF 規則</h2>
-      <p>
-        Cluster mempool 啟用了更合理的 RBF 規則：
-      </p>
+      <p>Cluster mempool 啟用了更合理的 RBF 規則：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 舊規則 (BIP-125)
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 舊規則 (BIP-125)
 replacement.fee > sum(replaced_txs.fees)
 replacement.feerate > replaced_tx.feerate
 
@@ -145,7 +140,8 @@ replacement.feerate > replaced_tx.feerate
 
       <h2>Cluster 大小限制</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 提議的限制
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 提議的限制
 MAX_CLUSTER_COUNT = 100      // 最大交易數
 MAX_CLUSTER_SIZE = 101 KB    // 最大虛擬大小
 
@@ -175,7 +171,8 @@ MAX_CLUSTER_SIZE = 101 KB    // 最大虛擬大小
 
       <h2>對開發者的影響</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 行為變化
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 行為變化
 
 1. Package 限制變化
    舊: 25 祖先 + 25 後代
@@ -195,7 +192,8 @@ MAX_CLUSTER_SIZE = 101 KB    // 最大虛擬大小
 
       <h2>API 變化</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 提議的新 RPC 字段
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 提議的新 RPC 字段
 
 bitcoin-cli getmempoolentry &lt;txid&gt;
 {
@@ -228,16 +226,20 @@ bitcoin-cli getmempoolinfo
 
       <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg my-6">
         <ul class="text-blue-800 dark:text-blue-200 space-y-2 mb-0">
-          <li><a href="https://github.com/bitcoin/bitcoin/issues/27677">GitHub: Cluster Mempool Tracking Issue</a></li>
-          <li><a href="https://delvingbitcoin.org/c/implementation/wg-cluster-mempool">Delving Bitcoin: Cluster Mempool Working Group</a></li>
+          <li>
+            <a href="https://github.com/bitcoin/bitcoin/issues/27677"
+              >GitHub: Cluster Mempool Tracking Issue</a>
+          </li>
+          <li>
+            <a href="https://delvingbitcoin.org/c/implementation/wg-cluster-mempool"
+              >Delving Bitcoin: Cluster Mempool Working Group</a>
+          </li>
           <li>Bitcoin Core PR #28676, #29242 等</li>
         </ul>
       </div>
 
       <h2>未來展望</h2>
-      <p>
-        Cluster mempool 是 Bitcoin Core mempool 的根本性改進。完成後，它將：
-      </p>
+      <p>Cluster mempool 是 Bitcoin Core mempool 的根本性改進。完成後，它將：</p>
 
       <ul>
         <li>使 RBF 更加公平和可預測</li>

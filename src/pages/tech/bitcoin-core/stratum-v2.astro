@@ -23,9 +23,7 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       </p>
 
       <h2>Stratum V1 的問題</h2>
-      <p>
-        2012 年發布的 Stratum V1 存在多個問題：
-      </p>
+      <p>2012 年發布的 Stratum V1 存在多個問題：</p>
 
       <ul>
         <li><strong>無加密：</strong>通訊以明文傳輸，易受中間人攻擊</li>
@@ -34,7 +32,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
         <li><strong>hash 劫持：</strong>可能被截獲並重定向到其他礦池</li>
       </ul>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Stratum V1 訊息示例（明文 JSON）
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Stratum V1 訊息示例（明文 JSON）
 {"id": 1, "method": "mining.subscribe", "params": []}
 {"id": 2, "method": "mining.authorize", "params": ["worker", "pass"]}
 {"method": "mining.notify", "params": ["job_id", "prevhash", ...]}
@@ -48,7 +47,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 
       <div class="bg-[var(--bg-secondary)] p-6 rounded-lg my-6">
         <h4 class="text-lg font-semibold mb-4">協議組成</h4>
-        <pre class="text-sm overflow-x-auto"><code is:raw>Stratum V2 由多個子協議組成:
+        <pre
+          class="text-sm overflow-x-auto"><code is:raw>Stratum V2 由多個子協議組成:
 
 1. Mining Protocol
    └── 礦機 ↔ 礦池通訊
@@ -64,11 +64,10 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       </div>
 
       <h2>加密通訊</h2>
-      <p>
-        Stratum V2 使用 Noise Protocol Framework 提供端到端加密：
-      </p>
+      <p>Stratum V2 使用 Noise Protocol Framework 提供端到端加密：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Noise_NX 握手模式
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// Noise_NX 握手模式
 Initiator (礦工)              Responder (礦池)
      |                              |
      |-----> e ---------------------->|  // 發送臨時公鑰
@@ -82,11 +81,10 @@ Initiator (礦工)              Responder (礦池)
 - 防止中間人攻擊</code></pre>
 
       <h2>二進制協議</h2>
-      <p>
-        相比 JSON，二進制格式大幅減少頻寬使用：
-      </p>
+      <p>相比 JSON，二進制格式大幅減少頻寬使用：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 訊息格式
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 訊息格式
 +-------------------+------------------+
 | Extension Type    | 2 bytes          |
 | Message Type      | 1 byte           |
@@ -103,11 +101,10 @@ PUBKEY                - 32 bytes 公鑰
 頻寬節省: ~50% 相比 Stratum V1</code></pre>
 
       <h2>Job Declaration</h2>
-      <p>
-        最重要的改進是允許礦工選擇交易：
-      </p>
+      <p>最重要的改進是允許礦工選擇交易：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統模式 (V1):
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>傳統模式 (V1):
 礦池 → 選擇交易 → 創建區塊模板 → 發送給礦工
 礦工只能接受礦池的選擇
 
@@ -126,7 +123,8 @@ Job Declaration 模式 (V2):
 
       <h3>基本配置（無 Job Declaration）</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>┌─────────┐      SV2 Mining      ┌─────────┐
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>┌─────────┐      SV2 Mining      ┌─────────┐
 │  Miner  │ ←------------------→ │  Pool   │
 └─────────┘      Protocol        └─────────┘
 
@@ -135,7 +133,8 @@ Job Declaration 模式 (V2):
 
       <h3>完整配置（含 Job Declaration）</h3>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>                    ┌──────────────┐
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>                    ┌──────────────┐
                     │ Bitcoin Core │
                     └──────┬───────┘
                            │ Template Distribution
@@ -152,7 +151,8 @@ Proxy 運行在礦工側:
 
       <h2>與 Bitcoin Core 集成</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf 配置
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># bitcoin.conf 配置
 sv2=1
 sv2port=8442
 sv2bind=0.0.0.0
@@ -219,9 +219,7 @@ sv2bind=0.0.0.0
       </div>
 
       <h2>採用狀態</h2>
-      <p>
-        Stratum V2 正在逐步被採用：
-      </p>
+      <p>Stratum V2 正在逐步被採用：</p>
 
       <ul>
         <li><strong>礦池：</strong>Braiins Pool、DEMAND 等已支持</li>

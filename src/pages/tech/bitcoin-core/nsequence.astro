@@ -16,10 +16,12 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'Sighash Types', href: '/tech/bitcoin-core/sighash' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 nSequence？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 nSequence？
+    </h2>
     <p class="text-[var(--text-secondary)]">
-      nSequence 是每個交易輸入的 32 位字段，最初設計用於交易替換，
-      後來被重新定義用於 RBF（Replace-By-Fee）信號和相對時間鎖（BIP-68）。
+      nSequence 是每個交易輸入的 32 位字段，最初設計用於交易替換， 後來被重新定義用於
+      RBF（Replace-By-Fee）信號和相對時間鎖（BIP-68）。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
@@ -55,7 +57,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     <h2 id="structure" class="text-2xl font-bold text-[var(--text-primary)]">字段結構</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>nSequence 32 位結構：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>nSequence 32 位結構：
 
 ┌─────────────────────────────────────────────────────────────┐
 │ Bit 31 │ Bit 22 │ Bits 21-16 │ Bits 15-0                   │
@@ -86,7 +89,8 @@ Bits 15-0（Value）:
     <h2 id="rbf" class="text-2xl font-bold text-[var(--text-primary)]">RBF 信號</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF（Replace-By-Fee）信號規則：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>RBF（Replace-By-Fee）信號規則：
 
 任何輸入的 nSequence < 0xFFFFFFFE 時：
 └── 交易被標記為可替換（BIP-125）
@@ -108,7 +112,8 @@ Bits 15-0（Value）:
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建可替換交易
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建可替換交易
 bitcoin-cli createrawtransaction '[
   {"txid": "abc...", "vout": 0, "sequence": 4294967293}
 ]' '[{"bc1q...": 0.5}]'
@@ -127,7 +132,8 @@ bitcoin-cli getmempoolentry "txid" | jq '.bip125-replaceable'</code></pre>
     <h2 id="relative-timelock" class="text-2xl font-bold text-[var(--text-primary)]">相對時間鎖</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>BIP-68 相對時間鎖：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>BIP-68 相對時間鎖：
 
 當 Bit 31 = 0 時，nSequence 定義相對鎖定：
 
@@ -150,7 +156,8 @@ bitcoin-cli getmempoolentry "txid" | jq '.bip125-replaceable'</code></pre>
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 計算 nSequence 值
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-python" is:raw># 計算 nSequence 值
 
 # 區塊相對鎖定
 def block_sequence(blocks: int) -> int:
@@ -179,7 +186,8 @@ SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31)</code></pre>
     <h2 id="csv" class="text-2xl font-bold text-[var(--text-primary)]">OP_CHECKSEQUENCEVERIFY</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>OP_CHECKSEQUENCEVERIFY (CSV) - BIP-112
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>OP_CHECKSEQUENCEVERIFY (CSV) - BIP-112
 
 用途：在腳本中強制執行相對時間鎖
 
@@ -202,7 +210,8 @@ SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31)</code></pre>
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建帶 CSV 的腳本
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 創建帶 CSV 的腳本
 
 # P2WSH 腳本：10 區塊後可花費
 # OP_10 OP_CSV OP_DROP <pubkey> OP_CHECKSIG
@@ -222,7 +231,8 @@ bitcoin-cli createrawtransaction '[
     <h2 id="lightning" class="text-2xl font-bold text-[var(--text-primary)]">閃電網路應用</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路中的 nSequence 使用：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>閃電網路中的 nSequence 使用：
 
 1. HTLC 超時
    ├── 使用 CSV 設置 HTLC 超時
@@ -254,7 +264,8 @@ bitcoin-cli createrawtransaction '[
     <h2 id="examples" class="text-2xl font-bold text-[var(--text-primary)]">實用範例</h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 範例 1：創建 RBF 可替換交易
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 範例 1：創建 RBF 可替換交易
 
 # 使用低 sequence 值
 bitcoin-cli createrawtransaction '[
@@ -281,7 +292,8 @@ bitcoin-cli createrawtransaction '[
     </div>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-python" is:raw># 解析 nSequence 值
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-python" is:raw># 解析 nSequence 值
 
 def parse_sequence(seq: int) -> dict:
     """解析 nSequence 字段"""
@@ -324,10 +336,13 @@ print(parse_sequence(0x400007))    # ~1 hour time lock</code></pre>
   </section>
 
   <section class="space-y-6">
-    <h2 id="nlocktime" class="text-2xl font-bold text-[var(--text-primary)]">與 nLockTime 的關係</h2>
+    <h2 id="nlocktime" class="text-2xl font-bold text-[var(--text-primary)]">
+      與 nLockTime 的關係
+    </h2>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>nSequence vs nLockTime：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>nSequence vs nLockTime：
 
 nLockTime（交易級別）：
 ├── 絕對時間鎖
@@ -409,23 +424,36 @@ nSequence（輸入級別）：
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">RBF 信號：</strong>nSequence &lt; 0xFFFFFFFE 啟用替換</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">RBF 信號：</strong>nSequence &lt; 0xFFFFFFFE
+            啟用替換</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">相對鎖：</strong>BIP-68 定義基於區塊或時間的鎖定</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">相對鎖：</strong>BIP-68
+            定義基於區塊或時間的鎖定</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">CSV：</strong>OP_CHECKSEQUENCEVERIFY 腳本驗證</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">CSV：</strong>OP_CHECKSEQUENCEVERIFY
+            腳本驗證</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">注意：</strong>與 nLockTime 配合使用更強大</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">注意：</strong>與 nLockTime 配合使用更強大</span
+          >
         </li>
       </ul>
     </div>

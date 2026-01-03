@@ -16,7 +16,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   nextPage={{ title: 'SigOps', href: '/tech/bitcoin-core/sigops' }}
 >
   <section class="space-y-6">
-    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 TxIndex？</h2>
+    <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">
+      什麼是 TxIndex？
+    </h2>
     <p class="text-[var(--text-secondary)]">
       Transaction Index（txindex）是 Bitcoin Core 的可選功能，建立一個從交易 ID (txid)
       到區塊位置的索引。啟用後，你可以透過 txid 快速查詢區塊鏈中的任何歷史交易。
@@ -50,10 +52,13 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="configuration" class="text-2xl font-bold text-[var(--text-primary)]">配置方式</h2>
 
-    <h3 id="enable-txindex" class="text-xl font-semibold text-[var(--text-primary)]">啟用 TxIndex</h3>
+    <h3 id="enable-txindex" class="text-xl font-semibold text-[var(--text-primary)]">
+      啟用 TxIndex
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1: 命令行參數
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 方法 1: 命令行參數
 bitcoind -txindex=1
 
 # 方法 2: 配置文件 (~/.bitcoin/bitcoin.conf)
@@ -76,15 +81,15 @@ bitcoin-cli getindexinfo
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        如果在已同步的節點上啟用 txindex，需要重新索引整個區塊鏈。
-        這可能需要幾個小時到一天，取決於硬體。
+        如果在已同步的節點上啟用 txindex，需要重新索引整個區塊鏈。 這可能需要幾個小時到一天，取決於硬體。
       </p>
     </div>
 
     <h3 id="reindex" class="text-xl font-semibold text-[var(--text-primary)]">重新索引</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 如果已有區塊數據，需要重新索引
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 如果已有區塊數據，需要重新索引
 bitcoind -txindex=1 -reindex
 
 # 或者只重建索引（不重新驗證區塊）
@@ -98,10 +103,13 @@ bitcoin-cli getblockchaininfo | jq '{blocks, headers, verificationprogress}'</co
   <section class="space-y-6">
     <h2 id="usage" class="text-2xl font-bold text-[var(--text-primary)]">使用方式</h2>
 
-    <h3 id="getrawtransaction" class="text-xl font-semibold text-[var(--text-primary)]">getrawtransaction</h3>
+    <h3 id="getrawtransaction" class="text-xl font-semibold text-[var(--text-primary)]">
+      getrawtransaction
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查詢任意交易（需要 txindex）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查詢任意交易（需要 txindex）
 bitcoin-cli getrawtransaction <txid>
 
 # 解碼交易
@@ -128,10 +136,13 @@ bitcoin-cli getrawtransaction <txid> true <blockhash>
 }</code></pre>
     </div>
 
-    <h3 id="gettxout" class="text-xl font-semibold text-[var(--text-primary)]">gettxout（不需要 txindex）</h3>
+    <h3 id="gettxout" class="text-xl font-semibold text-[var(--text-primary)]">
+      gettxout（不需要 txindex）
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查詢未花費輸出（不需要 txindex）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查詢未花費輸出（不需要 txindex）
 bitcoin-cli gettxout <txid> <vout>
 
 # 包含 mempool
@@ -196,7 +207,8 @@ bitcoin-cli gettxout <txid> <vout> true
     <h3 id="index-location" class="text-xl font-semibold text-[var(--text-primary)]">索引位置</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>~/.bitcoin/
 ├── blocks/           # 區塊數據
 │   ├── blk00000.dat
 │   └── ...
@@ -217,7 +229,8 @@ bitcoin-cli gettxout <txid> <vout> true
     <h3 id="index-structure" class="text-xl font-semibold text-[var(--text-primary)]">索引結構</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// TxIndex 條目結構
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// TxIndex 條目結構
 interface TxIndexEntry {
   txid: Buffer;        // 32 bytes - 交易 ID
   blockHash: Buffer;   // 32 bytes - 區塊雜湊
@@ -281,15 +294,11 @@ async function indexBlock(block: Block): Promise<void> {
       </div>
       <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
         <h4 class="font-semibold text-[var(--text-primary)] mb-2">開發調試</h4>
-        <p class="text-sm text-[var(--text-secondary)]">
-          開發者需要查詢交易細節來調試應用程式。
-        </p>
+        <p class="text-sm text-[var(--text-secondary)]">開發者需要查詢交易細節來調試應用程式。</p>
       </div>
       <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-default)]">
         <h4 class="font-semibold text-[var(--text-primary)] mb-2">支付驗證</h4>
-        <p class="text-sm text-[var(--text-secondary)]">
-          驗證歷史付款需要查詢交易詳情。
-        </p>
+        <p class="text-sm text-[var(--text-secondary)]">驗證歷史付款需要查詢交易詳情。</p>
       </div>
     </div>
   </section>
@@ -297,10 +306,13 @@ async function indexBlock(block: Block): Promise<void> {
   <section class="space-y-6">
     <h2 id="alternatives" class="text-2xl font-bold text-[var(--text-primary)]">替代方案</h2>
 
-    <h3 id="without-txindex" class="text-xl font-semibold text-[var(--text-primary)]">不使用 TxIndex</h3>
+    <h3 id="without-txindex" class="text-xl font-semibold text-[var(--text-primary)]">
+      不使用 TxIndex
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 如果知道區塊雜湊，可以不用 txindex
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 如果知道區塊雜湊，可以不用 txindex
 bitcoin-cli getrawtransaction <txid> true <blockhash>
 
 # 查詢錢包交易（不需要 txindex）
@@ -313,7 +325,8 @@ bitcoin-cli getmempoolentry <txid></code></pre>
     <h3 id="other-indexes" class="text-xl font-semibold text-[var(--text-primary)]">其他索引</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 區塊過濾器索引（用於輕客戶端）
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 區塊過濾器索引（用於輕客戶端）
 blockfilterindex=1
 
 # Coinstats 索引（用於 UTXO 統計）
@@ -330,10 +343,11 @@ bitcoin-cli getindexinfo</code></pre>
     <div class="bg-red-500/10 p-6 rounded-lg border border-red-500/30">
       <h3 class="text-lg font-semibold text-red-400 mb-3">TxIndex 與 Pruning 不兼容</h3>
       <p class="text-[var(--text-secondary)] mb-4">
-        修剪節點會刪除舊區塊數據，而 txindex 需要完整的區塊數據來定位交易。
-        因此，txindex 和 pruning 不能同時使用。
+        修剪節點會刪除舊區塊數據，而 txindex 需要完整的區塊數據來定位交易。 因此，txindex 和 pruning
+        不能同時使用。
       </p>
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 這會報錯
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 這會報錯
 bitcoind -txindex=1 -prune=550
 # Error: -txindex is incompatible with -prune mode</code></pre>
     </div>
@@ -367,23 +381,36 @@ bitcoind -txindex=1 -prune=550
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">快速查詢：</strong>TxIndex 允許透過 txid 快速查詢任何歷史交易</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">快速查詢：</strong>TxIndex 允許透過 txid
+            快速查詢任何歷史交易</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">可選功能：</strong>預設禁用，需要手動啟用並重建索引</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">可選功能：</strong
+            >預設禁用，需要手動啟用並重建索引</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">額外空間：</strong>需要約 35 GB 額外磁碟空間</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">額外空間：</strong>需要約 35 GB 額外磁碟空間</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-red-500">✗</span>
-          <span><strong class="text-[var(--text-primary)]">不兼容修剪：</strong>TxIndex 不能與 pruning 模式同時使用</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">不兼容修剪：</strong>TxIndex 不能與 pruning
+            模式同時使用</span
+          >
         </li>
       </ul>
     </div>

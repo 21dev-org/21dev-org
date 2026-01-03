@@ -18,8 +18,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
   <section class="space-y-6">
     <h2 id="introduction" class="text-2xl font-bold text-[var(--text-primary)]">什麼是 Dust？</h2>
     <p class="text-[var(--text-secondary)]">
-      Dust（灰塵）是指金額太小、以至於花費它們的手續費會超過其價值的交易輸出。
-      Bitcoin Core 定義了 Dust Limit（灰塵限制），低於此限制的輸出被視為不經濟（uneconomical），
+      Dust（灰塵）是指金額太小、以至於花費它們的手續費會超過其價值的交易輸出。 Bitcoin Core 定義了
+      Dust Limit（灰塵限制），低於此限制的輸出被視為不經濟（uneconomical），
       預設情況下不會被節點中繼或包含在區塊中。
     </p>
 
@@ -57,7 +57,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>輸出金額 < (輸入大小 + 32) × dustRelayFee / 1000
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>輸出金額 < (輸入大小 + 32) × dustRelayFee / 1000
 
 其中：
 - 輸入大小：花費此輸出需要的輸入位元組數
@@ -65,7 +66,9 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
 - dustRelayFee：預設 3000 sat/kvB（3 sat/vB）</code></pre>
     </div>
 
-    <h3 id="input-sizes" class="text-xl font-semibold text-[var(--text-primary)]">不同腳本類型的輸入大小</h3>
+    <h3 id="input-sizes" class="text-xl font-semibold text-[var(--text-primary)]">
+      不同腳本類型的輸入大小
+    </h3>
 
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -106,18 +109,19 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
       </table>
     </div>
 
-    <p class="text-sm text-[var(--text-tertiary)]">
-      * 計算基於 dustRelayFee = 3000 sat/kvB
-    </p>
+    <p class="text-sm text-[var(--text-tertiary)]">* 計算基於 dustRelayFee = 3000 sat/kvB</p>
   </section>
 
   <section class="space-y-6">
     <h2 id="implementation" class="text-2xl font-bold text-[var(--text-primary)]">實現細節</h2>
 
-    <h3 id="core-logic" class="text-xl font-semibold text-[var(--text-primary)]">Bitcoin Core 實現</h3>
+    <h3 id="core-logic" class="text-xl font-semibold text-[var(--text-primary)]">
+      Bitcoin Core 實現
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// src/policy/policy.cpp
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-cpp" is:raw>// src/policy/policy.cpp
 bool IsDust(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
 {
     // 如果輸出不可花費（如 OP_RETURN），不是 dust
@@ -153,10 +157,13 @@ size_t GetDustInputSize(const CTxOut& txout)
 }</code></pre>
     </div>
 
-    <h3 id="typescript-implementation" class="text-xl font-semibold text-[var(--text-primary)]">TypeScript 實現</h3>
+    <h3 id="typescript-implementation" class="text-xl font-semibold text-[var(--text-primary)]">
+      TypeScript 實現
+    </h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>enum ScriptType {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>enum ScriptType {
   P2PKH = 'p2pkh',
   P2SH = 'p2sh',
   P2WPKH = 'p2wpkh',
@@ -233,7 +240,8 @@ console.log('500 sats P2WPKH effective value at 10 sat/vB:',
     <h3 id="node-settings" class="text-xl font-semibold text-[var(--text-primary)]">節點設定</h3>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看當前 dust relay fee
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-bash" is:raw># 查看當前 dust relay fee
 bitcoin-cli getmempoolinfo | jq '.minrelaytxfee'
 
 # 設定自訂 dust relay fee（bitcoin.conf）
@@ -250,8 +258,7 @@ dustrelayfee=0.00005000  # 5000 sat/kvB = 5 sat/vB</code></pre>
     <div class="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/30">
       <p class="text-sm text-[var(--text-secondary)]">
         <strong class="text-yellow-400">注意：</strong>
-        修改 dustrelayfee 只影響本地節點的中繼策略。即使你的節點接受較低金額的輸出，
-        其他節點可能仍會拒絕中繼，導致交易無法傳播。
+        修改 dustrelayfee 只影響本地節點的中繼策略。即使你的節點接受較低金額的輸出， 其他節點可能仍會拒絕中繼，導致交易無法傳播。
       </p>
     </div>
   </section>
@@ -259,14 +266,17 @@ dustrelayfee=0.00005000  # 5000 sat/kvB = 5 sat/vB</code></pre>
   <section class="space-y-6">
     <h2 id="dust-attacks" class="text-2xl font-bold text-[var(--text-primary)]">Dust 攻擊</h2>
 
-    <h3 id="what-is-dust-attack" class="text-xl font-semibold text-[var(--text-primary)]">什麼是 Dust 攻擊？</h3>
+    <h3 id="what-is-dust-attack" class="text-xl font-semibold text-[var(--text-primary)]">
+      什麼是 Dust 攻擊？
+    </h3>
     <p class="text-[var(--text-secondary)]">
-      Dust 攻擊是一種隱私攻擊，攻擊者向大量地址發送微小金額（剛好高於 dust limit），
-      然後追蹤這些 UTXO 被花費時與哪些其他 UTXO 合併，從而建立地址關聯。
+      Dust 攻擊是一種隱私攻擊，攻擊者向大量地址發送微小金額（剛好高於 dust limit）， 然後追蹤這些
+      UTXO 被花費時與哪些其他 UTXO 合併，從而建立地址關聯。
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw>Dust 攻擊流程：
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw>Dust 攻擊流程：
 
 1. 攻擊者識別目標
    [地址 A] [地址 B] [地址 C] ...
@@ -313,13 +323,16 @@ dustrelayfee=0.00005000  # 5000 sat/kvB = 5 sat/vB</code></pre>
   <section class="space-y-6">
     <h2 id="economic-dust" class="text-2xl font-bold text-[var(--text-primary)]">經濟性 Dust</h2>
 
-    <h3 id="dynamic-dust" class="text-xl font-semibold text-[var(--text-primary)]">動態 Dust 閾值</h3>
+    <h3 id="dynamic-dust" class="text-xl font-semibold text-[var(--text-primary)]">
+      動態 Dust 閾值
+    </h3>
     <p class="text-[var(--text-secondary)]">
       雖然協議的 dust limit 是固定的，但「經濟性 dust」會隨著實際手續費率變化：
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 計算在給定手續費率下的經濟性 dust 閾值
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>// 計算在給定手續費率下的經濟性 dust 閾值
 function getEconomicDustLimit(
   scriptType: ScriptType,
   currentFeeRate: number  // sat/vB
@@ -389,15 +402,16 @@ for (const rate of feeRates) {
   </section>
 
   <section class="space-y-6">
-    <h2 id="utxo-management" class="text-2xl font-bold text-[var(--text-primary)]">UTXO 管理策略</h2>
+    <h2 id="utxo-management" class="text-2xl font-bold text-[var(--text-primary)]">
+      UTXO 管理策略
+    </h2>
 
     <h3 id="consolidation" class="text-xl font-semibold text-[var(--text-primary)]">UTXO 整合</h3>
-    <p class="text-[var(--text-secondary)]">
-      在低手續費期間整合小額 UTXO 是一個好策略：
-    </p>
+    <p class="text-[var(--text-secondary)]">在低手續費期間整合小額 UTXO 是一個好策略：</p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface UTXO {
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-typescript" is:raw>interface UTXO {
   txid: string;
   vout: number;
   amount: number;  // sats
@@ -439,7 +453,9 @@ const consolidate = shouldConsolidate(utxos, 1, 50);
 // 因為在 50 sat/vB 時它們會變成經濟性 dust</code></pre>
     </div>
 
-    <h3 id="wallet-recommendations" class="text-xl font-semibold text-[var(--text-primary)]">錢包建議</h3>
+    <h3 id="wallet-recommendations" class="text-xl font-semibold text-[var(--text-primary)]">
+      錢包建議
+    </h3>
 
     <div class="grid md:grid-cols-2 gap-4">
       <div class="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
@@ -472,20 +488,24 @@ const consolidate = shouldConsolidate(utxos, 1, 50);
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw># OP_RETURN 輸出可以是 0 sats
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw># OP_RETURN 輸出可以是 0 sats
 OP_RETURN <data>  // 金額：0 sats，這是合法的
 
 # 因為 OP_RETURN 不會進入 UTXO 集合
 # 不會造成永久的狀態膨脹</code></pre>
     </div>
 
-    <h3 id="anchor-outputs" class="text-xl font-semibold text-[var(--text-primary)]">Anchor Outputs</h3>
+    <h3 id="anchor-outputs" class="text-xl font-semibold text-[var(--text-primary)]">
+      Anchor Outputs
+    </h3>
     <p class="text-[var(--text-secondary)]">
       Lightning Network 使用的 anchor outputs 有特殊的 dust 處理：
     </p>
 
     <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-default)]">
-      <pre class="text-sm overflow-x-auto"><code class="language-text" is:raw># Lightning anchor outputs
+      <pre
+        class="text-sm overflow-x-auto"><code class="language-text" is:raw># Lightning anchor outputs
 # 固定金額：330 sats（剛好高於 P2WSH dust limit）
 
 Anchor Output:
@@ -533,23 +553,37 @@ Anchor Output:
   <section class="space-y-6">
     <h2 id="summary" class="text-2xl font-bold text-[var(--text-primary)]">總結</h2>
 
-    <div class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30">
+    <div
+      class="bg-gradient-to-r from-bitcoin-500/10 to-transparent p-6 rounded-lg border border-bitcoin-500/30"
+    >
       <ul class="space-y-3 text-[var(--text-secondary)]">
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">保護 UTXO 集合：</strong>Dust limit 防止微小輸出永久佔用節點資源</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">保護 UTXO 集合：</strong>Dust limit
+            防止微小輸出永久佔用節點資源</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">類型相關：</strong>SegWit/Taproot 有更低的 dust limit（~300 sats vs ~550 sats）</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">類型相關：</strong>SegWit/Taproot 有更低的
+            dust limit（~300 sats vs ~550 sats）</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-bitcoin-500">✓</span>
-          <span><strong class="text-[var(--text-primary)]">經濟性考量：</strong>實際的「不經濟」閾值取決於當前手續費率</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">經濟性考量：</strong
+            >實際的「不經濟」閾值取決於當前手續費率</span
+          >
         </li>
         <li class="flex items-start gap-3">
           <span class="text-yellow-500">⚠</span>
-          <span><strong class="text-[var(--text-primary)]">隱私風險：</strong>Dust 攻擊可用於追蹤地址關聯</span>
+          <span
+            ><strong class="text-[var(--text-primary)]">隱私風險：</strong>Dust
+            攻擊可用於追蹤地址關聯</span
+          >
         </li>
       </ul>
     </div>

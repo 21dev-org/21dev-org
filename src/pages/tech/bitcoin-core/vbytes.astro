@@ -28,7 +28,8 @@ import ArticleLayout from '@/layouts/ArticleLayout.astro';
         這意味著相同的實際位元組數可能有不同的「有效大小」。
       </p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 之前:
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>SegWit 之前:
 - 交易大小 = 實際位元組數
 - 區塊限制 = 1 MB (1,000,000 bytes)
 - 手續費率 = sat/byte
@@ -40,11 +41,10 @@ SegWit 之後:
 - 手續費率 = sat/vB</code></pre>
 
       <h2>Weight Units (WU)</h2>
-      <p>
-        Weight Units 是 SegWit 定義的基本計量單位：
-      </p>
+      <p>Weight Units 是 SegWit 定義的基本計量單位：</p>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 權重計算公式
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 權重計算公式
 weight = (non_witness_size × 4) + (witness_size × 1)
 
 // 區塊權重限制
@@ -69,7 +69,8 @@ witness_data:
 
       <h2>Virtual Bytes 計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// vbytes = ceiling(weight / 4)
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// vbytes = ceiling(weight / 4)
 vbytes = (weight + 3) / 4  // 向上取整
 
 // 使用上面的例子
@@ -126,7 +127,8 @@ vbytes = 112 vB
 
       <h2>手續費計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 手續費 = vbytes × fee_rate (sat/vB)
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 手續費 = vbytes × fee_rate (sat/vB)
 
 示例:
 P2WPKH 交易: 110 vB
@@ -156,7 +158,8 @@ P2PKH 交易: 226 vB
 
       <h2>RPC 查詢</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取交易的大小信息
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw># 獲取交易的大小信息
 bitcoin-cli getrawtransaction &lt;txid&gt; true
 {
   ...
@@ -181,7 +184,8 @@ bitcoin-cli getblock &lt;blockhash&gt;
 
       <h2>編程計算</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def calculate_vsize(tx_bytes, is_segwit=True):
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>def calculate_vsize(tx_bytes, is_segwit=True):
     """計算交易的 vsize"""
     if not is_segwit:
         # 傳統交易: vsize = size
@@ -208,15 +212,15 @@ def estimate_fee(vsize, fee_rate):
       <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg my-6">
         <ul class="text-orange-800 dark:text-orange-200 space-y-2 mb-0">
           <li>
-            <strong>誤：</strong>SegWit 區塊最大 4 MB<br/>
+            <strong>誤：</strong>SegWit 區塊最大 4 MB<br />
             <strong>正：</strong>4 MWU ≈ 1-2 MB 實際數據（取決於見證比例）
           </li>
           <li>
-            <strong>誤：</strong>vbytes = bytes / 4<br/>
+            <strong>誤：</strong>vbytes = bytes / 4<br />
             <strong>正：</strong>只有見證數據有折扣，非見證數據沒有
           </li>
           <li>
-            <strong>誤：</strong>傳統交易和 SegWit 交易大小相同<br/>
+            <strong>誤：</strong>傳統交易和 SegWit 交易大小相同<br />
             <strong>正：</strong>傳統交易的 vsize = size，無折扣
           </li>
         </ul>
@@ -224,7 +228,8 @@ def estimate_fee(vsize, fee_rate):
 
       <h2>區塊容量分析</h2>
 
-      <pre class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 理論極限
+      <pre
+        class="bg-[var(--bg-secondary)] p-4 rounded-lg overflow-x-auto"><code is:raw>// 理論極限
 
 純非見證數據區塊（不可能）:
 max_size = 4,000,000 / 4 = 1,000,000 bytes = 1 MB
