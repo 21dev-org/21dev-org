@@ -208,3 +208,91 @@ export function generateOrganizationSchema() {
     ],
   };
 }
+
+/**
+ * Course schema 類型定義
+ */
+export interface CourseData {
+  name: string;
+  description: string;
+  url: string;
+  provider?: string;
+  difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
+  duration?: string;
+  modules?: { name: string; description?: string }[];
+  keywords?: string[];
+}
+
+/**
+ * 生成 Course schema
+ * 用於學習路徑和課程頁面，提高在教育類搜尋結果中的可見度
+ */
+export function generateCourseSchema(course: CourseData) {
+  const baseUrl = siteConfig.url;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: course.name,
+    description: course.description,
+    url: `${baseUrl}${course.url}`,
+    inLanguage: 'zh-Hant',
+    provider: {
+      '@type': 'Organization',
+      name: course.provider || siteConfig.name,
+      url: baseUrl,
+    },
+    ...(course.difficulty && {
+      educationalLevel: course.difficulty,
+    }),
+    ...(course.duration && {
+      timeRequired: course.duration,
+    }),
+    ...(course.keywords && {
+      keywords: course.keywords.join(', '),
+    }),
+    ...(course.modules && course.modules.length > 0 && {
+      hasCourseInstance: {
+        '@type': 'CourseInstance',
+        courseMode: 'online',
+        courseWorkload: `${course.modules.length} modules`,
+      },
+      syllabusSections: course.modules.map((module, index) => ({
+        '@type': 'Syllabus',
+        position: index + 1,
+        name: module.name,
+        ...(module.description && { description: module.description }),
+      })),
+    }),
+  };
+}
+
+/**
+ * 生成 ItemList schema
+ * 用於課程列表頁面，展示多個學習路徑
+ */
+export function generateCourseListSchema(courses: { name: string; url: string; description: string }[]) {
+  const baseUrl = siteConfig.url;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: '學習路徑',
+    description: 'Bitcoin 技術學習課程列表',
+    numberOfItems: courses.length,
+    itemListElement: courses.map((course, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Course',
+        name: course.name,
+        description: course.description,
+        url: `${baseUrl}${course.url}`,
+        provider: {
+          '@type': 'Organization',
+          name: siteConfig.name,
+        },
+      },
+    })),
+  };
+}

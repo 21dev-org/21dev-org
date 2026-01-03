@@ -1,5 +1,6 @@
 import satori from 'satori';
 import sharp from 'sharp';
+import crypto from 'crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
@@ -271,6 +272,41 @@ async function generateImage(template, outputPath, fontData) {
   writeFileSync(outputPath, png);
 }
 
+// Compute content hash for caching
+function computeContentHash(title, category) {
+  const content = JSON.stringify({ title, categoryLabel: category.labelZh, color: category.color });
+  return crypto.createHash('md5').update(content).digest('hex');
+}
+
+// Check if OG image needs regeneration
+function needsRegeneration(outputPath, contentHash) {
+  const hashFile = outputPath + '.hash';
+
+  // If image doesn't exist, needs generation
+  if (!existsSync(outputPath)) {
+    return true;
+  }
+
+  // If hash file doesn't exist, needs regeneration
+  if (!existsSync(hashFile)) {
+    return true;
+  }
+
+  // Compare stored hash with current content hash
+  try {
+    const storedHash = readFileSync(hashFile, 'utf-8').trim();
+    return storedHash !== contentHash;
+  } catch {
+    return true;
+  }
+}
+
+// Save content hash for caching
+function saveContentHash(outputPath, contentHash) {
+  const hashFile = outputPath + '.hash';
+  writeFileSync(hashFile, contentHash);
+}
+
 // Walk directory recursively
 function walkDir(dir, fileList = []) {
   const files = readdirSync(dir);
@@ -314,27 +350,30 @@ async function main() {
       continue;
     }
 
-    // Check if already exists (optional: comment out to regenerate all)
-    // if (existsSync(outputPath)) {
-    //   skipped++;
-    //   continue;
-    // }
-
     const title = extractTitle(pagePath);
     const category = getCategory(pagePath);
+
+    // Check if regeneration is needed using content hash
+    const contentHash = computeContentHash(title, category);
+
+    if (!needsRegeneration(outputPath, contentHash)) {
+      skipped++;
+      continue;
+    }
 
     console.log(`Generating: ${relativePath}`);
 
     try {
       const template = createOgTemplate(title, category);
       await generateImage(template, outputPath, fontData);
+      saveContentHash(outputPath, contentHash);
       generated++;
     } catch (e) {
       console.error(`Failed to generate ${relativePath}:`, e.message);
     }
   }
 
-  console.log(`\nDone! Generated: ${generated}, Skipped: ${skipped}`);
+  console.log(`\nDone! Generated: ${generated}, Skipped: ${skipped} (cached)`);
 }
 
 main().catch(console.error);
