@@ -1,0 +1,27 @@
+---
+/**
+ * Semantic heading component with consistent styling
+ * Replaces repetitive heading class patterns across the codebase
+ */
+
+interface Props {
+  level: 1 | 2 | 3 | 4;
+  class?: string;
+  id?: string;
+}
+
+const { level, class: className = '', id } = Astro.props;
+
+const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4';
+
+const styles = {
+  1: 'text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6',
+  2: 'text-2xl font-bold text-[var(--text-primary)] mt-8 mb-4',
+  3: 'text-xl font-semibold text-[var(--text-primary)] mt-6 mb-3',
+  4: 'text-lg font-semibold text-[var(--text-primary)] mt-4 mb-2',
+};
+---
+
+<Tag id={id} class:list={[styles[level], className]}>
+  <slot />
+</Tag>

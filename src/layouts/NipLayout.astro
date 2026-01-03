@@ -1,0 +1,117 @@
+---
+import ArticleLayout from './ArticleLayout.astro';
+import Tag from '@/components/ui/Tag.astro';
+import { getNIP, nipCategoryLabels, nipStatusLabels, type NIP } from '@/data/nips';
+
+interface Props {
+  number: number;
+  prevNip?: number;
+  nextNip?: number;
+}
+
+const { number, prevNip, nextNip } = Astro.props;
+
+// Get NIP data from single source of truth
+const nip = getNIP(number);
+
+if (!nip) {
+  throw new Error(`NIP-${number} not found in nips.ts`);
+}
+
+// Helper to format NIP number with padding
+function formatNipNumber(num: number): string {
+  return String(num).padStart(2, '0');
+}
+
+// Get prev/next NIP data for navigation
+const prevNipData = prevNip ? getNIP(prevNip) : undefined;
+const nextNipData = nextNip ? getNIP(nextNip) : undefined;
+
+// Construct navigation links
+const prevPage = prevNipData
+  ? { title: `NIP-${formatNipNumber(prevNip!)}: ${prevNipData.titleZh}`, href: `/tech/nostr/nip-${formatNipNumber(prevNip!)}` }
+  : undefined;
+
+const nextPage = nextNipData
+  ? { title: `NIP-${formatNipNumber(nextNip!)}: ${nextNipData.titleZh}`, href: `/tech/nostr/nip-${formatNipNumber(nextNip!)}` }
+  : undefined;
+
+// Status variant mapping for Tag component
+type TagVariant = 'default' | 'bitcoin' | 'lightning' | 'nostr' | 'success' | 'warning';
+
+const statusVariants: Record<NIP['status'], TagVariant> = {
+  Draft: 'default',
+  Final: 'success',
+  Deprecated: 'warning',
+  Optional: 'bitcoin',
+  Recommended: 'success',
+};
+
+const statusVariant = statusVariants[nip.status];
+
+// Difficulty mapping based on importance
+const difficultyMap: Record<NonNullable<NIP['importance']>, 'beginner' | 'intermediate' | 'advanced'> = {
+  fundamental: 'beginner',
+  critical: 'intermediate',
+  important: 'intermediate',
+  standard: 'intermediate',
+};
+
+const difficulty = nip.importance ? difficultyMap[nip.importance] : 'intermediate';
+---
+
+<ArticleLayout
+  title={`NIP-${formatNipNumber(number)}: ${nip.titleZh}`}
+  description={nip.summary}
+  breadcrumbs={[
+    { label: '技術', href: '/tech/' },
+    { label: 'Nostr', href: '/tech/nostr/' },
+    { label: `NIP-${formatNipNumber(number)}` },
+  ]}
+  tags={[nipCategoryLabels[nip.category]]}
+  difficulty={difficulty}
+  prevPage={prevPage}
+  nextPage={nextPage}
+>
+  <!-- NIP Meta Info Card -->
+  <div
+    class="not-prose mb-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30"
+  >
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span class="text-[var(--text-tertiary)]">NIP 編號</span>
+        <p class="font-semibold text-[var(--text-primary)]">{formatNipNumber(number)}</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">分類</span>
+        <p class="font-semibold text-[var(--text-primary)]">{nipCategoryLabels[nip.category]}</p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">狀態</span>
+        <p><Tag variant={statusVariant} size="sm">{nipStatusLabels[nip.status]}</Tag></p>
+      </div>
+      <div>
+        <span class="text-[var(--text-tertiary)]">英文標題</span>
+        <p class="font-semibold text-[var(--text-primary)] text-xs">{nip.title}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Content -->
+  <slot />
+
+  <!-- GitHub Link -->
+  <div class="mt-8 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <p class="text-sm text-purple-700 dark:text-purple-400">
+      <strong>延伸閱讀：</strong> 查看
+      <a
+        href={`https://github.com/nostr-protocol/nips/blob/master/${formatNipNumber(number)}.md`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:no-underline"
+      >
+        GitHub 上的完整 NIP-{formatNipNumber(number)} 文件
+      </a>
+    </p>
+  </div>
+</ArticleLayout>
