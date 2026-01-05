@@ -158,10 +158,7 @@ export const navigation: MegaMenuItem[] = [
       {
         title: '比特幣節日',
         links: [
-          { label: '創世區塊日 (1/3)', href: '/timeline/#holidays' },
-          { label: 'Hal Finney 日 (1/12)', href: '/timeline/#holidays' },
-          { label: 'Pizza Day (5/22)', href: '/timeline/#holidays' },
-          { label: '白皮書日 (10/31)', href: '/timeline/#holidays' },
+          { label: '查看全部節日', href: '/timeline/#holidays' },
         ],
       },
     ],
