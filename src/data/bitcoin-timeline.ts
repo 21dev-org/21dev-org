@@ -31,6 +31,17 @@ export interface BitcoinHoliday {
 export const bitcoinMilestones: BitcoinMilestone[] = [
   // ===== 前比特幣時代 (Pre-Bitcoin Era) =====
   {
+    id: 'chaum-blind-signatures',
+    date: '1983-01-01',
+    title: 'David Chaum 發明盲簽名',
+    titleEn: 'David Chaum Invents Blind Signatures',
+    description:
+      '密碼學家 David Chaum 發表盲簽名論文，提出匿名電子支付的密碼學基礎，奠定數位隱私貨幣的理論基礎。',
+    category: 'genesis',
+    significance: 'notable',
+    links: [{ label: '了解 David Chaum', url: '/figures/david-chaum' }],
+  },
+  {
     id: 'digicash',
     date: '1989-01-01',
     title: 'DigiCash 成立',
@@ -184,8 +195,29 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     category: 'market',
     significance: 'major',
   },
+  {
+    id: 'bitcointalk-launch',
+    date: '2009-11-22',
+    title: 'Bitcointalk 論壇創立',
+    titleEn: 'Bitcointalk Forum Launched',
+    description:
+      '中本聰創立 Bitcointalk 論壇（原 Bitcoin Forum），成為比特幣社群最重要的討論平台，至今仍是重要的歷史資料來源。',
+    category: 'community',
+    significance: 'major',
+    links: [{ label: 'Bitcointalk 論壇', url: 'https://bitcointalk.org' }],
+  },
 
   // ===== 2010 =====
+  {
+    id: 'btc-version-0.2',
+    date: '2010-01-09',
+    title: 'Bitcoin v0.2 發布',
+    titleEn: 'Bitcoin v0.2 Released',
+    description:
+      '中本聰發布 Bitcoin v0.2，新增 Linux 支援，讓更多開發者能參與比特幣網路。',
+    category: 'technical',
+    significance: 'notable',
+  },
   {
     id: 'bitcoin-market',
     date: '2010-02-06',
@@ -194,6 +226,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     description: 'Bitcoin Market 成立，成為第一個比特幣交易所，提供 PayPal 支付。',
     category: 'market',
     significance: 'major',
+  },
+  {
+    id: 'gavin-lead-dev',
+    date: '2010-05-17',
+    title: 'Gavin Andresen 成為首席開發者',
+    titleEn: 'Gavin Andresen Becomes Lead Developer',
+    description:
+      'Laszlo Hanyecz 將比特幣提醒系統的控制權交給 Gavin Andresen，中本聰開始信任他處理更多開發工作。',
+    category: 'community',
+    significance: 'notable',
   },
   {
     id: 'pizza-day',
@@ -245,6 +287,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     significance: 'major',
   },
   {
+    id: 'wikileaks-btc',
+    date: '2010-12-04',
+    title: 'WikiLeaks 事件與比特幣',
+    titleEn: 'WikiLeaks and Bitcoin',
+    description:
+      '維基解密遭到 PayPal、Visa、Mastercard 等金融機構封鎖後，社群討論是否應接受比特幣捐贈。中本聰反對這樣做，擔心過早引起政府關注。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
     id: 'satoshi-last-post',
     date: '2010-12-12',
     title: '中本聰最後論壇發言',
@@ -257,6 +309,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
 
   // ===== 2011 =====
   {
+    id: 'eff-accepts-btc',
+    date: '2011-01-19',
+    title: '電子前線基金會接受比特幣',
+    titleEn: 'EFF Accepts Bitcoin',
+    description:
+      '電子前線基金會（EFF）開始接受比特幣捐款，成為首批接受比特幣的知名非營利組織之一。',
+    category: 'adoption',
+    significance: 'notable',
+  },
+  {
     id: 'parity-with-usd',
     date: '2011-02-09',
     title: '比特幣首次達到 1 美元',
@@ -264,6 +326,26 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     description: '比特幣價格首次與美元平價，達到 1 BTC = 1 USD 的里程碑。',
     category: 'market',
     significance: 'major',
+  },
+  {
+    id: 'time-cover',
+    date: '2011-04-16',
+    title: '《時代》雜誌報導比特幣',
+    titleEn: 'TIME Magazine Covers Bitcoin',
+    description:
+      '《時代》雜誌發表文章介紹比特幣，標題為「Online Cash Bitcoin Could Challenge Governments」，首次將比特幣帶入主流媒體視野。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: 'btc-gold-parity',
+    date: '2011-06-01',
+    title: '比特幣價值超越金價',
+    titleEn: 'Bitcoin Exceeds Gold Price Per Ounce',
+    description:
+      '比特幣價格一度達到約 31 美元，首次超過每盎司黃金的價格（約 1,500 美元除以 50），引發「數位黃金」的討論。',
+    category: 'market',
+    significance: 'notable',
   },
   {
     id: 'silk-road',
@@ -315,8 +397,38 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     category: 'community',
     significance: 'notable',
   },
+  {
+    id: 'gavin-cia',
+    date: '2011-06-14',
+    title: 'Gavin Andresen 向 CIA 介紹比特幣',
+    titleEn: 'Gavin Andresen Presents to CIA',
+    description:
+      '比特幣首席開發者 Gavin Andresen 受邀向美國中央情報局介紹比特幣，這是比特幣首次進入美國政府視野。',
+    category: 'regulatory',
+    significance: 'notable',
+  },
+  {
+    id: 'mtgox-hack-2011',
+    date: '2011-06-19',
+    title: 'Mt.Gox 遭駭客攻擊',
+    titleEn: 'Mt.Gox Hacked',
+    description:
+      'Mt.Gox 交易所遭到駭客攻擊，比特幣價格在該平台瞬間從 17.50 美元跌至 0.01 美元，暴露了中心化交易所的風險。',
+    category: 'market',
+    significance: 'major',
+  },
 
   // ===== 2012 =====
+  {
+    id: 'btc-magazine',
+    date: '2012-05-01',
+    title: 'Bitcoin Magazine 創刊',
+    titleEn: 'Bitcoin Magazine Launched',
+    description:
+      '由 Vitalik Buterin 和 Mihai Alisie 共同創辦的《Bitcoin Magazine》創刊，成為首本專門報導比特幣的雜誌。',
+    category: 'community',
+    significance: 'notable',
+  },
   {
     id: 'bip32-hd-wallets',
     date: '2012-02-11',
@@ -329,6 +441,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     relatedBips: ['bip-0032'],
   },
   {
+    id: 'bitpay-founded',
+    date: '2012-05-15',
+    title: 'BitPay 成立',
+    titleEn: 'BitPay Founded',
+    description:
+      '比特幣支付處理商 BitPay 成立，讓商家可以輕鬆接受比特幣支付並即時轉換為法幣。',
+    category: 'adoption',
+    significance: 'notable',
+  },
+  {
     id: 'coinbase-founded',
     date: '2012-06-01',
     title: 'Coinbase 成立',
@@ -336,6 +458,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     description: 'Brian Armstrong 和 Fred Ehrsam 創立 Coinbase，後來成為最大的美國加密貨幣交易所。',
     category: 'market',
     significance: 'major',
+  },
+  {
+    id: 'wordpress-btc',
+    date: '2012-11-15',
+    title: 'WordPress 接受比特幣',
+    titleEn: 'WordPress Accepts Bitcoin',
+    description:
+      '全球最大的部落格平台 WordPress 開始接受比特幣付款，成為首批接受比特幣的主流科技公司之一。',
+    category: 'adoption',
+    significance: 'notable',
   },
   {
     id: 'bitcoin-foundation',
@@ -358,6 +490,45 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
   },
 
   // ===== 2013 =====
+  {
+    id: 'finex-launch',
+    date: '2013-01-01',
+    title: 'Bitfinex 交易所成立',
+    titleEn: 'Bitfinex Launched',
+    description: 'Bitfinex 交易所成立，後來成為全球主要的比特幣交易平台之一。',
+    category: 'market',
+    significance: 'notable',
+  },
+  {
+    id: 'casascius-coins',
+    date: '2013-04-01',
+    title: 'Casascius 實體比特幣',
+    titleEn: 'Casascius Physical Bitcoins',
+    description:
+      'Mike Caldwell 的 Casascius 實體比特幣達到流通高峰，將私鑰嵌入實體硬幣中，成為收藏品經典。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: 'cyprus-crisis',
+    date: '2013-03-16',
+    title: '賽普勒斯銀行危機',
+    titleEn: 'Cyprus Banking Crisis',
+    description:
+      '賽普勒斯政府凍結銀行存款並徵收高額存款稅，引發人們對銀行系統的不信任，比特幣作為替代方案受到關注。',
+    category: 'adoption',
+    significance: 'major',
+  },
+  {
+    id: 'first-btc-atm',
+    date: '2013-10-29',
+    title: '全球首台比特幣 ATM',
+    titleEn: 'First Bitcoin ATM',
+    description:
+      '全球首台比特幣 ATM 在加拿大溫哥華 Waves 咖啡店安裝，由 Robocoin 公司製造，讓普通人可以用現金購買比特幣。',
+    category: 'adoption',
+    significance: 'major',
+  },
   {
     id: 'bip39-mnemonic',
     date: '2013-09-10',
@@ -396,8 +567,59 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     category: 'regulatory',
     significance: 'major',
   },
+  {
+    id: 'fincen-guidance',
+    date: '2013-03-18',
+    title: 'FinCEN 虛擬貨幣指引',
+    titleEn: 'FinCEN Virtual Currency Guidance',
+    description:
+      '美國金融犯罪執法網絡（FinCEN）發布首個虛擬貨幣監管指引，將比特幣交易所歸類為貨幣服務業務（MSB）。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'university-btc-course',
+    date: '2013-09-01',
+    title: '首個大學比特幣課程',
+    titleEn: 'First University Bitcoin Course',
+    description:
+      '塞浦路斯尼科西亞大學開設首個比特幣課程並接受比特幣支付學費，成為首家接受比特幣的認證大學。',
+    category: 'adoption',
+    significance: 'notable',
+  },
 
   // ===== 2014 =====
+  {
+    id: 'overstock-btc',
+    date: '2014-01-09',
+    title: 'Overstock 接受比特幣',
+    titleEn: 'Overstock Accepts Bitcoin',
+    description:
+      '美國大型電商 Overstock.com 成為首家接受比特幣的主要零售商，開創電商接受加密貨幣的先河。',
+    category: 'adoption',
+    significance: 'major',
+  },
+  {
+    id: 'newsweek-satoshi',
+    date: '2014-03-06',
+    title: 'Newsweek 錯認中本聰',
+    titleEn: 'Newsweek Doxxes Wrong Satoshi',
+    description:
+      '《新聞週刊》錯誤指認 Dorian Nakamoto 為比特幣創始人，引發媒體倫理和隱私權討論，Dorian 本人否認。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: 'hal-finney-passes',
+    date: '2014-08-28',
+    title: 'Hal Finney 逝世',
+    titleEn: 'Hal Finney Passes Away',
+    description:
+      '比特幣先驅 Hal Finney 因漸凍症（ALS）去世，他是比特幣的首位用戶和重要貢獻者，遺體被冷凍保存。',
+    category: 'community',
+    significance: 'major',
+    links: [{ label: '了解 Hal Finney', url: '/figures/hal-finney' }],
+  },
   {
     id: 'mtgox-collapse',
     date: '2014-02-24',
@@ -427,15 +649,36 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     category: 'technical',
     significance: 'notable',
   },
+  {
+    id: 'microsoft-btc',
+    date: '2014-12-11',
+    title: 'Microsoft 接受比特幣',
+    titleEn: 'Microsoft Accepts Bitcoin',
+    description:
+      '微軟開始接受比特幣支付 Windows、Xbox 遊戲和其他數位內容，成為接受比特幣的最大科技公司之一。',
+    category: 'adoption',
+    significance: 'major',
+  },
+  {
+    id: 'bitstamp-hack',
+    date: '2015-01-04',
+    title: 'Bitstamp 遭駭客攻擊',
+    titleEn: 'Bitstamp Hacked',
+    description:
+      '歐洲最大比特幣交易所 Bitstamp 遭駭客攻擊，約 19,000 枚比特幣被盜，再次提醒用戶自我託管的重要性。',
+    category: 'market',
+    significance: 'notable',
+  },
 
   // ===== 2015 =====
   {
-    id: 'bitlicense',
-    date: '2015-06-03',
-    title: 'BitLicense 實施',
-    titleEn: 'BitLicense Implemented',
-    description: '紐約州實施 BitLicense，成為美國首個專門針對加密貨幣企業的監管框架。',
-    category: 'regulatory',
+    id: 'winklevoss-etf-filing',
+    date: '2015-01-09',
+    title: 'Winklevoss 兄弟 ETF 嘗試',
+    titleEn: 'Winklevoss Bitcoin ETF Attempt',
+    description:
+      'Winklevoss 兄弟向 SEC 提交首個比特幣 ETF 申請，雖然最終被拒絕，但開啟了長達近十年的 ETF 審批之路。',
+    category: 'adoption',
     significance: 'notable',
   },
   {
@@ -452,6 +695,46 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     ],
   },
   {
+    id: 'bitlicense',
+    date: '2015-06-03',
+    title: 'BitLicense 實施',
+    titleEn: 'BitLicense Implemented',
+    description: '紐約州實施 BitLicense，成為美國首個專門針對加密貨幣企業的監管框架。',
+    category: 'regulatory',
+    significance: 'notable',
+  },
+  {
+    id: 'scaling-debate-begins',
+    date: '2015-08-15',
+    title: '區塊大小辯論開始',
+    titleEn: 'Block Size Debate Begins',
+    description:
+      'Mike Hearn 和 Gavin Andresen 發布 Bitcoin XT，提議增大區塊容量限制，引發比特幣歷史上最重大的技術與治理辯論。',
+    category: 'community',
+    significance: 'major',
+    links: [{ label: '閱讀《區塊大小戰爭》', url: '/books/blocksize-war' }],
+  },
+  {
+    id: 'ethereum-launch',
+    date: '2015-07-30',
+    title: '以太坊主網上線',
+    titleEn: 'Ethereum Mainnet Launch',
+    description:
+      '以太坊主網正式上線，引入智能合約平台概念。雖然與比特幣不同，但其發展影響了整個加密貨幣生態。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: '21-inc-computer',
+    date: '2015-09-21',
+    title: '21 Inc 比特幣電腦發布',
+    titleEn: '21 Inc Bitcoin Computer Released',
+    description:
+      '21 Inc 發布首款內建比特幣挖礦晶片的電腦，嘗試將比特幣整合進消費電子產品。公司後來轉型為 Earn.com。',
+    category: 'adoption',
+    significance: 'notable',
+  },
+  {
     id: 'bip65-cltv',
     date: '2015-12-14',
     title: 'CHECKLOCKTIMEVERIFY 啟用',
@@ -464,6 +747,27 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
   },
 
   // ===== 2016 =====
+  {
+    id: 'hong-kong-agreement',
+    date: '2016-02-21',
+    title: '香港共識會議',
+    titleEn: 'Hong Kong Roundtable Agreement',
+    description:
+      '比特幣核心開發者與礦工在香港舉行閉門會議，就區塊大小擴容達成臨時協議，但該協議後來引發更多爭議。',
+    category: 'community',
+    significance: 'notable',
+    links: [{ label: '閱讀《區塊大小戰爭》', url: '/books/blocksize-war' }],
+  },
+  {
+    id: 'mike-hearn-leaves',
+    date: '2016-01-14',
+    title: 'Mike Hearn 退出比特幣',
+    titleEn: 'Mike Hearn Leaves Bitcoin',
+    description:
+      '早期比特幣開發者 Mike Hearn 發表文章宣稱「比特幣實驗已失敗」並出售所有比特幣，引發社群震動。',
+    category: 'community',
+    significance: 'notable',
+  },
   {
     id: 'bip68-csv',
     date: '2016-07-04',
@@ -486,6 +790,27 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     blockHeight: 420000,
   },
   {
+    id: 'bitfinex-hack',
+    date: '2016-08-02',
+    title: 'Bitfinex 遭駭客攻擊',
+    titleEn: 'Bitfinex Hacked',
+    description:
+      '香港交易所 Bitfinex 遭駭客攻擊，約 12 萬枚比特幣被盜（當時價值約 7,200 萬美元），是繼 Mt.Gox 後最大的交易所安全事件之一。',
+    category: 'market',
+    significance: 'major',
+  },
+  {
+    id: 'segwit-proposal',
+    date: '2016-10-28',
+    title: 'SegWit 正式提案',
+    titleEn: 'SegWit Formal Proposal',
+    description:
+      '隔離見證（SegWit）軟分叉正式提案發布，透過將簽名數據分離來解決交易延展性問題並間接增加區塊容量。',
+    category: 'technical',
+    significance: 'major',
+    relatedBips: ['bip-0141'],
+  },
+  {
     id: 'compact-blocks',
     date: '2016-11-01',
     title: 'Compact Blocks',
@@ -497,6 +822,27 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
   },
 
   // ===== 2017 =====
+  {
+    id: 'japan-btc-legal',
+    date: '2017-04-01',
+    title: '日本承認比特幣為合法支付方式',
+    titleEn: 'Japan Recognizes Bitcoin as Legal Payment',
+    description:
+      '日本《資金結算法》修正案生效，正式承認比特幣為合法支付方式，日本成為全球對加密貨幣最友好的國家之一。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'uasf-bip148',
+    date: '2017-03-12',
+    title: 'BIP-148 UASF 提出',
+    titleEn: 'BIP-148 UASF Proposed',
+    description:
+      '用戶激活軟分叉（User Activated Soft Fork）提案發布，社群決定不再等待礦工信號，自行推動 SegWit 激活。',
+    category: 'community',
+    significance: 'major',
+    relatedBips: ['bip-0148'],
+  },
   {
     id: 'segwit-lock-in',
     date: '2017-07-21',
@@ -531,12 +877,31 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     blockHeight: 481824,
   },
   {
+    id: 'ico-boom',
+    date: '2017-06-12',
+    title: 'ICO 狂潮開始',
+    titleEn: 'ICO Boom Begins',
+    description:
+      'EOS、Tezos 等項目透過 ICO 籌集數億美元。雖然主要在以太坊進行，但比特幣也因投資熱潮受益，市場關注度大增。',
+    category: 'market',
+    significance: 'notable',
+  },
+  {
     id: 'segwit2x-cancelled',
     date: '2017-11-08',
     title: 'SegWit2X 取消',
     titleEn: 'SegWit2X Cancelled',
     description: '因社群反對，SegWit2X 硬分叉計劃被取消，比特幣避免了另一次分裂。',
     category: 'community',
+    significance: 'major',
+  },
+  {
+    id: 'cboe-futures',
+    date: '2017-12-10',
+    title: 'CBOE 推出比特幣期貨',
+    titleEn: 'CBOE Bitcoin Futures Launch',
+    description: '芝加哥期權交易所（CBOE）率先推出比特幣期貨，是主流金融機構首次提供比特幣衍生品交易。',
+    category: 'market',
     significance: 'major',
   },
   {
@@ -560,15 +925,34 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
 
   // ===== 2018 =====
   {
-    id: 'lightning-mainnet',
-    date: '2018-03-15',
-    title: '閃電網路主網上線',
-    titleEn: 'Lightning Network Mainnet',
+    id: 'south-korea-regulations',
+    date: '2018-01-08',
+    title: '韓國加密貨幣監管風波',
+    titleEn: 'South Korea Crypto Regulation Scare',
     description:
-      'Lightning Labs 發布 lnd 0.4-beta，閃電網路正式在比特幣主網上線，開啟 Layer 2 擴展新時代。',
+      '韓國政府討論禁止加密貨幣交易，引發市場恐慌。後來雖未全面禁止，但要求實名制交易，開啟亞洲嚴格監管先例。',
+    category: 'regulatory',
+    significance: 'notable',
+  },
+  {
+    id: 'first-ln-payment',
+    date: '2018-01-20',
+    title: '首筆閃電網路主網支付',
+    titleEn: 'First Lightning Mainnet Payment',
+    description:
+      '比特幣開發者透過閃電網路在主網完成首筆實際支付（購買 VPN 服務），證明 Layer 2 解決方案的可行性。',
     category: 'technical',
-    significance: 'critical',
-    links: [{ label: '閃電網路資源', url: '/lightning' }],
+    significance: 'notable',
+  },
+  {
+    id: 'lightning-pizza',
+    date: '2018-02-25',
+    title: '首筆閃電網路披薩交易',
+    titleEn: 'First Lightning Pizza Purchase',
+    description:
+      'Laszlo Hanyecz（Bitcoin Pizza Day 的主角）透過閃電網路購買披薩，向經典致敬，展示閃電網路的日常應用潛力。',
+    category: 'adoption',
+    significance: 'notable',
   },
   {
     id: 'bech32-adoption',
@@ -581,16 +965,117 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     significance: 'notable',
     relatedBips: ['bip-0173'],
   },
+  {
+    id: 'lightning-mainnet',
+    date: '2018-03-15',
+    title: '閃電網路主網上線',
+    titleEn: 'Lightning Network Mainnet',
+    description:
+      'Lightning Labs 發布 lnd 0.4-beta，閃電網路正式在比特幣主網上線，開啟 Layer 2 擴展新時代。',
+    category: 'technical',
+    significance: 'critical',
+    links: [{ label: '閃電網路資源', url: '/lightning' }],
+  },
+  {
+    id: 'twitter-jack-btc',
+    date: '2018-03-20',
+    title: 'Twitter CEO 看好比特幣',
+    titleEn: 'Twitter CEO Endorses Bitcoin',
+    description:
+      'Twitter 和 Square CEO Jack Dorsey 公開表示比特幣將在 10 年內成為全球單一貨幣，引起主流媒體關注。',
+    category: 'adoption',
+    significance: 'notable',
+  },
+  {
+    id: 'square-cash-btc',
+    date: '2018-08-01',
+    title: 'Square Cash App 支援比特幣',
+    titleEn: 'Square Cash App Enables Bitcoin',
+    description:
+      'Jack Dorsey 的 Square 公司讓所有 Cash App 用戶都能購買比特幣，大幅降低美國用戶獲取比特幣的門檻。',
+    category: 'adoption',
+    significance: 'major',
+  },
+  {
+    id: 'bear-market-low',
+    date: '2018-12-15',
+    title: '熊市低點 3,200 美元',
+    titleEn: 'Bear Market Low $3,200',
+    description:
+      '比特幣價格跌至熊市低點約 3,200 美元，較歷史高點下跌超過 80%，考驗長期持有者的信念。',
+    category: 'market',
+    significance: 'notable',
+  },
 
   // ===== 2019 =====
   {
-    id: 'proof-of-keys',
+    id: 'proof-of-keys-2019',
     date: '2019-01-03',
     title: '首個密鑰證明日',
     titleEn: 'First Proof of Keys Day',
     description:
       'Trace Mayer 發起「密鑰證明日」，鼓勵用戶在創世區塊週年紀念日將比特幣從交易所提取到自己的錢包。',
     category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: 'lightning-torch',
+    date: '2019-01-19',
+    title: '閃電火炬傳遞',
+    titleEn: 'Lightning Torch',
+    description:
+      '社群發起「閃電火炬」接力活動，用戶依次增加聰並傳遞付款，最終傳遍全球，展示閃電網路的全球可達性。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: 'quadrigacx-collapse',
+    date: '2019-02-01',
+    title: 'QuadrigaCX 交易所倒閉',
+    titleEn: 'QuadrigaCX Collapse',
+    description:
+      '加拿大最大加密交易所 QuadrigaCX 因創辦人 Gerald Cotten 意外身亡而無法訪問冷錢包，約 1.9 億美元用戶資金無法取回。',
+    category: 'market',
+    significance: 'notable',
+  },
+  {
+    id: 'bitfinex-tether-scandal',
+    date: '2019-04-25',
+    title: 'Bitfinex-Tether 醜聞',
+    titleEn: 'Bitfinex-Tether Scandal',
+    description:
+      '紐約總檢察長指控 Bitfinex 挪用 Tether 儲備金彌補 8.5 億美元損失，引發穩定幣信任危機討論。',
+    category: 'regulatory',
+    significance: 'notable',
+  },
+  {
+    id: 'facebook-libra',
+    date: '2019-06-18',
+    title: 'Facebook 發布 Libra 計劃',
+    titleEn: 'Facebook Announces Libra',
+    description:
+      'Facebook 發布 Libra（後改名 Diem）穩定幣白皮書，引起全球監管機構關注，間接促進了比特幣的認可度。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
+    id: 'bakkt-launch',
+    date: '2019-09-23',
+    title: 'Bakkt 上線',
+    titleEn: 'Bakkt Launch',
+    description:
+      '洲際交易所（ICE）旗下的 Bakkt 平台上線，提供實物交割的比特幣期貨，標誌機構基礎設施成熟。',
+    category: 'market',
+    significance: 'major',
+  },
+  {
+    id: 'china-blockchain',
+    date: '2019-10-25',
+    title: '習近平提倡區塊鏈',
+    titleEn: 'Xi Jinping Endorses Blockchain',
+    description:
+      '中國國家主席習近平表示要把區塊鏈作為核心技術自主創新的重要突破口，比特幣價格短暫飆升。',
+    category: 'regulatory',
     significance: 'notable',
   },
   {
@@ -623,6 +1108,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     category: 'technical',
     significance: 'critical',
     blockHeight: 630000,
+  },
+  {
+    id: 'twitter-hack',
+    date: '2020-07-15',
+    title: 'Twitter 比特幣詐騙事件',
+    titleEn: 'Twitter Bitcoin Scam Hack',
+    description:
+      '駭客入侵多個知名 Twitter 帳號（包括 Elon Musk、Barack Obama、Apple 等），發布比特幣詐騙訊息。事件凸顯了中心化平台的安全風險。',
+    category: 'community',
+    significance: 'notable',
   },
   {
     id: 'microstrategy',
@@ -682,6 +1177,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     significance: 'major',
   },
   {
+    id: 'colonial-pipeline',
+    date: '2021-05-07',
+    title: 'Colonial Pipeline 勒索軟體事件',
+    titleEn: 'Colonial Pipeline Ransomware Attack',
+    description:
+      '美國最大燃油管道營運商遭勒索軟體攻擊，支付 75 枚比特幣（約 440 萬美元）贖金。FBI 後來成功追回大部分比特幣，引發對比特幣隱私性的討論。',
+    category: 'community',
+    significance: 'notable',
+  },
+  {
     id: 'china-mining-ban',
     date: '2021-05-21',
     title: '中國禁止挖礦',
@@ -699,6 +1204,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     description: '薩爾瓦多成為全球首個將比特幣列為法定貨幣的國家，由總統 Nayib Bukele 推動。',
     category: 'adoption',
     significance: 'critical',
+  },
+  {
+    id: 'el-salvador-law-effective',
+    date: '2021-09-07',
+    title: '比特幣法正式生效',
+    titleEn: 'Bitcoin Law Takes Effect',
+    description:
+      '薩爾瓦多《比特幣法》正式生效，比特幣成為該國法定貨幣。首日系統出現技術問題，但開創主權國家採用比特幣的歷史先例。',
+    category: 'adoption',
+    significance: 'major',
   },
   {
     id: 'taproot-lock-in',
@@ -762,6 +1277,36 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     significance: 'major',
   },
   {
+    id: '3ac-collapse',
+    date: '2022-06-27',
+    title: '三箭資本倒閉',
+    titleEn: 'Three Arrows Capital Collapse',
+    description:
+      '知名加密對沖基金三箭資本（3AC）因過度槓桿和 Terra 曝險而破產，引發連鎖清算潮。',
+    category: 'market',
+    significance: 'major',
+  },
+  {
+    id: 'celsius-bankruptcy',
+    date: '2022-07-13',
+    title: 'Celsius 申請破產',
+    titleEn: 'Celsius Files for Bankruptcy',
+    description:
+      '加密借貸平台 Celsius Network 申請破產保護，凍結用戶約 47 億美元資產，揭露 CeFi 風險。',
+    category: 'market',
+    significance: 'major',
+  },
+  {
+    id: 'tornado-cash-sanctions',
+    date: '2022-08-08',
+    title: 'Tornado Cash 被美國制裁',
+    titleEn: 'Tornado Cash Sanctioned',
+    description:
+      '美國財政部將以太坊混幣協議 Tornado Cash 列入制裁名單，引發加密社群對隱私權和代碼言論自由的激烈討論。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
     id: 'ftx-collapse',
     date: '2022-11-11',
     title: 'FTX 交易所倒閉',
@@ -769,6 +1314,16 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     description: 'FTX 交易所破產，創始人 SBF 被捕。再次強調「Not your keys, not your coins」的重要性。',
     category: 'market',
     significance: 'critical',
+  },
+  {
+    id: 'genesis-bankruptcy',
+    date: '2023-01-19',
+    title: 'Genesis 申請破產',
+    titleEn: 'Genesis Files for Bankruptcy',
+    description:
+      '加密借貸機構 Genesis Global 申請破產保護，負債超過 30 億美元，FTX 餘波持續。',
+    category: 'market',
+    significance: 'notable',
   },
 
   // ===== 2023 =====
@@ -803,6 +1358,56 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     description: '全球最大資產管理公司 BlackRock 提交現貨比特幣 ETF 申請，引發市場樂觀情緒。',
     category: 'adoption',
     significance: 'major',
+  },
+  {
+    id: 'binance-sec',
+    date: '2023-06-05',
+    title: 'SEC 起訴 Binance',
+    titleEn: 'SEC Sues Binance',
+    description:
+      '美國證券交易委員會（SEC）對全球最大加密交易所 Binance 及其創始人趙長鵬提起訴訟，指控違反證券法。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'grayscale-court-win',
+    date: '2023-08-29',
+    title: 'Grayscale 勝訴 SEC',
+    titleEn: 'Grayscale Wins Against SEC',
+    description:
+      '法院裁定 SEC 拒絕 Grayscale 將其比特幣信託轉換為 ETF 的決定是「任意且反覆無常的」，為現貨 ETF 鋪路。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'sbf-guilty',
+    date: '2023-11-02',
+    title: 'SBF 被判有罪',
+    titleEn: 'SBF Found Guilty',
+    description:
+      'FTX 創始人 Sam Bankman-Fried 被陪審團判定七項罪名全部成立，包括電匯詐欺和洗錢等重罪。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'binance-settlement',
+    date: '2023-11-21',
+    title: 'Binance 認罪和解',
+    titleEn: 'Binance Settlement',
+    description:
+      'Binance 與美國司法部達成 43 億美元和解協議，趙長鵬辭去 CEO 職務並認罪，創下加密產業最大罰款紀錄。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'btc-year-end-2023',
+    date: '2023-12-31',
+    title: '2023 年收官漲幅超 150%',
+    titleEn: 'Bitcoin Ends 2023 Up 150%+',
+    description:
+      '比特幣以約 42,000 美元收官，全年漲幅超過 150%，成為 2023 年表現最佳的主要資產之一。',
+    category: 'market',
+    significance: 'notable',
   },
 
   // ===== 2024 =====
@@ -844,6 +1449,46 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     category: 'technical',
     significance: 'notable',
     blockHeight: 840000,
+  },
+  {
+    id: 'hong-kong-etf',
+    date: '2024-04-30',
+    title: '香港比特幣 ETF 上市',
+    titleEn: 'Hong Kong Bitcoin ETF Launch',
+    description:
+      '香港證監會批准首批現貨比特幣和以太坊 ETF 上市交易，成為亞洲首個允許現貨加密貨幣 ETF 的主要金融市場。',
+    category: 'adoption',
+    significance: 'major',
+  },
+  {
+    id: 'mt-gox-distribution',
+    date: '2024-07-01',
+    title: 'Mt.Gox 開始償還債權人',
+    titleEn: 'Mt.Gox Begins Distributions',
+    description:
+      '在破產十年後，Mt.Gox 終於開始向債權人償還比特幣，約 142,000 枚 BTC 陸續發放，市場擔憂拋壓。',
+    category: 'market',
+    significance: 'notable',
+  },
+  {
+    id: 'trump-bitcoin-conference',
+    date: '2024-07-27',
+    title: '川普出席比特幣大會',
+    titleEn: 'Trump Speaks at Bitcoin Conference',
+    description:
+      '美國前總統川普在納什維爾 Bitcoin 2024 大會發表演講，承諾若當選將建立國家比特幣儲備並解僱 SEC 主席。',
+    category: 'regulatory',
+    significance: 'major',
+  },
+  {
+    id: 'germany-btc-sale',
+    date: '2024-07-12',
+    title: '德國政府出售比特幣',
+    titleEn: 'Germany Sells Bitcoin',
+    description:
+      '德國政府完成出售從電影盜版網站沒收的約 50,000 枚比特幣，引發短期市場波動和對政府持幣策略的討論。',
+    category: 'regulatory',
+    significance: 'notable',
   },
 
   // ===== 2024 (continued) =====

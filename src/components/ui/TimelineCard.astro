@@ -5,10 +5,11 @@ import { categoryLabels, categoryColors } from '@/data/bitcoin-timeline';
 
 interface Props {
   milestone: BitcoinMilestone;
+  compact?: boolean;
   class?: string;
 }
 
-const { milestone, class: className } = Astro.props;
+const { milestone, compact = false, class: className } = Astro.props;
 const {
   date,
   title,
@@ -32,66 +33,61 @@ const tagVariant = categoryColors[category] as
 
 <div
   class:list={[
-    'relative pl-8 pb-8 border-l-2',
-    significance === 'critical' ? 'border-bitcoin-500' : 'border-[var(--border-default)]',
+    'relative pl-6 pb-4',
     className,
   ]}
 >
   <!-- Timeline dot -->
   <div
     class:list={[
-      'absolute -left-2.5 w-5 h-5 rounded-full border-2 bg-[var(--bg-primary)]',
-      significance === 'critical' ? 'border-bitcoin-500' : 'border-[var(--border-default)]',
+      'absolute -left-[5px] w-2.5 h-2.5 rounded-full mt-1.5',
+      significance === 'critical' ? 'bg-bitcoin-500' : significance === 'major' ? 'bg-lightning-500' : 'bg-neutral-400 dark:bg-neutral-600',
     ]}
-  >
-    {significance === 'critical' && <div class="absolute inset-1 rounded-full bg-bitcoin-500" />}
-  </div>
+  />
 
   <!-- Content -->
   <div
-    class="bg-[var(--surface-elevated)] rounded-xl border border-[var(--border-default)] p-4 sm:p-6"
+    class:list={[
+      'rounded-lg border border-[var(--border-default)] transition-colors hover:border-[var(--border-hover)]',
+      significance === 'critical' ? 'bg-bitcoin-500/5' : 'bg-[var(--surface-elevated)]',
+    ]}
   >
-    <div class="flex flex-wrap items-center gap-2 mb-2">
-      <span class="text-sm font-mono text-[var(--text-tertiary)]">{date}</span>
-      <Tag variant={tagVariant} size="sm">{categoryLabels[category]}</Tag>
+    <div class="p-3">
+      <div class="flex flex-wrap items-center gap-1.5 mb-1.5 text-xs">
+        <span class="font-mono text-[var(--text-tertiary)]">{date.slice(5)}</span>
+        <Tag variant={tagVariant} size="sm">{categoryLabels[category]}</Tag>
+        {
+          blockHeight !== undefined && (
+            <span class="font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-[var(--text-tertiary)]">
+              #{blockHeight.toLocaleString()}
+            </span>
+          )
+        }
+      </div>
+
+      <h3 class="text-base font-semibold text-[var(--text-primary)] leading-snug">{title}</h3>
+      {titleEn && <p class="text-xs text-[var(--text-tertiary)] mt-0.5">{titleEn}</p>}
+      <p class="text-sm text-[var(--text-secondary)] mt-1.5 leading-relaxed">{description}</p>
+
       {
-        blockHeight !== undefined && (
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-[var(--text-tertiary)]">
-            # {blockHeight.toLocaleString()}
-          </span>
+        (relatedBips?.length || links?.length) && (
+          <div class="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[var(--border-default)]">
+            {relatedBips?.map((bip) => (
+              <a
+                href={`/bips/${bip}`}
+                class="text-xs px-1.5 py-0.5 rounded bg-bitcoin-500/10 text-bitcoin-600 dark:text-bitcoin-400 hover:bg-bitcoin-500/20 transition-colors"
+              >
+                {bip.toUpperCase()}
+              </a>
+            ))}
+            {links?.map((link) => (
+              <a href={link.url} class="text-xs text-bitcoin-500 hover:underline">
+                {link.label} →
+              </a>
+            ))}
+          </div>
         )
       }
     </div>
-
-    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-1">{title}</h3>
-    {titleEn && <p class="text-sm text-[var(--text-tertiary)] mb-2">{titleEn}</p>}
-    <p class="text-[var(--text-secondary)] mb-4">{description}</p>
-
-    {
-      relatedBips && relatedBips.length > 0 && (
-        <div class="flex flex-wrap gap-1 mb-3">
-          {relatedBips.map((bip) => (
-            <a
-              href={`/bips/${bip}`}
-              class="text-xs px-2 py-0.5 rounded bg-bitcoin-500/10 text-bitcoin-600 dark:text-bitcoin-400 hover:bg-bitcoin-500/20 transition-colors"
-            >
-              {bip.toUpperCase()}
-            </a>
-          ))}
-        </div>
-      )
-    }
-
-    {
-      links && links.length > 0 && (
-        <div class="flex flex-wrap gap-2">
-          {links.map((link) => (
-            <a href={link.url} class="text-sm text-bitcoin-500 hover:underline">
-              {link.label} →
-            </a>
-          ))}
-        </div>
-      )
-    }
   </div>
 </div>
