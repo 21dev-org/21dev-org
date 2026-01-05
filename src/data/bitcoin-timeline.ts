@@ -160,7 +160,8 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2009-01-09',
     title: 'Bitcoin v0.1 發布',
     titleEn: 'Bitcoin v0.1 Released',
-    description: '中本聰在 SourceForge 發布比特幣軟體的首個版本 Bitcoin v0.1.0，僅支援 Windows 系統。',
+    description:
+      '中本聰在 SourceForge 發布比特幣軟體的首個版本 Bitcoin v0.1.0，僅支援 Windows 系統。',
     category: 'genesis',
     significance: 'critical',
   },
@@ -213,8 +214,7 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2010-01-09',
     title: 'Bitcoin v0.2 發布',
     titleEn: 'Bitcoin v0.2 Released',
-    description:
-      '中本聰發布 Bitcoin v0.2，新增 Linux 支援，讓更多開發者能參與比特幣網路。',
+    description: '中本聰發布 Bitcoin v0.2，新增 Linux 支援，讓更多開發者能參與比特幣網路。',
     category: 'technical',
     significance: 'notable',
   },
@@ -282,7 +282,8 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2010-11-27',
     title: '首個礦池成立',
     titleEn: 'First Mining Pool',
-    description: 'Slush Pool（原 Bitcoin.cz Mining）成為第一個比特幣礦池，讓小型礦工能穩定獲得收益。',
+    description:
+      'Slush Pool（原 Bitcoin.cz Mining）成為第一個比特幣礦池，讓小型礦工能穩定獲得收益。',
     category: 'technical',
     significance: 'major',
   },
@@ -445,8 +446,7 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2012-05-15',
     title: 'BitPay 成立',
     titleEn: 'BitPay Founded',
-    description:
-      '比特幣支付處理商 BitPay 成立，讓商家可以輕鬆接受比特幣支付並即時轉換為法幣。',
+    description: '比特幣支付處理商 BitPay 成立，讓商家可以輕鬆接受比特幣支付並即時轉換為法幣。',
     category: 'adoption',
     significance: 'notable',
   },
@@ -686,13 +686,10 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2015-02-28',
     title: '閃電網路白皮書',
     titleEn: 'Lightning Network Whitepaper',
-    description:
-      'Joseph Poon 和 Thaddeus Dryja 發布閃電網路白皮書，提出比特幣 Layer 2 擴展方案。',
+    description: 'Joseph Poon 和 Thaddeus Dryja 發布閃電網路白皮書，提出比特幣 Layer 2 擴展方案。',
     category: 'technical',
     significance: 'critical',
-    links: [
-      { label: '閱讀白皮書', url: 'https://lightning.network/lightning-network-paper.pdf' },
-    ],
+    links: [{ label: '閱讀白皮書', url: 'https://lightning.network/lightning-network-paper.pdf' }],
   },
   {
     id: 'bitlicense',
@@ -773,7 +770,8 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2016-07-04',
     title: '相對時間鎖啟用',
     titleEn: 'CSV Activation',
-    description: 'BIP-68/112/113 啟用，引入相對時間鎖功能（CHECKSEQUENCEVERIFY），進一步支持閃電網路。',
+    description:
+      'BIP-68/112/113 啟用，引入相對時間鎖功能（CHECKSEQUENCEVERIFY），進一步支持閃電網路。',
     category: 'technical',
     significance: 'major',
     relatedBips: ['bip-0068', 'bip-0112', 'bip-0113'],
@@ -900,7 +898,8 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2017-12-10',
     title: 'CBOE 推出比特幣期貨',
     titleEn: 'CBOE Bitcoin Futures Launch',
-    description: '芝加哥期權交易所（CBOE）率先推出比特幣期貨，是主流金融機構首次提供比特幣衍生品交易。',
+    description:
+      '芝加哥期權交易所（CBOE）率先推出比特幣期貨，是主流金融機構首次提供比特幣衍生品交易。',
     category: 'market',
     significance: 'major',
   },
@@ -1281,8 +1280,7 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2022-06-27',
     title: '三箭資本倒閉',
     titleEn: 'Three Arrows Capital Collapse',
-    description:
-      '知名加密對沖基金三箭資本（3AC）因過度槓桿和 Terra 曝險而破產，引發連鎖清算潮。',
+    description: '知名加密對沖基金三箭資本（3AC）因過度槓桿和 Terra 曝險而破產，引發連鎖清算潮。',
     category: 'market',
     significance: 'major',
   },
@@ -1311,7 +1309,8 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2022-11-11',
     title: 'FTX 交易所倒閉',
     titleEn: 'FTX Collapse',
-    description: 'FTX 交易所破產，創始人 SBF 被捕。再次強調「Not your keys, not your coins」的重要性。',
+    description:
+      'FTX 交易所破產，創始人 SBF 被捕。再次強調「Not your keys, not your coins」的重要性。',
     category: 'market',
     significance: 'critical',
   },
@@ -1320,8 +1319,7 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2023-01-19',
     title: 'Genesis 申請破產',
     titleEn: 'Genesis Files for Bankruptcy',
-    description:
-      '加密借貸機構 Genesis Global 申請破產保護，負債超過 30 億美元，FTX 餘波持續。',
+    description: '加密借貸機構 Genesis Global 申請破產保護，負債超過 30 億美元，FTX 餘波持續。',
     category: 'market',
     significance: 'notable',
   },
@@ -1538,7 +1536,8 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2025-02-15',
     title: '薩爾瓦多持倉突破 6,000 BTC',
     titleEn: 'El Salvador Holdings Exceed 6,000 BTC',
-    description: '薩爾瓦多國家比特幣儲備突破 6,000 枚，持續執行每日購買策略，成為主權國家持幣典範。',
+    description:
+      '薩爾瓦多國家比特幣儲備突破 6,000 枚，持續執行每日購買策略，成為主權國家持幣典範。',
     category: 'adoption',
     significance: 'notable',
   },
@@ -1557,8 +1556,7 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2025-03-07',
     title: '白宮首屆加密貨幣高峰會',
     titleEn: 'First White House Crypto Summit',
-    description:
-      '白宮舉辦首屆「數位資產高峰會」，政府高層與業界領袖共同討論比特幣政策和監管框架。',
+    description: '白宮舉辦首屆「數位資產高峰會」，政府高層與業界領袖共同討論比特幣政策和監管框架。',
     category: 'regulatory',
     significance: 'major',
   },
@@ -1597,8 +1595,7 @@ export const bitcoinMilestones: BitcoinMilestone[] = [
     date: '2025-05-15',
     title: '閃電網路容量突破 10,000 BTC',
     titleEn: 'Lightning Network Capacity Exceeds 10,000 BTC',
-    description:
-      '閃電網路總容量突破 10,000 BTC，通道數量持續增長，Layer 2 擴展方案日趨成熟。',
+    description: '閃電網路總容量突破 10,000 BTC，通道數量持續增長，Layer 2 擴展方案日趨成熟。',
     category: 'technical',
     significance: 'notable',
   },
@@ -1850,7 +1847,8 @@ export const bitcoinHolidays: BitcoinHoliday[] = [
     date: '11-28',
     name: '首次減半紀念日',
     nameEn: 'First Halving Anniversary',
-    description: '紀念 2012 年比特幣首次減半，區塊獎勵從 50 BTC 減至 25 BTC，驗證了比特幣的貨幣政策。',
+    description:
+      '紀念 2012 年比特幣首次減半，區塊獎勵從 50 BTC 減至 25 BTC，驗證了比特幣的貨幣政策。',
     origin: '2012 年 11 月 28 日',
     icon: '✂️',
     celebrationIdeas: ['研究減半經濟學', '回顧歷次減半', '預測下次減半影響'],
@@ -1904,8 +1902,7 @@ export const bitcoinHolidays: BitcoinHoliday[] = [
     date: '09-07',
     name: '比特幣法幣日',
     nameEn: 'Bitcoin Legal Tender Day',
-    description:
-      '紀念 2021 年薩爾瓦多《比特幣法》正式生效，比特幣首次成為主權國家的法定貨幣。',
+    description: '紀念 2021 年薩爾瓦多《比特幣法》正式生效，比特幣首次成為主權國家的法定貨幣。',
     origin: '2021 年 9 月 7 日',
     icon: '🇸🇻',
     celebrationIdeas: ['了解薩爾瓦多比特幣政策', '使用 Chivo 錢包', '支持比特幣國家'],
@@ -1981,8 +1978,7 @@ export const bitcoinHolidays: BitcoinHoliday[] = [
     date: '11-29',
     name: '破萬日',
     nameEn: 'Bitcoin $10K Day',
-    description:
-      '紀念 2017 年比特幣價格首次突破 10,000 美元，這是一個重要的心理價位里程碑。',
+    description: '紀念 2017 年比特幣價格首次突破 10,000 美元，這是一個重要的心理價位里程碑。',
     origin: '2017 年 11 月 29 日',
     icon: '🚀',
     celebrationIdeas: ['回顧價格歷史', '思考長期價值', '計算投資報酬率'],
