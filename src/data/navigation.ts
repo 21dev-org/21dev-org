@@ -142,6 +142,30 @@ export const navigation: MegaMenuItem[] = [
       },
     ],
   },
+  {
+    label: '大事記',
+    href: '/timeline/',
+    sections: [
+      {
+        title: '歷史時刻',
+        links: [
+          { label: '創世區塊 (2009)', href: '/timeline/#year-2009' },
+          { label: 'Pizza Day (2010)', href: '/timeline/#year-2010' },
+          { label: 'SegWit 升級 (2017)', href: '/timeline/#year-2017' },
+          { label: 'Taproot 升級 (2021)', href: '/timeline/#year-2021' },
+        ],
+      },
+      {
+        title: '比特幣節日',
+        links: [
+          { label: '創世區塊日 (1/3)', href: '/timeline/#holidays' },
+          { label: 'Hal Finney 日 (1/12)', href: '/timeline/#holidays' },
+          { label: 'Pizza Day (5/22)', href: '/timeline/#holidays' },
+          { label: '白皮書日 (10/31)', href: '/timeline/#holidays' },
+        ],
+      },
+    ],
+  },
 ];
 
 export const simpleNavItems: NavLink[] = [];
@@ -157,6 +181,7 @@ export const footerNav = {
     links: [
       { label: '學習中心', href: '/learn/' },
       { label: '書籍資源', href: '/books/' },
+      { label: '比特幣大事記', href: '/timeline/' },
       { label: 'BIP 討論', href: '/bips/' },
     ],
   },

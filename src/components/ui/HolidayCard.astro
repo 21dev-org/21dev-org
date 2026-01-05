@@ -1,0 +1,95 @@
+---
+import type { BitcoinHoliday } from '@/data/bitcoin-timeline';
+
+interface Props {
+  holiday: BitcoinHoliday;
+  isUpcoming?: boolean;
+  class?: string;
+}
+
+const { holiday, isUpcoming = false, class: className } = Astro.props;
+const { date, name, nameEn, description, icon, origin, celebrationIdeas } = holiday;
+
+const [month, day] = date.split('-');
+const monthNames = [
+  '',
+  '一月',
+  '二月',
+  '三月',
+  '四月',
+  '五月',
+  '六月',
+  '七月',
+  '八月',
+  '九月',
+  '十月',
+  '十一月',
+  '十二月',
+];
+---
+
+<div
+  class:list={[
+    'group rounded-xl border bg-[var(--surface-elevated)] overflow-hidden transition-all duration-200 hover:border-bitcoin-500/50 hover:shadow-lg',
+    isUpcoming ? 'border-bitcoin-500 ring-2 ring-bitcoin-500/20' : 'border-[var(--border-default)]',
+    className,
+  ]}
+>
+  <div class="flex">
+    <!-- Date block -->
+    <div
+      class:list={[
+        'flex-shrink-0 w-20 flex flex-col items-center justify-center p-4',
+        isUpcoming ? 'bg-bitcoin-500 text-white' : 'bg-bitcoin-500/10',
+      ]}
+    >
+      <span class:list={['text-2xl font-bold', isUpcoming ? 'text-white' : 'text-bitcoin-500']}
+        >{day}</span
+      >
+      <span
+        class:list={[
+          'text-sm',
+          isUpcoming ? 'text-white/80' : 'text-bitcoin-600 dark:text-bitcoin-400',
+        ]}
+      >
+        {monthNames[parseInt(month)]}
+      </span>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 p-4">
+      <div class="flex items-center gap-2 mb-2">
+        {icon && <span class="text-xl">{icon}</span>}
+        {
+          isUpcoming && (
+            <span class="text-xs px-2 py-0.5 rounded-full bg-bitcoin-500/10 text-bitcoin-600 dark:text-bitcoin-400">
+              即將到來
+            </span>
+          )
+        }
+      </div>
+
+      <h3
+        class="text-lg font-semibold text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors"
+      >
+        {name}
+      </h3>
+      {nameEn && <p class="text-sm text-[var(--text-tertiary)] mb-2">{nameEn}</p>}
+      <p class="text-sm text-[var(--text-secondary)] mb-3">{description}</p>
+
+      {origin && <p class="text-xs text-[var(--text-tertiary)] mb-2">起源: {origin}</p>}
+
+      {
+        celebrationIdeas && celebrationIdeas.length > 0 && (
+          <div class="flex flex-wrap gap-1">
+            {celebrationIdeas.slice(0, 3).map((idea) => (
+              <span class="text-xs px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-[var(--text-tertiary)]">
+                {idea}
+              </span>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,471 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import TimelineCard from '@/components/ui/TimelineCard.astro';
+import HolidayCard from '@/components/ui/HolidayCard.astro';
+import Button from '@/components/ui/Button.astro';
+import Tag from '@/components/ui/Tag.astro';
+import {
+  bitcoinMilestones,
+  bitcoinHolidays,
+  getUpcomingHoliday,
+  getTodayInHistory,
+  getTodayHoliday,
+  getTimelineStats,
+  categoryLabels,
+  categoryColors,
+} from '@/data/bitcoin-timeline';
+
+// 按年份分組里程碑
+const milestonesByYear = bitcoinMilestones.reduce(
+  (acc, m) => {
+    const year = m.date.substring(0, 4);
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(m);
+    return acc;
+  },
+  {} as Record<string, typeof bitcoinMilestones>
+);
+
+const years = Object.keys(milestonesByYear).sort((a, b) => b.localeCompare(a));
+
+const upcomingHoliday = getUpcomingHoliday();
+const todayInHistory = getTodayInHistory();
+const todayHoliday = getTodayHoliday();
+const stats = getTimelineStats();
+
+// 按日期排序節日
+const sortedHolidays = [...bitcoinHolidays].sort((a, b) => a.date.localeCompare(b.date));
+
+// 分類列表
+const categories = Object.entries(categoryLabels) as [keyof typeof categoryLabels, string][];
+---
+
+<PageLayout
+  title="比特幣大事記"
+  description="比特幣歷史上的重要事件與特殊節日，從 2008 年白皮書發布到今天。"
+>
+  <!-- Hero -->
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '比特幣大事記' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">比特幣大事記</h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          從創世區塊到 Taproot 升級，回顧塑造比特幣歷史的重要時刻，以及社群慶祝的特殊節日。
+        </p>
+      </div>
+
+      <!-- Stats cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+        <div class="bg-[var(--surface-elevated)] rounded-xl border border-[var(--border-default)] p-4 text-center">
+          <div class="text-3xl font-bold text-bitcoin-500">{stats.totalMilestones}</div>
+          <div class="text-sm text-[var(--text-secondary)]">歷史事件</div>
+        </div>
+        <div class="bg-[var(--surface-elevated)] rounded-xl border border-[var(--border-default)] p-4 text-center">
+          <div class="text-3xl font-bold text-lightning-500">{stats.criticalEvents}</div>
+          <div class="text-sm text-[var(--text-secondary)]">關鍵里程碑</div>
+        </div>
+        <div class="bg-[var(--surface-elevated)] rounded-xl border border-[var(--border-default)] p-4 text-center">
+          <div class="text-3xl font-bold text-nostr-500">{stats.totalHolidays}</div>
+          <div class="text-sm text-[var(--text-secondary)]">特殊節日</div>
+        </div>
+        <div class="bg-[var(--surface-elevated)] rounded-xl border border-[var(--border-default)] p-4 text-center">
+          <div class="text-3xl font-bold text-success-500">{stats.yearsCovered}</div>
+          <div class="text-sm text-[var(--text-secondary)]">年份跨度</div>
+        </div>
+      </div>
+
+      <!-- Quick nav -->
+      <div class="flex flex-wrap gap-3 mt-8">
+        <a
+          href="#milestones"
+          class="px-4 py-2 rounded-full bg-bitcoin-500 text-white text-sm font-medium hover:bg-bitcoin-600 transition-colors"
+        >
+          歷史大事件
+        </a>
+        <a
+          href="#holidays"
+          class="px-4 py-2 rounded-full bg-[var(--surface-elevated)] border border-[var(--border-default)] text-sm font-medium hover:border-bitcoin-500/50 transition-colors"
+        >
+          比特幣節日
+        </a>
+        {
+          todayInHistory.length > 0 && (
+            <a
+              href="#today"
+              class="px-4 py-2 rounded-full bg-lightning-500/10 text-lightning-600 dark:text-lightning-400 border border-lightning-500/30 text-sm font-medium hover:bg-lightning-500/20 transition-colors"
+            >
+              ⚡ 今日歷史 ({todayInHistory.length})
+            </a>
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Today in History -->
+  {
+    todayInHistory.length > 0 && (
+      <section id="today" class="py-12 bg-lightning-500/5 border-y border-lightning-500/20">
+        <div class="container-wide">
+          <div class="flex items-center gap-3 mb-6">
+            <span class="text-2xl">📅</span>
+            <div>
+              <h2 class="text-xl font-bold text-[var(--text-primary)]">今日比特幣歷史</h2>
+              <p class="text-sm text-[var(--text-secondary)]">
+                歷史上的今天，發生了這些重要事件
+              </p>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {todayInHistory.map((milestone) => (
+              <div class="bg-[var(--surface-elevated)] rounded-xl border border-lightning-500/30 p-4">
+                <div class="text-sm font-mono text-lightning-500 mb-2">{milestone.date}</div>
+                <h3 class="font-semibold text-[var(--text-primary)] mb-1">{milestone.title}</h3>
+                {milestone.titleEn && (
+                  <p class="text-xs text-[var(--text-tertiary)] mb-2">{milestone.titleEn}</p>
+                )}
+                <p class="text-sm text-[var(--text-secondary)]">{milestone.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Today's Holiday -->
+  {
+    todayHoliday && (
+      <section class="py-8 bg-bitcoin-500/10 border-b border-bitcoin-500/20">
+        <div class="container-wide">
+          <div class="flex items-center gap-4">
+            <span class="text-4xl">{todayHoliday.icon}</span>
+            <div>
+              <div class="text-sm text-bitcoin-600 dark:text-bitcoin-400 font-medium mb-1">
+                🎉 今天是比特幣節日！
+              </div>
+              <h2 class="text-2xl font-bold text-[var(--text-primary)]">{todayHoliday.name}</h2>
+              <p class="text-[var(--text-secondary)]">{todayHoliday.description}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Milestones section -->
+  <section id="milestones" class="py-16 md:py-24">
+    <div class="container-wide">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">歷史大事件</h2>
+      <p class="text-[var(--text-secondary)] mb-8">
+        收錄 {stats.totalMilestones} 個重要事件，橫跨 {stats.firstYear} - {stats.lastYear} 年
+      </p>
+
+      <!-- Search box -->
+      <div class="mb-6">
+        <div class="relative max-w-md">
+          <input
+            type="text"
+            id="timeline-search"
+            placeholder="搜尋事件..."
+            class="w-full px-4 py-2 pl-10 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+          />
+          <svg
+            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+        <p id="search-results" class="text-sm text-[var(--text-tertiary)] mt-2 hidden"></p>
+      </div>
+
+      <!-- Category filter -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <span class="text-sm text-[var(--text-tertiary)] self-center mr-2">分類:</span>
+        <button
+          data-category="all"
+          class="category-filter px-3 py-1.5 text-sm rounded-full bg-bitcoin-500 text-white transition-colors"
+        >
+          全部
+        </button>
+        {
+          categories.map(([key, label]) => {
+            const variant = categoryColors[key];
+            return (
+              <button
+                data-category={key}
+                class={`category-filter px-3 py-1.5 text-sm rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors`}
+              >
+                {label}
+              </button>
+            );
+          })
+        }
+      </div>
+
+      <!-- Significance filter -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <span class="text-sm text-[var(--text-tertiary)] self-center mr-2">重要性:</span>
+        <button
+          data-significance="all"
+          class="significance-filter px-3 py-1.5 text-sm rounded-full bg-lightning-500 text-white transition-colors"
+        >
+          全部
+        </button>
+        <button
+          data-significance="critical"
+          class="significance-filter px-3 py-1.5 text-sm rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors flex items-center gap-1"
+        >
+          <span class="w-2 h-2 rounded-full bg-bitcoin-500"></span>
+          關鍵
+        </button>
+        <button
+          data-significance="major"
+          class="significance-filter px-3 py-1.5 text-sm rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors flex items-center gap-1"
+        >
+          <span class="w-2 h-2 rounded-full bg-lightning-500"></span>
+          重要
+        </button>
+        <button
+          data-significance="notable"
+          class="significance-filter px-3 py-1.5 text-sm rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors flex items-center gap-1"
+        >
+          <span class="w-2 h-2 rounded-full bg-neutral-400"></span>
+          一般
+        </button>
+      </div>
+
+      <!-- Year filter -->
+      <div class="flex flex-wrap gap-2 mb-8">
+        {
+          years.map((year) => (
+            <a
+              href={`#year-${year}`}
+              class="year-link px-3 py-1 text-sm rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-bitcoin-500/10 hover:text-bitcoin-500 transition-colors"
+            >
+              {year}
+            </a>
+          ))
+        }
+      </div>
+
+      <!-- Timeline -->
+      <div class="max-w-3xl">
+        {
+          years.map((year) => (
+            <div id={`year-${year}`} class="year-section mb-12 scroll-mt-24" data-year={year}>
+              <h3 class="text-2xl font-bold text-bitcoin-500 mb-6 sticky top-20 bg-[var(--bg-primary)] py-2 z-10">
+                {year}
+                <span class="text-sm font-normal text-[var(--text-tertiary)] ml-2">
+                  ({milestonesByYear[year].length} 事件)
+                </span>
+              </h3>
+              {milestonesByYear[year].map((milestone) => (
+                <div
+                  class="milestone-item"
+                  data-category={milestone.category}
+                  data-significance={milestone.significance}
+                  data-title={milestone.title}
+                  data-title-en={milestone.titleEn || ''}
+                  data-description={milestone.description}
+                >
+                  <TimelineCard milestone={milestone} />
+                </div>
+              ))}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Holidays section -->
+  <section id="holidays" class="py-16 md:py-24 bg-[var(--bg-secondary)] scroll-mt-24">
+    <div class="container-wide">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+        <div>
+          <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">比特幣節日</h2>
+          <p class="text-[var(--text-secondary)]">
+            社群慶祝的 {stats.totalHolidays} 個特殊日子，用來紀念比特幣歷史上的重要時刻。
+          </p>
+        </div>
+        {
+          upcomingHoliday && (
+            <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <span class="text-lg">{upcomingHoliday.icon}</span>
+              下一個節日: <span class="text-bitcoin-500 font-medium">{upcomingHoliday.name}</span>
+            </div>
+          )
+        }
+      </div>
+
+      <!-- Calendar view -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {
+          sortedHolidays.map((holiday) => (
+            <HolidayCard holiday={holiday} isUpcoming={holiday.id === upcomingHoliday?.id} />
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Submit CTA -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide text-center">
+      <h2 class="text-3xl font-bold text-[var(--text-primary)] mb-4">遺漏了什麼重要事件？</h2>
+      <p class="text-lg text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
+        如果你發現我們遺漏了某個重要的比特幣里程碑或節日，歡迎提交。
+      </p>
+      <Button
+        href="https://github.com/21dev-org/21dev-org/issues/new"
+        variant="primary"
+        size="lg"
+        external
+      >
+        提交事件
+      </Button>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // State
+  let currentCategory = 'all';
+  let currentSignificance = 'all';
+  let searchQuery = '';
+
+  // Elements
+  const categoryButtons = document.querySelectorAll('.category-filter');
+  const significanceButtons = document.querySelectorAll('.significance-filter');
+  const milestoneItems = document.querySelectorAll('.milestone-item');
+  const yearSections = document.querySelectorAll('.year-section');
+  const searchInput = document.getElementById('timeline-search') as HTMLInputElement;
+  const searchResults = document.getElementById('search-results');
+
+  // Filter function
+  function filterMilestones() {
+    let visibleCount = 0;
+
+    milestoneItems.forEach((item) => {
+      const itemCategory = item.getAttribute('data-category');
+      const itemSignificance = item.getAttribute('data-significance');
+      const itemTitle = (item.getAttribute('data-title') || '').toLowerCase();
+      const itemTitleEn = (item.getAttribute('data-title-en') || '').toLowerCase();
+      const itemDescription = (item.getAttribute('data-description') || '').toLowerCase();
+
+      const matchesCategory = currentCategory === 'all' || itemCategory === currentCategory;
+      const matchesSignificance =
+        currentSignificance === 'all' || itemSignificance === currentSignificance;
+      const matchesSearch =
+        searchQuery === '' ||
+        itemTitle.includes(searchQuery) ||
+        itemTitleEn.includes(searchQuery) ||
+        itemDescription.includes(searchQuery);
+
+      const isVisible = matchesCategory && matchesSignificance && matchesSearch;
+      (item as HTMLElement).style.display = isVisible ? '' : 'none';
+
+      if (isVisible) visibleCount++;
+    });
+
+    // Hide year sections with no visible items
+    yearSections.forEach((section) => {
+      const visibleItems = section.querySelectorAll('.milestone-item');
+      let hasVisible = false;
+      visibleItems.forEach((item) => {
+        if ((item as HTMLElement).style.display !== 'none') {
+          hasVisible = true;
+        }
+      });
+      (section as HTMLElement).style.display = hasVisible ? '' : 'none';
+    });
+
+    // Update search results text
+    if (searchResults) {
+      if (searchQuery) {
+        searchResults.textContent = `找到 ${visibleCount} 個相關事件`;
+        searchResults.classList.remove('hidden');
+      } else {
+        searchResults.classList.add('hidden');
+      }
+    }
+  }
+
+  // Category filter functionality
+  categoryButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      currentCategory = button.getAttribute('data-category') || 'all';
+
+      // Update button styles
+      categoryButtons.forEach((btn) => {
+        btn.classList.remove('bg-bitcoin-500', 'text-white');
+        btn.classList.add('bg-neutral-100', 'dark:bg-neutral-800');
+      });
+      button.classList.remove('bg-neutral-100', 'dark:bg-neutral-800');
+      button.classList.add('bg-bitcoin-500', 'text-white');
+
+      filterMilestones();
+    });
+  });
+
+  // Significance filter functionality
+  significanceButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      currentSignificance = button.getAttribute('data-significance') || 'all';
+
+      // Update button styles
+      significanceButtons.forEach((btn) => {
+        btn.classList.remove('bg-lightning-500', 'text-white');
+        btn.classList.add('bg-neutral-100', 'dark:bg-neutral-800');
+      });
+      button.classList.remove('bg-neutral-100', 'dark:bg-neutral-800');
+      button.classList.add('bg-lightning-500', 'text-white');
+
+      filterMilestones();
+    });
+  });
+
+  // Search functionality
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = (e.target as HTMLInputElement).value.toLowerCase().trim();
+      filterMilestones();
+    });
+  }
+
+  // Smooth scroll for year links
+  const yearLinks = document.querySelectorAll('.year-link');
+  yearLinks.forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = link.getAttribute('href');
+      if (href) {
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+          history.pushState(null, '', href);
+        }
+      }
+    });
+  });
+
+  // Keyboard shortcut: / to focus search
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== searchInput) {
+      e.preventDefault();
+      searchInput?.focus();
+    }
+  });
+</script>
