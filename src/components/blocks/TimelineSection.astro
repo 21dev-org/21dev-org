@@ -1,104 +1,58 @@
 ---
 import Button from '@/components/ui/Button.astro';
-import TimelineCard from '@/components/ui/TimelineCard.astro';
-import HolidayCard from '@/components/ui/HolidayCard.astro';
-import {
-  bitcoinMilestones,
-  getUpcomingHoliday,
-  getTodayInHistory,
-  getTimelineStats,
-} from '@/data/bitcoin-timeline';
+import { bitcoinMilestones, getTimelineStats } from '@/data/bitcoin-timeline';
 
 // 顯示最重要的 3 個里程碑
 const featuredMilestones = bitcoinMilestones
   .filter((m) => m.significance === 'critical')
-  .slice(-4)
+  .slice(-3)
   .reverse();
 
-const upcomingHoliday = getUpcomingHoliday();
-const todayInHistory = getTodayInHistory();
 const stats = getTimelineStats();
 ---
 
-<section class="py-20 md:py-28 bg-[var(--bg-secondary)]">
+<section class="py-16 md:py-20 bg-[var(--bg-secondary)]">
   <div class="container-wide">
-    <!-- Section header -->
-    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-      <div>
-        <h2 class="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">比特幣大事記</h2>
-        <p class="text-lg text-[var(--text-secondary)] max-w-2xl">
-          從創世區塊到 Taproot，回顧塑造比特幣的重要時刻。收錄 {stats.totalMilestones} 個歷史事件與
-          {stats.totalHolidays} 個特殊節日。
-        </p>
-      </div>
-      <Button href="/timeline/" variant="secondary">
-        完整時間軸
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-        </svg>
-      </Button>
-    </div>
-
-    <!-- Today in History callout -->
-    {
-      todayInHistory.length > 0 && (
-        <div class="mb-8 p-4 rounded-xl bg-lightning-500/10 border border-lightning-500/30">
-          <div class="font-semibold text-[var(--text-primary)] mb-2">今日比特幣歷史</div>
-          <div class="flex flex-wrap gap-2">
-            {todayInHistory.map((m) => (
-              <a
-                href="/timeline/"
-                class="text-sm px-3 py-1 rounded-full bg-lightning-500/20 text-lightning-600 dark:text-lightning-400 hover:bg-lightning-500/30 transition-colors"
-              >
-                {m.date.substring(0, 4)}: {m.title}
-              </a>
-            ))}
-          </div>
+    <div class="max-w-4xl mx-auto">
+      <!-- Section header -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-2">比特幣大事記</h2>
+          <p class="text-[var(--text-secondary)]">
+            {stats.totalMilestones} 個歷史事件，{stats.firstYear} - {stats.lastYear}
+          </p>
         </div>
-      )
-    }
-
-    <div class="grid lg:grid-cols-3 gap-8">
-      <!-- Timeline preview -->
-      <div class="lg:col-span-2">
-        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
-          關鍵里程碑
-        </h3>
-        {featuredMilestones.map((milestone) => <TimelineCard milestone={milestone} />)}
+        <Button href="/timeline/" variant="secondary">
+          完整時間軸
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+          </svg>
+        </Button>
       </div>
 
-      <!-- Upcoming holiday -->
-      <div>
-        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
-          下一個比特幣節日
-        </h3>
-        {upcomingHoliday && <HolidayCard holiday={upcomingHoliday} isUpcoming={true} />}
-        <div class="mt-4 text-center">
-          <a href="/timeline/#holidays" class="text-sm text-bitcoin-500 hover:underline">
-            查看所有 {stats.totalHolidays} 個節日 →
-          </a>
-        </div>
-
-        <!-- Quick stats -->
-        <div class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
-          <h4 class="font-semibold text-[var(--text-primary)] mb-3">統計概覽</h4>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-[var(--text-secondary)]">歷史事件</span>
-              <span class="font-mono text-bitcoin-500">{stats.totalMilestones}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-[var(--text-secondary)]">關鍵里程碑</span>
-              <span class="font-mono text-lightning-500">{stats.criticalEvents}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-[var(--text-secondary)]">年份跨度</span>
-              <span class="font-mono text-[var(--text-primary)]">
-                {stats.firstYear} - {stats.lastYear}
-              </span>
-            </div>
-          </div>
-        </div>
+      <!-- Featured milestones -->
+      <div class="space-y-4">
+        {
+          featuredMilestones.map((milestone) => (
+            <a
+              href="/timeline/"
+              class="group flex gap-4 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hover:border-bitcoin-500/50 transition-all"
+            >
+              <div class="flex-shrink-0 w-16 text-center">
+                <div class="text-2xl font-bold text-bitcoin-500">{milestone.date.slice(0, 4)}</div>
+                <div class="text-xs text-[var(--text-tertiary)]">{milestone.date.slice(5)}</div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors">
+                  {milestone.title}
+                </h3>
+                <p class="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">
+                  {milestone.description}
+                </p>
+              </div>
+            </a>
+          ))
+        }
       </div>
     </div>
   </div>
