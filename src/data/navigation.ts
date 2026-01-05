@@ -157,9 +157,7 @@ export const navigation: MegaMenuItem[] = [
       },
       {
         title: '比特幣節日',
-        links: [
-          { label: '查看全部節日', href: '/timeline/#holidays' },
-        ],
+        links: [{ label: '查看全部節日', href: '/timeline/#holidays' }],
       },
     ],
   },
