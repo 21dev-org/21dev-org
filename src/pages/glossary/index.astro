@@ -6,9 +6,7 @@ import { getCollection } from 'astro:content';
 
 // 取得所有術語並按英文排序
 const glossaryEntries = await getCollection('glossary');
-const sortedEntries = glossaryEntries.sort((a, b) =>
-  a.data.termEn.localeCompare(b.data.termEn)
-);
+const sortedEntries = glossaryEntries.sort((a, b) => a.data.termEn.localeCompare(b.data.termEn));
 
 // 分類標籤
 const categoryLabels: Record<string, string> = {
@@ -79,8 +77,8 @@ const stats = {
 };
 
 const letters = Object.keys(entriesByLetter).sort();
-const categories = Object.keys(entriesByCategory).sort((a, b) =>
-  (entriesByCategory[b]?.length || 0) - (entriesByCategory[a]?.length || 0)
+const categories = Object.keys(entriesByCategory).sort(
+  (a, b) => (entriesByCategory[b]?.length || 0) - (entriesByCategory[a]?.length || 0)
 );
 ---
 
@@ -96,28 +94,34 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
       <Breadcrumb items={[{ label: '術語詞典' }]} />
 
       <div class="max-w-4xl">
-        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
-          術語詞典
-        </h1>
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">術語詞典</h1>
         <p class="text-xl text-[var(--text-secondary)] mb-8">
           比特幣世界的專有名詞解釋，幫助你理解技術文件和社群討論。
         </p>
 
         <!-- Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div
+            class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+          >
             <div class="text-3xl font-bold text-bitcoin-500">{stats.total}</div>
             <div class="text-sm text-[var(--text-secondary)]">術語總數</div>
           </div>
-          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div
+            class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+          >
             <div class="text-3xl font-bold text-green-500">{stats.beginner}</div>
             <div class="text-sm text-[var(--text-secondary)]">入門術語</div>
           </div>
-          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div
+            class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+          >
             <div class="text-3xl font-bold text-yellow-500">{stats.intermediate}</div>
             <div class="text-sm text-[var(--text-secondary)]">進階術語</div>
           </div>
-          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+          <div
+            class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+          >
             <div class="text-3xl font-bold text-red-500">{stats.advanced}</div>
             <div class="text-sm text-[var(--text-secondary)]">高級術語</div>
           </div>
@@ -143,7 +147,10 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
               stroke-linejoin="round"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
-          <span id="search-count" class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)] hidden">
+          <span
+            id="search-count"
+            class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)] hidden"
+          >
           </span>
         </div>
       </div>
@@ -197,7 +204,11 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
         <div id="terms-container">
           {
             letters.map((letter) => (
-              <div id={`letter-${letter}`} class="letter-section mb-12 scroll-mt-24" data-letter={letter}>
+              <div
+                id={`letter-${letter}`}
+                class="letter-section mb-12 scroll-mt-24"
+                data-letter={letter}
+              >
                 <h2 class="text-2xl font-bold text-bitcoin-500 mb-6 pb-2 border-b border-[var(--border-default)] flex items-center gap-3">
                   <span class="w-10 h-10 rounded-lg bg-bitcoin-500/10 flex items-center justify-center">
                     {letter}
@@ -239,7 +250,10 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
                         {entry.data.short}
                       </p>
                       <div class="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
-                        <span class="flex items-center gap-1" set:html={categoryIcons[entry.data.category]} />
+                        <span
+                          class="flex items-center gap-1"
+                          set:html={categoryIcons[entry.data.category]}
+                        />
                         <span>{categoryLabels[entry.data.category]}</span>
                         {entry.data.aliases && entry.data.aliases.length > 0 && (
                           <span class="ml-auto truncate max-w-[120px]">
@@ -256,13 +270,25 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
 
           <!-- No Results -->
           <div id="no-results" class="hidden text-center py-12">
-            <svg class="w-16 h-16 mx-auto text-[var(--text-tertiary)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            <svg
+              class="w-16 h-16 mx-auto text-[var(--text-tertiary)] mb-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
             <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">找不到符合的術語</h3>
             <p class="text-[var(--text-secondary)]">
               試試其他關鍵字，或
-              <a href="https://github.com/21dev-org/21dev-org/issues/new" class="text-bitcoin-500 hover:underline">
+              <a
+                href="https://github.com/21dev-org/21dev-org/issues/new"
+                class="text-bitcoin-500 hover:underline"
+              >
                 建議新增術語
               </a>
             </p>
@@ -273,10 +299,22 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
         <aside class="hidden lg:block">
           <div class="sticky top-24 space-y-6">
             <!-- Quick Stats -->
-            <div class="p-5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div
+              class="p-5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+            >
               <h3 class="font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5 text-bitcoin-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                <svg
+                  class="w-5 h-5 text-bitcoin-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  ></path>
                 </svg>
                 分類統計
               </h3>
@@ -301,19 +339,30 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
             </div>
 
             <!-- Difficulty Guide -->
-            <div class="p-5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div
+              class="p-5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+            >
               <h3 class="font-semibold text-[var(--text-primary)] mb-4">難度說明</h3>
               <div class="space-y-3 text-sm">
                 <div class="flex items-center gap-3">
-                  <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400 font-medium">入門</span>
+                  <span
+                    class="px-2 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400 font-medium"
+                    >入門</span
+                  >
                   <span class="text-[var(--text-secondary)]">適合初學者</span>
                 </div>
                 <div class="flex items-center gap-3">
-                  <span class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-medium">進階</span>
+                  <span
+                    class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-medium"
+                    >進階</span
+                  >
                   <span class="text-[var(--text-secondary)]">需要基礎知識</span>
                 </div>
                 <div class="flex items-center gap-3">
-                  <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium">高級</span>
+                  <span
+                    class="px-2 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium"
+                    >高級</span
+                  >
                   <span class="text-[var(--text-secondary)]">技術深入內容</span>
                 </div>
               </div>
@@ -330,7 +379,9 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
                 class="inline-flex items-center gap-2 text-sm text-bitcoin-500 hover:underline font-medium"
               >
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  <path
+                    d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                  ></path>
                 </svg>
                 在 GitHub 上貢獻
               </a>
@@ -364,7 +415,8 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
         const aliases = item.getAttribute('data-aliases') || '';
         const category = item.getAttribute('data-category') || '';
 
-        const matchesSearch = !currentQuery ||
+        const matchesSearch =
+          !currentQuery ||
           term.includes(currentQuery) ||
           termEn.includes(currentQuery) ||
           aliases.includes(currentQuery);
@@ -378,7 +430,9 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
 
       // Update letter sections visibility
       letterSections.forEach((section) => {
-        const visibleItems = section.querySelectorAll('.glossary-item:not([style*="display: none"])');
+        const visibleItems = section.querySelectorAll(
+          '.glossary-item:not([style*="display: none"])'
+        );
         const isVisible = visibleItems.length > 0;
         (section as HTMLElement).style.display = isVisible ? '' : 'none';
 
@@ -421,10 +475,20 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
         // Update button styles
         categoryFilters.forEach((b) => {
           if (b.getAttribute('data-category') === currentCategory) {
-            b.classList.remove('bg-[var(--surface-elevated)]', 'border', 'border-[var(--border-default)]', 'text-[var(--text-secondary)]');
+            b.classList.remove(
+              'bg-[var(--surface-elevated)]',
+              'border',
+              'border-[var(--border-default)]',
+              'text-[var(--text-secondary)]'
+            );
             b.classList.add('bg-bitcoin-500', 'text-white');
           } else {
-            b.classList.add('bg-[var(--surface-elevated)]', 'border', 'border-[var(--border-default)]', 'text-[var(--text-secondary)]');
+            b.classList.add(
+              'bg-[var(--surface-elevated)]',
+              'border',
+              'border-[var(--border-default)]',
+              'text-[var(--text-secondary)]'
+            );
             b.classList.remove('bg-bitcoin-500', 'text-white');
           }
         });
@@ -438,10 +502,14 @@ const categories = Object.keys(entriesByCategory).sort((a, b) =>
       btn.addEventListener('click', () => {
         const cat = btn.getAttribute('data-category') || 'all';
         // Trigger the main category filter
-        const mainFilter = document.querySelector(`.category-filter[data-category="${cat}"]`) as HTMLElement;
+        const mainFilter = document.querySelector(
+          `.category-filter[data-category="${cat}"]`
+        ) as HTMLElement;
         mainFilter?.click();
         // Scroll to top of terms
-        document.getElementById('terms-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document
+          .getElementById('terms-container')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
   }

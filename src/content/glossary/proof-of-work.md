@@ -396,15 +396,15 @@ def mine_block(block_header, target):
 
 ### 機制比較
 
-| 特性 | 工作量證明 (PoW) | 權益證明 (PoS) |
-|-----|-----------------|----------------|
-| 資源消耗 | 電力、硬體 | 鎖定代幣 |
-| 進入門檻 | 任何人可參與 | 需要最低質押 |
-| 去中心化 | 較高 | 較低（財富集中） |
-| 安全模型 | 外部成本（能源） | 內部成本（質押） |
-| 攻擊成本 | 持續消耗 | 可回收 |
-| 長程攻擊 | 不可能 | 理論上可能 |
-| 無利害攻擊 | 不存在 | 需要額外機制 |
+| 特性       | 工作量證明 (PoW) | 權益證明 (PoS)   |
+| ---------- | ---------------- | ---------------- |
+| 資源消耗   | 電力、硬體       | 鎖定代幣         |
+| 進入門檻   | 任何人可參與     | 需要最低質押     |
+| 去中心化   | 較高             | 較低（財富集中） |
+| 安全模型   | 外部成本（能源） | 內部成本（質押） |
+| 攻擊成本   | 持續消耗         | 可回收           |
+| 長程攻擊   | 不可能           | 理論上可能       |
+| 無利害攻擊 | 不存在           | 需要額外機制     |
 
 ### PoW 的獨特優勢
 
@@ -470,14 +470,14 @@ PoS 的已知問題：
 
 ### 其他 PoW 算法
 
-| 算法 | 使用者 | 特點 |
-|-----|-------|------|
-| SHA-256d | Bitcoin | 雙重 SHA-256 |
-| Scrypt | Litecoin | 記憶體密集 |
-| Ethash | Ethereum (舊) | ASIC 抗性 |
-| RandomX | Monero | CPU 友好 |
-| Equihash | Zcash | 記憶體綁定 |
-| X11 | Dash | 11 種算法鏈 |
+| 算法     | 使用者        | 特點         |
+| -------- | ------------- | ------------ |
+| SHA-256d | Bitcoin       | 雙重 SHA-256 |
+| Scrypt   | Litecoin      | 記憶體密集   |
+| Ethash   | Ethereum (舊) | ASIC 抗性    |
+| RandomX  | Monero        | CPU 友好     |
+| Equihash | Zcash         | 記憶體綁定   |
+| X11      | Dash          | 11 種算法鏈  |
 
 ### 合併挖礦
 
@@ -552,8 +552,8 @@ function verifyProofOfWork(blockHeader, target) {
 }
 
 // 範例使用
-const header = Buffer.from('...', 'hex');  // 80 bytes 區塊頭
-const target = '00000000ffff0000...';       // 目標值
+const header = Buffer.from('...', 'hex'); // 80 bytes 區塊頭
+const target = '00000000ffff0000...'; // 目標值
 const isValid = verifyProofOfWork(header, target);
 ```
 

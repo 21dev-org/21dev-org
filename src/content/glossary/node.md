@@ -687,7 +687,7 @@ const client = new Client({
   host: '127.0.0.1',
   port: 8332,
   username: 'user',
-  password: 'password'
+  password: 'password',
 });
 
 async function main() {
@@ -835,4 +835,3 @@ main();
 - 修剪節點不是輕節點
 - 同樣獨立、同樣安全
 ```
-

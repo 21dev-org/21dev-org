@@ -29,13 +29,13 @@ seeAlso: [/tech/bitcoin-core/block-structure]
 
 ### 區塊提供的功能
 
-| 功能 | 說明 |
-|-----|------|
+| 功能       | 說明                 |
+| ---------- | -------------------- |
 | 交易批處理 | 將數千筆交易打包處理 |
-| 時間排序 | 確定交易的先後順序 |
-| 工作量證明 | 保護網路安全 |
-| 鏈式連接 | 確保歷史不可篡改 |
-| 獎勵分發 | 激勵礦工參與 |
+| 時間排序   | 確定交易的先後順序   |
+| 工作量證明 | 保護網路安全         |
+| 鏈式連接   | 確保歷史不可篡改     |
+| 獎勵分發   | 激勵礦工參與         |
 
 ## 區塊結構詳解
 
@@ -534,7 +534,7 @@ function parseBlockHeader(headerHex) {
     merkleRoot: header.slice(36, 68).reverse().toString('hex'),
     timestamp: header.readUInt32LE(68),
     bits: header.readUInt32LE(72).toString(16),
-    nonce: header.readUInt32LE(76)
+    nonce: header.readUInt32LE(76),
   };
 }
 

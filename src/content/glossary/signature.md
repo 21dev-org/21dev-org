@@ -400,14 +400,14 @@ function signTransaction(privateKey, utxo, toAddress, amount) {
     index: utxo.vout,
     witnessUtxo: {
       script: Buffer.from(utxo.scriptPubKey, 'hex'),
-      value: utxo.value
-    }
+      value: utxo.value,
+    },
   });
 
   // 添加輸出
   psbt.addOutput({
     address: toAddress,
-    value: amount
+    value: amount,
   });
 
   // 簽名
@@ -763,4 +763,3 @@ Schnorr 延遲採用的原因：
 3. 驗證公鑰對應
 4. 確認訊息雜湊相同
 ```
-

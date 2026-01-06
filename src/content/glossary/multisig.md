@@ -342,20 +342,20 @@ const ecc = require('tiny-secp256k1');
 const pubkeys = [
   Buffer.from('02...', 'hex'),
   Buffer.from('03...', 'hex'),
-  Buffer.from('02...', 'hex')
+  Buffer.from('02...', 'hex'),
 ].sort((a, b) => a.compare(b)); // 必須排序！
 
 // 創建多簽腳本
 const p2ms = bitcoin.payments.p2ms({
-  m: 2,  // 需要 2 個簽名
+  m: 2, // 需要 2 個簽名
   pubkeys: pubkeys,
-  network: bitcoin.networks.bitcoin
+  network: bitcoin.networks.bitcoin,
 });
 
 // 包裝成 P2WSH
 const p2wsh = bitcoin.payments.p2wsh({
   redeem: p2ms,
-  network: bitcoin.networks.bitcoin
+  network: bitcoin.networks.bitcoin,
 });
 
 console.log('多簽地址:', p2wsh.address);
@@ -370,18 +370,18 @@ function spendMultisig(utxo, toAddress, amount, privkeys) {
     index: utxo.vout,
     witnessUtxo: {
       script: p2wsh.output,
-      value: utxo.value
+      value: utxo.value,
     },
-    witnessScript: p2wsh.redeem.output
+    witnessScript: p2wsh.redeem.output,
   });
 
   psbt.addOutput({
     address: toAddress,
-    value: amount
+    value: amount,
   });
 
   // 用兩個私鑰簽名
-  privkeys.forEach(privkey => {
+  privkeys.forEach((privkey) => {
     const keyPair = ECPair.fromPrivateKey(privkey);
     psbt.signInput(0, keyPair);
   });
@@ -817,4 +817,3 @@ Taproot 多簽（MuSig2）的取捨：
 - 簽名者常離線
 - 保守的企業環境
 ```
-

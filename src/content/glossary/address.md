@@ -32,11 +32,11 @@ seeAlso: []
 
 ### 地址的用途
 
-| 功能 | 說明 |
-|-----|------|
-| 收款 | 告訴付款方把錢發到哪裡 |
+| 功能      | 說明                       |
+| --------- | -------------------------- |
+| 收款      | 告訴付款方把錢發到哪裡     |
 | 標識 UTXO | 鎖定在這個「條件」下的資金 |
-| 驗證支付 | 確認支付到正確的地方 |
+| 驗證支付  | 確認支付到正確的地方       |
 
 ## 地址類型完整指南
 
@@ -157,36 +157,36 @@ OP_1 <32-byte tweaked-pubkey>
 
 ### 視覺比較
 
-| 類型 | 前綴 | 長度 | 範例開頭 |
-|-----|------|------|---------|
-| P2PKH | 1 | 26-34 | 1BvBM... |
-| P2SH | 3 | 34 | 3J98t... |
-| P2SH-P2WPKH | 3 | 34 | 3CKX2... |
-| P2WPKH | bc1q | 42 | bc1qw5... |
-| P2WSH | bc1q | 62 | bc1qrp3... |
-| P2TR | bc1p | 62 | bc1p5d7... |
+| 類型        | 前綴 | 長度  | 範例開頭   |
+| ----------- | ---- | ----- | ---------- |
+| P2PKH       | 1    | 26-34 | 1BvBM...   |
+| P2SH        | 3    | 34    | 3J98t...   |
+| P2SH-P2WPKH | 3    | 34    | 3CKX2...   |
+| P2WPKH      | bc1q | 42    | bc1qw5...  |
+| P2WSH       | bc1q | 62    | bc1qrp3... |
+| P2TR        | bc1p | 62    | bc1p5d7... |
 
 ### 手續費比較
 
 以 1 輸入 2 輸出交易為例：
 
-| 類型 | vsize | 相對成本 |
-|-----|-------|---------|
-| P2PKH | ~226 vB | 100% |
-| P2SH-P2WPKH | ~134 vB | 59% |
-| P2WPKH | ~110 vB | 49% |
-| P2TR | ~111 vB | 49% |
+| 類型        | vsize   | 相對成本 |
+| ----------- | ------- | -------- |
+| P2PKH       | ~226 vB | 100%     |
+| P2SH-P2WPKH | ~134 vB | 59%      |
+| P2WPKH      | ~110 vB | 49%      |
+| P2TR        | ~111 vB | 49%      |
 
 ### 功能比較
 
-| 特性 | P2PKH | P2SH | P2WPKH | P2TR |
-|-----|-------|------|--------|------|
-| 年份 | 2009 | 2012 | 2017 | 2021 |
-| 手續費 | 最高 | 較高 | 低 | 低 |
-| 錯誤檢測 | 基本 | 基本 | 優秀 | 優秀 |
-| 隱私 | 低 | 中 | 中 | 高 |
-| 智能合約 | 有限 | 基本 | 基本 | 進階 |
-| 推薦使用 | ❌ | ⚠️ | ✓ | ✓ |
+| 特性     | P2PKH | P2SH | P2WPKH | P2TR |
+| -------- | ----- | ---- | ------ | ---- |
+| 年份     | 2009  | 2012 | 2017   | 2021 |
+| 手續費   | 最高  | 較高 | 低     | 低   |
+| 錯誤檢測 | 基本  | 基本 | 優秀   | 優秀 |
+| 隱私     | 低    | 中   | 中     | 高   |
+| 智能合約 | 有限  | 基本 | 基本   | 進階 |
+| 推薦使用 | ❌    | ⚠️   | ✓      | ✓    |
 
 ## 編碼格式
 
@@ -264,7 +264,7 @@ function generateP2WPKHAddress(privateKey) {
   // 2. 公鑰 → 地址
   const { address } = bitcoin.payments.p2wpkh({
     pubkey: publicKey,
-    network: bitcoin.networks.bitcoin
+    network: bitcoin.networks.bitcoin,
   });
 
   return address; // bc1q...
@@ -283,7 +283,7 @@ function generateP2TRAddress(privateKey) {
 
   const { address } = bitcoin.payments.p2tr({
     internalPubkey: internalPubkey,
-    network: bitcoin.networks.bitcoin
+    network: bitcoin.networks.bitcoin,
   });
 
   return address; // bc1p...
@@ -318,22 +318,16 @@ const bitcoin = require('bitcoinjs-lib');
 function validateAddress(address) {
   try {
     // 嘗試解析地址
-    const decoded = bitcoin.address.toOutputScript(
-      address,
-      bitcoin.networks.bitcoin
-    );
+    const decoded = bitcoin.address.toOutputScript(address, bitcoin.networks.bitcoin);
     return {
       valid: true,
       type: getAddressType(decoded),
-      network: 'mainnet'
+      network: 'mainnet',
     };
   } catch (e) {
     // 嘗試測試網
     try {
-      bitcoin.address.toOutputScript(
-        address,
-        bitcoin.networks.testnet
-      );
+      bitcoin.address.toOutputScript(address, bitcoin.networks.testnet);
       return { valid: true, network: 'testnet' };
     } catch (e) {
       return { valid: false, error: e.message };
@@ -456,12 +450,12 @@ P2WSH 多簽（bc1q 長地址）：
 
 ### 格式對照
 
-| 類型 | 主網 | 測試網/Signet |
-|-----|------|---------------|
-| P2PKH | 1... | m... 或 n... |
-| P2SH | 3... | 2... |
-| P2WPKH | bc1q... | tb1q... |
-| P2TR | bc1p... | tb1p... |
+| 類型   | 主網    | 測試網/Signet |
+| ------ | ------- | ------------- |
+| P2PKH  | 1...    | m... 或 n...  |
+| P2SH   | 3...    | 2...          |
+| P2WPKH | bc1q... | tb1q...       |
+| P2TR   | bc1p... | tb1p...       |
 
 ### 測試網水龍頭
 

@@ -546,7 +546,7 @@ function generateKeyPair() {
 
   return {
     privateKey: Buffer.from(privateKey).toString('hex'),
-    publicKey: Buffer.from(publicKey).toString('hex')  // 32 bytes (x-only)
+    publicKey: Buffer.from(publicKey).toString('hex'), // 32 bytes (x-only)
   };
 }
 
@@ -570,9 +570,9 @@ async function verify(publicKey, message, signature) {
 
 // 批量驗證
 async function batchVerify(items) {
-  const messages = items.map(i => sha256(Buffer.from(i.message)));
-  const publicKeys = items.map(i => Buffer.from(i.publicKey, 'hex'));
-  const signatures = items.map(i => Buffer.from(i.signature, 'hex'));
+  const messages = items.map((i) => sha256(Buffer.from(i.message)));
+  const publicKeys = items.map((i) => Buffer.from(i.publicKey, 'hex'));
+  const signatures = items.map((i) => Buffer.from(i.signature, 'hex'));
 
   return await schnorr.verifyBatch(signatures, messages, publicKeys);
 }
@@ -580,14 +580,14 @@ async function batchVerify(items) {
 // 使用範例
 async function example() {
   const keyPair = generateKeyPair();
-  console.log('公鑰:', keyPair.publicKey);  // 64 hex chars = 32 bytes
+  console.log('公鑰:', keyPair.publicKey); // 64 hex chars = 32 bytes
 
   const message = 'Hello, Schnorr!';
   const signature = await sign(keyPair.privateKey, message);
-  console.log('簽名:', signature);  // 128 hex chars = 64 bytes
+  console.log('簽名:', signature); // 128 hex chars = 64 bytes
 
   const valid = await verify(keyPair.publicKey, message, signature);
-  console.log('驗證:', valid);  // true
+  console.log('驗證:', valid); // true
 }
 ```
 
@@ -823,4 +823,3 @@ MuSig2 最佳使用場景：
 □ 測試小額收發
 □ 逐步轉移資金
 ```
-

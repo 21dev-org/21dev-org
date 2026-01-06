@@ -48,11 +48,11 @@ WTXID = hash(完整交易含見證)
 
 ### 1. 解決交易延展性
 
-| 改進前 | 改進後 |
-|-------|-------|
+| 改進前                   | 改進後               |
+| ------------------------ | -------------------- |
 | 簽名格式可變 → TXID 可變 | 簽名獨立 → TXID 固定 |
-| 閃電網路不可行 | 閃電網路成為可能 |
-| 依賴 TXID 的協議不安全 | 可安全建構多層協議 |
+| 閃電網路不可行           | 閃電網路成為可能     |
+| 依賴 TXID 的協議不安全   | 可安全建構多層協議   |
 
 ### 2. 增加區塊容量
 
@@ -88,10 +88,10 @@ version 2-16：保留未來升級
 
 ### 原生 SegWit（Bech32）
 
-| 類型 | 格式 | 範例 |
-|-----|------|------|
-| P2WPKH | bc1q + 20 bytes | bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4 |
-| P2WSH | bc1q + 32 bytes | bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3 |
+| 類型   | 格式            | 範例                                                           |
+| ------ | --------------- | -------------------------------------------------------------- |
+| P2WPKH | bc1q + 20 bytes | bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4                     |
+| P2WSH  | bc1q + 32 bytes | bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3 |
 
 ### 兼容包裝（P2SH-wrapped）
 
@@ -111,12 +111,12 @@ witness: <signature> <pubKey>
 
 ### 地址比較
 
-| 類型 | 前綴 | 大小（vbytes）| 手續費 |
-|-----|------|-------------|-------|
-| P2PKH | 1... | 最大 | 最高 |
-| P2SH-P2WPKH | 3... | 中等 | 中等 |
-| P2WPKH | bc1q... | 最小 | 最低 |
-| P2TR | bc1p... | 較小 | 較低 |
+| 類型        | 前綴    | 大小（vbytes） | 手續費 |
+| ----------- | ------- | -------------- | ------ |
+| P2PKH       | 1...    | 最大           | 最高   |
+| P2SH-P2WPKH | 3...    | 中等           | 中等   |
+| P2WPKH      | bc1q... | 最小           | 最低   |
+| P2TR        | bc1p... | 較小           | 較低   |
 
 ## 交易結構變化
 
@@ -152,19 +152,19 @@ P2WSH 2-of-3 多簽見證：
 
 ### 單簽 1 輸入 2 輸出
 
-| 類型 | 大小 | vsize | 節省 |
-|-----|------|-------|------|
-| P2PKH | 226 bytes | 226 vB | - |
-| P2SH-P2WPKH | 167 bytes | 134 vB | 40% |
-| P2WPKH | 141 bytes | 110 vB | 51% |
+| 類型        | 大小      | vsize  | 節省 |
+| ----------- | --------- | ------ | ---- |
+| P2PKH       | 226 bytes | 226 vB | -    |
+| P2SH-P2WPKH | 167 bytes | 134 vB | 40%  |
+| P2WPKH      | 141 bytes | 110 vB | 51%  |
 
 ### 2-of-3 多簽
 
-| 類型 | 大小 | vsize | 節省 |
-|-----|------|-------|------|
-| P2SH | 371 bytes | 371 vB | - |
-| P2SH-P2WSH | 274 bytes | 167 vB | 55% |
-| P2WSH | 249 bytes | 139 vB | 62% |
+| 類型       | 大小      | vsize  | 節省 |
+| ---------- | --------- | ------ | ---- |
+| P2SH       | 371 bytes | 371 vB | -    |
+| P2SH-P2WSH | 274 bytes | 167 vB | 55%  |
+| P2WSH      | 249 bytes | 139 vB | 62%  |
 
 ## 實施細節
 
@@ -243,23 +243,23 @@ BIP-143 sighash：
 
 ### 採用率成長
 
-| 時期 | SegWit 交易佔比 |
-|-----|----------------|
-| 2017.09 | ~10% |
-| 2018.06 | ~35% |
-| 2020.01 | ~55% |
-| 2022.01 | ~70% |
-| 2024.01 | ~80%+ |
+| 時期    | SegWit 交易佔比 |
+| ------- | --------------- |
+| 2017.09 | ~10%            |
+| 2018.06 | ~35%            |
+| 2020.01 | ~55%            |
+| 2022.01 | ~70%            |
+| 2024.01 | ~80%+           |
 
 ### 交易所支援
 
 大多數主要交易所現已支援 SegWit 提款：
 
-| 交易所 | 原生 SegWit | Taproot |
-|-------|------------|---------|
-| Coinbase | ✓ | ✓ |
-| Kraken | ✓ | ✓ |
-| Binance | ✓ | 部分 |
+| 交易所   | 原生 SegWit | Taproot |
+| -------- | ----------- | ------- |
+| Coinbase | ✓           | ✓       |
+| Kraken   | ✓           | ✓       |
+| Binance  | ✓           | 部分    |
 
 ## 開發指南
 
@@ -281,7 +281,7 @@ const bitcoin = require('bitcoinjs-lib');
 
 // P2WPKH 地址
 const { address } = bitcoin.payments.p2wpkh({
-  pubkey: publicKeyBuffer
+  pubkey: publicKeyBuffer,
 });
 // bc1q...
 
@@ -289,8 +289,8 @@ const { address } = bitcoin.payments.p2wpkh({
 const { address } = bitcoin.payments.p2wsh({
   redeem: bitcoin.payments.p2ms({
     m: 2,
-    pubkeys: [pubkey1, pubkey2, pubkey3]
-  })
+    pubkeys: [pubkey1, pubkey2, pubkey3],
+  }),
 });
 // bc1q...（較長）
 ```
