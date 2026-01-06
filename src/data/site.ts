@@ -10,7 +10,7 @@ export const siteConfig = {
   // Social links
   social: {
     github: 'https://github.com/21dev-org',
-    twitter: 'https://twitter.com/21devorg',
+    twitter: 'https://x.com/21dev_org',
     signal:
       'https://signal.group/#CjQKIKEW5NtKmgLKX9JOei4GOaTCl1enEIOpFC1R6vjm5_RCEhD3TXZew1_1HSLkD9sh8r5K',
   },
