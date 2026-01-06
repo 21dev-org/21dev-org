@@ -15,6 +15,48 @@ const eventsCollection = defineCollection({
   }),
 });
 
+// 術語詞典
+const glossaryCollection = defineCollection({
+  type: 'content',
+  schema: z.object({
+    term: z.string(), // 中文術語
+    termEn: z.string(), // 英文術語
+    aliases: z.array(z.string()).optional(), // 別名/縮寫
+    category: z.enum([
+      'basic', // 基礎概念
+      'protocol', // 協議相關
+      'cryptography', // 密碼學
+      'transaction', // 交易相關
+      'mining', // 挖礦相關
+      'wallet', // 錢包相關
+      'lightning', // 閃電網路
+      'security', // 安全相關
+      'development', // 開發相關
+    ]),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'),
+    relatedTerms: z.array(z.string()).optional(), // 相關術語 slug
+    seeAlso: z.array(z.string()).optional(), // 延伸閱讀連結
+  }),
+});
+
+// FAQ 常見問題
+const faqCollection = defineCollection({
+  type: 'content',
+  schema: z.object({
+    question: z.string(),
+    category: z.enum([
+      'getting-started', // 入門問題
+      'wallet', // 錢包問題
+      'transaction', // 交易問題
+      'security', // 安全問題
+      'technical', // 技術問題
+      'lightning', // 閃電網路
+    ]),
+    order: z.number().optional(), // 排序權重
+    tags: z.array(z.string()).optional(),
+  }),
+});
+
 const videosCollection = defineCollection({
   type: 'content',
   schema: z.object({
@@ -49,4 +91,6 @@ export const collections = {
   events: eventsCollection,
   videos: videosCollection,
   articles: articlesCollection,
+  glossary: glossaryCollection,
+  faq: faqCollection,
 };

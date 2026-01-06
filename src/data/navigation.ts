@@ -143,57 +143,27 @@ export const navigation: MegaMenuItem[] = [
     ],
   },
   {
-    label: '大事記',
-    href: '/timeline/',
-    sections: [
-      {
-        title: '歷史時刻',
-        links: [
-          { label: '創世區塊 (2009)', href: '/timeline/#year-2009' },
-          { label: 'Pizza Day (2010)', href: '/timeline/#year-2010' },
-          { label: 'SegWit 升級 (2017)', href: '/timeline/#year-2017' },
-          { label: 'Taproot 升級 (2021)', href: '/timeline/#year-2021' },
-        ],
-      },
-      {
-        title: '比特幣節日',
-        links: [{ label: '查看全部節日', href: '/timeline/#holidays' }],
-      },
-    ],
-  },
-  {
-    label: '人物',
-    href: '/notable-figures/',
+    label: '資源',
+    href: '/glossary/',
     featured: {
-      title: '比特幣重要人物',
-      description: '認識塑造比特幣發展的關鍵貢獻者',
-      href: '/notable-figures/',
+      title: '比特幣術語詞典',
+      description: '200+ 專有名詞中文解釋',
+      href: '/glossary/',
     },
     sections: [
       {
-        title: '創建者與先驅',
+        title: '參考資源',
         links: [
-          { label: 'Satoshi Nakamoto', href: '/notable-figures/satoshi-nakamoto' },
-          { label: 'Hal Finney', href: '/notable-figures/hal-finney' },
-          { label: 'Adam Back', href: '/notable-figures/adam-back' },
-          { label: 'Nick Szabo', href: '/notable-figures/nick-szabo' },
+          { label: '術語詞典', href: '/glossary/' },
+          { label: '常見問題 FAQ', href: '/faq/' },
+          { label: '線上工具', href: '/tools/' },
         ],
       },
       {
-        title: '核心開發者',
+        title: '歷史與人物',
         links: [
-          { label: 'Pieter Wuille', href: '/notable-figures/pieter-wuille' },
-          { label: 'Gregory Maxwell', href: '/notable-figures/gregory-maxwell' },
-          { label: 'Gloria Zhao', href: '/notable-figures/gloria-zhao' },
-          { label: '查看全部', href: '/notable-figures/' },
-        ],
-      },
-      {
-        title: '閃電網路',
-        links: [
-          { label: 'Joseph Poon', href: '/notable-figures/joseph-poon' },
-          { label: 'Elizabeth Stark', href: '/notable-figures/elizabeth-stark' },
-          { label: 'Rusty Russell', href: '/notable-figures/rusty-russell' },
+          { label: '比特幣大事記', href: '/timeline/' },
+          { label: '重要人物', href: '/notable-figures/' },
         ],
       },
     ],
@@ -213,9 +183,9 @@ export const footerNav = {
     links: [
       { label: '學習中心', href: '/learn/' },
       { label: '書籍資源', href: '/books/' },
-      { label: '比特幣大事記', href: '/timeline/' },
-      { label: '重要人物', href: '/notable-figures/' },
-      { label: 'BIP 討論', href: '/bips/' },
+      { label: '術語詞典', href: '/glossary/' },
+      { label: '常見問題', href: '/faq/' },
+      { label: '線上工具', href: '/tools/' },
     ],
   },
   technology: {
@@ -224,6 +194,7 @@ export const footerNav = {
       { label: 'Bitcoin Core', href: '/tech/bitcoin-core/' },
       { label: '閃電網路', href: '/tech/lightning/' },
       { label: 'Nostr', href: '/tech/nostr/' },
+      { label: 'BIP 文檔', href: '/bips/' },
     ],
   },
   community: {

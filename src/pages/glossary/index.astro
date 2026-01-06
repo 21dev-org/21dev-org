@@ -1,0 +1,250 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import Tag from '@/components/ui/Tag.astro';
+import { getCollection } from 'astro:content';
+
+// 取得所有術語並按中文排序
+const glossaryEntries = await getCollection('glossary');
+const sortedEntries = glossaryEntries.sort((a, b) =>
+  a.data.term.localeCompare(b.data.term, 'zh-TW')
+);
+
+// 分類標籤
+const categoryLabels: Record<string, string> = {
+  basic: '基礎概念',
+  protocol: '協議',
+  cryptography: '密碼學',
+  transaction: '交易',
+  mining: '挖礦',
+  wallet: '錢包',
+  lightning: '閃電網路',
+  security: '安全',
+  development: '開發',
+};
+
+const categoryColors: Record<string, string> = {
+  basic: 'bitcoin',
+  protocol: 'lightning',
+  cryptography: 'nostr',
+  transaction: 'success',
+  mining: 'warning',
+  wallet: 'bitcoin',
+  lightning: 'lightning',
+  security: 'nostr',
+  development: 'default',
+};
+
+// 按分類分組
+const entriesByCategory = sortedEntries.reduce(
+  (acc, entry) => {
+    const cat = entry.data.category;
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(entry);
+    return acc;
+  },
+  {} as Record<string, typeof sortedEntries>
+);
+
+// 按首字母分組（用於字母索引）
+const entriesByLetter = sortedEntries.reduce(
+  (acc, entry) => {
+    const firstChar = entry.data.termEn[0].toUpperCase();
+    if (!acc[firstChar]) acc[firstChar] = [];
+    acc[firstChar].push(entry);
+    return acc;
+  },
+  {} as Record<string, typeof sortedEntries>
+);
+
+const letters = Object.keys(entriesByLetter).sort();
+---
+
+<PageLayout
+  title="術語詞典"
+  description="比特幣、閃電網路、加密貨幣相關專有名詞的中文解釋，從基礎概念到進階技術。"
+>
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '術語詞典' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">術語詞典</h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          比特幣世界的專有名詞解釋，幫助你理解技術文件和社群討論。目前收錄 {sortedEntries.length} 個術語。
+        </p>
+      </div>
+
+      <!-- 搜尋框 -->
+      <div class="mt-8 max-w-md">
+        <div class="relative">
+          <input
+            type="text"
+            id="glossary-search"
+            placeholder="搜尋術語..."
+            class="w-full px-4 py-3 pl-10 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+          />
+          <svg
+            class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 字母索引 -->
+      <div class="mt-6 flex flex-wrap gap-2">
+        {
+          letters.map((letter) => (
+            <a
+              href={`#letter-${letter}`}
+              class="w-8 h-8 flex items-center justify-center rounded bg-[var(--surface-elevated)] border border-[var(--border-default)] text-sm font-mono hover:border-bitcoin-500 hover:text-bitcoin-500 transition-colors"
+            >
+              {letter}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- 術語列表 -->
+  <section class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="grid lg:grid-cols-[1fr,280px] gap-12">
+        <!-- 主內容 -->
+        <div>
+          {
+            letters.map((letter) => (
+              <div id={`letter-${letter}`} class="mb-12 scroll-mt-24">
+                <h2 class="text-3xl font-bold text-bitcoin-500 mb-6 pb-2 border-b border-[var(--border-default)]">
+                  {letter}
+                </h2>
+                <div class="space-y-4">
+                  {entriesByLetter[letter].map((entry) => (
+                    <a
+                      href={`/glossary/${entry.slug}`}
+                      class="glossary-item block p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hover:border-bitcoin-500/50 transition-all group"
+                      data-term={entry.data.term.toLowerCase()}
+                      data-term-en={entry.data.termEn.toLowerCase()}
+                      data-aliases={entry.data.aliases?.join(' ').toLowerCase() || ''}
+                    >
+                      <div class="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 class="text-lg font-semibold text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors">
+                            {entry.data.term}
+                          </h3>
+                          <p class="text-sm text-[var(--text-tertiary)] font-mono">
+                            {entry.data.termEn}
+                            {entry.data.aliases && entry.data.aliases.length > 0 && (
+                              <span class="ml-2">({entry.data.aliases.join(', ')})</span>
+                            )}
+                          </p>
+                        </div>
+                        <Tag
+                          variant={
+                            categoryColors[entry.data.category] as
+                              | 'bitcoin'
+                              | 'lightning'
+                              | 'nostr'
+                              | 'success'
+                              | 'warning'
+                              | 'default'
+                          }
+                          size="sm"
+                        >
+                          {categoryLabels[entry.data.category]}
+                        </Tag>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))
+          }
+        </div>
+
+        <!-- 側邊欄 -->
+        <aside class="hidden lg:block">
+          <div class="sticky top-24 space-y-6">
+            <!-- 分類統計 -->
+            <div
+              class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+            >
+              <h3 class="font-semibold text-[var(--text-primary)] mb-4">分類統計</h3>
+              <div class="space-y-2">
+                {
+                  Object.entries(entriesByCategory).map(([cat, entries]) => (
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-[var(--text-secondary)]">{categoryLabels[cat]}</span>
+                      <span class="font-mono text-bitcoin-500">{entries.length}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+
+            <!-- 貢獻提示 -->
+            <div class="p-4 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
+              <h3 class="font-semibold text-[var(--text-primary)] mb-2">幫助改進詞典</h3>
+              <p class="text-sm text-[var(--text-secondary)] mb-3">
+                發現缺少的術語或錯誤？歡迎提交貢獻。
+              </p>
+              <a
+                href="https://github.com/21dev-org/21dev-org"
+                class="text-sm text-bitcoin-500 hover:underline"
+              >
+                在 GitHub 上貢獻 →
+              </a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  const searchInput = document.getElementById('glossary-search') as HTMLInputElement;
+  const glossaryItems = document.querySelectorAll('.glossary-item');
+  const letterSections = document.querySelectorAll('[id^="letter-"]');
+
+  searchInput?.addEventListener('input', (e) => {
+    const query = (e.target as HTMLInputElement).value.toLowerCase().trim();
+
+    if (!query) {
+      // 顯示所有項目和字母區塊
+      glossaryItems.forEach((item) => {
+        (item as HTMLElement).style.display = '';
+      });
+      letterSections.forEach((section) => {
+        (section as HTMLElement).style.display = '';
+      });
+      return;
+    }
+
+    // 過濾項目
+    glossaryItems.forEach((item) => {
+      const term = item.getAttribute('data-term') || '';
+      const termEn = item.getAttribute('data-term-en') || '';
+      const aliases = item.getAttribute('data-aliases') || '';
+
+      const matches = term.includes(query) || termEn.includes(query) || aliases.includes(query);
+      (item as HTMLElement).style.display = matches ? '' : 'none';
+    });
+
+    // 隱藏沒有可見項目的字母區塊
+    letterSections.forEach((section) => {
+      const visibleItems = section.querySelectorAll('.glossary-item:not([style*="display: none"])');
+      (section as HTMLElement).style.display = visibleItems.length > 0 ? '' : 'none';
+    });
+  });
+</script>

@@ -1,0 +1,222 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import Tag from '@/components/ui/Tag.astro';
+import Button from '@/components/ui/Button.astro';
+import { getCollection, getEntry } from 'astro:content';
+
+export async function getStaticPaths() {
+  const glossaryEntries = await getCollection('glossary');
+  return glossaryEntries.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+
+// 分類標籤
+const categoryLabels: Record<string, string> = {
+  basic: '基礎概念',
+  protocol: '協議',
+  cryptography: '密碼學',
+  transaction: '交易',
+  mining: '挖礦',
+  wallet: '錢包',
+  lightning: '閃電網路',
+  security: '安全',
+  development: '開發',
+};
+
+const difficultyLabels: Record<string, string> = {
+  beginner: '入門',
+  intermediate: '進階',
+  advanced: '高級',
+};
+
+const difficultyColors: Record<string, string> = {
+  beginner: 'success',
+  intermediate: 'warning',
+  advanced: 'nostr',
+};
+
+// 取得相關術語
+const allEntries = await getCollection('glossary');
+const relatedEntries = entry.data.relatedTerms
+  ? allEntries.filter((e) => entry.data.relatedTerms?.includes(e.slug))
+  : [];
+
+// 找出同分類的其他術語
+const sameCategoryEntries = allEntries
+  .filter((e) => e.data.category === entry.data.category && e.slug !== entry.slug)
+  .slice(0, 5);
+
+// 導航：上一個/下一個術語
+const sortedEntries = allEntries.sort((a, b) => a.data.termEn.localeCompare(b.data.termEn));
+const currentIndex = sortedEntries.findIndex((e) => e.slug === entry.slug);
+const prevEntry = currentIndex > 0 ? sortedEntries[currentIndex - 1] : null;
+const nextEntry = currentIndex < sortedEntries.length - 1 ? sortedEntries[currentIndex + 1] : null;
+
+// JSON-LD 結構化數據
+const definedTermSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'DefinedTerm',
+  name: entry.data.term,
+  description: entry.data.termEn,
+  inDefinedTermSet: {
+    '@type': 'DefinedTermSet',
+    name: '比特幣術語詞典',
+    url: 'https://21dev.org/glossary/',
+  },
+};
+---
+
+<PageLayout
+  title={`${entry.data.term} (${entry.data.termEn}) - 術語詞典`}
+  description={`${entry.data.term}（${entry.data.termEn}）的定義和解釋。${entry.data.aliases?.length ? `又稱：${entry.data.aliases.join('、')}` : ''}`}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(definedTermSchema)} />
+
+  <article class="py-16 md:py-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <Breadcrumb
+          items={[{ label: '術語詞典', href: '/glossary/' }, { label: entry.data.term }]}
+        />
+
+        <!-- Header -->
+        <header class="mb-8">
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <Tag variant="bitcoin">{categoryLabels[entry.data.category]}</Tag>
+            <Tag
+              variant={difficultyColors[entry.data.difficulty] as 'success' | 'warning' | 'nostr'}
+              size="sm"
+            >
+              {difficultyLabels[entry.data.difficulty]}
+            </Tag>
+          </div>
+
+          <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-2">
+            {entry.data.term}
+          </h1>
+          <p class="text-xl text-[var(--text-tertiary)] font-mono">{entry.data.termEn}</p>
+
+          {
+            entry.data.aliases && entry.data.aliases.length > 0 && (
+              <p class="text-sm text-[var(--text-secondary)] mt-2">
+                又稱：{entry.data.aliases.join('、')}
+              </p>
+            )
+          }
+        </header>
+
+        <!-- Content -->
+        <div class="prose prose-lg prose-zh dark:prose-invert max-w-none">
+          <Content />
+        </div>
+
+        <!-- Related terms -->
+        {
+          relatedEntries.length > 0 && (
+            <div class="mt-12 pt-8 border-t border-[var(--border-default)]">
+              <h2 class="text-xl font-bold text-[var(--text-primary)] mb-4">相關術語</h2>
+              <div class="flex flex-wrap gap-2">
+                {relatedEntries.map((related) => (
+                  <a
+                    href={`/glossary/${related.slug}`}
+                    class="px-3 py-1.5 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)] text-sm hover:border-bitcoin-500 hover:text-bitcoin-500 transition-colors"
+                  >
+                    {related.data.term}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        <!-- See also -->
+        {
+          entry.data.seeAlso && entry.data.seeAlso.length > 0 && (
+            <div class="mt-8 p-4 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
+              <h3 class="font-semibold text-[var(--text-primary)] mb-2">延伸閱讀</h3>
+              <div class="space-y-1">
+                {entry.data.seeAlso.map((link) => (
+                  <a href={link} class="block text-sm text-bitcoin-500 hover:underline">
+                    {link} →
+                  </a>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        <!-- Same category -->
+        {
+          sameCategoryEntries.length > 0 && (
+            <div class="mt-12 pt-8 border-t border-[var(--border-default)]">
+              <h2 class="text-xl font-bold text-[var(--text-primary)] mb-4">
+                同分類術語：{categoryLabels[entry.data.category]}
+              </h2>
+              <div class="grid sm:grid-cols-2 gap-3">
+                {sameCategoryEntries.map((same) => (
+                  <a
+                    href={`/glossary/${same.slug}`}
+                    class="p-3 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)] hover:border-bitcoin-500/50 transition-colors group"
+                  >
+                    <div class="font-medium text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors">
+                      {same.data.term}
+                    </div>
+                    <div class="text-xs text-[var(--text-tertiary)] font-mono">
+                      {same.data.termEn}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        <!-- Navigation -->
+        <nav class="mt-12 pt-8 border-t border-[var(--border-default)] flex justify-between">
+          {
+            prevEntry ? (
+              <Button href={`/glossary/${prevEntry.slug}`} variant="ghost">
+                <svg
+                  class="h-4 w-4 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                {prevEntry.data.term}
+              </Button>
+            ) : (
+              <div />
+            )
+          }
+          {
+            nextEntry ? (
+              <Button href={`/glossary/${nextEntry.slug}`} variant="primary">
+                {nextEntry.data.term}
+                <svg
+                  class="h-4 w-4 ml-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            ) : (
+              <div />
+            )
+          }
+        </nav>
+      </div>
+    </div>
+  </article>
+</PageLayout>

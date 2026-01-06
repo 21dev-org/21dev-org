@@ -1,0 +1,449 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+import Tag from '@/components/ui/Tag.astro';
+
+const tools = [
+  {
+    id: 'unit-converter',
+    name: '單位換算器',
+    description: 'BTC、聰（sats）、mBTC 等單位互相換算',
+    icon: '🔄',
+    status: 'active',
+  },
+  {
+    id: 'address-parser',
+    name: '地址解析器',
+    description: '解析比特幣地址類型、網路和格式',
+    icon: '🔍',
+    status: 'active',
+  },
+  {
+    id: 'tx-decoder',
+    name: '交易解碼器',
+    description: '解析原始交易 hex 並顯示詳細資訊',
+    icon: '📄',
+    status: 'coming',
+  },
+  {
+    id: 'script-decoder',
+    name: 'Script 解碼器',
+    description: '解析並執行 Bitcoin Script',
+    icon: '⚙️',
+    status: 'coming',
+  },
+];
+---
+
+<PageLayout
+  title="線上工具"
+  description="比特幣實用工具：單位換算、地址解析、交易解碼等，全部在瀏覽器本地執行。"
+>
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">線上工具</h1>
+        <p class="text-xl text-[var(--text-secondary)]">
+          實用的比特幣工具，全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+
+      <!-- 工具卡片 -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-12">
+        {
+          tools.map((tool) => (
+            <a
+              href={tool.status === 'active' ? `#${tool.id}` : undefined}
+              class:list={[
+                'p-4 rounded-xl border transition-all',
+                tool.status === 'active'
+                  ? 'bg-[var(--surface-elevated)] border-[var(--border-default)] hover:border-bitcoin-500/50 cursor-pointer'
+                  : 'bg-neutral-100/50 dark:bg-neutral-800/50 border-dashed border-[var(--border-default)] cursor-not-allowed opacity-60',
+              ]}
+            >
+              <div class="text-3xl mb-2">{tool.icon}</div>
+              <h3 class="font-semibold text-[var(--text-primary)]">{tool.name}</h3>
+              <p class="text-sm text-[var(--text-secondary)] mt-1">{tool.description}</p>
+              {tool.status === 'coming' && (
+                <Tag size="sm" variant="default" class="mt-2">
+                  即將推出
+                </Tag>
+              )}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- 單位換算器 -->
+  <section id="unit-converter" class="py-16 md:py-24 scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">🔄 單位換算器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">輸入任意單位，即時換算其他單位。</p>
+
+        <div class="space-y-4">
+          <!-- BTC -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">BTC</label>
+            <input
+              type="text"
+              id="input-btc"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">BTC</span>
+          </div>
+
+          <!-- sats -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+              >聰 (Satoshis)</label
+            >
+            <input
+              type="text"
+              id="input-sats"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">sats</span>
+          </div>
+
+          <!-- mBTC -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">mBTC</label>
+            <input
+              type="text"
+              id="input-mbtc"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">mBTC</span>
+          </div>
+
+          <!-- μBTC / bits -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+              >μBTC (bits)</label
+            >
+            <input
+              type="text"
+              id="input-bits"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">bits</span>
+          </div>
+        </div>
+
+        <!-- 換算參考 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2">換算參考</h3>
+          <div class="grid grid-cols-2 gap-2 text-sm font-mono">
+            <div class="text-[var(--text-secondary)]">1 BTC =</div>
+            <div class="text-[var(--text-primary)]">100,000,000 sats</div>
+            <div class="text-[var(--text-secondary)]">1 BTC =</div>
+            <div class="text-[var(--text-primary)]">1,000 mBTC</div>
+            <div class="text-[var(--text-secondary)]">1 BTC =</div>
+            <div class="text-[var(--text-primary)]">1,000,000 bits</div>
+            <div class="text-[var(--text-secondary)]">1 mBTC =</div>
+            <div class="text-[var(--text-primary)]">100,000 sats</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 地址解析器 -->
+  <section id="address-parser" class="py-16 md:py-24 bg-[var(--bg-secondary)] scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">🔍 地址解析器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">輸入比特幣地址，解析其類型和網路。</p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+            >比特幣地址</label
+          >
+          <input
+            type="text"
+            id="address-input"
+            placeholder="輸入比特幣地址（如 bc1q... 或 1...）"
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+          />
+        </div>
+
+        <!-- 解析結果 -->
+        <div
+          id="address-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">解析結果</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">地址類型</span>
+              <span id="result-type" class="font-mono text-bitcoin-500">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">網路</span>
+              <span id="result-network" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">格式</span>
+              <span id="result-format" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">長度</span>
+              <span id="result-length" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="address-error"
+          class="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hidden"
+        >
+          <span id="error-message">無效的地址格式</span>
+        </div>
+
+        <!-- 地址類型說明 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">地址類型說明</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">1...</code>
+              <span class="text-[var(--text-secondary)]">P2PKH - 傳統地址</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">3...</code>
+              <span class="text-[var(--text-secondary)]">P2SH - 腳本雜湊地址</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">bc1q...</code>
+              <span class="text-[var(--text-secondary)]">P2WPKH/P2WSH - 原生 SegWit</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">bc1p...</code>
+              <span class="text-[var(--text-secondary)]">P2TR - Taproot</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // 單位換算器
+  const SATS_PER_BTC = 100_000_000;
+  const MBTC_PER_BTC = 1_000;
+  const BITS_PER_BTC = 1_000_000;
+
+  const inputBtc = document.getElementById('input-btc') as HTMLInputElement;
+  const inputSats = document.getElementById('input-sats') as HTMLInputElement;
+  const inputMbtc = document.getElementById('input-mbtc') as HTMLInputElement;
+  const inputBits = document.getElementById('input-bits') as HTMLInputElement;
+
+  let isUpdating = false;
+
+  function formatNumber(num: number, decimals: number = 8): string {
+    if (num === 0) return '0';
+    const formatted = num.toFixed(decimals);
+    // 移除尾隨零
+    return formatted.replace(/\.?0+$/, '');
+  }
+
+  function parseNumber(value: string): number {
+    const cleaned = value.replace(/,/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  }
+
+  function updateFromBtc(btc: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    inputSats.value = formatNumber(btc * SATS_PER_BTC, 0);
+    inputMbtc.value = formatNumber(btc * MBTC_PER_BTC);
+    inputBits.value = formatNumber(btc * BITS_PER_BTC);
+    isUpdating = false;
+  }
+
+  function updateFromSats(sats: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    const btc = sats / SATS_PER_BTC;
+    inputBtc.value = formatNumber(btc);
+    inputMbtc.value = formatNumber(btc * MBTC_PER_BTC);
+    inputBits.value = formatNumber(btc * BITS_PER_BTC);
+    isUpdating = false;
+  }
+
+  function updateFromMbtc(mbtc: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    const btc = mbtc / MBTC_PER_BTC;
+    inputBtc.value = formatNumber(btc);
+    inputSats.value = formatNumber(btc * SATS_PER_BTC, 0);
+    inputBits.value = formatNumber(btc * BITS_PER_BTC);
+    isUpdating = false;
+  }
+
+  function updateFromBits(bits: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    const btc = bits / BITS_PER_BTC;
+    inputBtc.value = formatNumber(btc);
+    inputSats.value = formatNumber(btc * SATS_PER_BTC, 0);
+    inputMbtc.value = formatNumber(btc * MBTC_PER_BTC);
+    isUpdating = false;
+  }
+
+  inputBtc?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromBtc(value);
+  });
+
+  inputSats?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromSats(value);
+  });
+
+  inputMbtc?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromMbtc(value);
+  });
+
+  inputBits?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromBits(value);
+  });
+
+  // 地址解析器
+  const addressInput = document.getElementById('address-input') as HTMLInputElement;
+  const addressResult = document.getElementById('address-result') as HTMLElement;
+  const addressError = document.getElementById('address-error') as HTMLElement;
+  const resultType = document.getElementById('result-type') as HTMLElement;
+  const resultNetwork = document.getElementById('result-network') as HTMLElement;
+  const resultFormat = document.getElementById('result-format') as HTMLElement;
+  const resultLength = document.getElementById('result-length') as HTMLElement;
+  const errorMessage = document.getElementById('error-message') as HTMLElement;
+
+  interface AddressInfo {
+    type: string;
+    network: string;
+    format: string;
+    length: number;
+  }
+
+  function parseAddress(address: string): AddressInfo | null {
+    const trimmed = address.trim();
+    if (!trimmed) return null;
+
+    // P2PKH (Legacy) - starts with 1
+    if (/^1[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2PKH (Legacy)',
+        network: 'Mainnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+
+    // P2SH - starts with 3
+    if (/^3[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2SH (Script Hash)',
+        network: 'Mainnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+
+    // Native SegWit (P2WPKH/P2WSH) - starts with bc1q
+    if (/^bc1q[a-z0-9]{38,58}$/i.test(trimmed)) {
+      const isP2wpkh = trimmed.length === 42;
+      return {
+        type: isP2wpkh ? 'P2WPKH (Native SegWit)' : 'P2WSH (Native SegWit)',
+        network: 'Mainnet',
+        format: 'Bech32',
+        length: trimmed.length,
+      };
+    }
+
+    // Taproot - starts with bc1p
+    if (/^bc1p[a-z0-9]{58}$/i.test(trimmed)) {
+      return {
+        type: 'P2TR (Taproot)',
+        network: 'Mainnet',
+        format: 'Bech32m',
+        length: trimmed.length,
+      };
+    }
+
+    // Testnet P2PKH - starts with m or n
+    if (/^[mn][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2PKH (Legacy)',
+        network: 'Testnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+
+    // Testnet P2SH - starts with 2
+    if (/^2[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2SH (Script Hash)',
+        network: 'Testnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+
+    // Testnet SegWit - starts with tb1
+    if (/^tb1[qp][a-z0-9]{38,58}$/i.test(trimmed)) {
+      const isTaproot = trimmed[3] === 'p';
+      return {
+        type: isTaproot ? 'P2TR (Taproot)' : 'P2WPKH/P2WSH (Native SegWit)',
+        network: 'Testnet',
+        format: isTaproot ? 'Bech32m' : 'Bech32',
+        length: trimmed.length,
+      };
+    }
+
+    return null;
+  }
+
+  addressInput?.addEventListener('input', (e) => {
+    const address = (e.target as HTMLInputElement).value;
+
+    if (!address.trim()) {
+      addressResult.classList.add('hidden');
+      addressError.classList.add('hidden');
+      return;
+    }
+
+    const info = parseAddress(address);
+
+    if (info) {
+      resultType.textContent = info.type;
+      resultNetwork.textContent = info.network;
+      resultFormat.textContent = info.format;
+      resultLength.textContent = `${info.length} 字元`;
+      addressResult.classList.remove('hidden');
+      addressError.classList.add('hidden');
+    } else {
+      errorMessage.textContent = '無法識別的地址格式';
+      addressError.classList.remove('hidden');
+      addressResult.classList.add('hidden');
+    }
+  });
+</script>
