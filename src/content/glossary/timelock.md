@@ -1,6 +1,7 @@
 ---
 term: 時間鎖
 termEn: Timelock
+short: 限制 UTXO 在特定時間或區塊高度之前不能花費的機制。是閃電網路和智能合約的基礎，支持絕對和相對時間鎖。
 aliases: [時間鎖定, CLTV, CSV]
 category: transaction
 difficulty: advanced

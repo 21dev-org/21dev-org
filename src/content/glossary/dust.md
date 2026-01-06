@@ -1,6 +1,7 @@
 ---
 term: 粉塵
 termEn: Dust
+short: 價值太小、花費所需手續費超過其本身價值的 UTXO。比特幣有粉塵限制（約 294-546 sats）防止 UTXO 集膨脹。
 aliases: [Dust UTXO, 微額]
 category: transaction
 difficulty: intermediate

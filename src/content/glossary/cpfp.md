@@ -1,6 +1,7 @@
 ---
 term: CPFP
 termEn: Child Pays for Parent
+short: 交易加速技術，透過花費未確認交易的輸出並支付高手續費，讓礦工同時打包父子兩筆交易。收款方可用此加速。
 aliases: [子付父]
 category: transaction
 difficulty: intermediate

@@ -1,5 +1,6 @@
 ---
 question: 我的交易卡住了怎麼辦？
+short: 通常是手續費太低。可用 RBF 提高費率、CPFP 子付父加速，或等待交易過期（約 2 週）。
 category: transaction
 order: 1
 tags: [交易, 手續費, RBF, CPFP]

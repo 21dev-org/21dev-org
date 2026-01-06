@@ -1,6 +1,7 @@
 ---
 term: 輸入
 termEn: Input
+short: 比特幣交易中引用先前輸出（UTXO）的部分。每個輸入必須提供解鎖腳本來滿足被引用輸出的花費條件。
 aliases: [交易輸入]
 category: transaction
 difficulty: beginner

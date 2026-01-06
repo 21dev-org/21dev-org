@@ -1,6 +1,7 @@
 ---
 term: PSBT
 termEn: Partially Signed Bitcoin Transaction
+short: 標準格式，用於在多個設備或參與者之間傳遞未完成簽名的交易。適用於硬體錢包、多重簽名和協作交易。
 aliases: [部分簽名交易]
 category: transaction
 difficulty: advanced

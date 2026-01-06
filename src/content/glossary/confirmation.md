@@ -1,6 +1,7 @@
 ---
 term: 確認
 termEn: Confirmation
+short: 交易被包含在區塊中後，上方堆疊的區塊數量。確認數越多越安全，大額交易通常需要 6 次確認（約 1 小時）。
 aliases: [確認數, Confirmations]
 category: transaction
 difficulty: beginner

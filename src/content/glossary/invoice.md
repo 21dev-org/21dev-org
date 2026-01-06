@@ -1,6 +1,7 @@
 ---
 term: 發票
 termEn: Invoice
+short: 閃電網路的支付請求，以 lnbc 開頭的字串編碼，包含金額、收款節點、付款雜湊和過期時間等資訊。
 aliases: [閃電發票, Lightning Invoice, BOLT11]
 category: lightning
 difficulty: beginner

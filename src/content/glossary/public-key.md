@@ -1,6 +1,7 @@
 ---
 term: 公鑰
 termEn: Public Key
+short: 由私鑰通過橢圓曲線加密單向推導出的密鑰，用於驗證數位簽名和生成比特幣地址，可安全公開分享。
 aliases: [公開金鑰]
 category: cryptography
 difficulty: beginner

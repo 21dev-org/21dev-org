@@ -1,5 +1,6 @@
 ---
 question: 比特幣總共有多少個？
+short: 總量上限 2,100 萬枚，目前已發行約 1970 萬枚。預計 2140 年全部發行完畢。
 category: getting-started
 order: 4
 tags: [供應量, 稀缺性, 減半]

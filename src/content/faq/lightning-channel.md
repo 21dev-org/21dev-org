@@ -1,5 +1,6 @@
 ---
 question: 如何開啟閃電網路通道？
+short: 需要鏈上交易將資金鎖入通道。新手建議使用自動管理通道的錢包如 Phoenix、Breez。
 category: lightning
 order: 2
 tags: [閃電網路, 通道, 入門]

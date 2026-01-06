@@ -1,5 +1,6 @@
 ---
 question: 什麼是比特幣？
+short: 2009 年誕生的去中心化數位貨幣，總量 2,100 萬枚，無需銀行即可點對點交易。
 category: getting-started
 order: 1
 tags: [入門, 基礎]

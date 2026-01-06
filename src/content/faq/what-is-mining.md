@@ -1,5 +1,6 @@
 ---
 question: 什麼是比特幣挖礦？
+short: 礦工消耗計算資源驗證交易並創建新區塊的過程。成功者獲得區塊獎勵和手續費，類似開採黃金。
 category: technical
 order: 1
 tags: [挖礦, 工作量證明, 礦工]

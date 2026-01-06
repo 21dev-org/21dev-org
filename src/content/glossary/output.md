@@ -1,6 +1,7 @@
 ---
 term: 輸出
 termEn: Output
+short: 比特幣交易中指定接收金額和花費條件的部分。每個輸出包含金額（聰）和鎖定腳本，被花費後成為 UTXO。
 aliases: [交易輸出, TXO]
 category: transaction
 difficulty: beginner

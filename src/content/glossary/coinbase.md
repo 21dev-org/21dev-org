@@ -1,6 +1,7 @@
 ---
 term: Coinbase 交易
 termEn: Coinbase Transaction
+short: 每個區塊的第一筆交易，向礦工發放區塊獎勵和手續費。這是比特幣新幣發行的唯一方式，沒有輸入。
 aliases: [區塊獎勵交易, 礦工獎勵]
 category: mining
 difficulty: intermediate

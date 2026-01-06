@@ -1,6 +1,7 @@
 ---
 term: Merkle 樹
 termEn: Merkle Tree
+short: 用於高效彙總和驗證大量數據的樹狀結構。比特幣用它組織區塊內交易，輕節點可用 Merkle 證明驗證交易。
 aliases: [默克爾樹, Hash Tree]
 category: cryptography
 difficulty: advanced

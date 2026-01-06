@@ -1,6 +1,7 @@
 ---
 term: 測試網路
 termEn: Testnet
+short: 用於測試和開發的替代區塊鏈，測試幣沒有實際價值。開發者可安全實驗而不冒財務風險。地址以 tb1 開頭。
 aliases: [測試網, Testnet3, Testnet4]
 category: development
 difficulty: beginner

@@ -1,6 +1,7 @@
 ---
 term: HTLC
 termEn: Hash Time-Locked Contract
+short: 閃電網路支付的核心機制，結合雜湊鎖和時間鎖實現無需信任的多跳支付。知道原像可領取，超時則退回。
 aliases: [雜湊時間鎖合約]
 category: lightning
 difficulty: advanced

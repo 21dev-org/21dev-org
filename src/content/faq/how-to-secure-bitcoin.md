@@ -1,5 +1,6 @@
 ---
 question: 如何安全保管比特幣？
+short: 用紙筆備份助記詞、使用硬體錢包、不要在交易所長期存放、不要截圖或雲端存放私鑰。
 category: security
 order: 1
 tags: [安全, 備份]

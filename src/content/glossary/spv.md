@@ -1,6 +1,7 @@
 ---
 term: SPV
 termEn: Simplified Payment Verification
+short: 不需下載完整區塊鏈即可驗證交易的方法。只下載區塊頭（約 60 MB），透過 Merkle 證明驗證交易存在。
 aliases: [簡化支付驗證, 輕節點]
 category: protocol
 difficulty: intermediate

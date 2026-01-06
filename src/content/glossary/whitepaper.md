@@ -1,6 +1,7 @@
 ---
 term: 白皮書
 termEn: Whitepaper
+short: "中本聰於 2008 年發布的技術文件《Bitcoin: A Peer-to-Peer Electronic Cash System》，僅 9 頁，提出點對點電子現金系統。"
 aliases: [比特幣白皮書, Bitcoin Whitepaper]
 category: basic
 difficulty: beginner

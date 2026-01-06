@@ -1,6 +1,7 @@
 ---
 term: BIP
 termEn: Bitcoin Improvement Proposal
+short: 比特幣改進提案的正式文件格式
 aliases: [比特幣改進提案]
 category: development
 difficulty: beginner

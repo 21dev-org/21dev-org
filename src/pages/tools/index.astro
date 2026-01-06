@@ -8,7 +8,10 @@ const toolIcons: Record<string, string> = {
   'unit-converter': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`,
   'address-parser': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>`,
   'tx-decoder': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`,
-  'script-decoder': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'hash-calculator': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>`,
+  'encoding-converter': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>`,
+  'block-reward': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`,
+  'script-decoder': `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>`,
 };
 
 const tools = [
@@ -28,13 +31,31 @@ const tools = [
     id: 'tx-decoder',
     name: '交易解碼器',
     description: '解析原始交易 hex 並顯示詳細資訊',
-    status: 'coming',
+    status: 'active',
+  },
+  {
+    id: 'hash-calculator',
+    name: 'Hash 計算器',
+    description: '計算 SHA256、RIPEMD160、Hash160 等',
+    status: 'active',
+  },
+  {
+    id: 'encoding-converter',
+    name: '編碼轉換器',
+    description: 'Hex、Base58、Bech32 格式互轉',
+    status: 'active',
+  },
+  {
+    id: 'block-reward',
+    name: '區塊獎勵計算器',
+    description: '計算任意區塊高度的挖礦獎勵',
+    status: 'active',
   },
   {
     id: 'script-decoder',
     name: 'Script 解碼器',
-    description: '解析並執行 Bitcoin Script',
-    status: 'coming',
+    description: '解析並解釋 Bitcoin Script',
+    status: 'active',
   },
 ];
 ---
@@ -243,10 +264,497 @@ const tools = [
       </div>
     </div>
   </section>
+
+  <!-- 交易解碼器 -->
+  <section id="tx-decoder" class="py-16 md:py-24 scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">📄 交易解碼器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">
+          輸入原始交易 hex，解析交易結構和詳細資訊。
+        </p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+            >原始交易 (Hex)</label
+          >
+          <textarea
+            id="tx-input"
+            rows="4"
+            placeholder="輸入原始交易 hex..."
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500 resize-none"
+          ></textarea>
+          <p class="text-xs text-[var(--text-tertiary)] mt-1">支援 Legacy 和 SegWit 交易格式</p>
+        </div>
+
+        <button
+          id="tx-decode-btn"
+          class="mt-4 px-6 py-2 rounded-lg bg-bitcoin-500 text-white font-medium hover:bg-bitcoin-600 transition-colors"
+        >
+          解碼交易
+        </button>
+
+        <!-- 解碼結果 -->
+        <div
+          id="tx-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">交易資訊</h3>
+
+          <!-- 基本資訊 -->
+          <div class="space-y-3 text-sm mb-6">
+            <div class="flex justify-between flex-wrap gap-2">
+              <span class="text-[var(--text-secondary)]">TXID</span>
+              <span id="tx-txid" class="font-mono text-xs text-bitcoin-500 break-all">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">版本</span>
+              <span id="tx-version" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">SegWit</span>
+              <span id="tx-segwit" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">輸入數量</span>
+              <span id="tx-input-count" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">輸出數量</span>
+              <span id="tx-output-count" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">Locktime</span>
+              <span id="tx-locktime" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">大小</span>
+              <span id="tx-size" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">虛擬大小 (vBytes)</span>
+              <span id="tx-vsize" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+          </div>
+
+          <!-- 輸入 -->
+          <div class="mb-6">
+            <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸入 (Inputs)</h4>
+            <div id="tx-inputs" class="space-y-2 text-xs font-mono"></div>
+          </div>
+
+          <!-- 輸出 -->
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸出 (Outputs)</h4>
+            <div id="tx-outputs" class="space-y-2 text-xs font-mono"></div>
+          </div>
+        </div>
+
+        <div
+          id="tx-error"
+          class="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hidden"
+        >
+          <span id="tx-error-message">無法解析交易</span>
+        </div>
+
+        <!-- 範例交易 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2">範例交易</h3>
+          <p class="text-sm text-[var(--text-secondary)] mb-3">點擊下方範例載入測試：</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="tx-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-tx="0100000001c997a5e56e104102fa209c6a852dd90660a20b2d9c352423edce25857fcd3704000000004847304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901ffffffff0200ca9a3b00000000434104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac00286bee0000000043410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac00000000"
+            >
+              Legacy P2PK
+            </button>
+            <button
+              class="tx-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-tx="02000000000101f1c8f13fcb07e59f8fc9e07c9a96f9d4c6b8e3c0d8a5b2c1d0e9f8a7b6c5d4e30100000000fdffffff02a0860100000000001976a914d0c59903c5bac2868760e90fd521a4665aa7652088ac20a1070000000000160014d85c2b71d0060b09c9886aeb815e50991dda124d02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000"
+            >
+              SegWit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hash 計算器 -->
+  <section id="hash-calculator" class="py-16 md:py-24 bg-[var(--bg-secondary)] scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2"># Hash 計算器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">計算比特幣常用的雜湊函數。</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">輸入</label>
+            <input
+              type="text"
+              id="hash-input"
+              placeholder="輸入文字或 hex（0x 開頭視為 hex）"
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <input type="radio" name="hash-input-type" value="text" checked class="text-bitcoin-500" />
+              文字 (UTF-8)
+            </label>
+            <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <input type="radio" name="hash-input-type" value="hex" class="text-bitcoin-500" />
+              Hex
+            </label>
+          </div>
+        </div>
+
+        <!-- Hash 結果 -->
+        <div
+          id="hash-results"
+          class="mt-6 space-y-4 hidden"
+        >
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium text-[var(--text-secondary)]">SHA256</span>
+              <button class="hash-copy text-xs text-bitcoin-500 hover:underline" data-target="hash-sha256">複製</button>
+            </div>
+            <code id="hash-sha256" class="block text-sm font-mono text-[var(--text-primary)] break-all">-</code>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium text-[var(--text-secondary)]">SHA256d (雙重 SHA256)</span>
+              <button class="hash-copy text-xs text-bitcoin-500 hover:underline" data-target="hash-sha256d">複製</button>
+            </div>
+            <code id="hash-sha256d" class="block text-sm font-mono text-[var(--text-primary)] break-all">-</code>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium text-[var(--text-secondary)]">RIPEMD160</span>
+              <button class="hash-copy text-xs text-bitcoin-500 hover:underline" data-target="hash-ripemd160">複製</button>
+            </div>
+            <code id="hash-ripemd160" class="block text-sm font-mono text-[var(--text-primary)] break-all">-</code>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium text-[var(--text-secondary)]">Hash160 (RIPEMD160(SHA256))</span>
+              <button class="hash-copy text-xs text-bitcoin-500 hover:underline" data-target="hash-hash160">複製</button>
+            </div>
+            <code id="hash-hash160" class="block text-sm font-mono text-[var(--text-primary)] break-all">-</code>
+          </div>
+        </div>
+
+        <!-- Hash 說明 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">比特幣中的 Hash 用途</h3>
+          <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+            <p><strong>SHA256d</strong>：區塊頭雜湊、TXID 計算</p>
+            <p><strong>Hash160</strong>：地址生成（公鑰 → 地址）</p>
+            <p><strong>RIPEMD160</strong>：配合 SHA256 用於地址</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 編碼轉換器 -->
+  <section id="encoding-converter" class="py-16 md:py-24 scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">🔄 編碼轉換器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">Hex、Base58、Base64 格式互相轉換。</p>
+
+        <div class="space-y-4">
+          <!-- Hex -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Hex</label>
+            <input
+              type="text"
+              id="enc-hex"
+              placeholder="輸入 hex..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <!-- Base58 -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Base58</label>
+            <input
+              type="text"
+              id="enc-base58"
+              placeholder="輸入 Base58..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <!-- Base64 -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Base64</label>
+            <input
+              type="text"
+              id="enc-base64"
+              placeholder="輸入 Base64..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <!-- Decimal -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">十進位 (Decimal)</label>
+            <input
+              type="text"
+              id="enc-decimal"
+              placeholder="輸入數字..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+        </div>
+
+        <!-- 編碼說明 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">編碼格式說明</h3>
+          <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+            <p><strong>Hex</strong>：16 進位，0-9 和 a-f</p>
+            <p><strong>Base58</strong>：比特幣地址和私鑰格式（無 0、O、I、l）</p>
+            <p><strong>Base64</strong>：常用於資料傳輸編碼</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 區塊獎勵計算器 -->
+  <section id="block-reward" class="py-16 md:py-24 bg-[var(--bg-secondary)] scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">📦 區塊獎勵計算器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">計算任意區塊高度的挖礦獎勵和減半資訊。</p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">區塊高度</label>
+          <input
+            type="number"
+            id="block-height-input"
+            placeholder="輸入區塊高度（如 840000）"
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+          />
+        </div>
+
+        <!-- 計算結果 -->
+        <div
+          id="block-reward-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">計算結果</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">區塊獎勵</span>
+              <span id="reward-btc" class="font-mono text-bitcoin-500 font-bold">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">減半紀元</span>
+              <span id="reward-epoch" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">此紀元開始區塊</span>
+              <span id="reward-epoch-start" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">下次減半區塊</span>
+              <span id="reward-next-halving" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">距離下次減半</span>
+              <span id="reward-blocks-until" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 減半時間表 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">減半時間表</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-[var(--text-secondary)]">
+                  <th class="pb-2">紀元</th>
+                  <th class="pb-2">區塊範圍</th>
+                  <th class="pb-2">獎勵</th>
+                  <th class="pb-2">年份</th>
+                </tr>
+              </thead>
+              <tbody class="font-mono text-[var(--text-primary)]">
+                <tr><td>0</td><td>0 - 209,999</td><td>50 BTC</td><td>2009</td></tr>
+                <tr><td>1</td><td>210,000 - 419,999</td><td>25 BTC</td><td>2012</td></tr>
+                <tr><td>2</td><td>420,000 - 629,999</td><td>12.5 BTC</td><td>2016</td></tr>
+                <tr><td>3</td><td>630,000 - 839,999</td><td>6.25 BTC</td><td>2020</td></tr>
+                <tr><td>4</td><td>840,000 - 1,049,999</td><td>3.125 BTC</td><td>2024</td></tr>
+                <tr><td>5</td><td>1,050,000 - 1,259,999</td><td>1.5625 BTC</td><td>~2028</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 快速選擇 -->
+        <div class="mt-4 flex flex-wrap gap-2">
+          <span class="text-sm text-[var(--text-secondary)]">快速選擇：</span>
+          <button class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors" data-height="0">創世區塊</button>
+          <button class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors" data-height="210000">第一次減半</button>
+          <button class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors" data-height="840000">第四次減半</button>
+          <button class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors" data-height="878000">目前高度</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Script 解碼器 -->
+  <section id="script-decoder" class="py-16 md:py-24 scroll-mt-24">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">📜 Script 解碼器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">
+          輸入 Bitcoin Script hex，解析操作碼和資料。
+        </p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+            >Script (Hex)</label
+          >
+          <textarea
+            id="script-input"
+            rows="3"
+            placeholder="輸入 Script hex（如 76a914...88ac）"
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500 resize-none"
+          ></textarea>
+        </div>
+
+        <button
+          id="script-decode-btn"
+          class="mt-4 px-6 py-2 rounded-lg bg-bitcoin-500 text-white font-medium hover:bg-bitcoin-600 transition-colors"
+        >
+          解碼 Script
+        </button>
+
+        <!-- 解碼結果 -->
+        <div
+          id="script-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">解碼結果</h3>
+
+          <!-- Script 類型 -->
+          <div class="mb-4 p-3 rounded-lg bg-bitcoin-500/10">
+            <span class="text-sm text-[var(--text-secondary)]">Script 類型：</span>
+            <span id="script-type" class="font-mono text-bitcoin-500 font-medium">-</span>
+          </div>
+
+          <!-- 操作碼列表 -->
+          <div>
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">操作碼序列</h4>
+            <div id="script-opcodes" class="space-y-1 text-sm font-mono"></div>
+          </div>
+
+          <!-- ASM 格式 -->
+          <div class="mt-4 pt-4 border-t border-[var(--border-default)]">
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">ASM 格式</h4>
+            <code id="script-asm" class="block p-3 rounded-lg bg-[var(--bg-secondary)] text-xs text-[var(--text-primary)] break-all"></code>
+          </div>
+        </div>
+
+        <div
+          id="script-error"
+          class="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hidden"
+        >
+          <span id="script-error-message">無法解析 Script</span>
+        </div>
+
+        <!-- 範例 Script -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2">範例 Script</h3>
+          <p class="text-sm text-[var(--text-secondary)] mb-3">點擊下方範例載入測試：</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="76a914d0c59903c5bac2868760e90fd521a4665aa7652088ac"
+            >
+              P2PKH
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba87"
+            >
+              P2SH
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="0014d85c2b71d0060b09c9886aeb815e50991dda124d"
+            >
+              P2WPKH
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="5121022afc3e3f8e7b2c6e0a2f9b0d1c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f2103b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d652ae"
+            >
+              2-of-2 多簽
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="6a24aa21a9ed2e8f4e8a4e2f8e4a2e8f4e8a4e2f8e4a2e8f4e8a4e2f8e4a2e8f4e8a"
+            >
+              OP_RETURN
+            </button>
+          </div>
+        </div>
+
+        <!-- Script 類型說明 -->
+        <div
+          class="mt-4 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">常見 Script 類型</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2PKH</code>
+              <span class="text-[var(--text-secondary)]">OP_DUP OP_HASH160 &lt;hash&gt; OP_EQUALVERIFY OP_CHECKSIG</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2SH</code>
+              <span class="text-[var(--text-secondary)]">OP_HASH160 &lt;hash&gt; OP_EQUAL</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2WPKH</code>
+              <span class="text-[var(--text-secondary)]">OP_0 &lt;20-byte hash&gt;</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2WSH</code>
+              <span class="text-[var(--text-secondary)]">OP_0 &lt;32-byte hash&gt;</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2TR</code>
+              <span class="text-[var(--text-secondary)]">OP_1 &lt;32-byte key&gt;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </PageLayout>
 
 <script>
-  // 單位換算器
+  // ====== 單位換算器 ======
   const SATS_PER_BTC = 100_000_000;
   const MBTC_PER_BTC = 1_000;
   const BITS_PER_BTC = 1_000_000;
@@ -261,7 +769,6 @@ const tools = [
   function formatNumber(num: number, decimals: number = 8): string {
     if (num === 0) return '0';
     const formatted = num.toFixed(decimals);
-    // 移除尾隨零
     return formatted.replace(/\.?0+$/, '');
   }
 
@@ -330,7 +837,7 @@ const tools = [
     updateFromBits(value);
   });
 
-  // 地址解析器
+  // ====== 地址解析器 ======
   const addressInput = document.getElementById('address-input') as HTMLInputElement;
   const addressResult = document.getElementById('address-result') as HTMLElement;
   const addressError = document.getElementById('address-error') as HTMLElement;
@@ -351,92 +858,40 @@ const tools = [
     const trimmed = address.trim();
     if (!trimmed) return null;
 
-    // P2PKH (Legacy) - starts with 1
     if (/^1[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
-      return {
-        type: 'P2PKH (Legacy)',
-        network: 'Mainnet',
-        format: 'Base58Check',
-        length: trimmed.length,
-      };
+      return { type: 'P2PKH (Legacy)', network: 'Mainnet', format: 'Base58Check', length: trimmed.length };
     }
-
-    // P2SH - starts with 3
     if (/^3[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
-      return {
-        type: 'P2SH (Script Hash)',
-        network: 'Mainnet',
-        format: 'Base58Check',
-        length: trimmed.length,
-      };
+      return { type: 'P2SH (Script Hash)', network: 'Mainnet', format: 'Base58Check', length: trimmed.length };
     }
-
-    // Native SegWit (P2WPKH/P2WSH) - starts with bc1q
     if (/^bc1q[a-z0-9]{38,58}$/i.test(trimmed)) {
       const isP2wpkh = trimmed.length === 42;
-      return {
-        type: isP2wpkh ? 'P2WPKH (Native SegWit)' : 'P2WSH (Native SegWit)',
-        network: 'Mainnet',
-        format: 'Bech32',
-        length: trimmed.length,
-      };
+      return { type: isP2wpkh ? 'P2WPKH (Native SegWit)' : 'P2WSH (Native SegWit)', network: 'Mainnet', format: 'Bech32', length: trimmed.length };
     }
-
-    // Taproot - starts with bc1p
     if (/^bc1p[a-z0-9]{58}$/i.test(trimmed)) {
-      return {
-        type: 'P2TR (Taproot)',
-        network: 'Mainnet',
-        format: 'Bech32m',
-        length: trimmed.length,
-      };
+      return { type: 'P2TR (Taproot)', network: 'Mainnet', format: 'Bech32m', length: trimmed.length };
     }
-
-    // Testnet P2PKH - starts with m or n
     if (/^[mn][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
-      return {
-        type: 'P2PKH (Legacy)',
-        network: 'Testnet',
-        format: 'Base58Check',
-        length: trimmed.length,
-      };
+      return { type: 'P2PKH (Legacy)', network: 'Testnet', format: 'Base58Check', length: trimmed.length };
     }
-
-    // Testnet P2SH - starts with 2
     if (/^2[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
-      return {
-        type: 'P2SH (Script Hash)',
-        network: 'Testnet',
-        format: 'Base58Check',
-        length: trimmed.length,
-      };
+      return { type: 'P2SH (Script Hash)', network: 'Testnet', format: 'Base58Check', length: trimmed.length };
     }
-
-    // Testnet SegWit - starts with tb1
     if (/^tb1[qp][a-z0-9]{38,58}$/i.test(trimmed)) {
       const isTaproot = trimmed[3] === 'p';
-      return {
-        type: isTaproot ? 'P2TR (Taproot)' : 'P2WPKH/P2WSH (Native SegWit)',
-        network: 'Testnet',
-        format: isTaproot ? 'Bech32m' : 'Bech32',
-        length: trimmed.length,
-      };
+      return { type: isTaproot ? 'P2TR (Taproot)' : 'P2WPKH/P2WSH (Native SegWit)', network: 'Testnet', format: isTaproot ? 'Bech32m' : 'Bech32', length: trimmed.length };
     }
-
     return null;
   }
 
   addressInput?.addEventListener('input', (e) => {
     const address = (e.target as HTMLInputElement).value;
-
     if (!address.trim()) {
       addressResult.classList.add('hidden');
       addressError.classList.add('hidden');
       return;
     }
-
     const info = parseAddress(address);
-
     if (info) {
       resultType.textContent = info.type;
       resultNetwork.textContent = info.network;
@@ -449,5 +904,699 @@ const tools = [
       addressError.classList.remove('hidden');
       addressResult.classList.add('hidden');
     }
+  });
+
+  // ====== 交易解碼器 ======
+  const txInput = document.getElementById('tx-input') as HTMLTextAreaElement;
+  const txDecodeBtn = document.getElementById('tx-decode-btn') as HTMLButtonElement;
+  const txResult = document.getElementById('tx-result') as HTMLElement;
+  const txError = document.getElementById('tx-error') as HTMLElement;
+
+  function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
+  }
+
+  function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function readVarInt(bytes: Uint8Array, offset: number): [number, number] {
+    const first = bytes[offset];
+    if (first < 0xfd) return [first, 1];
+    if (first === 0xfd) return [(bytes[offset + 1] | (bytes[offset + 2] << 8)), 3];
+    if (first === 0xfe) return [(bytes[offset + 1] | (bytes[offset + 2] << 8) | (bytes[offset + 3] << 16) | (bytes[offset + 4] << 24)) >>> 0, 5];
+    return [Number(BigInt(bytes[offset + 1]) | (BigInt(bytes[offset + 2]) << 8n) | (BigInt(bytes[offset + 3]) << 16n) | (BigInt(bytes[offset + 4]) << 24n) | (BigInt(bytes[offset + 5]) << 32n) | (BigInt(bytes[offset + 6]) << 40n) | (BigInt(bytes[offset + 7]) << 48n) | (BigInt(bytes[offset + 8]) << 56n)), 9];
+  }
+
+  function reverseHex(hex: string): string {
+    return hex.match(/.{2}/g)?.reverse().join('') || '';
+  }
+
+  async function sha256(data: Uint8Array): Promise<Uint8Array> {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data as unknown as BufferSource);
+    return new Uint8Array(hashBuffer);
+  }
+
+  async function doubleSha256(data: Uint8Array): Promise<Uint8Array> {
+    return sha256(await sha256(data));
+  }
+
+  async function decodeTx(hexStr: string) {
+    const hex = hexStr.replace(/\s/g, '').toLowerCase();
+    if (!/^[0-9a-f]+$/.test(hex)) throw new Error('無效的 hex 格式');
+
+    const bytes = hexToBytes(hex);
+    let offset = 0;
+
+    // Version (4 bytes, little-endian)
+    const version = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
+    offset += 4;
+
+    // Check for SegWit marker
+    let isSegwit = false;
+    let marker = 0, flag = 0;
+    if (bytes[offset] === 0x00 && bytes[offset + 1] !== 0x00) {
+      marker = bytes[offset];
+      flag = bytes[offset + 1];
+      isSegwit = true;
+      offset += 2;
+    }
+
+    // Input count
+    const [inputCount, inputCountSize] = readVarInt(bytes, offset);
+    offset += inputCountSize;
+
+    // Parse inputs
+    const inputs: { txid: string; vout: number; scriptSig: string; sequence: number }[] = [];
+    for (let i = 0; i < inputCount; i++) {
+      const txid = reverseHex(bytesToHex(bytes.slice(offset, offset + 32)));
+      offset += 32;
+      const vout = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
+      offset += 4;
+      const [scriptLen, scriptLenSize] = readVarInt(bytes, offset);
+      offset += scriptLenSize;
+      const scriptSig = bytesToHex(bytes.slice(offset, offset + scriptLen));
+      offset += scriptLen;
+      const sequence = (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+      offset += 4;
+      inputs.push({ txid, vout, scriptSig, sequence });
+    }
+
+    // Output count
+    const [outputCount, outputCountSize] = readVarInt(bytes, offset);
+    offset += outputCountSize;
+
+    // Parse outputs
+    const outputs: { value: number; scriptPubKey: string }[] = [];
+    for (let i = 0; i < outputCount; i++) {
+      const valueLow = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
+      const valueHigh = bytes[offset + 4] | (bytes[offset + 5] << 8) | (bytes[offset + 6] << 16) | (bytes[offset + 7] << 24);
+      const value = (valueHigh * 0x100000000 + valueLow) / SATS_PER_BTC;
+      offset += 8;
+      const [scriptLen, scriptLenSize] = readVarInt(bytes, offset);
+      offset += scriptLenSize;
+      const scriptPubKey = bytesToHex(bytes.slice(offset, offset + scriptLen));
+      offset += scriptLen;
+      outputs.push({ value, scriptPubKey });
+    }
+
+    // Witness data (if SegWit)
+    let witnessSize = 0;
+    if (isSegwit) {
+      const witnessStart = offset;
+      for (let i = 0; i < inputCount; i++) {
+        const [witnessCount, wcSize] = readVarInt(bytes, offset);
+        offset += wcSize;
+        for (let j = 0; j < witnessCount; j++) {
+          const [itemLen, ilSize] = readVarInt(bytes, offset);
+          offset += ilSize + itemLen;
+        }
+      }
+      witnessSize = offset - witnessStart;
+    }
+
+    // Locktime (4 bytes)
+    const locktime = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
+
+    // Calculate TXID (double SHA256 of non-witness serialization)
+    let txidBytes: Uint8Array;
+    if (isSegwit) {
+      // For SegWit, TXID is calculated without marker, flag, and witness
+      const nonWitness = new Uint8Array(bytes.length - 2 - witnessSize);
+      nonWitness.set(bytes.slice(0, 4)); // version
+      let pos = 4;
+      const afterFlag = 6;
+      const beforeWitness = bytes.length - witnessSize - 4;
+      nonWitness.set(bytes.slice(afterFlag, beforeWitness), pos);
+      pos += beforeWitness - afterFlag;
+      nonWitness.set(bytes.slice(bytes.length - 4), pos); // locktime
+      txidBytes = await doubleSha256(nonWitness);
+    } else {
+      txidBytes = await doubleSha256(bytes);
+    }
+    const txid = reverseHex(bytesToHex(txidBytes));
+
+    // Calculate sizes
+    const size = bytes.length;
+    const weight = isSegwit ? (bytes.length - 2 - witnessSize) * 3 + bytes.length : bytes.length * 4;
+    const vsize = Math.ceil(weight / 4);
+
+    return { txid, version, isSegwit, inputs, outputs, locktime, size, vsize };
+  }
+
+  txDecodeBtn?.addEventListener('click', async () => {
+    const hex = txInput.value.trim();
+    if (!hex) return;
+
+    try {
+      const tx = await decodeTx(hex);
+
+      (document.getElementById('tx-txid') as HTMLElement).textContent = tx.txid;
+      (document.getElementById('tx-version') as HTMLElement).textContent = tx.version.toString();
+      (document.getElementById('tx-segwit') as HTMLElement).textContent = tx.isSegwit ? '是' : '否';
+      (document.getElementById('tx-input-count') as HTMLElement).textContent = tx.inputs.length.toString();
+      (document.getElementById('tx-output-count') as HTMLElement).textContent = tx.outputs.length.toString();
+      (document.getElementById('tx-locktime') as HTMLElement).textContent = tx.locktime.toString();
+      (document.getElementById('tx-size') as HTMLElement).textContent = `${tx.size} bytes`;
+      (document.getElementById('tx-vsize') as HTMLElement).textContent = `${tx.vsize} vBytes`;
+
+      // Display inputs
+      const inputsDiv = document.getElementById('tx-inputs') as HTMLElement;
+      inputsDiv.innerHTML = tx.inputs.map((inp, i) => `
+        <div class="p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <div class="text-[var(--text-secondary)] mb-1">輸入 #${i}</div>
+          <div class="break-all">TXID: ${inp.txid}:${inp.vout}</div>
+          ${inp.scriptSig ? `<div class="text-[var(--text-tertiary)] mt-1">ScriptSig: ${inp.scriptSig.substring(0, 60)}${inp.scriptSig.length > 60 ? '...' : ''}</div>` : ''}
+        </div>
+      `).join('');
+
+      // Display outputs
+      const outputsDiv = document.getElementById('tx-outputs') as HTMLElement;
+      outputsDiv.innerHTML = tx.outputs.map((out, i) => `
+        <div class="p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <div class="flex justify-between">
+            <span class="text-[var(--text-secondary)]">輸出 #${i}</span>
+            <span class="text-bitcoin-500">${out.value.toFixed(8)} BTC</span>
+          </div>
+          <div class="text-[var(--text-tertiary)] mt-1 break-all">ScriptPubKey: ${out.scriptPubKey}</div>
+        </div>
+      `).join('');
+
+      txResult.classList.remove('hidden');
+      txError.classList.add('hidden');
+    } catch (err) {
+      (document.getElementById('tx-error-message') as HTMLElement).textContent = `解析錯誤: ${(err as Error).message}`;
+      txError.classList.remove('hidden');
+      txResult.classList.add('hidden');
+    }
+  });
+
+  // Example transaction buttons
+  document.querySelectorAll('.tx-example').forEach(btn => {
+    btn.addEventListener('click', () => {
+      txInput.value = (btn as HTMLElement).dataset.tx || '';
+    });
+  });
+
+  // ====== Hash 計算器 ======
+  const hashInput = document.getElementById('hash-input') as HTMLInputElement;
+  const hashResults = document.getElementById('hash-results') as HTMLElement;
+
+  async function ripemd160(data: Uint8Array): Promise<string> {
+    // Simple RIPEMD160 implementation for browser
+    const H = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+    const K1 = [0x00000000, 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xa953fd4e];
+    const K2 = [0x50a28be6, 0x5c4dd124, 0x6d703ef3, 0x7a6d76e9, 0x00000000];
+    const R1 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2,4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13];
+    const R2 = [5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14,12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11];
+    const S1 = [11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12,9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6];
+    const S2 = [8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8,8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11];
+
+    function rotl(x: number, n: number) { return ((x << n) | (x >>> (32 - n))) >>> 0; }
+    function f(j: number, x: number, y: number, z: number) {
+      if (j < 16) return x ^ y ^ z;
+      if (j < 32) return (x & y) | (~x & z);
+      if (j < 48) return (x | ~y) ^ z;
+      if (j < 64) return (x & z) | (y & ~z);
+      return x ^ (y | ~z);
+    }
+
+    // Padding
+    const len = data.length;
+    const padLen = (len + 9) % 64 === 0 ? 64 : 64 - ((len + 9) % 64);
+    const padded = new Uint8Array(len + 1 + padLen + 8);
+    padded.set(data);
+    padded[len] = 0x80;
+    const bitLen = len * 8;
+    for (let i = 0; i < 8; i++) {
+      padded[len + 1 + padLen + i] = (bitLen / Math.pow(2, i * 8)) & 0xff;
+    }
+
+    // Process blocks
+    for (let i = 0; i < padded.length; i += 64) {
+      const X = new Array(16);
+      for (let j = 0; j < 16; j++) {
+        X[j] = padded[i + j * 4] | (padded[i + j * 4 + 1] << 8) | (padded[i + j * 4 + 2] << 16) | (padded[i + j * 4 + 3] << 24);
+      }
+
+      let [A1, B1, C1, D1, E1] = H;
+      let [A2, B2, C2, D2, E2] = H;
+
+      for (let j = 0; j < 80; j++) {
+        const T1 = (A1 + f(j, B1, C1, D1) + X[R1[j]] + K1[Math.floor(j / 16)]) >>> 0;
+        const temp1 = (rotl(T1, S1[j]) + E1) >>> 0;
+        A1 = E1; E1 = D1; D1 = rotl(C1, 10); C1 = B1; B1 = temp1;
+
+        const T2 = (A2 + f(79 - j, B2, C2, D2) + X[R2[j]] + K2[Math.floor(j / 16)]) >>> 0;
+        const temp2 = (rotl(T2, S2[j]) + E2) >>> 0;
+        A2 = E2; E2 = D2; D2 = rotl(C2, 10); C2 = B2; B2 = temp2;
+      }
+
+      const T = (H[1] + C1 + D2) >>> 0;
+      H[1] = (H[2] + D1 + E2) >>> 0;
+      H[2] = (H[3] + E1 + A2) >>> 0;
+      H[3] = (H[4] + A1 + B2) >>> 0;
+      H[4] = (H[0] + B1 + C2) >>> 0;
+      H[0] = T;
+    }
+
+    // Output
+    let result = '';
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j < 4; j++) {
+        result += ((H[i] >> (j * 8)) & 0xff).toString(16).padStart(2, '0');
+      }
+    }
+    return result;
+  }
+
+  hashInput?.addEventListener('input', async () => {
+    const input = hashInput.value;
+    if (!input) {
+      hashResults.classList.add('hidden');
+      return;
+    }
+
+    const inputType = (document.querySelector('input[name="hash-input-type"]:checked') as HTMLInputElement)?.value || 'text';
+    let data: Uint8Array;
+
+    if (inputType === 'hex' || input.startsWith('0x')) {
+      const hex = input.replace(/^0x/, '').replace(/\s/g, '');
+      if (!/^[0-9a-fA-F]*$/.test(hex) || hex.length % 2 !== 0) {
+        hashResults.classList.add('hidden');
+        return;
+      }
+      data = hexToBytes(hex);
+    } else {
+      data = new TextEncoder().encode(input);
+    }
+
+    const sha256Hash = await sha256(data);
+    const sha256dHash = await sha256(sha256Hash);
+    const ripemd160Hash = await ripemd160(data);
+    const hash160 = await ripemd160(sha256Hash);
+
+    (document.getElementById('hash-sha256') as HTMLElement).textContent = bytesToHex(sha256Hash);
+    (document.getElementById('hash-sha256d') as HTMLElement).textContent = bytesToHex(sha256dHash);
+    (document.getElementById('hash-ripemd160') as HTMLElement).textContent = ripemd160Hash;
+    (document.getElementById('hash-hash160') as HTMLElement).textContent = hash160;
+
+    hashResults.classList.remove('hidden');
+  });
+
+  document.querySelectorAll('input[name="hash-input-type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      hashInput.dispatchEvent(new Event('input'));
+    });
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.hash-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = (btn as HTMLElement).dataset.target;
+      const text = document.getElementById(targetId!)?.textContent || '';
+      navigator.clipboard.writeText(text);
+      const original = btn.textContent;
+      btn.textContent = '已複製！';
+      setTimeout(() => { btn.textContent = original; }, 1000);
+    });
+  });
+
+  // ====== 編碼轉換器 ======
+  const encHex = document.getElementById('enc-hex') as HTMLInputElement;
+  const encBase58 = document.getElementById('enc-base58') as HTMLInputElement;
+  const encBase64 = document.getElementById('enc-base64') as HTMLInputElement;
+  const encDecimal = document.getElementById('enc-decimal') as HTMLInputElement;
+
+  const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+  function hexToBase58(hex: string): string {
+    if (!hex) return '';
+    let num = BigInt('0x' + hex);
+    let result = '';
+    while (num > 0n) {
+      result = BASE58_ALPHABET[Number(num % 58n)] + result;
+      num = num / 58n;
+    }
+    // Add leading '1's for leading zeros
+    for (let i = 0; i < hex.length && hex[i] === '0' && hex[i + 1] === '0'; i += 2) {
+      result = '1' + result;
+    }
+    return result;
+  }
+
+  function base58ToHex(base58: string): string {
+    if (!base58) return '';
+    let num = 0n;
+    for (const char of base58) {
+      const index = BASE58_ALPHABET.indexOf(char);
+      if (index === -1) return '';
+      num = num * 58n + BigInt(index);
+    }
+    let hex = num.toString(16);
+    if (hex.length % 2) hex = '0' + hex;
+    // Add leading zeros
+    for (let i = 0; i < base58.length && base58[i] === '1'; i++) {
+      hex = '00' + hex;
+    }
+    return hex;
+  }
+
+  function hexToBase64(hex: string): string {
+    if (!hex) return '';
+    const bytes = hexToBytes(hex);
+    return btoa(String.fromCharCode(...bytes));
+  }
+
+  function base64ToHex(base64: string): string {
+    if (!base64) return '';
+    try {
+      const binary = atob(base64);
+      return Array.from(binary).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+    } catch {
+      return '';
+    }
+  }
+
+  let encUpdating = false;
+
+  encHex?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    const hex = encHex.value.replace(/\s/g, '').toLowerCase();
+    if (/^[0-9a-f]*$/.test(hex)) {
+      encBase58.value = hexToBase58(hex);
+      encBase64.value = hex ? hexToBase64(hex) : '';
+      encDecimal.value = hex ? BigInt('0x' + hex).toString() : '';
+    }
+    encUpdating = false;
+  });
+
+  encBase58?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    const hex = base58ToHex(encBase58.value);
+    if (hex) {
+      encHex.value = hex;
+      encBase64.value = hexToBase64(hex);
+      encDecimal.value = BigInt('0x' + hex).toString();
+    }
+    encUpdating = false;
+  });
+
+  encBase64?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    const hex = base64ToHex(encBase64.value);
+    if (hex) {
+      encHex.value = hex;
+      encBase58.value = hexToBase58(hex);
+      encDecimal.value = BigInt('0x' + hex).toString();
+    }
+    encUpdating = false;
+  });
+
+  encDecimal?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    try {
+      const num = BigInt(encDecimal.value || '0');
+      let hex = num.toString(16);
+      if (hex.length % 2) hex = '0' + hex;
+      encHex.value = hex;
+      encBase58.value = hexToBase58(hex);
+      encBase64.value = hexToBase64(hex);
+    } catch {}
+    encUpdating = false;
+  });
+
+  // ====== 區塊獎勵計算器 ======
+  const blockHeightInput = document.getElementById('block-height-input') as HTMLInputElement;
+  const blockRewardResult = document.getElementById('block-reward-result') as HTMLElement;
+
+  const HALVING_INTERVAL = 210000;
+  const INITIAL_REWARD = 50;
+
+  function calculateBlockReward(height: number) {
+    const epoch = Math.floor(height / HALVING_INTERVAL);
+    const reward = INITIAL_REWARD / Math.pow(2, epoch);
+    const epochStart = epoch * HALVING_INTERVAL;
+    const nextHalving = (epoch + 1) * HALVING_INTERVAL;
+    const blocksUntilHalving = nextHalving - height;
+
+    return { reward, epoch, epochStart, nextHalving, blocksUntilHalving };
+  }
+
+  blockHeightInput?.addEventListener('input', () => {
+    const height = parseInt(blockHeightInput.value);
+    if (isNaN(height) || height < 0) {
+      blockRewardResult.classList.add('hidden');
+      return;
+    }
+
+    const result = calculateBlockReward(height);
+
+    (document.getElementById('reward-btc') as HTMLElement).textContent = `${result.reward} BTC`;
+    (document.getElementById('reward-epoch') as HTMLElement).textContent = `第 ${result.epoch} 紀元`;
+    (document.getElementById('reward-epoch-start') as HTMLElement).textContent = result.epochStart.toLocaleString();
+    (document.getElementById('reward-next-halving') as HTMLElement).textContent = result.nextHalving.toLocaleString();
+    (document.getElementById('reward-blocks-until') as HTMLElement).textContent = `${result.blocksUntilHalving.toLocaleString()} 區塊`;
+
+    blockRewardResult.classList.remove('hidden');
+  });
+
+  // Preset buttons
+  document.querySelectorAll('.block-height-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      blockHeightInput.value = (btn as HTMLElement).dataset.height || '';
+      blockHeightInput.dispatchEvent(new Event('input'));
+    });
+  });
+
+  // ====== Script 解碼器 ======
+  const scriptInput = document.getElementById('script-input') as HTMLTextAreaElement;
+  const scriptDecodeBtn = document.getElementById('script-decode-btn') as HTMLButtonElement;
+  const scriptResult = document.getElementById('script-result') as HTMLElement;
+  const scriptError = document.getElementById('script-error') as HTMLElement;
+
+  // Bitcoin Script opcodes
+  const OPCODES: Record<number, string> = {
+    0x00: 'OP_0', 0x4c: 'OP_PUSHDATA1', 0x4d: 'OP_PUSHDATA2', 0x4e: 'OP_PUSHDATA4',
+    0x4f: 'OP_1NEGATE', 0x50: 'OP_RESERVED', 0x51: 'OP_1', 0x52: 'OP_2', 0x53: 'OP_3',
+    0x54: 'OP_4', 0x55: 'OP_5', 0x56: 'OP_6', 0x57: 'OP_7', 0x58: 'OP_8', 0x59: 'OP_9',
+    0x5a: 'OP_10', 0x5b: 'OP_11', 0x5c: 'OP_12', 0x5d: 'OP_13', 0x5e: 'OP_14', 0x5f: 'OP_15', 0x60: 'OP_16',
+    0x61: 'OP_NOP', 0x62: 'OP_VER', 0x63: 'OP_IF', 0x64: 'OP_NOTIF', 0x65: 'OP_VERIF',
+    0x66: 'OP_VERNOTIF', 0x67: 'OP_ELSE', 0x68: 'OP_ENDIF', 0x69: 'OP_VERIFY', 0x6a: 'OP_RETURN',
+    0x6b: 'OP_TOALTSTACK', 0x6c: 'OP_FROMALTSTACK', 0x6d: 'OP_2DROP', 0x6e: 'OP_2DUP',
+    0x6f: 'OP_3DUP', 0x70: 'OP_2OVER', 0x71: 'OP_2ROT', 0x72: 'OP_2SWAP', 0x73: 'OP_IFDUP',
+    0x74: 'OP_DEPTH', 0x75: 'OP_DROP', 0x76: 'OP_DUP', 0x77: 'OP_NIP', 0x78: 'OP_OVER',
+    0x79: 'OP_PICK', 0x7a: 'OP_ROLL', 0x7b: 'OP_ROT', 0x7c: 'OP_SWAP', 0x7d: 'OP_TUCK',
+    0x7e: 'OP_CAT', 0x7f: 'OP_SUBSTR', 0x80: 'OP_LEFT', 0x81: 'OP_RIGHT', 0x82: 'OP_SIZE',
+    0x83: 'OP_INVERT', 0x84: 'OP_AND', 0x85: 'OP_OR', 0x86: 'OP_XOR', 0x87: 'OP_EQUAL',
+    0x88: 'OP_EQUALVERIFY', 0x89: 'OP_RESERVED1', 0x8a: 'OP_RESERVED2',
+    0x8b: 'OP_1ADD', 0x8c: 'OP_1SUB', 0x8d: 'OP_2MUL', 0x8e: 'OP_2DIV', 0x8f: 'OP_NEGATE',
+    0x90: 'OP_ABS', 0x91: 'OP_NOT', 0x92: 'OP_0NOTEQUAL', 0x93: 'OP_ADD', 0x94: 'OP_SUB',
+    0x95: 'OP_MUL', 0x96: 'OP_DIV', 0x97: 'OP_MOD', 0x98: 'OP_LSHIFT', 0x99: 'OP_RSHIFT',
+    0x9a: 'OP_BOOLAND', 0x9b: 'OP_BOOLOR', 0x9c: 'OP_NUMEQUAL', 0x9d: 'OP_NUMEQUALVERIFY',
+    0x9e: 'OP_NUMNOTEQUAL', 0x9f: 'OP_LESSTHAN', 0xa0: 'OP_GREATERTHAN',
+    0xa1: 'OP_LESSTHANOREQUAL', 0xa2: 'OP_GREATERTHANOREQUAL', 0xa3: 'OP_MIN', 0xa4: 'OP_MAX',
+    0xa5: 'OP_WITHIN', 0xa6: 'OP_RIPEMD160', 0xa7: 'OP_SHA1', 0xa8: 'OP_SHA256',
+    0xa9: 'OP_HASH160', 0xaa: 'OP_HASH256', 0xab: 'OP_CODESEPARATOR', 0xac: 'OP_CHECKSIG',
+    0xad: 'OP_CHECKSIGVERIFY', 0xae: 'OP_CHECKMULTISIG', 0xaf: 'OP_CHECKMULTISIGVERIFY',
+    0xb0: 'OP_NOP1', 0xb1: 'OP_CHECKLOCKTIMEVERIFY', 0xb2: 'OP_CHECKSEQUENCEVERIFY',
+    0xb3: 'OP_NOP4', 0xb4: 'OP_NOP5', 0xb5: 'OP_NOP6', 0xb6: 'OP_NOP7', 0xb7: 'OP_NOP8',
+    0xb8: 'OP_NOP9', 0xb9: 'OP_NOP10', 0xba: 'OP_CHECKSIGADD',
+  };
+
+  interface ScriptElement {
+    type: 'opcode' | 'data';
+    opcode?: number;
+    opcodeName?: string;
+    data?: string;
+    description?: string;
+  }
+
+  function decodeScript(hexStr: string): { elements: ScriptElement[]; scriptType: string; asm: string } {
+    const hex = hexStr.replace(/\s/g, '').toLowerCase();
+    if (!/^[0-9a-f]*$/.test(hex) || hex.length % 2 !== 0) {
+      throw new Error('無效的 hex 格式');
+    }
+
+    const bytes = hexToBytes(hex);
+    const elements: ScriptElement[] = [];
+    let offset = 0;
+
+    while (offset < bytes.length) {
+      const opcode = bytes[offset];
+      offset++;
+
+      if (opcode === 0) {
+        elements.push({ type: 'opcode', opcode: 0, opcodeName: 'OP_0', description: '將空字節陣列壓入堆疊' });
+      } else if (opcode >= 1 && opcode <= 75) {
+        // Push data directly
+        const data = bytesToHex(bytes.slice(offset, offset + opcode));
+        offset += opcode;
+        elements.push({ type: 'data', data, description: `壓入 ${opcode} 字節資料` });
+      } else if (opcode === 0x4c) {
+        // OP_PUSHDATA1
+        const len = bytes[offset];
+        offset++;
+        const data = bytesToHex(bytes.slice(offset, offset + len));
+        offset += len;
+        elements.push({ type: 'opcode', opcode: 0x4c, opcodeName: 'OP_PUSHDATA1', description: `讀取 1 字節長度` });
+        elements.push({ type: 'data', data, description: `壓入 ${len} 字節資料` });
+      } else if (opcode === 0x4d) {
+        // OP_PUSHDATA2
+        const len = bytes[offset] | (bytes[offset + 1] << 8);
+        offset += 2;
+        const data = bytesToHex(bytes.slice(offset, offset + len));
+        offset += len;
+        elements.push({ type: 'opcode', opcode: 0x4d, opcodeName: 'OP_PUSHDATA2', description: `讀取 2 字節長度` });
+        elements.push({ type: 'data', data, description: `壓入 ${len} 字節資料` });
+      } else if (opcode === 0x4e) {
+        // OP_PUSHDATA4
+        const len = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
+        offset += 4;
+        const data = bytesToHex(bytes.slice(offset, offset + len));
+        offset += len;
+        elements.push({ type: 'opcode', opcode: 0x4e, opcodeName: 'OP_PUSHDATA4', description: `讀取 4 字節長度` });
+        elements.push({ type: 'data', data, description: `壓入 ${len} 字節資料` });
+      } else {
+        const opcodeName = OPCODES[opcode] || `OP_UNKNOWN_${opcode.toString(16)}`;
+        const descriptions: Record<string, string> = {
+          'OP_DUP': '複製堆疊頂元素',
+          'OP_HASH160': '對頂元素做 SHA256 後 RIPEMD160',
+          'OP_EQUALVERIFY': '比較並驗證相等',
+          'OP_CHECKSIG': '驗證簽名',
+          'OP_EQUAL': '檢查兩元素是否相等',
+          'OP_RETURN': '標記輸出為不可花費',
+          'OP_CHECKMULTISIG': '驗證多重簽名',
+          'OP_CHECKLOCKTIMEVERIFY': '檢查時間鎖',
+          'OP_CHECKSEQUENCEVERIFY': '檢查相對時間鎖',
+        };
+        elements.push({
+          type: 'opcode',
+          opcode,
+          opcodeName,
+          description: descriptions[opcodeName] || ''
+        });
+      }
+    }
+
+    // Detect script type
+    const scriptType = detectScriptType(bytes);
+
+    // Generate ASM
+    const asm = elements.map(el => {
+      if (el.type === 'opcode') return el.opcodeName;
+      return el.data;
+    }).join(' ');
+
+    return { elements, scriptType, asm };
+  }
+
+  function detectScriptType(bytes: Uint8Array): string {
+    const len = bytes.length;
+
+    // P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
+    if (len === 25 && bytes[0] === 0x76 && bytes[1] === 0xa9 && bytes[2] === 0x14 &&
+        bytes[23] === 0x88 && bytes[24] === 0xac) {
+      return 'P2PKH (Pay-to-Public-Key-Hash)';
+    }
+
+    // P2SH: OP_HASH160 <20 bytes> OP_EQUAL
+    if (len === 23 && bytes[0] === 0xa9 && bytes[1] === 0x14 && bytes[22] === 0x87) {
+      return 'P2SH (Pay-to-Script-Hash)';
+    }
+
+    // P2WPKH: OP_0 <20 bytes>
+    if (len === 22 && bytes[0] === 0x00 && bytes[1] === 0x14) {
+      return 'P2WPKH (Pay-to-Witness-Public-Key-Hash)';
+    }
+
+    // P2WSH: OP_0 <32 bytes>
+    if (len === 34 && bytes[0] === 0x00 && bytes[1] === 0x20) {
+      return 'P2WSH (Pay-to-Witness-Script-Hash)';
+    }
+
+    // P2TR: OP_1 <32 bytes>
+    if (len === 34 && bytes[0] === 0x51 && bytes[1] === 0x20) {
+      return 'P2TR (Pay-to-Taproot)';
+    }
+
+    // OP_RETURN
+    if (bytes[0] === 0x6a) {
+      return 'OP_RETURN (空投/資料)';
+    }
+
+    // P2PK: <33 or 65 bytes pubkey> OP_CHECKSIG
+    if ((len === 35 || len === 67) && bytes[len - 1] === 0xac) {
+      return 'P2PK (Pay-to-Public-Key)';
+    }
+
+    // Multisig: OP_m <pubkeys> OP_n OP_CHECKMULTISIG
+    if (bytes[len - 1] === 0xae && bytes[0] >= 0x51 && bytes[0] <= 0x60) {
+      const m = bytes[0] - 0x50;
+      const n = bytes[len - 2] - 0x50;
+      if (n >= 1 && n <= 16 && m >= 1 && m <= n) {
+        return `${m}-of-${n} 多簽 (Multisig)`;
+      }
+    }
+
+    return '自定義 Script';
+  }
+
+  scriptDecodeBtn?.addEventListener('click', () => {
+    const hex = scriptInput.value.trim();
+    if (!hex) return;
+
+    try {
+      const result = decodeScript(hex);
+
+      (document.getElementById('script-type') as HTMLElement).textContent = result.scriptType;
+
+      // Display opcodes
+      const opcodesDiv = document.getElementById('script-opcodes') as HTMLElement;
+      opcodesDiv.innerHTML = result.elements.map((el, i) => {
+        if (el.type === 'opcode') {
+          return `
+            <div class="flex items-start gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
+              <span class="text-bitcoin-500">${i}:</span>
+              <span class="text-[var(--text-primary)] font-semibold">${el.opcodeName}</span>
+              ${el.description ? `<span class="text-[var(--text-tertiary)] text-xs ml-auto">${el.description}</span>` : ''}
+            </div>
+          `;
+        } else {
+          const truncated = el.data!.length > 40 ? el.data!.substring(0, 40) + '...' : el.data;
+          return `
+            <div class="flex items-start gap-2 p-2 rounded-lg bg-blue-500/10">
+              <span class="text-blue-500">${i}:</span>
+              <span class="text-[var(--text-primary)] break-all">${truncated}</span>
+              <span class="text-[var(--text-tertiary)] text-xs ml-auto">${el.data!.length / 2} bytes</span>
+            </div>
+          `;
+        }
+      }).join('');
+
+      (document.getElementById('script-asm') as HTMLElement).textContent = result.asm;
+
+      scriptResult.classList.remove('hidden');
+      scriptError.classList.add('hidden');
+    } catch (err) {
+      (document.getElementById('script-error-message') as HTMLElement).textContent = `解析錯誤: ${(err as Error).message}`;
+      scriptError.classList.remove('hidden');
+      scriptResult.classList.add('hidden');
+    }
+  });
+
+  // Example script buttons
+  document.querySelectorAll('.script-example').forEach(btn => {
+    btn.addEventListener('click', () => {
+      scriptInput.value = (btn as HTMLElement).dataset.script || '';
+    });
   });
 </script>

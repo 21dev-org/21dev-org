@@ -1,6 +1,7 @@
 ---
 term: 支付通道
 termEn: Payment Channel
+short: 閃電網路的基本構建塊，允許兩方在鏈下進行無限次交易。只需開啟和關閉時上鏈，大幅節省手續費。
 aliases: [通道, Channel]
 category: lightning
 difficulty: intermediate

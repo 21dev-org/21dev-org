@@ -1,5 +1,6 @@
 ---
 question: 比特幣交易需要多久確認？
+short: 平均約 10 分鐘 1 確認，大額交易建議等待 6 確認（約 1 小時）。需要即時確認可用閃電網路。
 category: transaction
 order: 3
 tags: [確認, 區塊, 交易時間]

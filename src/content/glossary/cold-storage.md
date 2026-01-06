@@ -1,6 +1,7 @@
 ---
 term: 冷儲存
 termEn: Cold Storage
+short: 將私鑰保存在永不連網的設備或媒介上，如硬體錢包、紙錢包或鋼板備份。最大程度防止駭客攻擊。
 aliases: [冷錢包, Cold Wallet]
 category: wallet
 difficulty: beginner

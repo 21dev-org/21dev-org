@@ -1,5 +1,6 @@
 ---
 question: 比特幣交易手續費怎麼計算？
+short: 按交易大小（vBytes）計算，與金額無關。使用 SegWit 地址和避免碎片化 UTXO 可省錢。
 category: transaction
 order: 2
 tags: [手續費, 交易, vByte]

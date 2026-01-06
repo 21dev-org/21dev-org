@@ -1,6 +1,7 @@
 ---
 term: 主網
 termEn: Mainnet
+short: 比特幣的正式生產網路，所有真實比特幣交易在此進行。與測試網不同，主網比特幣具有實際經濟價值。
 aliases: [主網路, 正式網路]
 category: protocol
 difficulty: beginner

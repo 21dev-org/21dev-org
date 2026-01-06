@@ -1,5 +1,6 @@
 ---
 question: 如何購買比特幣？
+short: 可透過交易所、P2P 平台、比特幣 ATM 購買。記得將 BTC 轉移到自己控制私鑰的錢包。
 category: getting-started
 order: 2
 tags: [入門, 購買]

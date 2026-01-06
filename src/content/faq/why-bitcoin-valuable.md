@@ -1,5 +1,6 @@
 ---
 question: 比特幣為什麼有價值？
+short: 結合稀缺性（2100 萬枚上限）、實用性（24/7 全球轉帳）和去中心化（無法被關閉），是數位時代的稀缺資產。
 category: getting-started
 order: 2
 tags: [價值, 稀缺性, 入門]

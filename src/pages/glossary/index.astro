@@ -4,10 +4,10 @@ import Breadcrumb from '@/components/ui/Breadcrumb.astro';
 import Tag from '@/components/ui/Tag.astro';
 import { getCollection } from 'astro:content';
 
-// 取得所有術語並按中文排序
+// 取得所有術語並按英文排序
 const glossaryEntries = await getCollection('glossary');
 const sortedEntries = glossaryEntries.sort((a, b) =>
-  a.data.term.localeCompare(b.data.term, 'zh-TW')
+  a.data.termEn.localeCompare(b.data.termEn)
 );
 
 // 分類標籤
@@ -23,16 +23,28 @@ const categoryLabels: Record<string, string> = {
   development: '開發',
 };
 
-const categoryColors: Record<string, string> = {
-  basic: 'bitcoin',
-  protocol: 'lightning',
-  cryptography: 'nostr',
-  transaction: 'success',
-  mining: 'warning',
-  wallet: 'bitcoin',
-  lightning: 'lightning',
-  security: 'nostr',
-  development: 'default',
+const categoryIcons: Record<string, string> = {
+  basic: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>`,
+  protocol: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>`,
+  cryptography: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>`,
+  transaction: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>`,
+  mining: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`,
+  wallet: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>`,
+  lightning: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>`,
+  security: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>`,
+  development: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>`,
+};
+
+const difficultyLabels: Record<string, string> = {
+  beginner: '入門',
+  intermediate: '進階',
+  advanced: '高級',
+};
+
+const difficultyColors: Record<string, string> = {
+  beginner: 'bg-green-500/10 text-green-600 dark:text-green-400',
+  intermediate: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+  advanced: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
 // 按分類分組
@@ -46,7 +58,7 @@ const entriesByCategory = sortedEntries.reduce(
   {} as Record<string, typeof sortedEntries>
 );
 
-// 按首字母分組（用於字母索引）
+// 按首字母分組
 const entriesByLetter = sortedEntries.reduce(
   (acc, entry) => {
     const firstChar = entry.data.termEn[0].toUpperCase();
@@ -57,36 +69,70 @@ const entriesByLetter = sortedEntries.reduce(
   {} as Record<string, typeof sortedEntries>
 );
 
+// 統計
+const stats = {
+  total: sortedEntries.length,
+  categories: Object.keys(entriesByCategory).length,
+  beginner: sortedEntries.filter((e) => e.data.difficulty === 'beginner').length,
+  intermediate: sortedEntries.filter((e) => e.data.difficulty === 'intermediate').length,
+  advanced: sortedEntries.filter((e) => e.data.difficulty === 'advanced').length,
+};
+
 const letters = Object.keys(entriesByLetter).sort();
+const categories = Object.keys(entriesByCategory).sort((a, b) =>
+  (entriesByCategory[b]?.length || 0) - (entriesByCategory[a]?.length || 0)
+);
 ---
 
 <PageLayout
   title="術語詞典"
-  description="比特幣、閃電網路、加密貨幣相關專有名詞的中文解釋，從基礎概念到進階技術。"
+  description="比特幣、閃電網路、加密貨幣相關專有名詞的中文解釋，從基礎概念到進階技術。收錄超過 50 個專業術語。"
 >
+  <!-- Hero Section -->
   <section
     class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
   >
     <div class="container-wide">
       <Breadcrumb items={[{ label: '術語詞典' }]} />
-      <div class="max-w-3xl">
-        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">術語詞典</h1>
-        <p class="text-xl text-[var(--text-secondary)]">
-          比特幣世界的專有名詞解釋，幫助你理解技術文件和社群討論。目前收錄 {sortedEntries.length} 個術語。
-        </p>
-      </div>
 
-      <!-- 搜尋框 -->
-      <div class="mt-8 max-w-md">
-        <div class="relative">
+      <div class="max-w-4xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          術語詞典
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)] mb-8">
+          比特幣世界的專有名詞解釋，幫助你理解技術文件和社群討論。
+        </p>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="text-3xl font-bold text-bitcoin-500">{stats.total}</div>
+            <div class="text-sm text-[var(--text-secondary)]">術語總數</div>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="text-3xl font-bold text-green-500">{stats.beginner}</div>
+            <div class="text-sm text-[var(--text-secondary)]">入門術語</div>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="text-3xl font-bold text-yellow-500">{stats.intermediate}</div>
+            <div class="text-sm text-[var(--text-secondary)]">進階術語</div>
+          </div>
+          <div class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+            <div class="text-3xl font-bold text-red-500">{stats.advanced}</div>
+            <div class="text-sm text-[var(--text-secondary)]">高級術語</div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="relative max-w-lg">
           <input
             type="text"
             id="glossary-search"
-            placeholder="搜尋術語..."
-            class="w-full px-4 py-3 pl-10 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            placeholder="搜尋術語（中文、英文或別名）..."
+            class="w-full px-4 py-3 pl-12 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
           />
           <svg
-            class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]"
+            class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -97,16 +143,43 @@ const letters = Object.keys(entriesByLetter).sort();
               stroke-linejoin="round"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
+          <span id="search-count" class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)] hidden">
+          </span>
         </div>
       </div>
 
-      <!-- 字母索引 -->
-      <div class="mt-6 flex flex-wrap gap-2">
+      <!-- Category Filter -->
+      <div class="mt-8">
+        <div class="flex flex-wrap gap-2">
+          <button
+            class="category-filter px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-bitcoin-500 text-white"
+            data-category="all"
+          >
+            全部
+          </button>
+          {
+            categories.map((cat) => (
+              <button
+                class="category-filter flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:border-bitcoin-500/50 hover:text-bitcoin-500"
+                data-category={cat}
+              >
+                <span set:html={categoryIcons[cat]} />
+                {categoryLabels[cat]}
+                <span class="text-xs opacity-60">({entriesByCategory[cat]?.length || 0})</span>
+              </button>
+            ))
+          }
+        </div>
+      </div>
+
+      <!-- Letter Index -->
+      <div class="mt-6 flex flex-wrap gap-1.5">
         {
           letters.map((letter) => (
             <a
               href={`#letter-${letter}`}
-              class="w-8 h-8 flex items-center justify-center rounded bg-[var(--surface-elevated)] border border-[var(--border-default)] text-sm font-mono hover:border-bitcoin-500 hover:text-bitcoin-500 transition-colors"
+              class="letter-link w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-default)] text-sm font-mono hover:border-bitcoin-500 hover:text-bitcoin-500 transition-colors"
+              data-letter={letter}
             >
               {letter}
             </a>
@@ -116,53 +189,63 @@ const letters = Object.keys(entriesByLetter).sort();
     </div>
   </section>
 
-  <!-- 術語列表 -->
+  <!-- Terms List -->
   <section class="py-16 md:py-24">
     <div class="container-wide">
-      <div class="grid lg:grid-cols-[1fr,280px] gap-12">
-        <!-- 主內容 -->
-        <div>
+      <div class="grid lg:grid-cols-[1fr,300px] gap-12">
+        <!-- Main Content -->
+        <div id="terms-container">
           {
             letters.map((letter) => (
-              <div id={`letter-${letter}`} class="mb-12 scroll-mt-24">
-                <h2 class="text-3xl font-bold text-bitcoin-500 mb-6 pb-2 border-b border-[var(--border-default)]">
-                  {letter}
+              <div id={`letter-${letter}`} class="letter-section mb-12 scroll-mt-24" data-letter={letter}>
+                <h2 class="text-2xl font-bold text-bitcoin-500 mb-6 pb-2 border-b border-[var(--border-default)] flex items-center gap-3">
+                  <span class="w-10 h-10 rounded-lg bg-bitcoin-500/10 flex items-center justify-center">
+                    {letter}
+                  </span>
+                  <span class="text-sm font-normal text-[var(--text-tertiary)]">
+                    {entriesByLetter[letter].length} 個術語
+                  </span>
                 </h2>
-                <div class="space-y-4">
+                <div class="grid gap-3 sm:grid-cols-2">
                   {entriesByLetter[letter].map((entry) => (
                     <a
                       href={`/glossary/${entry.slug}`}
-                      class="glossary-item block p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hover:border-bitcoin-500/50 transition-all group"
+                      class="glossary-item block p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hover:border-bitcoin-500/50 hover:shadow-lg transition-all group"
                       data-term={entry.data.term.toLowerCase()}
                       data-term-en={entry.data.termEn.toLowerCase()}
                       data-aliases={entry.data.aliases?.join(' ').toLowerCase() || ''}
+                      data-category={entry.data.category}
+                      data-difficulty={entry.data.difficulty}
                     >
-                      <div class="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 class="text-lg font-semibold text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors">
+                      <div class="flex items-start justify-between gap-3 mb-2">
+                        <div class="flex-1 min-w-0">
+                          <h3 class="font-semibold text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors">
                             {entry.data.term}
                           </h3>
                           <p class="text-sm text-[var(--text-tertiary)] font-mono">
                             {entry.data.termEn}
-                            {entry.data.aliases && entry.data.aliases.length > 0 && (
-                              <span class="ml-2">({entry.data.aliases.join(', ')})</span>
-                            )}
                           </p>
                         </div>
-                        <Tag
-                          variant={
-                            categoryColors[entry.data.category] as
-                              | 'bitcoin'
-                              | 'lightning'
-                              | 'nostr'
-                              | 'success'
-                              | 'warning'
-                              | 'default'
-                          }
-                          size="sm"
+                        <span
+                          class:list={[
+                            'shrink-0 px-2 py-0.5 rounded text-xs font-medium',
+                            difficultyColors[entry.data.difficulty],
+                          ]}
                         >
-                          {categoryLabels[entry.data.category]}
-                        </Tag>
+                          {difficultyLabels[entry.data.difficulty]}
+                        </span>
+                      </div>
+                      <p class="text-sm text-[var(--text-secondary)] mb-3 line-clamp-2">
+                        {entry.data.short}
+                      </p>
+                      <div class="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                        <span class="flex items-center gap-1" set:html={categoryIcons[entry.data.category]} />
+                        <span>{categoryLabels[entry.data.category]}</span>
+                        {entry.data.aliases && entry.data.aliases.length > 0 && (
+                          <span class="ml-auto truncate max-w-[120px]">
+                            又稱：{entry.data.aliases[0]}
+                          </span>
+                        )}
                       </div>
                     </a>
                   ))}
@@ -170,39 +253,86 @@ const letters = Object.keys(entriesByLetter).sort();
               </div>
             ))
           }
+
+          <!-- No Results -->
+          <div id="no-results" class="hidden text-center py-12">
+            <svg class="w-16 h-16 mx-auto text-[var(--text-tertiary)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">找不到符合的術語</h3>
+            <p class="text-[var(--text-secondary)]">
+              試試其他關鍵字，或
+              <a href="https://github.com/21dev-org/21dev-org/issues/new" class="text-bitcoin-500 hover:underline">
+                建議新增術語
+              </a>
+            </p>
+          </div>
         </div>
 
-        <!-- 側邊欄 -->
+        <!-- Sidebar -->
         <aside class="hidden lg:block">
           <div class="sticky top-24 space-y-6">
-            <!-- 分類統計 -->
-            <div
-              class="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
-            >
-              <h3 class="font-semibold text-[var(--text-primary)] mb-4">分類統計</h3>
-              <div class="space-y-2">
+            <!-- Quick Stats -->
+            <div class="p-5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+              <h3 class="font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-bitcoin-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                分類統計
+              </h3>
+              <div class="space-y-3">
                 {
-                  Object.entries(entriesByCategory).map(([cat, entries]) => (
-                    <div class="flex items-center justify-between text-sm">
-                      <span class="text-[var(--text-secondary)]">{categoryLabels[cat]}</span>
-                      <span class="font-mono text-bitcoin-500">{entries.length}</span>
-                    </div>
+                  categories.map((cat) => (
+                    <button
+                      class="sidebar-category w-full flex items-center justify-between text-sm p-2 rounded-lg hover:bg-bitcoin-500/5 transition-colors"
+                      data-category={cat}
+                    >
+                      <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                        <span set:html={categoryIcons[cat]} />
+                        {categoryLabels[cat]}
+                      </span>
+                      <span class="font-mono text-bitcoin-500 font-medium">
+                        {entriesByCategory[cat]?.length || 0}
+                      </span>
+                    </button>
                   ))
                 }
               </div>
             </div>
 
-            <!-- 貢獻提示 -->
-            <div class="p-4 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
+            <!-- Difficulty Guide -->
+            <div class="p-5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]">
+              <h3 class="font-semibold text-[var(--text-primary)] mb-4">難度說明</h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex items-center gap-3">
+                  <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400 font-medium">入門</span>
+                  <span class="text-[var(--text-secondary)]">適合初學者</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-medium">進階</span>
+                  <span class="text-[var(--text-secondary)]">需要基礎知識</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400 font-medium">高級</span>
+                  <span class="text-[var(--text-secondary)]">技術深入內容</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contribute -->
+            <div class="p-5 rounded-xl bg-bitcoin-500/5 border border-bitcoin-500/20">
               <h3 class="font-semibold text-[var(--text-primary)] mb-2">幫助改進詞典</h3>
-              <p class="text-sm text-[var(--text-secondary)] mb-3">
-                發現缺少的術語或錯誤？歡迎提交貢獻。
+              <p class="text-sm text-[var(--text-secondary)] mb-4">
+                發現缺少的術語或錯誤？歡迎在 GitHub 提交貢獻。
               </p>
               <a
                 href="https://github.com/21dev-org/21dev-org"
-                class="text-sm text-bitcoin-500 hover:underline"
+                class="inline-flex items-center gap-2 text-sm text-bitcoin-500 hover:underline font-medium"
               >
-                在 GitHub 上貢獻 →
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                在 GitHub 上貢獻
               </a>
             </div>
           </div>
@@ -213,38 +343,111 @@ const letters = Object.keys(entriesByLetter).sort();
 </PageLayout>
 
 <script>
-  const searchInput = document.getElementById('glossary-search') as HTMLInputElement;
-  const glossaryItems = document.querySelectorAll('.glossary-item');
-  const letterSections = document.querySelectorAll('[id^="letter-"]');
+  function initGlossarySearch() {
+    const searchInput = document.getElementById('glossary-search') as HTMLInputElement;
+    const searchCount = document.getElementById('search-count');
+    const glossaryItems = document.querySelectorAll('.glossary-item');
+    const letterSections = document.querySelectorAll('.letter-section');
+    const letterLinks = document.querySelectorAll('.letter-link');
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    const sidebarCategories = document.querySelectorAll('.sidebar-category');
+    const noResults = document.getElementById('no-results');
 
-  searchInput?.addEventListener('input', (e) => {
-    const query = (e.target as HTMLInputElement).value.toLowerCase().trim();
+    let currentCategory = 'all';
+    let currentQuery = '';
 
-    if (!query) {
-      // 顯示所有項目和字母區塊
+    function filterItems() {
+      let visibleCount = 0;
+
       glossaryItems.forEach((item) => {
-        (item as HTMLElement).style.display = '';
+        const term = item.getAttribute('data-term') || '';
+        const termEn = item.getAttribute('data-term-en') || '';
+        const aliases = item.getAttribute('data-aliases') || '';
+        const category = item.getAttribute('data-category') || '';
+
+        const matchesSearch = !currentQuery ||
+          term.includes(currentQuery) ||
+          termEn.includes(currentQuery) ||
+          aliases.includes(currentQuery);
+
+        const matchesCategory = currentCategory === 'all' || category === currentCategory;
+
+        const isVisible = matchesSearch && matchesCategory;
+        (item as HTMLElement).style.display = isVisible ? '' : 'none';
+        if (isVisible) visibleCount++;
       });
+
+      // Update letter sections visibility
       letterSections.forEach((section) => {
-        (section as HTMLElement).style.display = '';
+        const visibleItems = section.querySelectorAll('.glossary-item:not([style*="display: none"])');
+        const isVisible = visibleItems.length > 0;
+        (section as HTMLElement).style.display = isVisible ? '' : 'none';
+
+        // Update letter links
+        const letter = section.getAttribute('data-letter');
+        const letterLink = document.querySelector(`.letter-link[data-letter="${letter}"]`);
+        if (letterLink) {
+          letterLink.classList.toggle('opacity-30', !isVisible);
+          letterLink.classList.toggle('pointer-events-none', !isVisible);
+        }
       });
-      return;
+
+      // Show/hide no results message
+      if (noResults) {
+        noResults.classList.toggle('hidden', visibleCount > 0);
+      }
+
+      // Update search count
+      if (searchCount) {
+        if (currentQuery || currentCategory !== 'all') {
+          searchCount.textContent = `${visibleCount} 個結果`;
+          searchCount.classList.remove('hidden');
+        } else {
+          searchCount.classList.add('hidden');
+        }
+      }
     }
 
-    // 過濾項目
-    glossaryItems.forEach((item) => {
-      const term = item.getAttribute('data-term') || '';
-      const termEn = item.getAttribute('data-term-en') || '';
-      const aliases = item.getAttribute('data-aliases') || '';
-
-      const matches = term.includes(query) || termEn.includes(query) || aliases.includes(query);
-      (item as HTMLElement).style.display = matches ? '' : 'none';
+    // Search input handler
+    searchInput?.addEventListener('input', (e) => {
+      currentQuery = (e.target as HTMLInputElement).value.toLowerCase().trim();
+      filterItems();
     });
 
-    // 隱藏沒有可見項目的字母區塊
-    letterSections.forEach((section) => {
-      const visibleItems = section.querySelectorAll('.glossary-item:not([style*="display: none"])');
-      (section as HTMLElement).style.display = visibleItems.length > 0 ? '' : 'none';
+    // Category filter handlers
+    categoryFilters.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentCategory = btn.getAttribute('data-category') || 'all';
+
+        // Update button styles
+        categoryFilters.forEach((b) => {
+          if (b.getAttribute('data-category') === currentCategory) {
+            b.classList.remove('bg-[var(--surface-elevated)]', 'border', 'border-[var(--border-default)]', 'text-[var(--text-secondary)]');
+            b.classList.add('bg-bitcoin-500', 'text-white');
+          } else {
+            b.classList.add('bg-[var(--surface-elevated)]', 'border', 'border-[var(--border-default)]', 'text-[var(--text-secondary)]');
+            b.classList.remove('bg-bitcoin-500', 'text-white');
+          }
+        });
+
+        filterItems();
+      });
     });
-  });
+
+    // Sidebar category handlers
+    sidebarCategories.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cat = btn.getAttribute('data-category') || 'all';
+        // Trigger the main category filter
+        const mainFilter = document.querySelector(`.category-filter[data-category="${cat}"]`) as HTMLElement;
+        mainFilter?.click();
+        // Scroll to top of terms
+        document.getElementById('terms-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  // Initialize on page load
+  initGlossarySearch();
+  document.addEventListener('astro:after-swap', initGlossarySearch);
 </script>

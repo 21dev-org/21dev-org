@@ -1,6 +1,7 @@
 ---
 term: Nonce
 termEn: Nonce
+short: 挖礦時不斷改變以尋找有效雜湊的數值
 aliases: [隨機數]
 category: mining
 difficulty: intermediate

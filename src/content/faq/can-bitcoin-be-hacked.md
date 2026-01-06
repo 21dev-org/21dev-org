@@ -1,5 +1,6 @@
 ---
 question: 比特幣會被駭客入侵嗎？
+short: 比特幣協議本身從未被攻破。風險在於交易所、個人錢包和操作失誤，使用硬體錢包最安全。
 category: security
 order: 3
 tags: [安全, 駭客, 密碼學]

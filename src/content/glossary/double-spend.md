@@ -1,6 +1,7 @@
 ---
 term: 雙花
 termEn: Double Spend
+short: 同一筆比特幣被花費兩次的攻擊嘗試。比特幣透過工作量證明和確認機制解決此數位貨幣核心問題。
 aliases: [雙重支付, Double Spending]
 category: security
 difficulty: beginner

@@ -1,5 +1,6 @@
 ---
 question: 比特幣在台灣合法嗎？
+short: 合法。金管會將其定位為「虛擬通貨」，交易所需登記，交易獲利需申報所得稅。
 category: getting-started
 order: 3
 tags: [法規, 合法性, 台灣]

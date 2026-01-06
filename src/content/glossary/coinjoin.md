@@ -1,6 +1,7 @@
 ---
 term: CoinJoin
 termEn: CoinJoin
+short: 隱私增強技術，讓多個用戶將交易合併成單一交易，使外部觀察者難以判斷輸入和輸出的對應關係。
 aliases: [混幣]
 category: security
 difficulty: advanced

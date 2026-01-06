@@ -1,5 +1,6 @@
 ---
 question: 閃電網路的手續費是多少？
+short: 極低！發送 10,000 sats 只需約 1-10 sats 手續費，讓微支付成為可能。
 category: lightning
 order: 3
 tags: [閃電網路, 手續費, 費用]

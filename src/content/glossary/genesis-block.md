@@ -1,6 +1,7 @@
 ---
 term: 創世區塊
 termEn: Genesis Block
+short: 比特幣區塊鏈的第一個區塊
 aliases: [區塊 0, Block 0]
 category: protocol
 difficulty: beginner

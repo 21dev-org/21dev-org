@@ -1,6 +1,7 @@
 ---
 term: 軟分叉
 termEn: Soft Fork
+short: 向後兼容的協議升級方式，舊版本節點仍能驗證新區塊。收緊共識規則，如 SegWit、Taproot 都是軟分叉。
 aliases: [向後兼容升級]
 category: protocol
 difficulty: intermediate

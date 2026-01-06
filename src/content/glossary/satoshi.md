@@ -1,6 +1,7 @@
 ---
 term: 聰
 termEn: Satoshi
+short: 比特幣的最小單位，1 BTC = 100,000,000 聰。以比特幣創造者中本聰命名，適合用於日常小額交易計價。
 aliases: [sat, sats]
 category: basic
 difficulty: beginner

@@ -1,5 +1,6 @@
 ---
 question: 什麼是比特幣減半？
+short: 每 4 年區塊獎勵減半的機制，從 50 BTC 降到目前的 3.125 BTC。確保總量不超過 2100 萬枚。
 category: technical
 order: 2
 tags: [減半, 供應量, 挖礦]

@@ -1,6 +1,7 @@
 ---
 term: 分叉
 termEn: Fork
+short: 區塊鏈出現分支的情況。軟分叉向後兼容（如 SegWit），硬分叉不兼容可能導致永久分裂（如 Bitcoin Cash）。
 aliases: [分岔]
 category: protocol
 difficulty: intermediate

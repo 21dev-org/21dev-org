@@ -1,6 +1,7 @@
 ---
 term: RBF
 termEn: Replace-By-Fee
+short: 允許發送者通過支付更高手續費來替換未確認交易的機制。可用於加速確認、取消交易或合併交易。
 aliases: [費用替換]
 category: transaction
 difficulty: intermediate

@@ -21,6 +21,7 @@ const glossaryCollection = defineCollection({
   schema: z.object({
     term: z.string(), // 中文術語
     termEn: z.string(), // 英文術語
+    short: z.string(), // 簡短描述（用於列表預覽）
     aliases: z.array(z.string()).optional(), // 別名/縮寫
     category: z.enum([
       'basic', // 基礎概念
@@ -44,6 +45,7 @@ const faqCollection = defineCollection({
   type: 'content',
   schema: z.object({
     question: z.string(),
+    short: z.string().optional(), // 簡短答案摘要
     category: z.enum([
       'getting-started', // 入門問題
       'wallet', // 錢包問題

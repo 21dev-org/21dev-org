@@ -1,6 +1,7 @@
 ---
 term: 共識
 termEn: Consensus
+short: 分散式網路中所有節點對區塊鏈狀態達成一致的過程和規則。比特幣使用最長鏈規則和工作量證明實現。
 aliases: [共識機制, Consensus Mechanism]
 category: protocol
 difficulty: intermediate

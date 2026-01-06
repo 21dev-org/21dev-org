@@ -1,5 +1,6 @@
 ---
 question: 什麼是閃電網路？
+short: 建立在比特幣之上的第二層支付協議，實現毫秒級確認、極低手續費的即時交易，適合日常小額支付。
 category: lightning
 order: 1
 tags: [閃電網路, Layer 2]
