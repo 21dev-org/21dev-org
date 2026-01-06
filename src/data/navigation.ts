@@ -161,6 +161,43 @@ export const navigation: MegaMenuItem[] = [
       },
     ],
   },
+  {
+    label: '人物',
+    href: '/notable-figures/',
+    featured: {
+      title: '比特幣重要人物',
+      description: '認識塑造比特幣發展的關鍵貢獻者',
+      href: '/notable-figures/',
+    },
+    sections: [
+      {
+        title: '創建者與先驅',
+        links: [
+          { label: 'Satoshi Nakamoto', href: '/notable-figures/satoshi-nakamoto' },
+          { label: 'Hal Finney', href: '/notable-figures/hal-finney' },
+          { label: 'Adam Back', href: '/notable-figures/adam-back' },
+          { label: 'Nick Szabo', href: '/notable-figures/nick-szabo' },
+        ],
+      },
+      {
+        title: '核心開發者',
+        links: [
+          { label: 'Pieter Wuille', href: '/notable-figures/pieter-wuille' },
+          { label: 'Gregory Maxwell', href: '/notable-figures/gregory-maxwell' },
+          { label: 'Gloria Zhao', href: '/notable-figures/gloria-zhao' },
+          { label: '查看全部', href: '/notable-figures/' },
+        ],
+      },
+      {
+        title: '閃電網路',
+        links: [
+          { label: 'Joseph Poon', href: '/notable-figures/joseph-poon' },
+          { label: 'Elizabeth Stark', href: '/notable-figures/elizabeth-stark' },
+          { label: 'Rusty Russell', href: '/notable-figures/rusty-russell' },
+        ],
+      },
+    ],
+  },
 ];
 
 export const simpleNavItems: NavLink[] = [];
@@ -177,6 +214,7 @@ export const footerNav = {
       { label: '學習中心', href: '/learn/' },
       { label: '書籍資源', href: '/books/' },
       { label: '比特幣大事記', href: '/timeline/' },
+      { label: '重要人物', href: '/notable-figures/' },
       { label: 'BIP 討論', href: '/bips/' },
     ],
   },
