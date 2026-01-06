@@ -937,7 +937,8 @@ const tools = [
   }
 
   async function sha256(data: Uint8Array): Promise<Uint8Array> {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data as unknown as BufferSource);
+    const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
     return new Uint8Array(hashBuffer);
   }
 
@@ -958,10 +959,8 @@ const tools = [
 
     // Check for SegWit marker
     let isSegwit = false;
-    let marker = 0, flag = 0;
     if (bytes[offset] === 0x00 && bytes[offset + 1] !== 0x00) {
-      marker = bytes[offset];
-      flag = bytes[offset + 1];
+      // marker = 0x00, flag = 0x01 for SegWit
       isSegwit = true;
       offset += 2;
     }
@@ -1330,7 +1329,7 @@ const tools = [
       encHex.value = hex;
       encBase58.value = hexToBase58(hex);
       encBase64.value = hexToBase64(hex);
-    } catch {}
+    } catch { /* ignore invalid input */ }
     encUpdating = false;
   });
 
