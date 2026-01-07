@@ -140,16 +140,43 @@
 </div>
 
 <script>
-  let pagefind: any = null;
+  interface PagefindResult {
+    url: string;
+    excerpt: string;
+    meta: {
+      title?: string;
+      image?: string;
+    };
+  }
+
+  interface PagefindSearchResult {
+    data: () => Promise<PagefindResult>;
+  }
+
+  interface PagefindSearch {
+    results: PagefindSearchResult[];
+  }
+
+  interface Pagefind {
+    init: () => Promise<void>;
+    search: (query: string) => Promise<PagefindSearch>;
+  }
+
+  interface GroupedResult extends PagefindResult {
+    category: { label: string; color: string } | null;
+  }
+
+  let pagefind: Pagefind | null = null;
   let selectedIndex = -1;
 
-  async function loadPagefind() {
+  async function loadPagefind(): Promise<Pagefind | null> {
     if (pagefind) return pagefind;
     try {
       // Use variable to prevent Vite from analyzing this import
       const pagefindPath = '/pagefind/pagefind.js';
-      pagefind = await import(/* @vite-ignore */ pagefindPath);
-      await pagefind.init();
+      const pf = (await import(/* @vite-ignore */ pagefindPath)) as Pagefind;
+      await pf.init();
+      pagefind = pf;
       return pagefind;
     } catch (e) {
       console.error('Failed to load Pagefind:', e);
@@ -270,8 +297,10 @@
       return null;
     }
 
-    function groupResultsByCategory(results: any[]): Map<string, any[]> {
-      const grouped = new Map<string, any[]>();
+    function groupResultsByCategory(
+      results: PagefindResult[]
+    ): Map<string, GroupedResult[]> {
+      const grouped = new Map<string, GroupedResult[]>();
 
       for (const result of results) {
         const category = getCategoryFromUrl(result.url);
@@ -335,7 +364,9 @@
       saveRecentSearch(query);
 
       // Load result data
-      const resultsData = await Promise.all(search.results.slice(0, 15).map((r: any) => r.data()));
+      const resultsData = await Promise.all(
+        search.results.slice(0, 15).map((r: PagefindSearchResult) => r.data())
+      );
 
       // Group results by category
       const grouped = groupResultsByCategory(resultsData);
