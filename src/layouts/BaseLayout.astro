@@ -112,19 +112,29 @@ const articleSchema = article
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Performance: DNS Prefetch -->
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-    <!-- Google Analytics -->
-    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9RXM7EXV1Q"></script>
+    <!-- Google Analytics (deferred for better performance) -->
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
+      function gtag() { dataLayer.push(arguments); }
+
+      // Defer GA loading until page is idle
+      function loadGA() {
+        var script = document.createElement('script');
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-9RXM7EXV1Q';
+        script.async = true;
+        document.head.appendChild(script);
+
+        gtag('js', new Date());
+        gtag('config', 'G-9RXM7EXV1Q');
       }
-      gtag('js', new Date());
-      gtag('config', 'G-9RXM7EXV1Q');
+
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadGA, { timeout: 3000 });
+      } else {
+        setTimeout(loadGA, 2000);
+      }
 
       // Track page views on View Transitions navigation
       document.addEventListener('astro:after-swap', function () {
@@ -212,21 +222,10 @@ const articleSchema = article
     <meta name="theme-color" content="#F7931A" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1C1917" media="(prefers-color-scheme: dark)" />
 
-    <!-- Fonts: Chinese font from Google Fonts CDN (optimized subsetting), JetBrains Mono self-hosted -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-      />
-    </noscript>
+    <!-- Fonts: Use system fonts for Chinese (faster loading, better native experience) -->
+    <!-- System fonts: PingFang SC (macOS/iOS), Microsoft YaHei (Windows), Noto Sans CJK (Android/Linux) -->
+    <!-- Preload monospace font for code blocks -->
+    <link rel="preload" href="/fonts/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- JSON-LD Structured Data -->
     <script is:inline type="application/ld+json" set:html={JSON.stringify(websiteSchema)} />

@@ -17,6 +17,17 @@ export default defineConfig({
   ],
   output: 'static',
   build: {
-    assets: 'assets'
+    assets: 'assets',
+    inlineStylesheets: 'auto'
+  },
+  vite: {
+    build: {
+      cssCodeSplit: true,
+      rollupOptions: {
+        output: {
+          manualChunks: undefined
+        }
+      }
+    }
   }
 });
