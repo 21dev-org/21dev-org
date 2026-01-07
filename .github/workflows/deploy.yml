@@ -86,6 +86,9 @@ jobs:
     name: Lighthouse CI
     needs: deploy
     runs-on: ubuntu-latest
+    env:
+      # Ensure HTTPS is used for Lighthouse testing
+      SITE_URL: ${{ needs.deploy.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,10 +102,10 @@ jobs:
         uses: treosh/lighthouse-ci-action@v12
         with:
           urls: |
-            ${{ needs.deploy.outputs.page_url }}
-            ${{ needs.deploy.outputs.page_url }}learn/
-            ${{ needs.deploy.outputs.page_url }}tech/
-            ${{ needs.deploy.outputs.page_url }}bips/
+            https://21dev.org/
+            https://21dev.org/learn/
+            https://21dev.org/tech/
+            https://21dev.org/bips/
           configPath: ./lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
