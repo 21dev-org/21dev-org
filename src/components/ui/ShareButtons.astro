@@ -117,29 +117,25 @@ const shareUrl = url || Astro.url.href;
         const url = button.dataset.url;
 
         if (url && tooltip) {
+          // Position tooltip near the button
+          const rect = button.getBoundingClientRect();
+          tooltip.style.left = `${rect.left + rect.width / 2}px`;
+          tooltip.style.top = `${rect.top - 40}px`;
+          tooltip.style.transform = 'translateX(-50%)';
+
           try {
             await navigator.clipboard.writeText(url);
-
-            // Position tooltip near the button
-            const rect = button.getBoundingClientRect();
-            tooltip.style.left = `${rect.left + rect.width / 2}px`;
-            tooltip.style.top = `${rect.top - 40}px`;
-            tooltip.style.transform = 'translateX(-50%)';
-            tooltip.style.opacity = '1';
-
-            // Hide after 2 seconds
-            setTimeout(() => {
-              tooltip.style.opacity = '0';
-            }, 2000);
+            tooltip.textContent = '已複製連結';
           } catch {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = url;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
+            tooltip.textContent = '複製失敗';
           }
+
+          tooltip.style.opacity = '1';
+
+          // Hide after 2 seconds
+          setTimeout(() => {
+            tooltip.style.opacity = '0';
+          }, 2000);
         }
       });
     });
