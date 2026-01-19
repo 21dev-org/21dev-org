@@ -71,6 +71,14 @@ const websiteSchema = {
       url: new URL('/favicon.svg', siteConfig.url).toString(),
     },
   },
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
 };
 
 const articleSchema = article
@@ -211,11 +219,12 @@ const articleSchema = article
     <meta property="og:site_name" content={siteConfig.name} />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content={canonicalURL} />
-    <meta property="twitter:title" content={fullTitle} />
-    <meta property="twitter:description" content={description} />
-    <meta property="twitter:image" content={new URL(ogImage, siteConfig.url)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@21dev_org" />
+    <meta name="twitter:creator" content="@21dev_org" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL(ogImage, siteConfig.url)} />
 
     <!-- No Index (if specified) -->
     {noIndex && <meta name="robots" content="noindex, nofollow" />}

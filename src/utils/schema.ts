@@ -299,3 +299,68 @@ export function generateCourseListSchema(
     })),
   };
 }
+
+// ============================================
+// Person Schema (用於重要人物頁面)
+// ============================================
+
+export interface PersonData {
+  name: string;
+  description: string;
+  url: string;
+  jobTitle?: string;
+  image?: string;
+  sameAs?: string[];
+  knowsAbout?: string[];
+  nationality?: string;
+}
+
+/**
+ * 生成 Person schema
+ * 用於重要人物頁面，提升 Rich Snippets 顯示
+ */
+export function generatePersonSchema(person: PersonData) {
+  const baseUrl = siteConfig.url;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: person.name,
+    description: person.description,
+    url: `${baseUrl}${person.url}`,
+    ...(person.jobTitle && { jobTitle: person.jobTitle }),
+    ...(person.image && { image: person.image }),
+    ...(person.sameAs && person.sameAs.length > 0 && { sameAs: person.sameAs }),
+    ...(person.knowsAbout && person.knowsAbout.length > 0 && { knowsAbout: person.knowsAbout }),
+    ...(person.nationality && { nationality: person.nationality }),
+  };
+}
+
+/**
+ * 生成 ProfilePage schema
+ * 用於人物簡介頁面
+ */
+export function generateProfilePageSchema(person: PersonData) {
+  const baseUrl = siteConfig.url;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    mainEntity: {
+      '@type': 'Person',
+      name: person.name,
+      description: person.description,
+      ...(person.jobTitle && { jobTitle: person.jobTitle }),
+      ...(person.image && { image: person.image }),
+      ...(person.sameAs && person.sameAs.length > 0 && { sameAs: person.sameAs }),
+      ...(person.knowsAbout && person.knowsAbout.length > 0 && { knowsAbout: person.knowsAbout }),
+    },
+    url: `${baseUrl}${person.url}`,
+    inLanguage: 'zh-Hant',
+    isPartOf: {
+      '@type': 'WebSite',
+      name: siteConfig.name,
+      url: baseUrl,
+    },
+  };
+}

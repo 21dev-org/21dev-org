@@ -43,24 +43,18 @@ Object.keys(faqsByCategory).forEach((cat) => {
   faqsByCategory[cat].sort((a, b) => (a.data.order || 99) - (b.data.order || 99));
 });
 
-// 生成 FAQ Schema
+// 生成 FAQ Schema - 使用完整的問答內容
 const faqSchema = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: await Promise.all(
-    faqEntries.map(async (entry) => {
-      const { Content } = await entry.render();
-      // 簡化版：只取問題，答案在頁面內展示
-      return {
-        '@type': 'Question',
-        name: entry.data.question,
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: entry.data.question, // 簡化處理
-        },
-      };
-    })
-  ),
+  mainEntity: faqEntries.map((entry) => ({
+    '@type': 'Question',
+    name: entry.data.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: entry.data.short || entry.data.question,
+    },
+  })),
 };
 
 // 分類順序

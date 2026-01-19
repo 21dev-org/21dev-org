@@ -1,0 +1,71 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Header from '@/components/layout/Header.astro';
+import Footer from '@/components/layout/Footer.astro';
+import { generatePersonSchema, generateProfilePageSchema, generateBreadcrumbSchema } from '@/utils/schema';
+
+interface Props {
+  name: string;
+  title?: string;
+  description: string;
+  ogImage?: string;
+  jobTitle?: string;
+  sameAs?: string[];
+  knowsAbout?: string[];
+}
+
+const {
+  name,
+  title,
+  description,
+  ogImage,
+  jobTitle,
+  sameAs = [],
+  knowsAbout = ['Bitcoin', 'Cryptocurrency', 'Blockchain']
+} = Astro.props;
+
+const pageTitle = title || name;
+const url = Astro.url.pathname;
+
+// Generate Person Schema
+const personSchema = generatePersonSchema({
+  name,
+  description,
+  url,
+  jobTitle,
+  sameAs,
+  knowsAbout,
+});
+
+// Generate ProfilePage Schema
+const profilePageSchema = generateProfilePageSchema({
+  name,
+  description,
+  url,
+  jobTitle,
+  sameAs,
+  knowsAbout,
+});
+
+// Generate Breadcrumb Schema
+const breadcrumbSchema = generateBreadcrumbSchema([
+  { name: '首頁', url: '/' },
+  { name: '重要人物', url: '/notable-figures/' },
+  { name: name },
+]);
+
+const schemas = [personSchema, profilePageSchema, breadcrumbSchema];
+---
+
+<BaseLayout
+  title={pageTitle}
+  description={description}
+  ogImage={ogImage}
+  schemas={schemas}
+>
+  <Header />
+  <main id="main-content">
+    <slot />
+  </main>
+  <Footer />
+</BaseLayout>

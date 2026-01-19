@@ -8,6 +8,7 @@ export interface BIP {
   created?: string;
   summary: string;
   importance?: 'fundamental' | 'critical' | 'important' | 'standard';
+  relatedBips?: number[];
 }
 
 export const bips: BIP[] = [
@@ -21,6 +22,7 @@ export const bips: BIP[] = [
     created: '2011-08-19',
     summary: '定義 Bitcoin Improvement Proposals 的格式、流程與生命週期。',
     importance: 'fundamental',
+    relatedBips: [2],
   },
   {
     number: 2,
@@ -32,6 +34,7 @@ export const bips: BIP[] = [
     created: '2016-02-03',
     summary: '定義 BIP 的提交、審核和實施流程，取代 BIP-1。',
     importance: 'fundamental',
+    relatedBips: [1],
   },
   {
     number: 8,
@@ -105,6 +108,7 @@ export const bips: BIP[] = [
     created: '2012-02-11',
     summary: '定義從單一種子派生多個密鑰對的標準方法，成為現代錢包的基礎。',
     importance: 'critical',
+    relatedBips: [39, 44, 84, 380],
   },
   {
     number: 39,
@@ -116,6 +120,7 @@ export const bips: BIP[] = [
     created: '2013-09-10',
     summary: '定義將隨機數轉換為易記單詞序列的標準，讓使用者可以備份錢包。',
     importance: 'critical',
+    relatedBips: [32, 44],
   },
   {
     number: 44,
@@ -127,6 +132,7 @@ export const bips: BIP[] = [
     created: '2014-04-24',
     summary: '定義 HD 錢包的標準派生路徑結構，支持多幣種和多帳戶。',
     importance: 'critical',
+    relatedBips: [32, 39, 84],
   },
   {
     number: 65,
@@ -138,6 +144,7 @@ export const bips: BIP[] = [
     created: '2014-10-01',
     summary: '引入絕對時間鎖操作碼，允許資金在特定區塊高度或時間之前被鎖定。',
     importance: 'important',
+    relatedBips: [68, 112],
   },
   {
     number: 66,
@@ -148,6 +155,7 @@ export const bips: BIP[] = [
     author: 'Pieter Wuille',
     created: '2015-01-10',
     summary: '強制要求比特幣交易使用嚴格的 DER 編碼簽章格式，修復潛在安全漏洞。',
+    relatedBips: [340],
   },
   {
     number: 68,
@@ -159,6 +167,7 @@ export const bips: BIP[] = [
     created: '2015-05-28',
     summary: '重新定義 nSequence 欄位以支援相對時間鎖，是閃電網路的關鍵基礎設施。',
     importance: 'critical',
+    relatedBips: [65, 112, 125],
   },
   {
     number: 84,
@@ -170,6 +179,7 @@ export const bips: BIP[] = [
     created: '2017-12-28',
     summary: '定義 Native SegWit (bech32) 地址的 HD 錢包派生路徑標準。',
     importance: 'important',
+    relatedBips: [32, 44, 141, 173],
   },
   {
     number: 112,
@@ -181,6 +191,7 @@ export const bips: BIP[] = [
     created: '2015-08-10',
     summary: '在腳本中驗證相對時間鎖，是閃電網路撤銷機制的核心組件。',
     importance: 'important',
+    relatedBips: [65, 68],
   },
   {
     number: 125,
@@ -202,6 +213,7 @@ export const bips: BIP[] = [
     created: '2015-12-21',
     summary: '比特幣最重要的升級之一，解決交易延展性問題並提高區塊容量。',
     importance: 'critical',
+    relatedBips: [143, 144, 173, 84, 341],
   },
   {
     number: 143,
@@ -212,6 +224,7 @@ export const bips: BIP[] = [
     author: 'Johnson Lau, Pieter Wuille',
     created: '2016-01-03',
     summary: '定義 SegWit 交易的簽章哈希演算法，解決二次哈希問題並修復簽章可塑性。',
+    relatedBips: [141, 144],
   },
   {
     number: 144,
@@ -222,6 +235,7 @@ export const bips: BIP[] = [
     author: 'Eric Lombrozo, Pieter Wuille',
     created: '2016-01-08',
     summary: '定義隔離見證交易的網路傳輸和序列化格式，包含 marker、flag 和見證資料。',
+    relatedBips: [141, 143],
   },
   {
     number: 152,
@@ -263,6 +277,7 @@ export const bips: BIP[] = [
     created: '2017-03-20',
     summary: '定義 SegWit 地址的 Bech32 編碼格式，以 bc1 開頭。',
     importance: 'important',
+    relatedBips: [141, 84, 350],
   },
   {
     number: 174,
@@ -274,6 +289,7 @@ export const bips: BIP[] = [
     created: '2017-07-12',
     summary: '定義標準格式用於傳遞未完成簽章的交易，支持多簽和硬體錢包。',
     importance: 'important',
+    relatedBips: [370, 380],
   },
   {
     number: 322,
@@ -327,6 +343,7 @@ export const bips: BIP[] = [
     created: '2020-01-19',
     summary: 'Taproot 升級的基礎，引入更高效的 Schnorr 簽章方案。',
     importance: 'critical',
+    relatedBips: [341, 342, 327],
   },
   {
     number: 341,
@@ -338,6 +355,7 @@ export const bips: BIP[] = [
     created: '2020-01-19',
     summary: '引入新的腳本類型，提供更強的隱私性和更高效的智能合約能力。',
     importance: 'critical',
+    relatedBips: [340, 342, 350, 386],
   },
   {
     number: 342,
@@ -349,6 +367,7 @@ export const bips: BIP[] = [
     created: '2020-01-19',
     summary: '定義 Tapscript 的驗證規則，支援新的腳本功能。',
     importance: 'important',
+    relatedBips: [340, 341],
   },
   {
     number: 350,
@@ -360,6 +379,7 @@ export const bips: BIP[] = [
     created: '2020-12-16',
     summary: '修正 Bech32 編碼的弱點，用於 SegWit v1+ (Taproot) 地址。',
     importance: 'important',
+    relatedBips: [173, 341],
   },
   {
     number: 370,

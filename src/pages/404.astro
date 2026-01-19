@@ -1,0 +1,120 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import { siteConfig } from '@/data/site';
+
+const title = '頁面不存在';
+const description = '抱歉，您要找的頁面不存在或已被移動。';
+
+// Popular pages for suggestions
+const popularPages = [
+  { label: '學習入門', href: '/learn/basics/', icon: '📚' },
+  { label: '技術文檔', href: '/tech/', icon: '⚙️' },
+  { label: 'BIP 文檔', href: '/bips/', icon: '📄' },
+  { label: '術語詞典', href: '/glossary/', icon: '📖' },
+  { label: '重要人物', href: '/notable-figures/', icon: '👤' },
+];
+---
+
+<PageLayout title={title} description={description} noIndex={true}>
+  <div class="min-h-[70vh] flex items-center justify-center px-4">
+    <div class="max-w-2xl mx-auto text-center">
+      <!-- 404 Icon -->
+      <div class="mb-8">
+        <span class="text-8xl font-bold text-bitcoin-500">404</span>
+      </div>
+
+      <!-- Message -->
+      <h1 class="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
+        {title}
+      </h1>
+      <p class="text-lg text-[var(--text-secondary)] mb-8">
+        {description}
+      </p>
+
+      <!-- Search Box -->
+      <div class="mb-10">
+        <div class="relative max-w-md mx-auto">
+          <input
+            type="search"
+            id="search-404"
+            placeholder="搜尋內容..."
+            class="w-full px-4 py-3 pl-12 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-bitcoin-500 focus:border-transparent"
+          />
+          <svg
+            class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Popular Pages -->
+      <div class="mb-10">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
+          熱門頁面
+        </h2>
+        <div class="flex flex-wrap justify-center gap-3">
+          {
+            popularPages.map((page) => (
+              <a
+                href={page.href}
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-primary)] hover:border-bitcoin-500 hover:text-bitcoin-500 transition-colors"
+              >
+                <span>{page.icon}</span>
+                <span>{page.label}</span>
+              </a>
+            ))
+          }
+        </div>
+      </div>
+
+      <!-- Back to Home -->
+      <a
+        href="/"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-bitcoin-500 text-white font-semibold rounded-xl hover:bg-bitcoin-600 transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+          ></path>
+        </svg>
+        返回首頁
+      </a>
+
+      <!-- Report Issue -->
+      <p class="mt-8 text-sm text-[var(--text-muted)]">
+        如果您認為這是一個錯誤，請
+        <a
+          href={`${siteConfig.social.github}/issues`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-bitcoin-500 hover:underline"
+        >
+          回報問題
+        </a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Search redirect script -->
+  <script>
+    const searchInput = document.getElementById('search-404') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && searchInput.value.trim()) {
+          window.location.href = `/search?q=${encodeURIComponent(searchInput.value.trim())}`;
+        }
+      });
+    }
+  </script>
+</PageLayout>
