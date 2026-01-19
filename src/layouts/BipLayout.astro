@@ -47,7 +47,7 @@ const statusVariant = statusVariants[bip.status] || 'default';
 
 // Get related BIPs data
 const relatedBipsData = (bip.relatedBips || [])
-  .map(num => getBipByNumber(num))
+  .map((num) => getBipByNumber(num))
   .filter((b): b is BIP => b !== undefined);
 ---
 
@@ -89,38 +89,40 @@ const relatedBipsData = (bip.relatedBips || [])
   <slot />
 
   <!-- Related BIPs Section -->
-  {relatedBipsData.length > 0 && (
-    <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
-      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">相關 BIP</h3>
-      <div class="space-y-2">
-        {relatedBipsData.map((relatedBip) => (
-          <a
-            href={`/bips/bip-${formatBipNumber(relatedBip.number)}`}
-            class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-[var(--surface-elevated)] transition-colors group"
-          >
-            <span class="flex-shrink-0 w-12 h-8 rounded bg-bitcoin-500/10 flex items-center justify-center text-sm font-bold text-bitcoin-700">
-              {relatedBip.number}
-            </span>
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors truncate">
-                {relatedBip.titleZh}
-              </p>
-              <p class="text-xs text-[var(--text-tertiary)] truncate">{relatedBip.title}</p>
-            </div>
-            <svg
-              class="h-4 w-4 text-[var(--text-tertiary)] group-hover:text-bitcoin-500 flex-shrink-0 transition-colors"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
+  {
+    relatedBipsData.length > 0 && (
+      <div class="mt-8 p-4 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)]">
+        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-3">相關 BIP</h3>
+        <div class="space-y-2">
+          {relatedBipsData.map((relatedBip) => (
+            <a
+              href={`/bips/bip-${formatBipNumber(relatedBip.number)}`}
+              class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-[var(--surface-elevated)] transition-colors group"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </a>
-        ))}
+              <span class="flex-shrink-0 w-12 h-8 rounded bg-bitcoin-500/10 flex items-center justify-center text-sm font-bold text-bitcoin-700">
+                {relatedBip.number}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-[var(--text-primary)] group-hover:text-bitcoin-500 transition-colors truncate">
+                  {relatedBip.titleZh}
+                </p>
+                <p class="text-xs text-[var(--text-tertiary)] truncate">{relatedBip.title}</p>
+              </div>
+              <svg
+                class="h-4 w-4 text-[var(--text-tertiary)] group-hover:text-bitcoin-500 flex-shrink-0 transition-colors"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          ))}
+        </div>
       </div>
-    </div>
-  )}
+    )
+  }
 
   <!-- GitHub Link -->
   <div class="mt-8 p-4 rounded-lg bg-bitcoin-500/10 border border-bitcoin-500/30">
