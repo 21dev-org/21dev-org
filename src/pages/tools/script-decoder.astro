@@ -1,0 +1,523 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+---
+
+<PageLayout title="Script 解碼器" description="解析並解釋 Bitcoin Script">
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具', href: '/tools/' }, { label: 'Script 解碼器' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          📜 Script 解碼器
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">解析並解釋 Bitcoin Script</p>
+        <p class="text-sm text-[var(--text-tertiary)] mt-3">
+          全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="script-decoder" class="py-12 md:py-16">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">📜 Script 解碼器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">輸入 Bitcoin Script hex，解析操作碼和資料。</p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+            >Script (Hex)</label
+          >
+          <textarea
+            id="script-input"
+            rows="3"
+            placeholder="輸入 Script hex（如 76a914...88ac）"
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500 resize-none"
+          ></textarea>
+        </div>
+
+        <button
+          id="script-decode-btn"
+          class="mt-4 px-6 py-2 rounded-lg bg-bitcoin-500 text-white font-medium hover:bg-bitcoin-600 transition-colors"
+        >
+          解碼 Script
+        </button>
+
+        <!-- 解碼結果 -->
+        <div
+          id="script-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">解碼結果</h3>
+
+          <!-- Script 類型 -->
+          <div class="mb-4 p-3 rounded-lg bg-bitcoin-500/10">
+            <span class="text-sm text-[var(--text-secondary)]">Script 類型：</span>
+            <span id="script-type" class="font-mono text-bitcoin-500 font-medium">-</span>
+          </div>
+
+          <!-- 操作碼列表 -->
+          <div>
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">操作碼序列</h4>
+            <div id="script-opcodes" class="space-y-1 text-sm font-mono"></div>
+          </div>
+
+          <!-- ASM 格式 -->
+          <div class="mt-4 pt-4 border-t border-[var(--border-default)]">
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">ASM 格式</h4>
+            <code
+              id="script-asm"
+              class="block p-3 rounded-lg bg-[var(--bg-secondary)] text-xs text-[var(--text-primary)] break-all"
+            ></code>
+          </div>
+        </div>
+
+        <div
+          id="script-error"
+          class="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hidden"
+        >
+          <span id="script-error-message">無法解析 Script</span>
+        </div>
+
+        <!-- 範例 Script -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2">範例 Script</h3>
+          <p class="text-sm text-[var(--text-secondary)] mb-3">點擊下方範例載入測試：</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="76a914d0c59903c5bac2868760e90fd521a4665aa7652088ac"
+            >
+              P2PKH
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba87"
+            >
+              P2SH
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="0014d85c2b71d0060b09c9886aeb815e50991dda124d"
+            >
+              P2WPKH
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="5121022afc3e3f8e7b2c6e0a2f9b0d1c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f2103b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d652ae"
+            >
+              2-of-2 多簽
+            </button>
+            <button
+              class="script-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-script="6a24aa21a9ed2e8f4e8a4e2f8e4a2e8f4e8a4e2f8e4a2e8f4e8a4e2f8e4a2e8f4e8a"
+            >
+              OP_RETURN
+            </button>
+          </div>
+        </div>
+
+        <!-- Script 類型說明 -->
+        <div
+          class="mt-4 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">常見 Script 類型</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2PKH</code>
+              <span class="text-[var(--text-secondary)]"
+                >OP_DUP OP_HASH160 &lt;hash&gt; OP_EQUALVERIFY OP_CHECKSIG</span
+              >
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2SH</code>
+              <span class="text-[var(--text-secondary)]">OP_HASH160 &lt;hash&gt; OP_EQUAL</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2WPKH</code>
+              <span class="text-[var(--text-secondary)]">OP_0 &lt;20-byte hash&gt;</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2WSH</code>
+              <span class="text-[var(--text-secondary)]">OP_0 &lt;32-byte hash&gt;</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500 whitespace-nowrap">P2TR</code>
+              <span class="text-[var(--text-secondary)]">OP_1 &lt;32-byte key&gt;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // ====== Script 解碼器 ======
+  function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
+  }
+
+  function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  const scriptInput = document.getElementById('script-input') as HTMLTextAreaElement;
+  const scriptDecodeBtn = document.getElementById('script-decode-btn') as HTMLButtonElement;
+  const scriptResult = document.getElementById('script-result') as HTMLElement;
+  const scriptError = document.getElementById('script-error') as HTMLElement;
+
+  // Bitcoin Script opcodes
+  const OPCODES: Record<number, string> = {
+    0x00: 'OP_0',
+    0x4c: 'OP_PUSHDATA1',
+    0x4d: 'OP_PUSHDATA2',
+    0x4e: 'OP_PUSHDATA4',
+    0x4f: 'OP_1NEGATE',
+    0x50: 'OP_RESERVED',
+    0x51: 'OP_1',
+    0x52: 'OP_2',
+    0x53: 'OP_3',
+    0x54: 'OP_4',
+    0x55: 'OP_5',
+    0x56: 'OP_6',
+    0x57: 'OP_7',
+    0x58: 'OP_8',
+    0x59: 'OP_9',
+    0x5a: 'OP_10',
+    0x5b: 'OP_11',
+    0x5c: 'OP_12',
+    0x5d: 'OP_13',
+    0x5e: 'OP_14',
+    0x5f: 'OP_15',
+    0x60: 'OP_16',
+    0x61: 'OP_NOP',
+    0x62: 'OP_VER',
+    0x63: 'OP_IF',
+    0x64: 'OP_NOTIF',
+    0x65: 'OP_VERIF',
+    0x66: 'OP_VERNOTIF',
+    0x67: 'OP_ELSE',
+    0x68: 'OP_ENDIF',
+    0x69: 'OP_VERIFY',
+    0x6a: 'OP_RETURN',
+    0x6b: 'OP_TOALTSTACK',
+    0x6c: 'OP_FROMALTSTACK',
+    0x6d: 'OP_2DROP',
+    0x6e: 'OP_2DUP',
+    0x6f: 'OP_3DUP',
+    0x70: 'OP_2OVER',
+    0x71: 'OP_2ROT',
+    0x72: 'OP_2SWAP',
+    0x73: 'OP_IFDUP',
+    0x74: 'OP_DEPTH',
+    0x75: 'OP_DROP',
+    0x76: 'OP_DUP',
+    0x77: 'OP_NIP',
+    0x78: 'OP_OVER',
+    0x79: 'OP_PICK',
+    0x7a: 'OP_ROLL',
+    0x7b: 'OP_ROT',
+    0x7c: 'OP_SWAP',
+    0x7d: 'OP_TUCK',
+    0x7e: 'OP_CAT',
+    0x7f: 'OP_SUBSTR',
+    0x80: 'OP_LEFT',
+    0x81: 'OP_RIGHT',
+    0x82: 'OP_SIZE',
+    0x83: 'OP_INVERT',
+    0x84: 'OP_AND',
+    0x85: 'OP_OR',
+    0x86: 'OP_XOR',
+    0x87: 'OP_EQUAL',
+    0x88: 'OP_EQUALVERIFY',
+    0x89: 'OP_RESERVED1',
+    0x8a: 'OP_RESERVED2',
+    0x8b: 'OP_1ADD',
+    0x8c: 'OP_1SUB',
+    0x8d: 'OP_2MUL',
+    0x8e: 'OP_2DIV',
+    0x8f: 'OP_NEGATE',
+    0x90: 'OP_ABS',
+    0x91: 'OP_NOT',
+    0x92: 'OP_0NOTEQUAL',
+    0x93: 'OP_ADD',
+    0x94: 'OP_SUB',
+    0x95: 'OP_MUL',
+    0x96: 'OP_DIV',
+    0x97: 'OP_MOD',
+    0x98: 'OP_LSHIFT',
+    0x99: 'OP_RSHIFT',
+    0x9a: 'OP_BOOLAND',
+    0x9b: 'OP_BOOLOR',
+    0x9c: 'OP_NUMEQUAL',
+    0x9d: 'OP_NUMEQUALVERIFY',
+    0x9e: 'OP_NUMNOTEQUAL',
+    0x9f: 'OP_LESSTHAN',
+    0xa0: 'OP_GREATERTHAN',
+    0xa1: 'OP_LESSTHANOREQUAL',
+    0xa2: 'OP_GREATERTHANOREQUAL',
+    0xa3: 'OP_MIN',
+    0xa4: 'OP_MAX',
+    0xa5: 'OP_WITHIN',
+    0xa6: 'OP_RIPEMD160',
+    0xa7: 'OP_SHA1',
+    0xa8: 'OP_SHA256',
+    0xa9: 'OP_HASH160',
+    0xaa: 'OP_HASH256',
+    0xab: 'OP_CODESEPARATOR',
+    0xac: 'OP_CHECKSIG',
+    0xad: 'OP_CHECKSIGVERIFY',
+    0xae: 'OP_CHECKMULTISIG',
+    0xaf: 'OP_CHECKMULTISIGVERIFY',
+    0xb0: 'OP_NOP1',
+    0xb1: 'OP_CHECKLOCKTIMEVERIFY',
+    0xb2: 'OP_CHECKSEQUENCEVERIFY',
+    0xb3: 'OP_NOP4',
+    0xb4: 'OP_NOP5',
+    0xb5: 'OP_NOP6',
+    0xb6: 'OP_NOP7',
+    0xb7: 'OP_NOP8',
+    0xb8: 'OP_NOP9',
+    0xb9: 'OP_NOP10',
+    0xba: 'OP_CHECKSIGADD',
+  };
+
+  interface ScriptElement {
+    type: 'opcode' | 'data';
+    opcode?: number;
+    opcodeName?: string;
+    data?: string;
+    description?: string;
+  }
+
+  function decodeScript(hexStr: string): {
+    elements: ScriptElement[];
+    scriptType: string;
+    asm: string;
+  } {
+    const hex = hexStr.replace(/\s/g, '').toLowerCase();
+    if (!/^[0-9a-f]*$/.test(hex) || hex.length % 2 !== 0) {
+      throw new Error('無效的 hex 格式');
+    }
+
+    const bytes = hexToBytes(hex);
+    const elements: ScriptElement[] = [];
+    let offset = 0;
+
+    while (offset < bytes.length) {
+      const opcode = bytes[offset];
+      offset++;
+
+      if (opcode === 0) {
+        elements.push({
+          type: 'opcode',
+          opcode: 0,
+          opcodeName: 'OP_0',
+          description: '將空字節陣列壓入堆疊',
+        });
+      } else if (opcode >= 1 && opcode <= 75) {
+        // Push data directly
+        const data = bytesToHex(bytes.slice(offset, offset + opcode));
+        offset += opcode;
+        elements.push({ type: 'data', data, description: `壓入 ${opcode} 字節資料` });
+      } else if (opcode === 0x4c) {
+        // OP_PUSHDATA1
+        const len = bytes[offset];
+        offset++;
+        const data = bytesToHex(bytes.slice(offset, offset + len));
+        offset += len;
+        elements.push({
+          type: 'opcode',
+          opcode: 0x4c,
+          opcodeName: 'OP_PUSHDATA1',
+          description: `讀取 1 字節長度`,
+        });
+        elements.push({ type: 'data', data, description: `壓入 ${len} 字節資料` });
+      } else if (opcode === 0x4d) {
+        // OP_PUSHDATA2
+        const len = bytes[offset] | (bytes[offset + 1] << 8);
+        offset += 2;
+        const data = bytesToHex(bytes.slice(offset, offset + len));
+        offset += len;
+        elements.push({
+          type: 'opcode',
+          opcode: 0x4d,
+          opcodeName: 'OP_PUSHDATA2',
+          description: `讀取 2 字節長度`,
+        });
+        elements.push({ type: 'data', data, description: `壓入 ${len} 字節資料` });
+      } else if (opcode === 0x4e) {
+        // OP_PUSHDATA4
+        const len =
+          bytes[offset] |
+          (bytes[offset + 1] << 8) |
+          (bytes[offset + 2] << 16) |
+          (bytes[offset + 3] << 24);
+        offset += 4;
+        const data = bytesToHex(bytes.slice(offset, offset + len));
+        offset += len;
+        elements.push({
+          type: 'opcode',
+          opcode: 0x4e,
+          opcodeName: 'OP_PUSHDATA4',
+          description: `讀取 4 字節長度`,
+        });
+        elements.push({ type: 'data', data, description: `壓入 ${len} 字節資料` });
+      } else {
+        const opcodeName = OPCODES[opcode] || `OP_UNKNOWN_${opcode.toString(16)}`;
+        const descriptions: Record<string, string> = {
+          OP_DUP: '複製堆疊頂元素',
+          OP_HASH160: '對頂元素做 SHA256 後 RIPEMD160',
+          OP_EQUALVERIFY: '比較並驗證相等',
+          OP_CHECKSIG: '驗證簽名',
+          OP_EQUAL: '檢查兩元素是否相等',
+          OP_RETURN: '標記輸出為不可花費',
+          OP_CHECKMULTISIG: '驗證多重簽名',
+          OP_CHECKLOCKTIMEVERIFY: '檢查時間鎖',
+          OP_CHECKSEQUENCEVERIFY: '檢查相對時間鎖',
+        };
+        elements.push({
+          type: 'opcode',
+          opcode,
+          opcodeName,
+          description: descriptions[opcodeName] || '',
+        });
+      }
+    }
+
+    // Detect script type
+    const scriptType = detectScriptType(bytes);
+
+    // Generate ASM
+    const asm = elements
+      .map((el) => {
+        if (el.type === 'opcode') return el.opcodeName;
+        return el.data;
+      })
+      .join(' ');
+
+    return { elements, scriptType, asm };
+  }
+
+  function detectScriptType(bytes: Uint8Array): string {
+    const len = bytes.length;
+
+    // P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
+    if (
+      len === 25 &&
+      bytes[0] === 0x76 &&
+      bytes[1] === 0xa9 &&
+      bytes[2] === 0x14 &&
+      bytes[23] === 0x88 &&
+      bytes[24] === 0xac
+    ) {
+      return 'P2PKH (Pay-to-Public-Key-Hash)';
+    }
+
+    // P2SH: OP_HASH160 <20 bytes> OP_EQUAL
+    if (len === 23 && bytes[0] === 0xa9 && bytes[1] === 0x14 && bytes[22] === 0x87) {
+      return 'P2SH (Pay-to-Script-Hash)';
+    }
+
+    // P2WPKH: OP_0 <20 bytes>
+    if (len === 22 && bytes[0] === 0x00 && bytes[1] === 0x14) {
+      return 'P2WPKH (Pay-to-Witness-Public-Key-Hash)';
+    }
+
+    // P2WSH: OP_0 <32 bytes>
+    if (len === 34 && bytes[0] === 0x00 && bytes[1] === 0x20) {
+      return 'P2WSH (Pay-to-Witness-Script-Hash)';
+    }
+
+    // P2TR: OP_1 <32 bytes>
+    if (len === 34 && bytes[0] === 0x51 && bytes[1] === 0x20) {
+      return 'P2TR (Pay-to-Taproot)';
+    }
+
+    // OP_RETURN
+    if (bytes[0] === 0x6a) {
+      return 'OP_RETURN (空投/資料)';
+    }
+
+    // P2PK: <33 or 65 bytes pubkey> OP_CHECKSIG
+    if ((len === 35 || len === 67) && bytes[len - 1] === 0xac) {
+      return 'P2PK (Pay-to-Public-Key)';
+    }
+
+    // Multisig: OP_m <pubkeys> OP_n OP_CHECKMULTISIG
+    if (bytes[len - 1] === 0xae && bytes[0] >= 0x51 && bytes[0] <= 0x60) {
+      const m = bytes[0] - 0x50;
+      const n = bytes[len - 2] - 0x50;
+      if (n >= 1 && n <= 16 && m >= 1 && m <= n) {
+        return `${m}-of-${n} 多簽 (Multisig)`;
+      }
+    }
+
+    return '自定義 Script';
+  }
+
+  scriptDecodeBtn?.addEventListener('click', () => {
+    const hex = scriptInput.value.trim();
+    if (!hex) return;
+
+    try {
+      const result = decodeScript(hex);
+
+      (document.getElementById('script-type') as HTMLElement).textContent = result.scriptType;
+
+      // Display opcodes
+      const opcodesDiv = document.getElementById('script-opcodes') as HTMLElement;
+      opcodesDiv.innerHTML = result.elements
+        .map((el, i) => {
+          if (el.type === 'opcode') {
+            return `
+            <div class="flex items-start gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
+              <span class="text-bitcoin-500">${i}:</span>
+              <span class="text-[var(--text-primary)] font-semibold">${el.opcodeName}</span>
+              ${el.description ? `<span class="text-[var(--text-tertiary)] text-xs ml-auto">${el.description}</span>` : ''}
+            </div>
+          `;
+          } else {
+            const truncated = el.data!.length > 40 ? el.data!.substring(0, 40) + '...' : el.data;
+            return `
+            <div class="flex items-start gap-2 p-2 rounded-lg bg-blue-500/10">
+              <span class="text-blue-500">${i}:</span>
+              <span class="text-[var(--text-primary)] break-all">${truncated}</span>
+              <span class="text-[var(--text-tertiary)] text-xs ml-auto">${el.data!.length / 2} bytes</span>
+            </div>
+          `;
+          }
+        })
+        .join('');
+
+      (document.getElementById('script-asm') as HTMLElement).textContent = result.asm;
+
+      scriptResult.classList.remove('hidden');
+      scriptError.classList.add('hidden');
+    } catch (err) {
+      (document.getElementById('script-error-message') as HTMLElement).textContent =
+        `解析錯誤: ${(err as Error).message}`;
+      scriptError.classList.remove('hidden');
+      scriptResult.classList.add('hidden');
+    }
+  });
+
+  // Example script buttons
+  document.querySelectorAll('.script-example').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      scriptInput.value = (btn as HTMLElement).dataset.script || '';
+    });
+  });
+</script>

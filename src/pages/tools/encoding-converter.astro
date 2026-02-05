@@ -1,0 +1,216 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+---
+
+<PageLayout title="編碼轉換器" description="Hex、Base58、Bech32 格式互轉">
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具', href: '/tools/' }, { label: '編碼轉換器' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          🔄 編碼轉換器
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">Hex、Base58、Bech32 格式互轉</p>
+        <p class="text-sm text-[var(--text-tertiary)] mt-3">
+          全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="encoding-converter" class="py-12 md:py-16">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">🔄 編碼轉換器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">Hex、Base58、Base64 格式互相轉換。</p>
+
+        <div class="space-y-4">
+          <!-- Hex -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Hex</label>
+            <input
+              type="text"
+              id="enc-hex"
+              placeholder="輸入 hex..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <!-- Base58 -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Base58</label
+            >
+            <input
+              type="text"
+              id="enc-base58"
+              placeholder="輸入 Base58..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <!-- Base64 -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Base64</label
+            >
+            <input
+              type="text"
+              id="enc-base64"
+              placeholder="輸入 Base64..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+
+          <!-- Decimal -->
+          <div>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+              >十進位 (Decimal)</label
+            >
+            <input
+              type="text"
+              id="enc-decimal"
+              placeholder="輸入數字..."
+              class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+          </div>
+        </div>
+
+        <!-- 編碼說明 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">編碼格式說明</h3>
+          <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+            <p><strong>Hex</strong>：16 進位，0-9 和 a-f</p>
+            <p><strong>Base58</strong>：比特幣地址和私鑰格式（無 0、O、I、l）</p>
+            <p><strong>Base64</strong>：常用於資料傳輸編碼</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // ====== 編碼轉換器 ======
+  function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
+  }
+
+  const encHex = document.getElementById('enc-hex') as HTMLInputElement;
+  const encBase58 = document.getElementById('enc-base58') as HTMLInputElement;
+  const encBase64 = document.getElementById('enc-base64') as HTMLInputElement;
+  const encDecimal = document.getElementById('enc-decimal') as HTMLInputElement;
+
+  const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+  function hexToBase58(hex: string): string {
+    if (!hex) return '';
+    let num = BigInt('0x' + hex);
+    let result = '';
+    while (num > 0n) {
+      result = BASE58_ALPHABET[Number(num % 58n)] + result;
+      num = num / 58n;
+    }
+    // Add leading '1's for leading zeros
+    for (let i = 0; i < hex.length && hex[i] === '0' && hex[i + 1] === '0'; i += 2) {
+      result = '1' + result;
+    }
+    return result;
+  }
+
+  function base58ToHex(base58: string): string {
+    if (!base58) return '';
+    let num = 0n;
+    for (const char of base58) {
+      const index = BASE58_ALPHABET.indexOf(char);
+      if (index === -1) return '';
+      num = num * 58n + BigInt(index);
+    }
+    let hex = num.toString(16);
+    if (hex.length % 2) hex = '0' + hex;
+    // Add leading zeros
+    for (let i = 0; i < base58.length && base58[i] === '1'; i++) {
+      hex = '00' + hex;
+    }
+    return hex;
+  }
+
+  function hexToBase64(hex: string): string {
+    if (!hex) return '';
+    const bytes = hexToBytes(hex);
+    return btoa(String.fromCharCode(...bytes));
+  }
+
+  function base64ToHex(base64: string): string {
+    if (!base64) return '';
+    try {
+      const binary = atob(base64);
+      return Array.from(binary)
+        .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
+        .join('');
+    } catch {
+      return '';
+    }
+  }
+
+  let encUpdating = false;
+
+  encHex?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    const hex = encHex.value.replace(/\s/g, '').toLowerCase();
+    if (/^[0-9a-f]*$/.test(hex)) {
+      encBase58.value = hexToBase58(hex);
+      encBase64.value = hex ? hexToBase64(hex) : '';
+      encDecimal.value = hex ? BigInt('0x' + hex).toString() : '';
+    }
+    encUpdating = false;
+  });
+
+  encBase58?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    const hex = base58ToHex(encBase58.value);
+    if (hex) {
+      encHex.value = hex;
+      encBase64.value = hexToBase64(hex);
+      encDecimal.value = BigInt('0x' + hex).toString();
+    }
+    encUpdating = false;
+  });
+
+  encBase64?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    const hex = base64ToHex(encBase64.value);
+    if (hex) {
+      encHex.value = hex;
+      encBase58.value = hexToBase58(hex);
+      encDecimal.value = BigInt('0x' + hex).toString();
+    }
+    encUpdating = false;
+  });
+
+  encDecimal?.addEventListener('input', () => {
+    if (encUpdating) return;
+    encUpdating = true;
+    try {
+      const num = BigInt(encDecimal.value || '0');
+      let hex = num.toString(16);
+      if (hex.length % 2) hex = '0' + hex;
+      encHex.value = hex;
+      encBase58.value = hexToBase58(hex);
+      encBase64.value = hexToBase64(hex);
+    } catch {
+      /* ignore invalid input */
+    }
+    encUpdating = false;
+  });
+</script>

@@ -1,0 +1,170 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+---
+
+<PageLayout title="區塊獎勵計算器" description="計算任意區塊高度的挖礦獎勵">
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具', href: '/tools/' }, { label: '區塊獎勵計算器' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          📦 區塊獎勵計算器
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">計算任意區塊高度的挖礦獎勵</p>
+        <p class="text-sm text-[var(--text-tertiary)] mt-3">
+          全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="block-reward" class="py-12 md:py-16">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">📦 區塊獎勵計算器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">計算任意區塊高度的挖礦獎勵和減半資訊。</p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">區塊高度</label
+          >
+          <input
+            type="number"
+            id="block-height-input"
+            placeholder="輸入區塊高度（如 840000）"
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+          />
+        </div>
+
+        <!-- 計算結果 -->
+        <div
+          id="block-reward-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">計算結果</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">區塊獎勵</span>
+              <span id="reward-btc" class="font-mono text-bitcoin-500 font-bold">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">減半紀元</span>
+              <span id="reward-epoch" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">此紀元開始區塊</span>
+              <span id="reward-epoch-start" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">下次減半區塊</span>
+              <span id="reward-next-halving" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">距離下次減半</span>
+              <span id="reward-blocks-until" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 減半時間表 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">減半時間表</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-[var(--text-secondary)]">
+                  <th class="pb-2">紀元</th>
+                  <th class="pb-2">區塊範圍</th>
+                  <th class="pb-2">獎勵</th>
+                  <th class="pb-2">年份</th>
+                </tr>
+              </thead>
+              <tbody class="font-mono text-[var(--text-primary)]">
+                <tr><td>0</td><td>0 - 209,999</td><td>50 BTC</td><td>2009</td></tr>
+                <tr><td>1</td><td>210,000 - 419,999</td><td>25 BTC</td><td>2012</td></tr>
+                <tr><td>2</td><td>420,000 - 629,999</td><td>12.5 BTC</td><td>2016</td></tr>
+                <tr><td>3</td><td>630,000 - 839,999</td><td>6.25 BTC</td><td>2020</td></tr>
+                <tr><td>4</td><td>840,000 - 1,049,999</td><td>3.125 BTC</td><td>2024</td></tr>
+                <tr><td>5</td><td>1,050,000 - 1,259,999</td><td>1.5625 BTC</td><td>~2028</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 快速選擇 -->
+        <div class="mt-4 flex flex-wrap gap-2">
+          <span class="text-sm text-[var(--text-secondary)]">快速選擇：</span>
+          <button
+            class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+            data-height="0">創世區塊</button
+          >
+          <button
+            class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+            data-height="210000">第一次減半</button
+          >
+          <button
+            class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+            data-height="840000">第四次減半</button
+          >
+          <button
+            class="block-height-preset px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+            data-height="878000">目前高度</button
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // ====== 區塊獎勵計算器 ======
+  const blockHeightInput = document.getElementById('block-height-input') as HTMLInputElement;
+  const blockRewardResult = document.getElementById('block-reward-result') as HTMLElement;
+
+  const HALVING_INTERVAL = 210000;
+  const INITIAL_REWARD = 50;
+
+  function calculateBlockReward(height: number) {
+    const epoch = Math.floor(height / HALVING_INTERVAL);
+    const reward = INITIAL_REWARD / Math.pow(2, epoch);
+    const epochStart = epoch * HALVING_INTERVAL;
+    const nextHalving = (epoch + 1) * HALVING_INTERVAL;
+    const blocksUntilHalving = nextHalving - height;
+
+    return { reward, epoch, epochStart, nextHalving, blocksUntilHalving };
+  }
+
+  blockHeightInput?.addEventListener('input', () => {
+    const height = parseInt(blockHeightInput.value);
+    if (isNaN(height) || height < 0) {
+      blockRewardResult.classList.add('hidden');
+      return;
+    }
+
+    const result = calculateBlockReward(height);
+
+    (document.getElementById('reward-btc') as HTMLElement).textContent = `${result.reward} BTC`;
+    (document.getElementById('reward-epoch') as HTMLElement).textContent =
+      `第 ${result.epoch} 紀元`;
+    (document.getElementById('reward-epoch-start') as HTMLElement).textContent =
+      result.epochStart.toLocaleString();
+    (document.getElementById('reward-next-halving') as HTMLElement).textContent =
+      result.nextHalving.toLocaleString();
+    (document.getElementById('reward-blocks-until') as HTMLElement).textContent =
+      `${result.blocksUntilHalving.toLocaleString()} 區塊`;
+
+    blockRewardResult.classList.remove('hidden');
+  });
+
+  // Preset buttons
+  document.querySelectorAll('.block-height-preset').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      blockHeightInput.value = (btn as HTMLElement).dataset.height || '';
+      blockHeightInput.dispatchEvent(new Event('input'));
+    });
+  });
+</script>

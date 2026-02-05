@@ -1,0 +1,188 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+---
+
+<PageLayout title="單位換算器" description="BTC、聰（sats）、mBTC 等單位互相換算">
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具', href: '/tools/' }, { label: '單位換算器' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          🔄 單位換算器
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">BTC、聰（sats）、mBTC 等單位互相換算</p>
+        <p class="text-sm text-[var(--text-tertiary)] mt-3">
+          全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="unit-converter" class="py-12 md:py-16">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">🔄 單位換算器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">輸入任意單位，即時換算其他單位。</p>
+
+        <div class="space-y-4">
+          <!-- BTC -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">BTC</label>
+            <input
+              type="text"
+              id="input-btc"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">BTC</span>
+          </div>
+
+          <!-- sats -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+              >聰 (Satoshis)</label
+            >
+            <input
+              type="text"
+              id="input-sats"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">sats</span>
+          </div>
+
+          <!-- mBTC -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">mBTC</label>
+            <input
+              type="text"
+              id="input-mbtc"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">mBTC</span>
+          </div>
+
+          <!-- μBTC / bits -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+              >μBTC (bits)</label
+            >
+            <input
+              type="text"
+              id="input-bits"
+              placeholder="0"
+              class="w-full px-4 py-3 pr-16 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+            />
+            <span class="absolute right-4 top-9 text-[var(--text-tertiary)] font-mono">bits</span>
+          </div>
+        </div>
+
+        <!-- 換算參考 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2">換算參考</h3>
+          <div class="grid grid-cols-2 gap-2 text-sm font-mono">
+            <div class="text-[var(--text-secondary)]">1 BTC =</div>
+            <div class="text-[var(--text-primary)]">100,000,000 sats</div>
+            <div class="text-[var(--text-secondary)]">1 BTC =</div>
+            <div class="text-[var(--text-primary)]">1,000 mBTC</div>
+            <div class="text-[var(--text-secondary)]">1 BTC =</div>
+            <div class="text-[var(--text-primary)]">1,000,000 bits</div>
+            <div class="text-[var(--text-secondary)]">1 mBTC =</div>
+            <div class="text-[var(--text-primary)]">100,000 sats</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // ====== 單位換算器 ======
+  const SATS_PER_BTC = 100_000_000;
+  const MBTC_PER_BTC = 1_000;
+  const BITS_PER_BTC = 1_000_000;
+
+  const inputBtc = document.getElementById('input-btc') as HTMLInputElement;
+  const inputSats = document.getElementById('input-sats') as HTMLInputElement;
+  const inputMbtc = document.getElementById('input-mbtc') as HTMLInputElement;
+  const inputBits = document.getElementById('input-bits') as HTMLInputElement;
+
+  let isUpdating = false;
+
+  function formatNumber(num: number, decimals: number = 8): string {
+    if (num === 0) return '0';
+    const formatted = num.toFixed(decimals);
+    return formatted.replace(/\.?0+$/, '');
+  }
+
+  function parseNumber(value: string): number {
+    const cleaned = value.replace(/,/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  }
+
+  function updateFromBtc(btc: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    inputSats.value = formatNumber(btc * SATS_PER_BTC, 0);
+    inputMbtc.value = formatNumber(btc * MBTC_PER_BTC);
+    inputBits.value = formatNumber(btc * BITS_PER_BTC);
+    isUpdating = false;
+  }
+
+  function updateFromSats(sats: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    const btc = sats / SATS_PER_BTC;
+    inputBtc.value = formatNumber(btc);
+    inputMbtc.value = formatNumber(btc * MBTC_PER_BTC);
+    inputBits.value = formatNumber(btc * BITS_PER_BTC);
+    isUpdating = false;
+  }
+
+  function updateFromMbtc(mbtc: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    const btc = mbtc / MBTC_PER_BTC;
+    inputBtc.value = formatNumber(btc);
+    inputSats.value = formatNumber(btc * SATS_PER_BTC, 0);
+    inputBits.value = formatNumber(btc * BITS_PER_BTC);
+    isUpdating = false;
+  }
+
+  function updateFromBits(bits: number) {
+    if (isUpdating) return;
+    isUpdating = true;
+    const btc = bits / BITS_PER_BTC;
+    inputBtc.value = formatNumber(btc);
+    inputSats.value = formatNumber(btc * SATS_PER_BTC, 0);
+    inputMbtc.value = formatNumber(btc * MBTC_PER_BTC);
+    isUpdating = false;
+  }
+
+  inputBtc?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromBtc(value);
+  });
+
+  inputSats?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromSats(value);
+  });
+
+  inputMbtc?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromMbtc(value);
+  });
+
+  inputBits?.addEventListener('input', (e) => {
+    const value = parseNumber((e.target as HTMLInputElement).value);
+    updateFromBits(value);
+  });
+</script>

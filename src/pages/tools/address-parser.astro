@@ -1,0 +1,208 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+---
+
+<PageLayout title="地址解析器" description="解析比特幣地址類型、網路和格式">
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具', href: '/tools/' }, { label: '地址解析器' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          🔍 地址解析器
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">解析比特幣地址類型、網路和格式</p>
+        <p class="text-sm text-[var(--text-tertiary)] mt-3">
+          全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="address-parser" class="py-12 md:py-16">
+    <div class="container-wide">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">🔍 地址解析器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">輸入比特幣地址，解析其類型和網路。</p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+            >比特幣地址</label
+          >
+          <input
+            type="text"
+            id="address-input"
+            placeholder="輸入比特幣地址（如 bc1q... 或 1...）"
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500"
+          />
+        </div>
+
+        <!-- 解析結果 -->
+        <div
+          id="address-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">解析結果</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">地址類型</span>
+              <span id="result-type" class="font-mono text-bitcoin-500">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">網路</span>
+              <span id="result-network" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">格式</span>
+              <span id="result-format" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">長度</span>
+              <span id="result-length" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="address-error"
+          class="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hidden"
+        >
+          <span id="error-message">無效的地址格式</span>
+        </div>
+
+        <!-- 地址類型說明 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-3">地址類型說明</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">1...</code>
+              <span class="text-[var(--text-secondary)]">P2PKH - 傳統地址</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">3...</code>
+              <span class="text-[var(--text-secondary)]">P2SH - 腳本雜湊地址</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">bc1q...</code>
+              <span class="text-[var(--text-secondary)]">P2WPKH/P2WSH - 原生 SegWit</span>
+            </div>
+            <div class="flex gap-3">
+              <code class="text-bitcoin-500">bc1p...</code>
+              <span class="text-[var(--text-secondary)]">P2TR - Taproot</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // ====== 地址解析器 ======
+  const addressInput = document.getElementById('address-input') as HTMLInputElement;
+  const addressResult = document.getElementById('address-result') as HTMLElement;
+  const addressError = document.getElementById('address-error') as HTMLElement;
+  const resultType = document.getElementById('result-type') as HTMLElement;
+  const resultNetwork = document.getElementById('result-network') as HTMLElement;
+  const resultFormat = document.getElementById('result-format') as HTMLElement;
+  const resultLength = document.getElementById('result-length') as HTMLElement;
+  const errorMessage = document.getElementById('error-message') as HTMLElement;
+
+  interface AddressInfo {
+    type: string;
+    network: string;
+    format: string;
+    length: number;
+  }
+
+  function parseAddress(address: string): AddressInfo | null {
+    const trimmed = address.trim();
+    if (!trimmed) return null;
+
+    if (/^1[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2PKH (Legacy)',
+        network: 'Mainnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+    if (/^3[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2SH (Script Hash)',
+        network: 'Mainnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+    if (/^bc1q[a-z0-9]{38,58}$/i.test(trimmed)) {
+      const isP2wpkh = trimmed.length === 42;
+      return {
+        type: isP2wpkh ? 'P2WPKH (Native SegWit)' : 'P2WSH (Native SegWit)',
+        network: 'Mainnet',
+        format: 'Bech32',
+        length: trimmed.length,
+      };
+    }
+    if (/^bc1p[a-z0-9]{58}$/i.test(trimmed)) {
+      return {
+        type: 'P2TR (Taproot)',
+        network: 'Mainnet',
+        format: 'Bech32m',
+        length: trimmed.length,
+      };
+    }
+    if (/^[mn][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2PKH (Legacy)',
+        network: 'Testnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+    if (/^2[a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+      return {
+        type: 'P2SH (Script Hash)',
+        network: 'Testnet',
+        format: 'Base58Check',
+        length: trimmed.length,
+      };
+    }
+    if (/^tb1[qp][a-z0-9]{38,58}$/i.test(trimmed)) {
+      const isTaproot = trimmed[3] === 'p';
+      return {
+        type: isTaproot ? 'P2TR (Taproot)' : 'P2WPKH/P2WSH (Native SegWit)',
+        network: 'Testnet',
+        format: isTaproot ? 'Bech32m' : 'Bech32',
+        length: trimmed.length,
+      };
+    }
+    return null;
+  }
+
+  addressInput?.addEventListener('input', (e) => {
+    const address = (e.target as HTMLInputElement).value;
+    if (!address.trim()) {
+      addressResult.classList.add('hidden');
+      addressError.classList.add('hidden');
+      return;
+    }
+    const info = parseAddress(address);
+    if (info) {
+      resultType.textContent = info.type;
+      resultNetwork.textContent = info.network;
+      resultFormat.textContent = info.format;
+      resultLength.textContent = `${info.length} 字元`;
+      addressResult.classList.remove('hidden');
+      addressError.classList.add('hidden');
+    } else {
+      errorMessage.textContent = '無法識別的地址格式';
+      addressError.classList.remove('hidden');
+      addressResult.classList.add('hidden');
+    }
+  });
+</script>

@@ -170,6 +170,7 @@ export const navigation: MegaMenuItem[] = [
         title: '更多',
         links: [
           { label: '文章', href: '/blog/' },
+          { label: '最近更新', href: '/updates' },
           { label: '活動', href: '/events/' },
           { label: '影片', href: '/videos/' },
         ],

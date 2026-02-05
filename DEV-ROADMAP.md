@@ -15,7 +15,7 @@
 | 語言 | TypeScript 5.7.2 |
 | 搜尋 | Pagefind 1.4.0 |
 | 部署 | GitHub Pages |
-| 總頁面數 | ~601 |
+| 總頁面數 | ~609 |
 
 ---
 
@@ -33,11 +33,14 @@
   - URL 同步更新（搜尋時自動更新瀏覽器網址列）
   - 無結果時顯示熱門頁面連結
 
-### 1.2 為所有頁面實作 dateModified
+### 1.2 為所有頁面實作 dateModified ✅ 已完成
 - **問題**: SEO-ROADMAP Phase 3.1 標記為「待後續完成」，缺少內容新鮮度信號
-- **方案**: 利用 git log 取得檔案最後修改日期，注入到 schema 和 meta tags
-- **檔案**: `src/layouts/BaseLayout.astro`, `src/utils/schema.ts`
-- **狀態**: ⬜ 待開發
+- **狀態**: ✅ 已完成
+- **完成內容**:
+  - `BaseLayout.astro` 新增 `dateModified` prop（預設為建置時間）
+  - 所有頁面自動獲得 `<meta property="article:modified_time">` 標籤
+  - 有日期的文章頁面同時輸出 `article:published_time`
+  - `ArticleLayout.astro` 將文章日期傳入 schema 的 `dateModified`
 
 ### 1.3 建立 Blog/文章系統 ✅ 已完成
 - **問題**: `articlesCollection` schema 已定義但 `src/content/articles/` 為空
@@ -57,10 +60,15 @@
 
 ## 第二波：短期功能 (P1)
 
-### 2.1 線上工具拆分為獨立路由
-- **問題**: 7 個工具全部在 `/tools/index.astro` (~28,000 tokens)，不利 SEO 和效能
-- **方案**: 每個工具獨立頁面 `/tools/unit-converter` 等
-- **狀態**: ⬜ 待開發
+### 2.1 線上工具拆分為獨立路由 ✅ 已完成
+- **問題**: 7 個工具全部在 `/tools/index.astro` (~1924 行)，不利 SEO 和效能
+- **狀態**: ✅ 已完成
+- **完成內容**:
+  - 將 1924 行拆分為 7 個獨立工具頁面 + 目錄頁
+  - `src/data/tools.ts` - 集中管理工具元資料
+  - `src/pages/tools/index.astro` - 精簡為 ~50 行的目錄卡片頁
+  - 7 個獨立頁面: `unit-converter`, `address-parser`, `tx-decoder`, `hash-calculator`, `encoding-converter`, `block-reward`, `script-decoder`
+  - 每個工具有獨立 URL、SEO title/description、breadcrumb
 
 ### 2.2 加入 RSS Feed ✅ 已完成
 - **問題**: 無法讓讀者訂閱新內容
@@ -82,10 +90,14 @@
   - 使用 `pathname` 映射策略
   - 注意：需在 GitHub repo 上啟用 Discussions 並安裝 Giscus app，填入 `data-repo-id` 和 `data-category-id`
 
-### 2.4 建立「最近更新」頁面
+### 2.4 建立「最近更新」頁面 ✅ 已完成
 - **問題**: 讀者無法知道哪些頁面是新增或更新的
-- **方案**: 建立 `/updates` 頁面，依日期列出更新
-- **狀態**: ⬜ 待開發
+- **狀態**: ✅ 已完成
+- **完成內容**:
+  - `src/pages/updates.astro` - 匯總所有有日期的內容（文章、活動、影片、術語）
+  - 按月份分組，最新 50 筆
+  - 顯示內容類型標籤（文章/活動/術語/影片）和難度
+  - 加入導航列「資源 > 更多」分區
 
 ### 2.5 補充活動和影片內容
 - **問題**: 活動僅 2 筆、影片僅 3 筆，內容稀少
@@ -163,11 +175,21 @@
 | `src/pages/blog/index.astro` | ✅ 新建 - 文章列表頁 |
 | `src/pages/blog/[...slug].astro` | ✅ 新建 - 文章動態路由 |
 | `src/pages/rss.xml.ts` | ✅ 新建 - RSS Feed endpoint |
+| `src/pages/updates.astro` | ✅ 新建 - 最近更新頁面 |
 | `src/content/articles/*.md` | ✅ 新建 - 3 篇範例文章 |
 | `src/components/ui/Comments.astro` | ✅ 新建 - Giscus 評論元件 |
-| `src/layouts/ArticleLayout.astro` | ✅ 修改 - 整合評論元件 |
-| `src/layouts/BaseLayout.astro` | ✅ 修改 - 加入 RSS auto-discovery |
-| `src/data/navigation.ts` | ✅ 修改 - 加入文章連結至導航和 Footer |
+| `src/data/tools.ts` | ✅ 新建 - 工具元資料 |
+| `src/pages/tools/unit-converter.astro` | ✅ 新建 - 單位換算器 |
+| `src/pages/tools/address-parser.astro` | ✅ 新建 - 地址解析器 |
+| `src/pages/tools/tx-decoder.astro` | ✅ 新建 - 交易解碼器 |
+| `src/pages/tools/hash-calculator.astro` | ✅ 新建 - Hash 計算器 |
+| `src/pages/tools/encoding-converter.astro` | ✅ 新建 - 編碼轉換器 |
+| `src/pages/tools/block-reward.astro` | ✅ 新建 - 區塊獎勵計算器 |
+| `src/pages/tools/script-decoder.astro` | ✅ 新建 - Script 解碼器 |
+| `src/pages/tools/index.astro` | ✅ 重寫 - 精簡為目錄頁 (1924→~50 行) |
+| `src/layouts/ArticleLayout.astro` | ✅ 修改 - 整合評論元件 + dateModified |
+| `src/layouts/BaseLayout.astro` | ✅ 修改 - RSS + dateModified + article:modified_time |
+| `src/data/navigation.ts` | ✅ 修改 - 加入文章/更新連結 |
 | `src/components/layout/Footer.astro` | ✅ 修改 - 加入 RSS 訂閱連結 |
 | `astro.config.mjs` | ✅ 修改 - Blog 頁面 sitemap 優先級 |
 | `scripts/generate-sitemaps.mjs` | ✅ 修改 - 新增 blog sitemap 分類 |
@@ -177,7 +199,7 @@
 
 ## 進度追蹤
 
-- [ ] 第一波完成 (剩餘: 1.2 dateModified)
-- [ ] 第二波完成 (剩餘: 2.1 工具拆分, 2.4 最近更新, 2.5 內容補充)
+- [x] 第一波完成 (1.1 搜尋頁面, 1.2 dateModified, 1.3 Blog 系統)
+- [ ] 第二波完成 (剩餘: 2.5 內容補充)
 - [ ] 第三波完成
 - [ ] 第四波完成

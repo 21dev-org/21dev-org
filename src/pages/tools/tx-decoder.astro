@@ -1,0 +1,399 @@
+---
+import PageLayout from '@/layouts/PageLayout.astro';
+import Breadcrumb from '@/components/ui/Breadcrumb.astro';
+---
+
+<PageLayout title="交易解碼器" description="解析原始交易 hex 並顯示詳細資訊">
+  <section
+    class="py-16 md:py-24 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)]"
+  >
+    <div class="container-wide">
+      <Breadcrumb items={[{ label: '線上工具', href: '/tools/' }, { label: '交易解碼器' }]} />
+      <div class="max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-6">
+          📄 交易解碼器
+        </h1>
+        <p class="text-xl text-[var(--text-secondary)]">解析原始交易 hex 並顯示詳細資訊</p>
+        <p class="text-sm text-[var(--text-tertiary)] mt-3">
+          全部在瀏覽器本地執行，不會上傳任何資料。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tx-decoder" class="py-12 md:py-16">
+    <div class="container-wide">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">📄 交易解碼器</h2>
+        <p class="text-[var(--text-secondary)] mb-8">輸入原始交易 hex，解析交易結構和詳細資訊。</p>
+
+        <div>
+          <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1"
+            >原始交易 (Hex)</label
+          >
+          <textarea
+            id="tx-input"
+            rows="4"
+            placeholder="輸入原始交易 hex..."
+            class="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-bitcoin-500/50 focus:border-bitcoin-500 resize-none"
+          ></textarea>
+          <p class="text-xs text-[var(--text-tertiary)] mt-1">支援 Legacy 和 SegWit 交易格式</p>
+        </div>
+
+        <button
+          id="tx-decode-btn"
+          class="mt-4 px-6 py-2 rounded-lg bg-bitcoin-500 text-white font-medium hover:bg-bitcoin-600 transition-colors"
+        >
+          解碼交易
+        </button>
+
+        <!-- 解碼結果 -->
+        <div
+          id="tx-result"
+          class="mt-6 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)] hidden"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-4">交易資訊</h3>
+
+          <!-- 基本資訊 -->
+          <div class="space-y-3 text-sm mb-6">
+            <div class="flex justify-between flex-wrap gap-2">
+              <span class="text-[var(--text-secondary)]">TXID</span>
+              <span id="tx-txid" class="font-mono text-xs text-bitcoin-500 break-all">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">版本</span>
+              <span id="tx-version" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">SegWit</span>
+              <span id="tx-segwit" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">輸入數量</span>
+              <span id="tx-input-count" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">輸出數量</span>
+              <span id="tx-output-count" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">Locktime</span>
+              <span id="tx-locktime" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">大小</span>
+              <span id="tx-size" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-secondary)]">虛擬大小 (vBytes)</span>
+              <span id="tx-vsize" class="font-mono text-[var(--text-primary)]">-</span>
+            </div>
+          </div>
+
+          <!-- 輸入 -->
+          <div class="mb-6">
+            <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸入 (Inputs)</h4>
+            <div id="tx-inputs" class="space-y-2 text-xs font-mono"></div>
+          </div>
+
+          <!-- 輸出 -->
+          <div>
+            <h4 class="font-semibold text-[var(--text-primary)] mb-2">輸出 (Outputs)</h4>
+            <div id="tx-outputs" class="space-y-2 text-xs font-mono"></div>
+          </div>
+        </div>
+
+        <div
+          id="tx-error"
+          class="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hidden"
+        >
+          <span id="tx-error-message">無法解析交易</span>
+        </div>
+
+        <!-- 範例交易 -->
+        <div
+          class="mt-8 p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-default)]"
+        >
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2">範例交易</h3>
+          <p class="text-sm text-[var(--text-secondary)] mb-3">點擊下方範例載入測試：</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="tx-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-tx="0100000001c997a5e56e104102fa209c6a852dd90660a20b2d9c352423edce25857fcd3704000000004847304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901ffffffff0200ca9a3b00000000434104ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84cac00286bee0000000043410411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac00000000"
+            >
+              Legacy P2PK
+            </button>
+            <button
+              class="tx-example px-3 py-1 text-sm rounded-lg bg-bitcoin-500/10 text-bitcoin-500 hover:bg-bitcoin-500/20 transition-colors"
+              data-tx="02000000000101f1c8f13fcb07e59f8fc9e07c9a96f9d4c6b8e3c0d8a5b2c1d0e9f8a7b6c5d4e30100000000fdffffff02a0860100000000001976a914d0c59903c5bac2868760e90fd521a4665aa7652088ac20a1070000000000160014d85c2b71d0060b09c9886aeb815e50991dda124d02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000"
+            >
+              SegWit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  // ====== 交易解碼器 ======
+  const SATS_PER_BTC = 100_000_000;
+
+  const txInput = document.getElementById('tx-input') as HTMLTextAreaElement;
+  const txDecodeBtn = document.getElementById('tx-decode-btn') as HTMLButtonElement;
+  const txResult = document.getElementById('tx-result') as HTMLElement;
+  const txError = document.getElementById('tx-error') as HTMLElement;
+
+  function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
+  }
+
+  function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  function readVarInt(bytes: Uint8Array, offset: number): [number, number] {
+    const first = bytes[offset];
+    if (first < 0xfd) return [first, 1];
+    if (first === 0xfd) return [bytes[offset + 1] | (bytes[offset + 2] << 8), 3];
+    if (first === 0xfe)
+      return [
+        (bytes[offset + 1] |
+          (bytes[offset + 2] << 8) |
+          (bytes[offset + 3] << 16) |
+          (bytes[offset + 4] << 24)) >>>
+          0,
+        5,
+      ];
+    return [
+      Number(
+        BigInt(bytes[offset + 1]) |
+          (BigInt(bytes[offset + 2]) << 8n) |
+          (BigInt(bytes[offset + 3]) << 16n) |
+          (BigInt(bytes[offset + 4]) << 24n) |
+          (BigInt(bytes[offset + 5]) << 32n) |
+          (BigInt(bytes[offset + 6]) << 40n) |
+          (BigInt(bytes[offset + 7]) << 48n) |
+          (BigInt(bytes[offset + 8]) << 56n)
+      ),
+      9,
+    ];
+  }
+
+  function reverseHex(hex: string): string {
+    return hex.match(/.{2}/g)?.reverse().join('') || '';
+  }
+
+  async function sha256(data: Uint8Array): Promise<Uint8Array> {
+    const buffer = data.buffer.slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength
+    ) as ArrayBuffer;
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    return new Uint8Array(hashBuffer);
+  }
+
+  async function doubleSha256(data: Uint8Array): Promise<Uint8Array> {
+    return sha256(await sha256(data));
+  }
+
+  async function decodeTx(hexStr: string) {
+    const hex = hexStr.replace(/\s/g, '').toLowerCase();
+    if (!/^[0-9a-f]+$/.test(hex)) throw new Error('無效的 hex 格式');
+
+    const bytes = hexToBytes(hex);
+    let offset = 0;
+
+    // Version (4 bytes, little-endian)
+    const version =
+      bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24);
+    offset += 4;
+
+    // Check for SegWit marker
+    let isSegwit = false;
+    if (bytes[offset] === 0x00 && bytes[offset + 1] !== 0x00) {
+      // marker = 0x00, flag = 0x01 for SegWit
+      isSegwit = true;
+      offset += 2;
+    }
+
+    // Input count
+    const [inputCount, inputCountSize] = readVarInt(bytes, offset);
+    offset += inputCountSize;
+
+    // Parse inputs
+    const inputs: { txid: string; vout: number; scriptSig: string; sequence: number }[] = [];
+    for (let i = 0; i < inputCount; i++) {
+      const txid = reverseHex(bytesToHex(bytes.slice(offset, offset + 32)));
+      offset += 32;
+      const vout =
+        bytes[offset] |
+        (bytes[offset + 1] << 8) |
+        (bytes[offset + 2] << 16) |
+        (bytes[offset + 3] << 24);
+      offset += 4;
+      const [scriptLen, scriptLenSize] = readVarInt(bytes, offset);
+      offset += scriptLenSize;
+      const scriptSig = bytesToHex(bytes.slice(offset, offset + scriptLen));
+      offset += scriptLen;
+      const sequence =
+        (bytes[offset] |
+          (bytes[offset + 1] << 8) |
+          (bytes[offset + 2] << 16) |
+          (bytes[offset + 3] << 24)) >>>
+        0;
+      offset += 4;
+      inputs.push({ txid, vout, scriptSig, sequence });
+    }
+
+    // Output count
+    const [outputCount, outputCountSize] = readVarInt(bytes, offset);
+    offset += outputCountSize;
+
+    // Parse outputs
+    const outputs: { value: number; scriptPubKey: string }[] = [];
+    for (let i = 0; i < outputCount; i++) {
+      const valueLow =
+        bytes[offset] |
+        (bytes[offset + 1] << 8) |
+        (bytes[offset + 2] << 16) |
+        (bytes[offset + 3] << 24);
+      const valueHigh =
+        bytes[offset + 4] |
+        (bytes[offset + 5] << 8) |
+        (bytes[offset + 6] << 16) |
+        (bytes[offset + 7] << 24);
+      const value = (valueHigh * 0x100000000 + valueLow) / SATS_PER_BTC;
+      offset += 8;
+      const [scriptLen, scriptLenSize] = readVarInt(bytes, offset);
+      offset += scriptLenSize;
+      const scriptPubKey = bytesToHex(bytes.slice(offset, offset + scriptLen));
+      offset += scriptLen;
+      outputs.push({ value, scriptPubKey });
+    }
+
+    // Witness data (if SegWit)
+    let witnessSize = 0;
+    if (isSegwit) {
+      const witnessStart = offset;
+      for (let i = 0; i < inputCount; i++) {
+        const [witnessCount, wcSize] = readVarInt(bytes, offset);
+        offset += wcSize;
+        for (let j = 0; j < witnessCount; j++) {
+          const [itemLen, ilSize] = readVarInt(bytes, offset);
+          offset += ilSize + itemLen;
+        }
+      }
+      witnessSize = offset - witnessStart;
+    }
+
+    // Locktime (4 bytes)
+    const locktime =
+      bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24);
+
+    // Calculate TXID (double SHA256 of non-witness serialization)
+    let txidBytes: Uint8Array;
+    if (isSegwit) {
+      // For SegWit, TXID is calculated without marker, flag, and witness
+      const nonWitness = new Uint8Array(bytes.length - 2 - witnessSize);
+      nonWitness.set(bytes.slice(0, 4)); // version
+      let pos = 4;
+      const afterFlag = 6;
+      const beforeWitness = bytes.length - witnessSize - 4;
+      nonWitness.set(bytes.slice(afterFlag, beforeWitness), pos);
+      pos += beforeWitness - afterFlag;
+      nonWitness.set(bytes.slice(bytes.length - 4), pos); // locktime
+      txidBytes = await doubleSha256(nonWitness);
+    } else {
+      txidBytes = await doubleSha256(bytes);
+    }
+    const txid = reverseHex(bytesToHex(txidBytes));
+
+    // Calculate sizes
+    const size = bytes.length;
+    const weight = isSegwit
+      ? (bytes.length - 2 - witnessSize) * 3 + bytes.length
+      : bytes.length * 4;
+    const vsize = Math.ceil(weight / 4);
+
+    return { txid, version, isSegwit, inputs, outputs, locktime, size, vsize };
+  }
+
+  txDecodeBtn?.addEventListener('click', async () => {
+    const hex = txInput.value.trim();
+    if (!hex) return;
+
+    try {
+      const tx = await decodeTx(hex);
+
+      (document.getElementById('tx-txid') as HTMLElement).textContent = tx.txid;
+      (document.getElementById('tx-version') as HTMLElement).textContent = tx.version.toString();
+      (document.getElementById('tx-segwit') as HTMLElement).textContent = tx.isSegwit ? '是' : '否';
+      (document.getElementById('tx-input-count') as HTMLElement).textContent =
+        tx.inputs.length.toString();
+      (document.getElementById('tx-output-count') as HTMLElement).textContent =
+        tx.outputs.length.toString();
+      (document.getElementById('tx-locktime') as HTMLElement).textContent = tx.locktime.toString();
+      (document.getElementById('tx-size') as HTMLElement).textContent = `${tx.size} bytes`;
+      (document.getElementById('tx-vsize') as HTMLElement).textContent = `${tx.vsize} vBytes`;
+
+      // Display inputs
+      const inputsDiv = document.getElementById('tx-inputs') as HTMLElement;
+      inputsDiv.innerHTML = tx.inputs
+        .map(
+          (inp, i) => `
+        <div class="p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <div class="text-[var(--text-secondary)] mb-1">輸入 #${i}</div>
+          <div class="break-all">TXID: ${inp.txid}:${inp.vout}</div>
+          ${inp.scriptSig ? `<div class="text-[var(--text-tertiary)] mt-1">ScriptSig: ${inp.scriptSig.substring(0, 60)}${inp.scriptSig.length > 60 ? '...' : ''}</div>` : ''}
+        </div>
+      `
+        )
+        .join('');
+
+      // Display outputs
+      const outputsDiv = document.getElementById('tx-outputs') as HTMLElement;
+      outputsDiv.innerHTML = tx.outputs
+        .map(
+          (out, i) => `
+        <div class="p-3 rounded-lg bg-[var(--bg-secondary)]">
+          <div class="flex justify-between">
+            <span class="text-[var(--text-secondary)]">輸出 #${i}</span>
+            <span class="text-bitcoin-500">${out.value.toFixed(8)} BTC</span>
+          </div>
+          <div class="text-[var(--text-tertiary)] mt-1 break-all">ScriptPubKey: ${out.scriptPubKey}</div>
+        </div>
+      `
+        )
+        .join('');
+
+      txResult.classList.remove('hidden');
+      txError.classList.add('hidden');
+    } catch (err) {
+      (document.getElementById('tx-error-message') as HTMLElement).textContent =
+        `解析錯誤: ${(err as Error).message}`;
+      txError.classList.remove('hidden');
+      txResult.classList.add('hidden');
+    }
+  });
+
+  // Example transaction buttons
+  document.querySelectorAll('.tx-example').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      txInput.value = (btn as HTMLElement).dataset.tx || '';
+    });
+  });
+</script>

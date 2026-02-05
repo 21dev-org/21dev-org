@@ -65,6 +65,8 @@ const proficiencyMap = {
   advanced: 'Advanced' as const,
 };
 
+const dateIso = date?.toISOString();
+
 const techArticleSchema = generateTechArticleSchema({
   title,
   description: description || '',
@@ -72,13 +74,20 @@ const techArticleSchema = generateTechArticleSchema({
   proficiencyLevel: difficulty ? proficiencyMap[difficulty] : undefined,
   keywords: tags,
   author,
-  datePublished: date?.toISOString(),
+  datePublished: dateIso,
+  dateModified: dateIso,
 });
 
 const schemas = [breadcrumbSchema, techArticleSchema];
 ---
 
-<BaseLayout title={title} description={description} ogImage={ogImage} schemas={schemas}>
+<BaseLayout
+  title={title}
+  description={description}
+  ogImage={ogImage}
+  schemas={schemas}
+  dateModified={dateIso}
+>
   <Header />
   <main id="main-content">
     <article class="py-16 md:py-24">
