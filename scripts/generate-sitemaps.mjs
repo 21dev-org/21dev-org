@@ -52,6 +52,12 @@ const sitemapCategories = {
     priority: 0.7,
     changefreq: 'monthly',
   },
+  'sitemap-blog': {
+    name: '文章',
+    pattern: '/blog/',
+    priority: 0.9,
+    changefreq: 'weekly',
+  },
   'sitemap-pages': {
     name: '其他頁面',
     pattern: null, // 匹配其他所有頁面

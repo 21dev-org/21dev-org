@@ -18,6 +18,9 @@ export default defineConfig({
         if (item.url === 'https://21dev.org/') {
           item.priority = 1.0;
           item.changefreq = 'daily';
+        } else if (item.url.includes('/blog/')) {
+          item.priority = 0.9;
+          item.changefreq = 'weekly';
         } else if (item.url.includes('/learn/')) {
           item.priority = 0.9;
           item.changefreq = 'weekly';

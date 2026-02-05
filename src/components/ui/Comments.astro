@@ -1,0 +1,83 @@
+---
+/**
+ * Comments - Giscus comment system powered by GitHub Discussions
+ *
+ * To enable comments:
+ * 1. Enable GitHub Discussions on the 21dev-org repository
+ * 2. Install the Giscus app: https://github.com/apps/giscus
+ * 3. Update the repo and repoId below
+ *
+ * Configuration: https://giscus.app
+ */
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<section class:list={['comments-section', className]}>
+  <h2 class="text-xl font-bold text-[var(--text-primary)] mb-6 flex items-center gap-2">
+    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+      ></path>
+    </svg>
+    討論
+  </h2>
+
+  <div id="giscus-container">
+    <script
+      is:inline
+      src="https://giscus.app/client.js"
+      data-repo="21dev-org/21dev-org.github.io"
+      data-repo-id=""
+      data-category="Comments"
+      data-category-id=""
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="preferred_color_scheme"
+      data-lang="zh-TW"
+      data-loading="lazy"
+      crossorigin="anonymous"
+      async></script>
+  </div>
+</section>
+
+<script>
+  // Sync Giscus theme with site theme
+  function updateGiscusTheme() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    const giscusTheme = theme === 'dark' ? 'dark' : 'light';
+
+    const iframe = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+    if (iframe) {
+      iframe.contentWindow?.postMessage(
+        { giscus: { setConfig: { theme: giscusTheme } } },
+        'https://giscus.app'
+      );
+    }
+  }
+
+  // Watch for theme changes
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.attributeName === 'data-theme') {
+        updateGiscusTheme();
+      }
+    }
+  });
+
+  function initComments() {
+    observer.observe(document.documentElement, { attributes: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', initComments);
+  document.addEventListener('astro:page-load', initComments);
+</script>

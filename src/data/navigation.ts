@@ -166,6 +166,14 @@ export const navigation: MegaMenuItem[] = [
           { label: '重要人物', href: '/notable-figures/' },
         ],
       },
+      {
+        title: '更多',
+        links: [
+          { label: '文章', href: '/blog/' },
+          { label: '活動', href: '/events/' },
+          { label: '影片', href: '/videos/' },
+        ],
+      },
     ],
   },
 ];
@@ -186,6 +194,7 @@ export const footerNav = {
       { label: '術語詞典', href: '/glossary/' },
       { label: '常見問題', href: '/faq/' },
       { label: '線上工具', href: '/tools/' },
+      { label: '文章', href: '/blog/' },
     ],
   },
   technology: {
