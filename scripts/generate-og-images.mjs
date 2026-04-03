@@ -345,8 +345,33 @@ async function main() {
     const relativePath = pagePath.replace(PAGES_DIR + '/', '').replace('.astro', '');
     const outputPath = join(OUTPUT_DIR, relativePath + '.png');
 
-    // Skip index files - use parent directory name
+    // For index files, use parent directory name as the output path
     if (basename(pagePath) === 'index.astro') {
+      const parentDir = dirname(pagePath).replace(PAGES_DIR + '/', '').replace('.astro', '');
+      // Skip the root index (src/pages/index.astro)
+      if (parentDir === PAGES_DIR || parentDir === '.') {
+        continue;
+      }
+      const indexOutputPath = join(OUTPUT_DIR, parentDir + '.png');
+      const indexTitle = extractTitle(pagePath);
+      const indexCategory = getCategory(pagePath);
+      const indexContentHash = computeContentHash(indexTitle, indexCategory);
+
+      if (!needsRegeneration(indexOutputPath, indexContentHash)) {
+        skipped++;
+        continue;
+      }
+
+      console.log(`Generating: ${parentDir} (from index.astro)`);
+
+      try {
+        const template = createOgTemplate(indexTitle, indexCategory);
+        await generateImage(template, indexOutputPath, fontData);
+        saveContentHash(indexOutputPath, indexContentHash);
+        generated++;
+      } catch (error) {
+        console.error(`Failed: ${parentDir}`, error.message);
+      }
       continue;
     }
 
